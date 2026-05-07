@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huevo USDA & Proteínas — Línea I · GLV Global Food Services LLC</title>
+<meta name="description" content="GLV Global Food Services — Huevo fresco USDA Grade A y AA. 331.200 huevos por FCL. 149 contenedores entregados. ICA Colombia · MAPA Brasil. Miami, Florida.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#C9A84C;--gold-light:#E8C97A;--blue:#3a8fd4;--blue-dark:#0e52a0;--dark:#0A0A0A;--dark2:#111111;--dark3:#1A1A1A;--mid:#2A2A2A;--text:#E8E8E8;--text-dim:#888;--white:#FFFFFF;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--dark);color:var(--text);font-family:'Barlow',sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
+[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+body.lang-ar{direction:rtl;}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
+.nav-logo-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);line-height:1.3;}
+.nav-right{display:flex;align-items:center;gap:1rem;}
+.lang-switcher{display:flex;gap:0.3rem;}
+.lang-btn{background:none;border:1px solid rgba(201,168,76,0.25);color:var(--text-dim);font-size:0.65rem;font-weight:700;padding:0.25rem 0.55rem;cursor:pointer;transition:all 0.2s;font-family:'Barlow',sans-serif;}
+.lang-btn:hover,.lang-btn.active{background:var(--gold);color:var(--dark);border-color:var(--gold);}
+.nav-back{font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.nav-back:hover{color:var(--gold);}
+.nav-cta{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.2rem;transition:all 0.2s;}
+.nav-cta:hover{background:var(--gold-light);}
+
+/* HERO */
+.hero{position:relative;height:100vh;min-height:680px;overflow:hidden;display:flex;align-items:center;padding-top:64px;}
+.hero-bg{position:absolute;inset:0;z-index:0;}
+.hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 40%;}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.97) 0%,rgba(10,10,10,0.88) 40%,rgba(10,10,10,0.4) 65%,rgba(10,10,10,0.05) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L58,0 Q66,50 58,100 L0,100 Z'/%3E%3C/svg%3E");-webkit-mask-size:100% 100%;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L58,0 Q66,50 58,100 L0,100 Z'/%3E%3C/svg%3E");mask-size:100% 100%;}
+.hero-content{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 4rem;width:100%;}
+.hero-div-tag{display:inline-flex;align-items:center;gap:0.8rem;font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;}
+.hero-div-tag::before{content:'I';background:var(--gold);color:var(--dark);font-size:0.65rem;font-weight:700;padding:0.2rem 0.55rem;}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(3rem,5.5vw,5.5rem);font-weight:900;line-height:1.0;color:var(--white);margin-bottom:1.2rem;}
+.hero-title em{font-style:italic;color:var(--gold);}
+.hero-big-num{font-family:'Playfair Display',serif;font-size:clamp(4rem,9vw,8rem);font-weight:900;color:var(--gold);line-height:1;margin-bottom:0.3rem;text-shadow:0 0 60px rgba(201,168,76,0.3);}
+.hero-big-label{font-size:1rem;color:var(--text-dim);margin-bottom:2rem;line-height:1.5;}
+.hero-btns{display:flex;gap:1rem;flex-wrap:wrap;}
+.btn-gold{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;border:none;cursor:pointer;font-family:'Barlow',sans-serif;}
+.btn-gold:hover{background:var(--gold-light);transform:translateY(-1px);}
+.btn-outline{border:1px solid rgba(201,168,76,0.4);color:var(--gold);text-decoration:none;font-size:0.8rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;}
+.btn-outline:hover{border-color:var(--gold);background:rgba(201,168,76,0.08);}
+
+/* STATS */
+.stats-bar{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.12);border-bottom:1px solid rgba(201,168,76,0.12);padding:2.5rem 4rem;}
+.stats-inner{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;}
+.stat{text-align:center;border-right:1px solid rgba(201,168,76,0.1);padding:0 1rem;}
+.stat:last-child{border-right:none;}
+.stat-num{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:var(--gold);line-height:1;}
+.stat-label{font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-top:0.4rem;display:block;}
+
+/* TICKER */
+.ticker{background:var(--gold);overflow:hidden;white-space:nowrap;padding:0.6rem 0;}
+.ticker-inner{display:inline-block;animation:tick 30s linear infinite;font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;font-weight:700;letter-spacing:0.15em;color:var(--dark);}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* COMMONS */
+.eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem;}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold);}
+.sec-title{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,3vw,3rem);font-weight:900;line-height:1.1;margin-bottom:1.2rem;}
+.sec-title em{font-style:italic;color:var(--gold);}
+.section{padding:6rem 4rem;max-width:1400px;margin:0 auto;}
+.section-full{padding:6rem 4rem;}
+.section-dark{background:var(--dark2);}
+
+/* PRODUCT GRID */
+.prod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(201,168,76,0.1);margin-top:3rem;}
+.prod-card{background:var(--dark2);padding:2.5rem 2rem;transition:background 0.3s;}
+.prod-card:hover{background:var(--dark3);}
+.prod-icon{font-size:2.5rem;margin-bottom:1rem;}
+.prod-name{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--white);margin-bottom:0.4rem;}
+.prod-sub{font-size:0.88rem;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;}
+.prod-desc{font-size:0.95rem;color:var(--text-dim);line-height:1.6;margin-bottom:1rem;}
+.prod-tags{display:flex;flex-wrap:wrap;gap:0.4rem;}
+.ptag{font-size:0.72rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.2rem 0.5rem;text-transform:uppercase;}
+
+/* PROCESS */
+.process-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(201,168,76,0.08);margin-top:3rem;}
+.proc-step{background:var(--dark);padding:2.5rem 1.5rem;text-align:center;}
+.proc-num{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:rgba(201,168,76,0.2);line-height:1;margin-bottom:1rem;}
+.proc-title{font-size:0.9rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;}
+.proc-desc{font-size:0.88rem;color:var(--text-dim);line-height:1.5;}
+
+/* CERTS */
+.certs-row{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-top:3rem;}
+.cert{font-size:0.72rem;font-weight:700;letter-spacing:0.12em;border:1px solid rgba(201,168,76,0.3);color:var(--gold);padding:0.4rem 0.9rem;text-transform:uppercase;}
+
+/* MARKETS */
+.mkt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(201,168,76,0.08);margin-top:3rem;}
+.mkt-card{background:var(--dark2);padding:2rem 1.5rem;text-align:center;}
+.mkt-flag{font-size:2rem;display:block;margin-bottom:0.5rem;}
+.mkt-name{font-size:0.9rem;font-weight:700;letter-spacing:0.08em;color:var(--gold);text-transform:uppercase;}
+.mkt-detail{font-size:0.82rem;color:var(--text-dim);margin-top:0.3rem;}
+
+/* FEATURE SPLIT */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:500px;}
+.split-img{position:relative;overflow:hidden;background:#000;}
+.split-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.split-content{padding:5rem 4rem;display:flex;flex-direction:column;justify-content:center;background:var(--dark2);}
+
+/* WA FLOAT */
+.wa-float{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:0.8rem;align-items:flex-end;}
+.wa-btn{display:flex;align-items:center;gap:0.7rem;background:#25D366;color:white;text-decoration:none;padding:0.6rem 1rem 0.6rem 0.7rem;font-size:0.9rem;font-weight:700;box-shadow:0 4px 20px rgba(37,211,102,0.4);transition:transform 0.2s;}
+.wa-btn:hover{transform:translateY(-2px);}
+
+/* FOOTER MINI */
+.footer-mini{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.15);padding:3rem 4rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-mini-logo{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--gold);}
+.footer-mini-links{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.footer-mini-links a{font-size:0.85rem;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.footer-mini-links a:hover{color:var(--gold);}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  nav{padding:0 1.2rem;}
+  .hero-content{padding:0 1.5rem;}
+  .section,.section-full{padding:4rem 1.5rem;}
+  .stats-inner{grid-template-columns:repeat(2,1fr);}
+  .prod-grid,.mkt-grid{grid-template-columns:1fr;}
+  .process-grid{grid-template-columns:repeat(2,1fr);}
+  .split{grid-template-columns:1fr;}
+  .split-img{height:300px;}
+  .footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}
+  .hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(10,10,10,0.82);}
+}
+</style>
+</head>
+<body class="lang-es">
+
+<nav>
+  <a href="./index.html" class="nav-logo">
+    GLV Global Food Services
+    <span class="nav-logo-sub">LLC · MIAMI · FLORIDA</span>
+  </a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('es')">ES</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('ar')">عربي</button>
+      <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="./index.html" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
+    <a href="./index.html#cotizar" class="nav-cta"><span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-ar>سعر</span><span lang-zh>报价</span></a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <img src="./imagenes/hero-huevo-proteinas.jpg" alt="Huevo USDA GLV Global Food Services Miami"
+         onerror="this.style.display='none'">
+  </div>
+  <div class="hero-content">
+    <div class="hero-div-tag">
+      <span lang-es>Línea I — Huevo & Proteínas · Miami, Florida</span>
+      <span lang-en>Line I — Eggs & Proteins · Miami, Florida</span>
+      <span lang-ar>الخط الأول — البيض والبروتينات · ميامي</span>
+      <span lang-zh>业务线 I — 鸡蛋与蛋白质 · 迈阿密</span>
+    </div>
+    <h1 class="hero-title">
+      <span lang-es>Huevo <em>USDA</em>.<br>Confianza Real.</span>
+      <span lang-en>USDA <em>Eggs</em>.<br>Real Trust.</span>
+      <span lang-ar>بيض <em>USDA</em>.<br>ثقة حقيقية.</span>
+      <span lang-zh>USDA <em>鸡蛋</em>.<br>真实信任.</span>
+    </h1>
+    <div class="hero-big-num">331.200</div>
+    <p class="hero-big-label">
+      <span lang-es>huevos por contenedor FCL · 920 cajas × 360 unidades · USDA Grade A & AA</span>
+      <span lang-en>eggs per FCL container · 920 boxes × 360 units · USDA Grade A & AA</span>
+      <span lang-ar>بيضة لكل حاوية FCL · 920 علبة × 360 وحدة · USDA درجة A وAA</span>
+      <span lang-zh>每个FCL集装箱鸡蛋数 · 920箱 × 360个 · USDA A级和AA级</span>
+    </p>
+    <div class="hero-btns">
+      <a href="./index.html#cotizar" class="btn-gold">
+        <span lang-es>Cotizar Huevo FCL</span><span lang-en>Quote Egg FCL</span>
+        <span lang-ar>اطلب سعر البيض</span><span lang-zh>询价鸡蛋集装箱</span>
+      </a>
+      <a href="#mercados" class="btn-outline">
+        <span lang-es>Ver Mercados →</span><span lang-en>View Markets →</span>
+        <span lang-ar>← الأسواق</span><span lang-zh>查看市场 →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat"><div class="stat-num">149+</div><span class="stat-label"><span lang-es>FCL Entregados</span><span lang-en>FCL Delivered</span><span lang-ar>FCL تم تسليمها</span><span lang-zh>已交付FCL</span></span></div>
+    <div class="stat"><div class="stat-num">331.200</div><span class="stat-label"><span lang-es>Huevos / FCL</span><span lang-en>Eggs / FCL</span><span lang-ar>بيض / FCL</span><span lang-zh>鸡蛋/FCL</span></span></div>
+    <div class="stat"><div class="stat-num">USDA</div><span class="stat-label">Grade A · AA</span></div>
+    <div class="stat"><div class="stat-num">8+</div><span class="stat-label"><span lang-es>Países Destino</span><span lang-en>Destination Countries</span><span lang-ar>دول وجهة</span><span lang-zh>目的地国家</span></span></div>
+    <div class="stat"><div class="stat-num">24/7</div><span class="stat-label"><span lang-es>Trazabilidad</span><span lang-en>Traceability</span><span lang-ar>تتبع</span><span lang-zh>可溯源</span></span></div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-inner">
+    🥚 USDA GRADE A · AA &nbsp;·&nbsp; 🇨🇴 ICA COLOMBIA &nbsp;·&nbsp; 🇧🇷 MAPA BRASIL &nbsp;·&nbsp; 🇩🇴 CARIBE &nbsp;·&nbsp; 🇲🇽 MÉXICO &nbsp;·&nbsp; 🇵🇪 PERÚ &nbsp;·&nbsp; 🇺🇸 USA &nbsp;·&nbsp; 🇨🇺 CUBA &nbsp;·&nbsp; 331.200 HUEVOS/FCL &nbsp;·&nbsp; 149 FCL ENTREGADOS &nbsp;·&nbsp;
+    🥚 USDA GRADE A · AA &nbsp;·&nbsp; 🇨🇴 ICA COLOMBIA &nbsp;·&nbsp; 🇧🇷 MAPA BRASIL &nbsp;·&nbsp; 🇩🇴 CARIBE &nbsp;·&nbsp; 🇲🇽 MÉXICO &nbsp;·&nbsp; 🇵🇪 PERÚ &nbsp;·&nbsp; 🇺🇸 USA &nbsp;·&nbsp; 🇨🇺 CUBA &nbsp;·&nbsp; 331.200 HUEVOS/FCL &nbsp;·&nbsp; 149 FCL ENTREGADOS &nbsp;·&nbsp;
+  </div>
+</div>
+
+<!-- PRODUCTOS -->
+<div class="section-full section-dark" style="padding:6rem 4rem;">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow"><span lang-es>Catálogo de Productos</span><span lang-en>Product Catalog</span><span lang-ar>كتالوج المنتجات</span><span lang-zh>产品目录</span></p>
+  <h2 class="sec-title"><span lang-es>Proteínas <em>certificadas</em> desde origen</span><span lang-en>Certified <em>proteins</em> from origin</span><span lang-ar>بروتينات <em>معتمدة</em> من المصدر</span><span lang-zh>来自产地的<em>认证</em>蛋白质</span></h2>
+  <div class="prod-grid">
+    <div class="prod-card">
+      <div class="prod-icon">🥚</div>
+      <div class="prod-name"><span lang-es>Huevo Fresco Tipo A</span><span lang-en>Fresh Egg Grade A</span><span lang-ar>بيض طازج درجة A</span><span lang-zh>A级鲜蛋</span></div>
+      <div class="prod-sub">USDA Grade A · ICA Colombia</div>
+      <p class="prod-desc"><span lang-es>Huevo fresco de gallina ponedora certificada. 360 unidades por caja. 920 cajas por FCL = 331.200 huevos. Temperatura controlada, cadena de frío verificada desde origen.</span><span lang-en>Fresh chicken egg from certified laying hens. 360 units per box. 920 boxes per FCL = 331,200 eggs. Controlled temperature, verified cold chain from origin.</span><span lang-ar>بيض دجاج طازج من دجاج بياض معتمد. 360 وحدة في كل علبة. 920 علبة في FCL = 331,200 بيضة.</span><span lang-zh>来自认证蛋鸡的新鲜鸡蛋。每箱360个。920箱/FCL = 331,200个鸡蛋。</span></p>
+      <div class="prod-tags"><span class="ptag">360 uds/caja</span><span class="ptag">920 cajas/FCL</span><span class="ptag">Cold Chain</span><span class="ptag">ICA Cert.</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🥚</div>
+      <div class="prod-name"><span lang-es>Huevo Doble AA</span><span lang-en>Grade AA Double Egg</span><span lang-ar>بيض درجة AA</span><span lang-zh>AA级双黄蛋</span></div>
+      <div class="prod-sub">USDA Grade AA · MAPA Brasil</div>
+      <p class="prod-desc"><span lang-es>Huevo premium de calidad superior. Certificación MAPA Brasil + USDA. Destinos: Caribe, USA, Japón, UAE. Ideal para procesadores, hoteles y retail de alta gama.</span><span lang-en>Premium quality superior egg. MAPA Brazil + USDA certification. Destinations: Caribbean, USA, Japan, UAE. Ideal for processors, hotels and premium retail.</span><span lang-ar>بيض ممتاز بجودة فائقة. شهادة MAPA البرازيل + USDA. وجهات: الكاريبي، الولايات المتحدة، اليابان، الإمارات.</span><span lang-zh>高品质优质鸡蛋。MAPA巴西+USDA认证。目的地：加勒比、美国、日本、阿联酋。</span></p>
+      <div class="prod-tags"><span class="ptag">MAPA Brasil</span><span class="ptag">USDA AA</span><span class="ptag">Premium</span><span class="ptag">Export Ready</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🍗</div>
+      <div class="prod-name"><span lang-es>Pollo Certificado</span><span lang-en>Certified Chicken</span><span lang-ar>دجاج معتمد</span><span lang-zh>认证鸡肉</span></div>
+      <div class="prod-sub">ICA Colombia · MAPA Brasil · MOQ 3 FTL</div>
+      <p class="prod-desc"><span lang-es>Pollo fresco y congelado certificado ICA y MAPA. Cortes específicos por pedido. MOQ 3 FTL. Halal disponible. Distribución desde Miami a Caribe y Latinoamérica.</span><span lang-en>Fresh and frozen chicken certified ICA and MAPA. Specific cuts by order. MOQ 3 FTL. Halal available. Distribution from Miami to Caribbean and Latin America.</span><span lang-ar>دجاج طازج ومجمد معتمد ICA وMAPA. قطع محددة حسب الطلب. Halal متاح.</span><span lang-zh>ICA和MAPA认证的新鲜冷冻鸡肉。按订单指定切割。最低订量3 FTL。清真可选。</span></p>
+      <div class="prod-tags"><span class="ptag">ICA · MAPA</span><span class="ptag">MOQ 3 FTL</span><span class="ptag">Halal Opt.</span><span class="ptag">Frozen/Fresh</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- SPLIT — FEATURE -->
+<div class="split">
+  <div class="split-img">
+    <img src="./imagenes/contenedor-huevos-apilado.jpg" alt="Contenedor FCL Huevos GLV Miami"
+         onerror="this.style.background='linear-gradient(135deg,#1a1a00,#2a2a00)';this.style.minHeight='500px';">
+  </div>
+  <div class="split-content">
+    <p class="eyebrow"><span lang-es>Por qué GLV · Miami</span><span lang-en>Why GLV · Miami</span><span lang-ar>لماذا GLV · ميامي</span><span lang-zh>为什么选GLV · 迈阿密</span></p>
+    <h2 class="sec-title"><span lang-es><em>149 FCL</em> entregados.<br>Resultados reales.</span><span lang-en><em>149 FCL</em> delivered.<br>Real results.</span><span lang-ar><em>149 FCL</em> تم تسليمها.<br>نتائج حقيقية.</span><span lang-zh><em>149个FCL</em>已交付。<br>真实成果。</span></h2>
+    <p style="font-size:1rem;color:var(--text-dim);line-height:1.75;margin-bottom:1.5rem;">
+      <span lang-es>GLV Global Food Services LLC ha entregado más de 149 contenedores FCL de huevo certificado USDA en 2024–2025. Operamos con personal local en República Dominicana, el mercado más activo del Caribe para huevo de importación. Cada embarque tiene documentación completa, cadena de frío verificada y soporte post-entrega.</span>
+      <span lang-en>GLV Global Food Services LLC has delivered over 149 USDA certified egg FCL containers in 2024–2025. We operate with local staff in the Dominican Republic, the Caribbean's most active market for imported eggs. Each shipment has complete documentation, verified cold chain and post-delivery support.</span>
+      <span lang-ar>سلّمت GLV Global Food Services LLC أكثر من 149 حاوية بيض معتمدة USDA في 2024-2025. نعمل بموظفين محليين في جمهورية الدومينيكان.</span>
+      <span lang-zh>GLV Global Food Services LLC在2024-2025年交付了超过149个USDA认证鸡蛋FCL集装箱。我们在多明尼加共和国设有本地员工。</span>
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:2rem;">
+      <div style="background:rgba(201,168,76,0.06);border-left:2px solid var(--gold);padding:1rem 1.2rem;">
+        <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:var(--gold);">149+</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;"><span lang-es>FCL Entregados</span><span lang-en>FCL Delivered</span></div>
+      </div>
+      <div style="background:rgba(201,168,76,0.06);border-left:2px solid var(--gold);padding:1rem 1.2rem;">
+        <div style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:var(--gold);">8+</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;"><span lang-es>Países Activos</span><span lang-en>Active Countries</span></div>
+      </div>
+    </div>
+    <a href="./index.html#cotizar" class="btn-gold"><span lang-es>Cotizar Ahora →</span><span lang-en>Quote Now →</span><span lang-ar>← اطلب سعراً</span><span lang-zh>立即询价 →</span></a>
+  </div>
+</div>
+
+<!-- MERCADOS -->
+<div class="section-full" id="mercados" style="padding:6rem 4rem;background:var(--dark);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow"><span lang-es>Mercados Destino</span><span lang-en>Destination Markets</span><span lang-ar>الأسواق المستهدفة</span><span lang-zh>目标市场</span></p>
+  <h2 class="sec-title"><span lang-es>Desde Miami <em>al mundo</em></span><span lang-en>From Miami <em>to the world</em></span><span lang-ar>من ميامي <em>إلى العالم</em></span><span lang-zh>从迈阿密<em>走向世界</em></span></h2>
+  <div class="mkt-grid">
+    <div class="mkt-card"><span class="mkt-flag">🇩🇴</span><div class="mkt-name">Rep. Dominicana</div><div class="mkt-detail"><span lang-es>Personal local · Mercado principal</span><span lang-en>Local staff · Main market</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇺🇸</span><div class="mkt-name">USA</div><div class="mkt-detail">FDA · USDA Domestic</div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇲🇽</span><div class="mkt-name">México</div><div class="mkt-detail">CIF · Puerto Veracruz</div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇵🇪</span><div class="mkt-name">Perú</div><div class="mkt-detail">FOB Miami · Activo</div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇨🇺</span><div class="mkt-name">Cuba</div><div class="mkt-detail"><span lang-es>Canal activo</span><span lang-en>Active channel</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇦🇪</span><div class="mkt-name">UAE / Halal</div><div class="mkt-detail">Halal Certified</div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇯🇵</span><div class="mkt-name">Japón</div><div class="mkt-detail">Grade AA Premium</div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇳🇦</span><div class="mkt-name">Namibia</div><div class="mkt-detail"><span lang-es>África · Activo</span><span lang-en>Africa · Active</span></div></div>
+  </div>
+  <div class="certs-row">
+    <span class="cert">USDA Grade A · AA</span><span class="cert">ICA Colombia</span>
+    <span class="cert">MAPA Brasil</span><span class="cert">Halal Certified</span>
+    <span class="cert">Cold Chain Verified</span><span class="cert">FOB · CIF · DDP</span>
+    <span class="cert">L/C · Wire</span><span class="cert">FDA Registered</span>
+  </div>
+</div>
+</div>
+
+<!-- PROCESO -->
+<div class="section-full section-dark" style="padding:6rem 4rem;border-top:1px solid rgba(201,168,76,0.1);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow" style="justify-content:center;"><span lang-es>Proceso Operativo</span><span lang-en>Operational Process</span><span lang-ar>العملية التشغيلية</span><span lang-zh>运营流程</span></p>
+  <h2 class="sec-title" style="text-align:center;"><span lang-es>De <em>origen</em> a destino</span><span lang-en>From <em>origin</em> to destination</span><span lang-ar>من <em>المصدر</em> إلى الوجهة</span><span lang-zh>从<em>产地</em>到目的地</span></h2>
+  <div class="process-grid">
+    <div class="proc-step"><div class="proc-num">01</div><div class="proc-title">Sourcing</div><p class="proc-desc"><span lang-es>Fincas certificadas Colombia y Brasil. Visita personal GLV.</span><span lang-en>Certified farms Colombia and Brazil. GLV personal visit.</span></p></div>
+    <div class="proc-step"><div class="proc-num">02</div><div class="proc-title"><span lang-es>Clasificación</span><span lang-en>Grading</span></div><p class="proc-desc"><span lang-es>Grade A y AA bajo estándar USDA, ICA y MAPA. Control de calidad.</span><span lang-en>Grade A and AA under USDA, ICA and MAPA standards. Quality control.</span></p></div>
+    <div class="proc-step"><div class="proc-num">03</div><div class="proc-title"><span lang-es>Empaque</span><span lang-en>Packaging</span></div><p class="proc-desc"><span lang-es>920 cajas × 360 uds por FCL. Embalaje certificado Cold Chain.</span><span lang-en>920 boxes × 360 units per FCL. Certified Cold Chain packaging.</span></p></div>
+    <div class="proc-step"><div class="proc-num">04</div><div class="proc-title">Miami Hub</div><p class="proc-desc"><span lang-es>Tránsito PortMIA. Inspección FDA. Almacén temperatura controlada.</span><span lang-en>PortMIA transit. FDA inspection. Temperature-controlled warehouse.</span></p></div>
+    <div class="proc-step"><div class="proc-num">05</div><div class="proc-title"><span lang-es>Entrega</span><span lang-en>Delivery</span></div><p class="proc-desc"><span lang-es>DDP/CIF/FOB. Documentación completa. Soporte post-entrega.</span><span lang-en>DDP/CIF/FOB. Complete documentation. Post-delivery support.</span></p></div>
+  </div>
+</div>
+</div>
+
+<!-- WA FLOAT -->
+<div class="wa-float">
+  <a href="https://wa.me/573160865294" target="_blank" class="wa-btn">💬 <span>🇨🇴 +57 316 086 5294</span></a>
+  <a href="https://wa.me/5511946610038" target="_blank" class="wa-btn">💬 <span>🇧🇷 +55 11 9466 10038</span></a>
+</div>
+
+<!-- FOOTER MINI -->
+<div class="footer-mini">
+  <div class="footer-mini-logo">GLV Global Food Services LLC</div>
+  <div class="footer-mini-links">
+    <a href="./index.html"><span lang-es>Inicio</span><span lang-en>Home</span></a>
+    <a href="./coco-aceites.html"><span lang-es>Coco & Aceites</span><span lang-en>Coconut & Oils</span></a>
+    <a href="./granos-cereales.html"><span lang-es>Granos</span><span lang-en>Grains</span></a>
+    <a href="./comercio-internacional.html"><span lang-es>Comercio Int'l</span><span lang-en>Int'l Trade</span></a>
+    <a href="./index.html#cotizar"><span lang-es>Cotizar</span><span lang-en>Quote</span></a>
+  </div>
+  <div style="font-size:0.82rem;color:var(--text-dim);">📧 <a href="mailto:info@glvglobalfoodservices.com" style="color:var(--gold);">info@glvglobalfoodservices.com</a></div>
+</div>
+
+<script>
+function setLang(l){document.body.className='lang-'+l;document.querySelectorAll('.lang-btn').forEach(b=>{b.classList.remove('active');if((l==='es'&&b.textContent==='ES')||(l==='en'&&b.textContent==='EN')||(l==='ar'&&b.textContent.includes('عربي'))||(l==='zh'&&b.textContent.includes('中文')))b.classList.add('active');});localStorage.setItem('glv-lang',l);}
+(function(){var s=localStorage.getItem('glv-lang')||'es';setLang(s);})();
+</script>
+</body>
+</html>

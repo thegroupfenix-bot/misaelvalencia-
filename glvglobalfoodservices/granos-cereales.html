@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Granos & Cereales — Línea III · GLV Global Food Services LLC</title>
+<meta name="description" content="GLV Global Food Services — Arroz Basmati 17 variedades India. Frijoles 9 variedades Argentina. Garbanzos 7-9mm. Maíz, Trigo, Soya. Marca Aternal Rice. Miami, Florida.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#C9A84C;--gold-light:#E8C97A;--amber:#d4882a;--dark:#0A0A0A;--dark2:#111111;--dark3:#1A1A1A;--text:#E8E8E8;--text-dim:#888;--white:#FFFFFF;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--dark);color:var(--text);font-family:'Barlow',sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
+[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+body.lang-ar{direction:rtl;}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
+.nav-logo-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);}
+.nav-right{display:flex;align-items:center;gap:1rem;}
+.lang-switcher{display:flex;gap:0.3rem;}
+.lang-btn{background:none;border:1px solid rgba(201,168,76,0.25);color:var(--text-dim);font-size:0.65rem;font-weight:700;padding:0.25rem 0.55rem;cursor:pointer;transition:all 0.2s;font-family:'Barlow',sans-serif;}
+.lang-btn:hover,.lang-btn.active{background:var(--gold);color:var(--dark);border-color:var(--gold);}
+.nav-back{font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.nav-back:hover{color:var(--gold);}
+.nav-cta{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.2rem;transition:all 0.2s;}
+.nav-cta:hover{background:var(--gold-light);}
+.hero{position:relative;height:100vh;min-height:680px;overflow:hidden;display:flex;align-items:center;padding-top:64px;}
+.hero-bg{position:absolute;inset:0;z-index:0;}
+.hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 35%;}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.97) 0%,rgba(10,10,10,0.88) 42%,rgba(10,10,10,0.35) 68%,rgba(10,10,10,0.0) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");-webkit-mask-size:100% 100%;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");mask-size:100% 100%;}
+.hero-content{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 4rem;width:100%;}
+.hero-div-tag{display:inline-flex;align-items:center;gap:0.8rem;font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;}
+.hero-div-tag::before{content:'III';background:var(--gold);color:var(--dark);font-size:0.65rem;font-weight:700;padding:0.2rem 0.6rem;}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(2.8rem,5.5vw,5.5rem);font-weight:900;line-height:1.0;color:var(--white);margin-bottom:1.2rem;}
+.hero-title em{font-style:italic;color:var(--gold);}
+.hero-sub{font-size:1.05rem;color:var(--text-dim);line-height:1.7;max-width:580px;margin-bottom:2rem;}
+.hero-origins{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:2rem;}
+.hero-origin{display:flex;align-items:center;gap:0.5rem;font-size:0.88rem;color:var(--text-dim);}
+.hero-origin strong{color:var(--text);font-weight:600;}
+.hero-btns{display:flex;gap:1rem;flex-wrap:wrap;}
+.btn-gold{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;border:none;cursor:pointer;font-family:'Barlow',sans-serif;}
+.btn-gold:hover{background:var(--gold-light);transform:translateY(-1px);}
+.btn-outline{border:1px solid rgba(201,168,76,0.4);color:var(--gold);text-decoration:none;font-size:0.8rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;}
+.btn-outline:hover{border-color:var(--gold);background:rgba(201,168,76,0.08);}
+.ticker{background:linear-gradient(90deg,#2a1800,#3d2500,#2a1800);overflow:hidden;white-space:nowrap;padding:0.6rem 0;border-bottom:1px solid rgba(201,168,76,0.15);}
+.ticker-inner{display:inline-block;animation:ticker 30s linear infinite;font-family:'Barlow Condensed',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.15em;color:rgba(255,220,120,0.9);}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem;}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold);}
+.sec-title{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,3vw,3rem);font-weight:900;line-height:1.1;margin-bottom:1.2rem;}
+.sec-title em{font-style:italic;color:var(--gold);}
+.rice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(201,168,76,0.1);margin-top:3rem;}
+.rice-card{background:var(--dark2);padding:2rem 1.5rem;transition:background 0.3s;}
+.rice-card:hover{background:var(--dark3);}
+.rice-variety{font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.06em;color:var(--gold);text-transform:uppercase;margin-bottom:0.4rem;}
+.rice-spec{font-size:0.82rem;color:var(--text-dim);line-height:1.5;}
+.rice-badge{display:inline-block;margin-top:0.8rem;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.15rem 0.5rem;text-transform:uppercase;}
+.prod-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(201,168,76,0.08);margin-top:3rem;}
+.prod-card{background:var(--dark2);padding:2.5rem 2rem;transition:background 0.3s;}
+.prod-card:hover{background:var(--dark3);}
+.prod-icon{font-size:2.5rem;margin-bottom:1rem;}
+.prod-name{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--white);margin-bottom:0.4rem;}
+.prod-sub{font-size:0.88rem;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;}
+.prod-desc{font-size:0.95rem;color:var(--text-dim);line-height:1.6;margin-bottom:1rem;}
+.prod-tags{display:flex;flex-wrap:wrap;gap:0.4rem;}
+.ptag{font-size:0.72rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.2rem 0.5rem;text-transform:uppercase;}
+.aternal-box{background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);padding:3rem;text-align:center;margin-top:3rem;}
+.aternal-logo{font-family:'Playfair Display',serif;font-size:3rem;font-weight:900;color:var(--gold);letter-spacing:0.05em;margin-bottom:0.5rem;}
+.aternal-sub{font-size:0.8rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--text-dim);margin-bottom:1.5rem;}
+.aternal-desc{font-size:1rem;color:var(--text-dim);line-height:1.7;max-width:600px;margin:0 auto;}
+.certs-row{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-top:3rem;}
+.cert{font-size:0.72rem;font-weight:700;letter-spacing:0.12em;border:1px solid rgba(201,168,76,0.3);color:var(--gold);padding:0.4rem 0.9rem;text-transform:uppercase;}
+.wa-float{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:0.8rem;align-items:flex-end;}
+.wa-btn{display:flex;align-items:center;gap:0.7rem;background:#25D366;color:white;text-decoration:none;padding:0.6rem 1rem 0.6rem 0.7rem;font-size:0.9rem;font-weight:700;box-shadow:0 4px 20px rgba(37,211,102,0.4);transition:transform 0.2s;}
+.wa-btn:hover{transform:translateY(-2px);}
+.footer-mini{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.15);padding:3rem 4rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-mini-logo{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--gold);}
+.footer-mini-links{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.footer-mini-links a{font-size:0.85rem;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.footer-mini-links a:hover{color:var(--gold);}
+.stats-bar{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.12);border-bottom:1px solid rgba(201,168,76,0.12);padding:2.5rem 4rem;}
+.stats-inner{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;}
+.stat{text-align:center;border-right:1px solid rgba(201,168,76,0.1);padding:0 1rem;}
+.stat:last-child{border-right:none;}
+.stat-num{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:var(--gold);line-height:1;}
+.stat-label{font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-top:0.4rem;display:block;}
+@media(max-width:768px){nav{padding:0 1.2rem;}.hero-content{padding:0 1.5rem;}.stats-inner{grid-template-columns:repeat(2,1fr);}.rice-grid{grid-template-columns:repeat(2,1fr);}.prod-row{grid-template-columns:1fr;}.footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}.hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(10,10,10,0.82);}}
+</style>
+</head>
+<body class="lang-es">
+<nav>
+  <a href="./index.html" class="nav-logo">GLV Global Food Services<span class="nav-logo-sub">LLC · MIAMI · FLORIDA</span></a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('es')">ES</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('ar')">عربي</button>
+      <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="./index.html" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span></a>
+    <a href="./index.html#cotizar" class="nav-cta"><span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-ar>سعر</span><span lang-zh>报价</span></a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-bg">
+    <img src="./imagenes/hero-granos-cereales.jpg" alt="Granos GLV Miami" onerror="this.style.display='none'">
+  </div>
+  <div class="hero-content">
+    <div class="hero-div-tag">
+      <span lang-es>Línea III — Granos & Cereales · India · Argentina · Colombia</span>
+      <span lang-en>Line III — Grains & Cereals · India · Argentina · Colombia</span>
+      <span lang-ar>الخط الثالث — الحبوب والحبوب الكاملة</span>
+      <span lang-zh>业务线 III — 谷物与粮食</span>
+    </div>
+    <h1 class="hero-title">
+      <span lang-es>Granos <em>certificados</em>.<br>Desde el origen.</span>
+      <span lang-en>Certified <em>Grains</em>.<br>From origin.</span>
+      <span lang-ar>حبوب <em>معتمدة</em>.<br>من المصدر.</span>
+      <span lang-zh><em>认证</em>谷物.<br>来自产地.</span>
+    </h1>
+    <p class="hero-sub">
+      <span lang-es>Arroz Basmati y no-Basmati 17 variedades desde India. Frijoles 9 variedades desde Argentina. Marca propia Aternal Rice. MOQ desde 1 FCL para pequeños importadores, 12.500 MT para compradores institucionales.</span>
+      <span lang-en">Basmati and non-Basmati rice 17 varieties from India. Beans 9 varieties from Argentina. Private label Aternal Rice. MOQ from 1 FCL for small importers, 12,500 MT for institutional buyers.</span>
+      <span lang-ar>أرز بسمتي وغير بسمتي 17 صنفاً من الهند. فاصوليا 9 أصناف من الأرجنتين. علامة Aternal Rice الخاصة.</span>
+      <span lang-zh>印度巴斯马蒂和非巴斯马蒂大米17个品种。阿根廷豆类9个品种。自有品牌Aternal Rice。</span>
+    </p>
+    <div class="hero-origins">
+      <div class="hero-origin">🇮🇳 <strong><span lang-es>India</span><span lang-en>India</span></strong> — <span lang-es>Arroz 17 variedades</span><span lang-en>Rice 17 varieties</span></div>
+      <div class="hero-origin">🇦🇷 <strong><span lang-es>Argentina</span><span lang-en>Argentina</span></strong> — <span lang-es>Frijoles & Granos</span><span lang-en>Beans & Grains</span></div>
+      <div class="hero-origin">🇨🇴 <strong><span lang-es>Colombia</span><span lang-en>Colombia</span></strong> — <span lang-es>Maíz & Soya</span><span lang-en>Corn & Soya</span></div>
+    </div>
+    <div class="hero-btns">
+      <a href="./index.html#cotizar" class="btn-gold"><span lang-es>Cotizar Granos</span><span lang-en>Quote Grains</span><span lang-ar>اطلب سعر الحبوب</span><span lang-zh>询价谷物</span></a>
+      <a href="./index.html" class="btn-outline">← <span lang-es>Inicio</span><span lang-en>Home</span></a>
+    </div>
+  </div>
+</section>
+
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat"><div class="stat-num">17</div><span class="stat-label"><span lang-es>Variedades Arroz</span><span lang-en>Rice Varieties</span></span></div>
+    <div class="stat"><div class="stat-num">9</div><span class="stat-label"><span lang-es>Variedades Frijol</span><span lang-en>Bean Varieties</span></span></div>
+    <div class="stat"><div class="stat-num">12.5K</div><span class="stat-label">MT MOQ Inst.</span></div>
+    <div class="stat"><div class="stat-num">3</div><span class="stat-label"><span lang-es>Países Origen</span><span lang-en>Origin Countries</span></span></div>
+    <div class="stat"><div class="stat-num">1 FCL</div><span class="stat-label">MOQ Small</span></div>
+  </div>
+</div>
+
+<div class="ticker">
+  <div class="ticker-inner">
+    🌾 BASMATI 1121 · 1509 · 1401 &nbsp;·&nbsp; 🍚 ARROZ LARGO · CORTO · PARBOILED &nbsp;·&nbsp; 🫘 FRIJOL COLORADO · NEGRO · PINTO &nbsp;·&nbsp; 🌽 MAÍZ · TRIGO · SOYA &nbsp;·&nbsp; 🇮🇳 INDIA &nbsp;·&nbsp; 🇦🇷 ARGENTINA &nbsp;·&nbsp; 🇨🇴 COLOMBIA &nbsp;·&nbsp; ATERNAL RICE &nbsp;·&nbsp;
+    🌾 BASMATI 1121 · 1509 · 1401 &nbsp;·&nbsp; 🍚 ARROZ LARGO · CORTO · PARBOILED &nbsp;·&nbsp; 🫘 FRIJOL COLORADO · NEGRO · PINTO &nbsp;·&nbsp; 🌽 MAÍZ · TRIGO · SOYA &nbsp;·&nbsp; 🇮🇳 INDIA &nbsp;·&nbsp; 🇦🇷 ARGENTINA &nbsp;·&nbsp; 🇨🇴 COLOMBIA &nbsp;·&nbsp; ATERNAL RICE &nbsp;·&nbsp;
+  </div>
+</div>
+
+<!-- ARROZ -->
+<div style="background:var(--dark2);padding:6rem 4rem;">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow"><span lang-es>Arroz · 17 Variedades · India</span><span lang-en>Rice · 17 Varieties · India</span><span lang-ar>أرز · 17 صنفاً · الهند</span><span lang-zh>大米 · 17个品种 · 印度</span></p>
+  <h2 class="sec-title"><span lang-es>De India <em>al mundo</em></span><span lang-en>From India <em>to the world</em></span><span lang-ar>من الهند <em>إلى العالم</em></span><span lang-zh">从印度<em>走向世界</em></span></h2>
+  <div class="rice-grid">
+    <div class="rice-card"><div class="rice-variety">Basmati 1121</div><p class="rice-spec"><span lang-es>Grano extra largo, aroma premium. El más exportado de India.</span><span lang-en>Extra long grain, premium aroma. India's most exported variety.</span></p><span class="rice-badge">Extra Long</span></div>
+    <div class="rice-card"><div class="rice-variety">Basmati 1509</div><p class="rice-spec"><span lang-es>Grano largo, aroma intenso. Precio competitivo. Alta demanda Medio Oriente.</span><span lang-en>Long grain, intense aroma. Competitive price. High Middle East demand.</span></p><span class="rice-badge">Long Grain</span></div>
+    <div class="rice-card"><div class="rice-variety">Basmati 1401</div><p class="rice-spec"><span lang-es>Grano tradicional Punjab. Cocción perfecta, sin pegarse.</span><span lang-en">Traditional Punjab grain. Perfect cooking, non-sticky.</span></p><span class="rice-badge">Traditional</span></div>
+    <div class="rice-card"><div class="rice-variety">Sella Basmati</div><p class="rice-spec"><span lang-es>Parboilado. Mayor vida útil. Ideal para distribución a granel.</span><span lang-en>Parboiled. Longer shelf life. Ideal for bulk distribution.</span></p><span class="rice-badge">Parboiled</span></div>
+    <div class="rice-card"><div class="rice-variety">Brown Basmati</div><p class="rice-spec"><span lang-es>Integral, cáscara conservada. Mercado health & wellness USA.</span><span lang-en>Whole grain, hull retained. USA health & wellness market.</span></p><span class="rice-badge">Integral</span></div>
+    <div class="rice-card"><div class="rice-variety">IR-64</div><p class="rice-spec"><span lang-es>No-Basmati. Grano largo fino. Precio económico. Caribe y Latinoamérica.</span><span lang-en>Non-Basmati. Fine long grain. Economic price. Caribbean and Latin America.</span></p><span class="rice-badge">Non-Basmati</span></div>
+    <div class="rice-card"><div class="rice-variety">IR-36</div><p class="rice-spec"><span lang-es>No-Basmati. Grano medio. Alta demanda Cuba, Haití y Centroamérica.</span><span lang-en>Non-Basmati. Medium grain. High demand Cuba, Haiti and Central America.</span></p><span class="rice-badge">Medium Grain</span></div>
+    <div class="rice-card"><div class="rice-variety">Ponni · Idly</div><p class="rice-spec"><span lang-es>Arroz para cocina del Sur de India. Mercado étnico USA y Europa.</span><span lang-en>South Indian cooking rice. Ethnic market USA and Europe.</span></p><span class="rice-badge">Ethnic</span></div>
+  </div>
+  <!-- ATERNAL RICE -->
+  <div class="aternal-box">
+    <div class="aternal-logo">Aternal Rice</div>
+    <div class="aternal-sub"><span lang-es>Marca Propia GLV · Private Label</span><span lang-en>GLV Private Label · Own Brand</span><span lang-ar">علامة GLV الخاصة</span><span lang-zh>GLV自有品牌</span></div>
+    <p class="aternal-desc">
+      <span lang-es>Aternal Rice es la marca propia de arroz del GLV Global Holding. Disponible en todas las variedades Basmati y no-Basmati. Empaque personalizable para distribuidores, supermercados y cadenas de retail. MOQ 1 FCL para etiqueta privada.</span>
+      <span lang-en">Aternal Rice is the GLV Global Holding's own rice brand. Available in all Basmati and non-Basmati varieties. Customizable packaging for distributors, supermarkets and retail chains. MOQ 1 FCL for private label.</span>
+      <span lang-ar>Aternal Rice هي العلامة التجارية الخاصة للأرز لمجموعة GLV. متاحة بجميع أصناف البسمتي وغيرها.</span>
+      <span lang-zh>Aternal Rice是GLV全球控股集团的自有大米品牌。所有品种可提供定制包装。</span>
+    </p>
+  </div>
+</div>
+</div>
+
+<!-- OTROS GRANOS -->
+<div style="background:var(--dark);padding:6rem 4rem;">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow"><span lang-es>Legumbres & Cereales</span><span lang-en>Pulses & Cereals</span><span lang-ar>البقوليات والحبوب</span><span lang-zh>豆类与粮食</span></p>
+  <h2 class="sec-title"><span lang-es>Argentina & Colombia. <em>MOQ real.</em></span><span lang-en>Argentina & Colombia. <em>Real MOQ.</em></span><span lang-ar>الأرجنتين وكولومبيا. <em>MOQ حقيقي.</em></span><span lang-zh>阿根廷和哥伦比亚. <em>真实起订量.</em></span></h2>
+  <div class="prod-row">
+    <div class="prod-card">
+      <div class="prod-icon">🫘</div>
+      <div class="prod-name"><span lang-es>Frijoles · 9 Variedades</span><span lang-en>Beans · 9 Varieties</span><span lang-ar>فاصوليا · 9 أصناف</span><span lang-zh>豆类 · 9个品种</span></div>
+      <div class="prod-sub">Argentina · MOQ 12.500 MT institucional / 1 FCL small</div>
+      <p class="prod-desc"><span lang-es>Frijol Colorado Claro, Oscuro, Negro Brillante, Pinto, Cranberry, Alubia Blanca, Kidney, Canario y Ojo de Cabra. Origen Argentina. Estándares SENASA. Trazabilidad verificada. Disponible en sacos 50kg y a granel.</span><span lang-en">Light Red, Dark Red, Black, Pinto, Cranberry, White Alubia, Kidney, Canario and Goat Eye beans. Argentina origin. SENASA standards. Verified traceability. Available in 50kg bags and bulk.</span><span lang-ar">فاصوليا بألوان وأصناف متعددة. الأرجنتين. معايير SENASA. تتبع موثق.</span><span lang-zh">9个品种豆类。阿根廷产地。SENASA标准。可追溯。50kg袋装和散装。</span></p>
+      <div class="prod-tags"><span class="ptag">Colorado Claro</span><span class="ptag">Colorado Oscuro</span><span class="ptag">Negro</span><span class="ptag">Pinto</span><span class="ptag">Alubia</span><span class="ptag">Kidney</span><span class="ptag">SENASA</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">⚪</div>
+      <div class="prod-name"><span lang-es>Garbanzos 7-9mm</span><span lang-en>Chickpeas 7-9mm</span><span lang-ar>حمص 7-9 ملم</span><span lang-zh>鹰嘴豆 7-9mm</span></div>
+      <div class="prod-sub">Argentina · Calibre 7mm · 8mm · 9mm</div>
+      <p class="prod-desc"><span lang-es>Garbanzo Kabuli de Argentina en calibres 7mm, 8mm y 9mm. Alta demanda Medio Oriente, Europa y USA. Certificación Halal disponible. Empaque en sacos 50kg o Big Bag. Destino desde Miami.</span><span lang-en">Kabuli chickpeas from Argentina in 7mm, 8mm and 9mm calibers. High demand Middle East, Europe and USA. Halal certification available. Packaging in 50kg bags or Big Bag. Destination from Miami.</span><span lang-ar>حمص كابولي من الأرجنتين بمعايرة 7 و8 و9 ملم. طلب مرتفع في الشرق الأوسط. Halal متاح.</span><span lang-zh">阿根廷卡布里鹰嘴豆，7mm、8mm、9mm规格。中东、欧洲和美国需求旺盛。可提供清真认证。</span></p>
+      <div class="prod-tags"><span class="ptag">7mm · 8mm · 9mm</span><span class="ptag">Kabuli</span><span class="ptag">Halal Opt.</span><span class="ptag">50kg · Big Bag</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🌽</div>
+      <div class="prod-name"><span lang-es>Maíz Amarillo</span><span lang-en>Yellow Corn</span><span lang-ar>الذرة الصفراء</span><span lang-zh>黄玉米</span></div>
+      <div class="prod-sub">Colombia · Argentina · Feed & Food Grade</div>
+      <p class="prod-desc"><span lang-es>Maíz amarillo duro grado alimento y grado forraje. Colombia y Argentina. MOQ 1 FCL. Humedad máx 14%. Aflatoxina controlada. Documentación SENASA e ICA disponible para todos los destinos.</span><span lang-en">Hard yellow corn food grade and feed grade. Colombia and Argentina. MOQ 1 FCL. Max moisture 14%. Controlled aflatoxin. SENASA and ICA documentation available for all destinations.</span><span lang-ar">ذرة صفراء صلبة جودة غذائية وعلفية. MOQ 1 FCL. رطوبة 14% كحد أقصى.</span><span lang-zh">硬质黄玉米，食品级和饲料级。最低订量1 FCL。水分最高14%。</span></p>
+      <div class="prod-tags"><span class="ptag">Food Grade</span><span class="ptag">Feed Grade</span><span class="ptag">MOQ 1 FCL</span><span class="ptag">Max 14% H2O</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🌾</div>
+      <div class="prod-name"><span lang-es>Trigo & Soya</span><span lang-en>Wheat & Soybean</span><span lang-ar>القمح والصويا</span><span lang-zh>小麦与大豆</span></div>
+      <div class="prod-sub">Argentina · Colombia · Non-GMO Opt.</div>
+      <p class="prod-desc"><span lang-es>Trigo pan, duro y candeal desde Argentina. Soya en grano non-GMO disponible. Para molineros, industriales y traders. Certificación SENASA. FOB Buenos Aires o Rosario. Canal directo desde Miami.</span><span lang-en">Bread, durum and candeal wheat from Argentina. Non-GMO soybean available. For millers, industrials and traders. SENASA certification. FOB Buenos Aires or Rosario. Direct channel from Miami.</span><span lang-ar>قمح خبز وصلب من الأرجنتين. صويا non-GMO متاحة. شهادة SENASA.</span><span lang-zh">阿根廷面包小麦、硬质小麦和杜伦小麦。非转基因大豆可选。SENASA认证。</span></p>
+      <div class="prod-tags"><span class="ptag">Trigo Pan</span><span class="ptag">Trigo Duro</span><span class="ptag">Non-GMO Soya</span><span class="ptag">SENASA</span></div>
+    </div>
+  </div>
+  <div class="certs-row">
+    <span class="cert">SENASA Argentina</span><span class="cert">ICA Colombia</span><span class="cert">APEDA India</span>
+    <span class="cert">Halal Opt.</span><span class="cert">Non-GMO Opt.</span><span class="cert">FOB · CIF · DDP</span>
+    <span class="cert">L/C · Wire</span><span class="cert">Private Label</span>
+  </div>
+</div>
+</div>
+
+<div class="wa-float">
+  <a href="https://wa.me/573160865294" target="_blank" class="wa-btn">💬 🇨🇴 +57 316 086 5294</a>
+  <a href="https://wa.me/5511946610038" target="_blank" class="wa-btn">💬 🇧🇷 +55 11 9466 10038</a>
+</div>
+<div class="footer-mini">
+  <div class="footer-mini-logo">GLV Global Food Services LLC</div>
+  <div class="footer-mini-links">
+    <a href="./index.html"><span lang-es>Inicio</span><span lang-en>Home</span></a>
+    <a href="./huevo-proteinas.html"><span lang-es>Huevo</span><span lang-en>Eggs</span></a>
+    <a href="./coco-aceites.html"><span lang-es>Coco</span><span lang-en>Coconut</span></a>
+    <a href="./comercio-internacional.html"><span lang-es>Comercio</span><span lang-en>Trade</span></a>
+    <a href="./index.html#cotizar"><span lang-es>Cotizar</span><span lang-en>Quote</span></a>
+  </div>
+  <div style="font-size:0.82rem;color:var(--text-dim);">📧 <a href="mailto:info@glvglobalfoodservices.com" style="color:var(--gold);">info@glvglobalfoodservices.com</a></div>
+</div>
+<script>
+function setLang(l){document.body.className='lang-'+l;document.querySelectorAll('.lang-btn').forEach(b=>{b.classList.remove('active');if((l==='es'&&b.textContent==='ES')||(l==='en'&&b.textContent==='EN')||(l==='ar'&&b.textContent.includes('عربي'))||(l==='zh'&&b.textContent.includes('中文')))b.classList.add('active');});localStorage.setItem('glv-lang',l);}
+(function(){var s=localStorage.getItem('glv-lang')||'es';setLang(s);})();
+</script>
+</body>
+</html>
