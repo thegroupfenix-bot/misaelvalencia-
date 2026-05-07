@@ -8,6 +8,13 @@ Requirements:
 
 Usage:
     python upload-hostinger.py
+
+IMPORTANT — Video:
+    The hero video already streams from glvservicesexp.com as fallback.
+    To use a local video copy, place it at:
+        imagenes/video-corporativo-glv-foodservices.mp4
+    (this is the video "video corporativo glv services.mp4" on Hostinger)
+    The script will upload it automatically if it exists in imagenes/.
 """
 import os
 import paramiko
