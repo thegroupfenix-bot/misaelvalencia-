@@ -326,14 +326,17 @@ nav {
 .services-section { padding:7rem 4rem; background:var(--dark); }
 .services-inner { max-width:1400px; margin:0 auto; }
 .services-grid {
-  display:grid; grid-template-columns:repeat(4,1fr);
+  display:grid; grid-template-columns:repeat(3,1fr);
   gap:1px; background:rgba(201,168,76,0.1); margin-top:4rem;
 }
 .svc-card {
   background:var(--dark2); padding:2.5rem 2rem;
   transition:background 0.3s; display:flex; flex-direction:column;
+  position:relative; overflow:hidden;
 }
+.svc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);opacity:0;transition:opacity 0.3s;}
 .svc-card:hover { background:var(--dark3); }
+.svc-card:hover::before{opacity:1;}
 .svc-num {
   font-family:'Playfair Display',serif;
   font-size:3.5rem; font-weight:900;
@@ -357,6 +360,9 @@ nav {
   border:1px solid rgba(201,168,76,0.3); color:var(--text-dim);
   padding:0.2rem 0.5rem; text-transform:uppercase;
 }
+.svc-link{display:inline-flex;align-items:center;gap:0.5rem;font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);text-decoration:none;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(201,168,76,0.1);transition:color 0.2s;}
+.svc-link:hover{color:var(--gold-light);}
+.svc-link::after{content:'→';}
 
 /* ─── PRODUCTS HIGHLIGHT ─── */
 .products-section {
@@ -586,6 +592,9 @@ footer {
   .footer-top      { grid-template-columns:1fr 1fr; }
   .process-steps   { grid-template-columns:repeat(3,1fr); }
   .contact-strip-inner { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:900px) {
+  .services-grid { grid-template-columns:repeat(2,1fr); }
 }
 @media (max-width:768px) {
   nav { padding:0 1.2rem; }
@@ -857,16 +866,16 @@ footer {
 <section class="services-section" id="servicios">
   <div class="services-inner">
     <p class="section-eyebrow">
-      <span lang-es>4 Líneas de Negocio</span>
-      <span lang-en">4 Business Lines</span>
-      <span lang-ar>٤ خطوط أعمال</span>
-      <span lang-zh>4条业务线</span>
+      <span lang-es>6 Líneas de Negocio</span>
+      <span lang-en">6 Business Lines</span>
+      <span lang-ar>٦ خطوط أعمال</span>
+      <span lang-zh>6条业务线</span>
     </p>
     <h2 class="section-title">
-      <span lang-es>Un canal USA. <em>Cuatro plataformas.</em></span>
-      <span lang-en">One USA channel. <em>Four platforms.</em></span>
-      <span lang-ar>قناة أمريكية واحدة. <em>أربع منصات.</em></span>
-      <span lang-zh>一个美国渠道。<em>四个平台。</em></span>
+      <span lang-es>Un canal USA. <em>Seis plataformas.</em></span>
+      <span lang-en">One USA channel. <em>Six platforms.</em></span>
+      <span lang-ar>قناة أمريكية واحدة. <em>ست منصات.</em></span>
+      <span lang-zh>一个美国渠道。<em>六个平台。</em></span>
     </h2>
     <div class="services-grid">
 
@@ -874,7 +883,7 @@ footer {
       <div class="svc-card">
         <div class="svc-num">01</div>
         <div class="svc-icon">🥚</div>
-        <div class="svc-title"><span lang-es>Huevo & Proteínas</span><span lang-en>Eggs & Proteins</span><span lang-ar>البيض والبروتينات</span><span lang-zh>鸡蛋与蛋白质</span></div>
+        <div class="svc-title"><span lang-es>Huevo & Proteínas</span><span lang-en">Eggs & Proteins</span><span lang-ar>البيض والبروتينات</span><span lang-zh>鸡蛋与蛋白质</span></div>
         <div class="svc-subtitle">USDA Grade A · AA · Colombia · Brasil</div>
         <p class="svc-desc">
           <span lang-es>Huevo fresco Tipo A y Doble AA certificado USDA. 920 cajas × 360 uds = 331.200 huevos por FCL. 149 FCL entregados en 2024–2025. Distribución hacia Caribe, México, Perú y mercado USA.</span>
@@ -888,19 +897,20 @@ footer {
           <span class="svc-tag">ICA · MAPA</span>
           <span class="svc-tag">149 FCL entregados</span>
         </div>
+        <a href="./huevo-proteinas.html" class="svc-link"><span lang-es>Ver Línea I</span><span lang-en">View Line I</span><span lang-ar>الخط الأول</span><span lang-zh>查看业务线 I</span></a>
       </div>
 
       <!-- LINE 02 -->
       <div class="svc-card">
         <div class="svc-num">02</div>
         <div class="svc-icon">🥥</div>
-        <div class="svc-title"><span lang-es>Coco & Aceites</span><span lang-en>Coconut & Oils</span><span lang-ar>جوز الهند والزيوت</span><span lang-zh>椰子与油脂</span></div>
+        <div class="svc-title"><span lang-es>Coco & Aceites</span><span lang-en">Coconut & Oils</span><span lang-ar>جوز الهند والزيوت</span><span lang-zh>椰子与油脂</span></div>
         <div class="svc-subtitle">IFS · HACCP · GPM · Brasil Certificado</div>
         <p class="svc-desc">
           <span lang-es>Coco Rayado, Aceite de Coco y Agua de Coco desde productor certificado en Brasil (IFS, HACCP, GPM). Aceite de Soja, Girasol y Palma desde Argentina y Colombia. Canal directo sin intermediarios.</span>
           <span lang-en">Shredded Coconut, Coconut Oil and Coconut Water from certified producer in Brazil (IFS, HACCP, GPM). Soybean, Sunflower and Palm Oil from Argentina and Colombia. Direct channel, no intermediaries.</span>
-          <span lang-ar>جوز هند مبشور وزيت جوز الهند وماء جوز الهند من منتج معتمد في البرازيل (IFS, HACCP, GPM). زيت الصويا وعباد الشمس من الأرجنتين وكولومبيا.</span>
-          <span lang-zh">来自巴西认证生产商的椰丝、椰子油和椰子水 (IFS, HACCP, GPM)。来自阿根廷和哥伦比亚的豆油和葵花籽油。</span>
+          <span lang-ar>جوز هند مبشور وزيت جوز الهند وماء جوز الهند من منتج معتمد في البرازيل. زيت الصويا وعباد الشمس.</span>
+          <span lang-zh">来自巴西认证生产商的椰丝、椰子油和椰子水。豆油和葵花籽油。</span>
         </p>
         <div class="svc-tags">
           <span class="svc-tag">Coco Rayado</span>
@@ -908,19 +918,20 @@ footer {
           <span class="svc-tag">Agua de Coco</span>
           <span class="svc-tag">IFS · HACCP · GPM</span>
         </div>
+        <a href="./coco-aceites.html" class="svc-link"><span lang-es>Ver Línea II</span><span lang-en">View Line II</span><span lang-ar>الخط الثاني</span><span lang-zh>查看业务线 II</span></a>
       </div>
 
       <!-- LINE 03 -->
       <div class="svc-card">
         <div class="svc-num">03</div>
         <div class="svc-icon">🌾</div>
-        <div class="svc-title"><span lang-es>Granos & Cereales</span><span lang-en>Grains & Cereals</span><span lang-ar>الحبوب والحبوب الكاملة</span><span lang-zh>谷物与粮食</span></div>
+        <div class="svc-title"><span lang-es>Granos & Cereales</span><span lang-en">Grains & Cereals</span><span lang-ar>الحبوب والحبوب الكاملة</span><span lang-zh>谷物与粮食</span></div>
         <div class="svc-subtitle">India · Argentina · Colombia · MOQ desde 1 FCL</div>
         <p class="svc-desc">
           <span lang-es>Arroz Basmati y no-Basmati 17 variedades desde India. Marca propia Aternal Rice. Frijoles 9 variedades Argentina MOQ 12.500 MT. Garbanzos 7-9mm. Maíz, Trigo y Soya.</span>
           <span lang-en">Basmati and non-Basmati rice 17 varieties from India. Private label Aternal Rice. Beans 9 varieties Argentina MOQ 12,500 MT. Chickpeas 7-9mm. Corn, Wheat and Soybean.</span>
-          <span lang-ar>أرز بسمتي وغير بسمتي 17 صنفاً من الهند. علامة Aternal Rice الخاصة. فاصوليا 9 أصناف من الأرجنتين.</span>
-          <span lang-zh">印度巴斯马蒂和非巴斯马蒂大米17个品种。自有品牌Aternal Rice。阿根廷豆类9个品种 MOQ 12,500公吨。</span>
+          <span lang-ar>أرز بسمتي وغير بسمتي 17 صنفاً من الهند. علامة Aternal Rice الخاصة. فاصوليا 9 أصناف.</span>
+          <span lang-zh">印度巴斯马蒂和非巴斯马蒂大米17个品种。自有品牌Aternal Rice。</span>
         </p>
         <div class="svc-tags">
           <span class="svc-tag">Basmati 1121·1509</span>
@@ -928,19 +939,62 @@ footer {
           <span class="svc-tag">Garbanzos 7-9mm</span>
           <span class="svc-tag">Aternal Rice</span>
         </div>
+        <a href="./granos-cereales.html" class="svc-link"><span lang-es>Ver Línea III</span><span lang-en">View Line III</span><span lang-ar>الخط الثالث</span><span lang-zh>查看业务线 III</span></a>
       </div>
 
-      <!-- LINE 04 -->
+      <!-- LINE 04 — ANIMALES VIVOS -->
       <div class="svc-card">
         <div class="svc-num">04</div>
+        <div class="svc-icon">🐄</div>
+        <div class="svc-title"><span lang-es>Animales Vivos & Cortes</span><span lang-en">Live Animals & Cuts</span><span lang-ar>الحيوانات الحية وقطع اللحوم</span><span lang-zh>活体动物与肉类切割</span></div>
+        <div class="svc-subtitle">Bovinos · Ovinos · Caprinos · MAPA · ICA · Halal</div>
+        <p class="svc-desc">
+          <span lang-es>Bovinos Nelore/Angus, ovinos Dorper/Ile de France y caprinos desde Brasil y Colombia. Cortes premium: Rib Eye, Striploin, Tenderloin, rack de cordero. Buques ganaderos certificados. Halal disponible. Destinos: Medio Oriente, Caribe, África.</span>
+          <span lang-en">Nelore/Angus cattle, Dorper/Ile de France sheep and goats from Brazil and Colombia. Premium cuts: Rib Eye, Striploin, Tenderloin, lamb rack. Certified livestock vessels. Halal available. Destinations: Middle East, Caribbean, Africa.</span>
+          <span lang-ar>أبقار وأغنام وماعز من البرازيل وكولومبيا. قطع ممتازة: ريب آي وستريبلوين وتندرلوين. Halal متاح.</span>
+          <span lang-zh">来自巴西和哥伦比亚的牛、羊和山羊。优质切割：肋眼、西冷、里脊。清真认证可选。</span>
+        </p>
+        <div class="svc-tags">
+          <span class="svc-tag">Nelore · Angus · Dorper</span>
+          <span class="svc-tag">Rib Eye · Striploin</span>
+          <span class="svc-tag">MAPA · ICA · OIE</span>
+          <span class="svc-tag">Halal Certified</span>
+        </div>
+        <a href="./animales-vivos.html" class="svc-link"><span lang-es>Ver Línea IV</span><span lang-en">View Line IV</span><span lang-ar>الخط الرابع</span><span lang-zh>查看业务线 IV</span></a>
+      </div>
+
+      <!-- LINE 05 — FRUTAS -->
+      <div class="svc-card">
+        <div class="svc-num">05</div>
+        <div class="svc-icon">🥭</div>
+        <div class="svc-title"><span lang-es>Frutas Tropicales</span><span lang-en">Tropical Fruits</span><span lang-ar>الفواكه الاستوائية</span><span lang-zh>热带水果</span></div>
+        <div class="svc-subtitle">Colombia · Brasil · Ecuador · GlobalGAP · ICA</div>
+        <p class="svc-desc">
+          <span lang-es>Mango Tommy/Kent, Aguacate Hass, Banano Cavendish, Piña MD2, Maracuyá, Gulupa, Papaya y frutas exóticas. Colombia líder mundial en maracuyá. Certificación GlobalGAP, ICA, MAPA. Orgánico disponible. Reefer FCL y aéreo.</span>
+          <span lang-en">Tommy/Kent Mango, Hass Avocado, Cavendish Banana, MD2 Pineapple, Passion Fruit, Purple Granadilla, Papaya and exotic fruits. Colombia world leader in passion fruit. GlobalGAP, ICA, MAPA certified. Organic available. Reefer FCL and air freight.</span>
+          <span lang-ar>مانجو وأفوكادو هاس وموز وأناناس MD2 وفاكهة الشغف وبابايا. كولومبيا رائدة عالمياً في فاكهة الشغف. GlobalGAP وICA معتمد.</span>
+          <span lang-zh">Tommy/Kent芒果、哈斯牛油果、卡文迪什香蕉、MD2菠萝、百香果、木瓜。哥伦比亚百香果全球领先。</span>
+        </p>
+        <div class="svc-tags">
+          <span class="svc-tag">Mango · Aguacate · Piña</span>
+          <span class="svc-tag">GlobalGAP</span>
+          <span class="svc-tag">ICA Colombia</span>
+          <span class="svc-tag">Organic Opt.</span>
+        </div>
+        <a href="./frutas.html" class="svc-link"><span lang-es>Ver Línea V</span><span lang-en">View Line V</span><span lang-ar>الخط الخامس</span><span lang-zh>查看业务线 V</span></a>
+      </div>
+
+      <!-- LINE 06 — COMERCIO INTERNACIONAL -->
+      <div class="svc-card">
+        <div class="svc-num">06</div>
         <div class="svc-icon">🚢</div>
-        <div class="svc-title"><span lang-es>Comercio Internacional</span><span lang-en>International Trade</span><span lang-ar>التجارة الدولية</span><span lang-zh>国际贸易</span></div>
+        <div class="svc-title"><span lang-es>Comercio Internacional</span><span lang-en">International Trade</span><span lang-ar>التجارة الدولية</span><span lang-zh>国际贸易</span></div>
         <div class="svc-subtitle">Miami Hub · PortMIA · Import & Export</div>
         <p class="svc-desc">
           <span lang-es>Miami como hub de operaciones B2B: importación hacia USA, reexportación hacia el Caribe, y conexión directa con las entidades GLV en Colombia, Brasil, Dubai, Italia y Hong Kong. Operaciones en FOB, CIF, DDP y L/C.</span>
           <span lang-en">Miami as B2B operations hub: imports into USA, re-exports to Caribbean, and direct connection with GLV entities in Colombia, Brazil, Dubai, Italy and Hong Kong. Operations in FOB, CIF, DDP and L/C.</span>
-          <span lang-ar>ميامي كمحور لعمليات B2B: الاستيراد إلى الولايات المتحدة وإعادة التصدير إلى الكاريبي والتواصل المباشر مع كيانات GLV.</span>
-          <span lang-zh">迈阿密作为B2B运营中心：进口到美国、转口到加勒比地区，以及与GLV在哥伦比亚、巴西、迪拜、意大利和香港的实体直接对接。</span>
+          <span lang-ar>ميامي كمحور لعمليات B2B. استيراد وتصدير. الاتصال المباشر مع كيانات GLV العالمية.</span>
+          <span lang-zh">迈阿密作为B2B运营中心。进出口。与GLV全球实体直接对接。</span>
         </p>
         <div class="svc-tags">
           <span class="svc-tag">FOB · CIF · DDP</span>
@@ -948,6 +1002,7 @@ footer {
           <span class="svc-tag">PortMIA</span>
           <span class="svc-tag">B2B Institutional</span>
         </div>
+        <a href="./comercio-internacional.html" class="svc-link"><span lang-es>Ver Línea VI</span><span lang-en">View Line VI</span><span lang-ar>الخط السادس</span><span lang-zh>查看业务线 VI</span></a>
       </div>
 
     </div>

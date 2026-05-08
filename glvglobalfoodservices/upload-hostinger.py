@@ -36,7 +36,10 @@ FILES_TO_UPLOAD = [
     "huevo-proteinas.html",
     "coco-aceites.html",
     "granos-cereales.html",
+    "animales-vivos.html",
+    "frutas.html",
     "comercio-internacional.html",
+    "send-email.php",
 ]
 
 IMAGENES_FOLDER = LOCAL_BASE / "imagenes"

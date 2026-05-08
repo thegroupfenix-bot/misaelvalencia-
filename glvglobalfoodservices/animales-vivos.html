@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animales Vivos & Cortes — Línea V · GLV Global Food Services LLC</title>
+<meta name="description" content="GLV Global Food Services — Exportación de animales vivos: bovinos Nelore/Angus, ovinos Dorper/Ile de France. Cortes premium: Rib Eye, Striploin, Tenderloin. MAPA Brasil, ICA Colombia. Halal. Miami, Florida.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#C9A84C;--gold-light:#E8C97A;--red:#8B1A1A;--red-light:#C02020;--dark:#0A0A0A;--dark2:#111111;--dark3:#1A1A1A;--mid:#2A2A2A;--text:#E8E8E8;--text-dim:#888;--white:#FFFFFF;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--dark);color:var(--text);font-family:'Barlow',sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
+[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+body.lang-ar{direction:rtl;}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
+.nav-logo-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);line-height:1.3;}
+.nav-right{display:flex;align-items:center;gap:1rem;}
+.lang-switcher{display:flex;gap:0.3rem;}
+.lang-btn{background:none;border:1px solid rgba(201,168,76,0.25);color:var(--text-dim);font-size:0.65rem;font-weight:700;padding:0.25rem 0.55rem;cursor:pointer;transition:all 0.2s;font-family:'Barlow',sans-serif;}
+.lang-btn:hover,.lang-btn.active{background:var(--gold);color:var(--dark);border-color:var(--gold);}
+.nav-back{font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.nav-back:hover{color:var(--gold);}
+.nav-cta{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.2rem;transition:all 0.2s;}
+.nav-cta:hover{background:var(--gold-light);}
+
+/* HERO */
+.hero{position:relative;height:100vh;min-height:700px;overflow:hidden;display:flex;align-items:center;padding-top:64px;}
+.hero-bg{position:absolute;inset:0;z-index:0;}
+.hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center top;}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.97) 0%,rgba(10,10,10,0.9) 42%,rgba(10,10,10,0.5) 68%,rgba(10,10,10,0.1) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q68,50 60,100 L0,100 Z'/%3E%3C/svg%3E");-webkit-mask-size:100% 100%;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q68,50 60,100 L0,100 Z'/%3E%3C/svg%3E");mask-size:100% 100%;}
+.hero-bg-grad{position:absolute;inset:0;background:radial-gradient(ellipse at 70% 50%,rgba(139,26,26,0.18) 0%,transparent 65%);}
+.hero-content{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 4rem;width:100%;}
+.hero-div-tag{display:inline-flex;align-items:center;gap:0.8rem;font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;}
+.hero-div-tag::before{content:'V';background:var(--gold);color:var(--dark);font-size:0.65rem;font-weight:700;padding:0.2rem 0.6rem;}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(2.8rem,5.5vw,5.5rem);font-weight:900;line-height:1.0;color:var(--white);margin-bottom:1.2rem;}
+.hero-title em{font-style:italic;color:var(--gold);}
+.hero-sub{font-size:1.05rem;color:var(--text-dim);line-height:1.7;max-width:580px;margin-bottom:2rem;}
+.hero-origins{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:2rem;}
+.hero-origin{display:flex;align-items:center;gap:0.5rem;font-size:0.88rem;color:var(--text-dim);}
+.hero-origin strong{color:var(--text);font-weight:600;}
+.hero-btns{display:flex;gap:1rem;flex-wrap:wrap;}
+.btn-gold{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;border:none;cursor:pointer;font-family:'Barlow',sans-serif;}
+.btn-gold:hover{background:var(--gold-light);transform:translateY(-1px);}
+.btn-red{background:var(--red);color:#fff;text-decoration:none;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;}
+.btn-red:hover{background:var(--red-light);transform:translateY(-1px);}
+.btn-outline{border:1px solid rgba(201,168,76,0.4);color:var(--gold);text-decoration:none;font-size:0.8rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;}
+.btn-outline:hover{border-color:var(--gold);background:rgba(201,168,76,0.08);}
+
+/* STATS */
+.stats-bar{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.12);border-bottom:1px solid rgba(201,168,76,0.12);padding:2.5rem 4rem;}
+.stats-inner{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;}
+.stat{text-align:center;border-right:1px solid rgba(201,168,76,0.1);padding:0 1rem;}
+.stat:last-child{border-right:none;}
+.stat-num{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:var(--gold);line-height:1;}
+.stat-label{font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-top:0.4rem;display:block;}
+
+/* TICKER */
+.ticker{overflow:hidden;white-space:nowrap;padding:0.6rem 0;background:linear-gradient(90deg,#1a0000,#2a0505,#1a0000);}
+.ticker-inner{display:inline-block;animation:tick 32s linear infinite;font-family:'Barlow Condensed',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.15em;color:rgba(230,150,150,0.9);}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* COMMONS */
+.eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem;}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold);}
+.eyebrow-red{color:#e87070;}
+.eyebrow-red::before{background:#e87070;}
+.sec-title{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,3vw,3rem);font-weight:900;line-height:1.1;margin-bottom:1.2rem;}
+.sec-title em{font-style:italic;color:var(--gold);}
+
+/* PRODUCT GRID */
+.prod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(201,168,76,0.1);margin-top:3rem;}
+.prod-card{background:var(--dark2);padding:2.5rem 2rem;transition:background 0.3s;}
+.prod-card:hover{background:var(--dark3);}
+.prod-icon{font-size:2.5rem;margin-bottom:1rem;}
+.prod-name{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--white);margin-bottom:0.4rem;}
+.prod-sub{font-size:0.88rem;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;}
+.prod-sub-red{color:#e87070;}
+.prod-desc{font-size:0.95rem;color:var(--text-dim);line-height:1.6;margin-bottom:1rem;}
+.prod-tags{display:flex;flex-wrap:wrap;gap:0.4rem;}
+.ptag{font-size:0.72rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.2rem 0.5rem;text-transform:uppercase;}
+.ptag-red{border-color:rgba(139,26,26,0.5);color:#e87070;}
+
+/* BREED GRID */
+.breed-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(139,26,26,0.15);margin-top:2rem;}
+.breed-card{background:var(--dark2);padding:1.8rem 1.5rem;border-top:2px solid var(--red);}
+.breed-name{font-size:1.1rem;font-weight:700;color:#e87070;margin-bottom:0.3rem;letter-spacing:0.05em;}
+.breed-type{font-size:0.78rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem;}
+.breed-desc{font-size:0.88rem;color:var(--text-dim);line-height:1.5;}
+
+/* CUTS GRID */
+.cuts-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(201,168,76,0.08);margin-top:3rem;}
+.cut-card{background:var(--dark);padding:2rem 1.5rem;text-align:center;transition:background 0.3s;}
+.cut-card:hover{background:var(--dark3);}
+.cut-icon{font-size:2.2rem;margin-bottom:0.8rem;}
+.cut-name{font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--white);margin-bottom:0.3rem;}
+.cut-spec{font-size:0.82rem;color:var(--text-dim);line-height:1.5;}
+.cut-badge{display:inline-block;margin-top:0.6rem;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;border:1px solid rgba(139,26,26,0.4);color:#e87070;padding:0.15rem 0.5rem;text-transform:uppercase;}
+
+/* SPLIT */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:520px;}
+.split-img{position:relative;overflow:hidden;background:#000;}
+.split-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.split-content{padding:5rem 4rem;display:flex;flex-direction:column;justify-content:center;background:var(--dark2);}
+
+/* MARKETS */
+.mkt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(201,168,76,0.08);margin-top:3rem;}
+.mkt-card{background:var(--dark2);padding:2rem 1.5rem;text-align:center;}
+.mkt-flag{font-size:2rem;display:block;margin-bottom:0.5rem;}
+.mkt-name{font-size:0.9rem;font-weight:700;letter-spacing:0.08em;color:var(--gold);text-transform:uppercase;}
+.mkt-detail{font-size:0.82rem;color:var(--text-dim);margin-top:0.3rem;}
+
+/* PROCESS */
+.process-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(201,168,76,0.08);margin-top:3rem;}
+.proc-step{background:var(--dark);padding:2.5rem 1.5rem;text-align:center;}
+.proc-num{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:rgba(201,168,76,0.2);line-height:1;margin-bottom:1rem;}
+.proc-title{font-size:0.9rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;}
+.proc-desc{font-size:0.88rem;color:var(--text-dim);line-height:1.5;}
+
+/* SHIP SPECS */
+.ship-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(139,26,26,0.2);margin-top:3rem;}
+.ship-card{background:var(--dark2);padding:2.5rem 2rem;}
+.ship-name{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;color:#e87070;margin-bottom:0.4rem;}
+.ship-type{font-size:0.75rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.8rem;}
+.ship-specs{list-style:none;}
+.ship-specs li{font-size:0.88rem;color:var(--text-dim);padding:0.25rem 0;border-bottom:1px solid rgba(201,168,76,0.06);}
+.ship-specs li strong{color:var(--text);}
+
+/* CERTS */
+.certs-row{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-top:3rem;}
+.cert{font-size:0.72rem;font-weight:700;letter-spacing:0.12em;border:1px solid rgba(201,168,76,0.3);color:var(--gold);padding:0.4rem 0.9rem;text-transform:uppercase;}
+
+/* WA FLOAT */
+.wa-float{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:0.8rem;align-items:flex-end;}
+.wa-btn{display:flex;align-items:center;gap:0.7rem;background:#25D366;color:white;text-decoration:none;padding:0.6rem 1rem 0.6rem 0.7rem;font-size:0.9rem;font-weight:700;box-shadow:0 4px 20px rgba(37,211,102,0.4);transition:transform 0.2s;}
+.wa-btn:hover{transform:translateY(-2px);}
+
+/* FOOTER MINI */
+.footer-mini{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.15);padding:3rem 4rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-mini-logo{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--gold);}
+.footer-mini-links{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.footer-mini-links a{font-size:0.85rem;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.footer-mini-links a:hover{color:var(--gold);}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  nav{padding:0 1.2rem;}
+  .hero-content{padding:0 1.5rem;}
+  .stats-inner{grid-template-columns:repeat(2,1fr);}
+  .prod-grid{grid-template-columns:1fr;}
+  .breed-grid,.cuts-grid,.mkt-grid{grid-template-columns:repeat(2,1fr);}
+  .ship-grid{grid-template-columns:1fr;}
+  .process-grid{grid-template-columns:repeat(2,1fr);}
+  .split{grid-template-columns:1fr;}
+  .split-img{height:320px;}
+  .footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}
+  .hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(10,10,10,0.84);}
+  .split-content{padding:3rem 1.5rem;}
+  .ship-grid{grid-template-columns:1fr;}
+  div[style*="padding:6rem 4rem"]{padding:4rem 1.5rem!important;}
+}
+</style>
+</head>
+<body class="lang-es">
+
+<nav>
+  <a href="./index.html" class="nav-logo">
+    GLV Global Food Services
+    <span class="nav-logo-sub">LLC · MIAMI · FLORIDA</span>
+  </a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('es')">ES</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('ar')">عربي</button>
+      <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="./index.html" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
+    <a href="./index.html#cotizar" class="nav-cta"><span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-ar>سعر</span><span lang-zh>报价</span></a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <img src="./imagenes/mv-ocean-shearer.jpg" alt="Buque Ganadero GLV Global Food Services"
+         onerror="this.style.display='none'">
+    <div class="hero-bg-grad"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-div-tag">
+      <span lang-es>Línea V — Animales Vivos & Cortes · Brasil · Colombia</span>
+      <span lang-en>Line V — Live Animals & Cuts · Brazil · Colombia</span>
+      <span lang-ar>الخط الخامس — الحيوانات الحية وقطع اللحوم · البرازيل · كولومبيا</span>
+      <span lang-zh>业务线 V — 活体动物与肉类切割 · 巴西 · 哥伦比亚</span>
+    </div>
+    <h1 class="hero-title">
+      <span lang-es>Animales Vivos.<br><em>Fuerza</em> desde el origen.</span>
+      <span lang-en">Live Animals.<br><em>Strength</em> from origin.</span>
+      <span lang-ar>الحيوانات الحية.<br><em>القوة</em> من المصدر.</span>
+      <span lang-zh>活体动物.<br>来自<em>原产地</em>的力量.</span>
+    </h1>
+    <p class="hero-sub">
+      <span lang-es>Exportación de bovinos, ovinos y caprinos vivos desde Brasil y Colombia. Cortes premium de carne bovina y ovina. Certificación MAPA, ICA, OIE. Halal disponible. Transporte en buques ganaderos especializados desde Miami hacia Medio Oriente, Caribe y África.</span>
+      <span lang-en">Export of live cattle, sheep and goats from Brazil and Colombia. Premium beef and lamb cuts. MAPA, ICA, OIE certification. Halal available. Transport on specialized livestock vessels from Miami to the Middle East, Caribbean and Africa.</span>
+      <span lang-ar>تصدير الأبقار والأغنام والماعز الأحياء من البرازيل وكولومبيا. قطع لحوم بقري وضأن ممتازة. شهادة MAPA وICA وOIE. Halal متاح. نقل على سفن مواشي متخصصة.</span>
+      <span lang-zh">从巴西和哥伦比亚出口活牛、羊和山羊。优质牛肉和羊肉切割。MAPA、ICA、OIE认证。清真认证可选。专业牲畜运输船从迈阿密运往中东、加勒比和非洲。</span>
+    </p>
+    <div class="hero-origins">
+      <div class="hero-origin">🇧🇷 <strong>Brasil</strong> — <span lang-es>Bovinos · Ovinos · MAPA</span><span lang-en>Cattle · Sheep · MAPA</span></div>
+      <div class="hero-origin">🇨🇴 <strong>Colombia</strong> — <span lang-es>Bovinos · Caprinos · ICA</span><span lang-en>Cattle · Goats · ICA</span></div>
+      <div class="hero-origin">🇺🇾 <strong>Uruguay</strong> — <span lang-es>Cortes Premium · INAC</span><span lang-en">Premium Cuts · INAC</span></div>
+    </div>
+    <div class="hero-btns">
+      <a href="./index.html#cotizar" class="btn-gold">
+        <span lang-es>Cotizar Animales / Cortes</span><span lang-en">Quote Animals / Cuts</span>
+        <span lang-ar>اطلب سعر الحيوانات</span><span lang-zh>询价活体动物</span>
+      </a>
+      <a href="#buques" class="btn-outline">
+        <span lang-es>Ver Buques Ganaderos →</span><span lang-en">Livestock Vessels →</span>
+        <span lang-ar>← السفن الماشية</span><span lang-zh>查看牲畜船 →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat"><div class="stat-num">3</div><span class="stat-label"><span lang-es>Países Origen</span><span lang-en">Origin Countries</span><span lang-ar>دول المصدر</span><span lang-zh>原产地国家</span></span></div>
+    <div class="stat"><div class="stat-num">Halal</div><span class="stat-label"><span lang-es>Certificado</span><span lang-en">Certified</span><span lang-ar>معتمد</span><span lang-zh>认证</span></span></div>
+    <div class="stat"><div class="stat-num">MAPA</div><span class="stat-label"><span lang-es>Brasil Cert.</span><span lang-en">Brazil Cert.</span><span lang-ar>شهادة برازيلية</span><span lang-zh>巴西认证</span></span></div>
+    <div class="stat"><div class="stat-num">10+</div><span class="stat-label"><span lang-es>Razas & Cortes</span><span lang-en">Breeds & Cuts</span><span lang-ar>السلالات والقطع</span><span lang-zh>品种与切割</span></span></div>
+    <div class="stat"><div class="stat-num">24/7</div><span class="stat-label"><span lang-es>Logística Viva</span><span lang-en">Live Logistics</span><span lang-ar>لوجستيات حية</span><span lang-zh>活体物流</span></span></div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-inner">
+    🐄 BOVINOS NELORE · ANGUS · BRAHMAN &nbsp;·&nbsp; 🐑 OVINOS DORPER · ILE DE FRANCE &nbsp;·&nbsp; 🐐 CAPRINOS &nbsp;·&nbsp; 🥩 RIB EYE · STRIPLOIN · TENDERLOIN · CHUCK &nbsp;·&nbsp; 🇧🇷 MAPA BRASIL &nbsp;·&nbsp; 🇨🇴 ICA COLOMBIA &nbsp;·&nbsp; 🇺🇾 INAC URUGUAY &nbsp;·&nbsp; HALAL CERTIFIED &nbsp;·&nbsp; OIE HEALTH CERT &nbsp;·&nbsp;
+    🐄 BOVINOS NELORE · ANGUS · BRAHMAN &nbsp;·&nbsp; 🐑 OVINOS DORPER · ILE DE FRANCE &nbsp;·&nbsp; 🐐 CAPRINOS &nbsp;·&nbsp; 🥩 RIB EYE · STRIPLOIN · TENDERLOIN · CHUCK &nbsp;·&nbsp; 🇧🇷 MAPA BRASIL &nbsp;·&nbsp; 🇨🇴 ICA COLOMBIA &nbsp;·&nbsp; 🇺🇾 INAC URUGUAY &nbsp;·&nbsp; HALAL CERTIFIED &nbsp;·&nbsp; OIE HEALTH CERT &nbsp;·&nbsp;
+  </div>
+</div>
+
+<!-- ANIMALES VIVOS -->
+<div style="background:var(--dark2);padding:6rem 4rem;border-top:1px solid rgba(139,26,26,0.2);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow eyebrow-red"><span lang-es>Animales Vivos · Exportación Certificada</span><span lang-en>Live Animals · Certified Export</span><span lang-ar>الحيوانات الحية · تصدير معتمد</span><span lang-zh>活体动物 · 认证出口</span></p>
+  <h2 class="sec-title"><span lang-es>Ganado <em>de élite</em>. Origen trazado.</span><span lang-en">Elite <em>livestock</em>. Traced origin.</span><span lang-ar">ماشية <em>نخبوية</em>. مصدر موثق.</span><span lang-zh>精英<em>牲畜</em>。可追溯的来源。</span></h2>
+  <div class="prod-grid">
+    <div class="prod-card">
+      <div class="prod-icon">🐄</div>
+      <div class="prod-name"><span lang-es>Bovinos Vivos</span><span lang-en">Live Cattle</span><span lang-ar>أبقار حية</span><span lang-zh>活牛</span></div>
+      <div class="prod-sub prod-sub-red">Nelore · Angus · Brahman · Brasil · Colombia</div>
+      <p class="prod-desc">
+        <span lang-es">Bovinos vivos de razas Nelore, Angus Cruzado y Brahman desde Brasil y Colombia. Peso promedio 350–500 kg. Certificación sanitaria MAPA e ICA con historial completo de vacunación y origen. Aptos para engorde, reproducción y faena con Halal.</span>
+        <span lang-en">Live cattle of Nelore, Angus Cross and Brahman breeds from Brazil and Colombia. Average weight 350–500 kg. MAPA and ICA sanitary certification with full vaccination history and origin. Suitable for fattening, breeding and Halal slaughter.</span>
+        <span lang-ar>أبقار حية من سلالات نيلور وأنجوس وبراهمان من البرازيل وكولومبيا. وزن متوسط 350-500 كجم. شهادة صحية MAPA وICA. مناسبة للتسمين والتربية والذبح الحلال.</span>
+        <span lang-zh">来自巴西和哥伦比亚的尼罗尔、安格斯杂交和婆罗门品种活牛。平均重量350-500公斤。MAPA和ICA卫生认证。适合育肥、繁育和清真屠宰。</span>
+      </p>
+      <div class="prod-tags"><span class="ptag ptag-red">Nelore</span><span class="ptag ptag-red">Angus</span><span class="ptag ptag-red">Brahman</span><span class="ptag">350–500 kg</span><span class="ptag">Halal Opt.</span><span class="ptag">MAPA · ICA</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🐑</div>
+      <div class="prod-name"><span lang-es>Ovinos Vivos</span><span lang-en">Live Sheep</span><span lang-ar>أغنام حية</span><span lang-zh>活羊</span></div>
+      <div class="prod-sub prod-sub-red">Dorper · Ile de France · Santa Inês · Brasil</div>
+      <p class="prod-desc">
+        <span lang-es">Ovinos vivos de razas Dorper, Ile de France y Santa Inês desde Brasil. Alta demanda en Medio Oriente y Caribe. Peso 35–65 kg. Vacunación completa MAPA. Certificados OIE. Operaciones directas GLV en fincas ganaderas del sur de Brasil.</span>
+        <span lang-en">Live sheep of Dorper, Ile de France and Santa Inês breeds from Brazil. High demand in Middle East and Caribbean. Weight 35–65 kg. Full MAPA vaccination. OIE certificates. Direct GLV operations on livestock farms in southern Brazil.</span>
+        <span lang-ar">أغنام حية من سلالات دوربر وإيل دو فرانس وسانتا إينيس من البرازيل. طلب مرتفع في الشرق الأوسط. وزن 35-65 كجم. شهادات OIE.</span>
+        <span lang-zh">来自巴西的多尔珀、法国岛和圣伊内斯品种活羊。中东和加勒比需求旺盛。重量35-65公斤。OIE证书。</span>
+      </p>
+      <div class="prod-tags"><span class="ptag ptag-red">Dorper</span><span class="ptag ptag-red">Ile de France</span><span class="ptag ptag-red">Santa Inês</span><span class="ptag">35–65 kg</span><span class="ptag">OIE Cert.</span><span class="ptag">MAPA</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🐐</div>
+      <div class="prod-name"><span lang-es>Caprinos Vivos</span><span lang-en">Live Goats</span><span lang-ar>ماعز حية</span><span lang-zh>活山羊</span></div>
+      <div class="prod-sub prod-sub-red">Anglo Nubiana · Boer · Colombia · Brasil</div>
+      <p class="prod-desc">
+        <span lang-es">Caprinos vivos de razas Anglo Nubiana y Boer desde Colombia y Brasil. Ideal para mercado étnico USA, Caribe, Medio Oriente y África. Peso 25–50 kg. Certificación ICA Colombia y MAPA Brasil. Halal certificado disponible.</span>
+        <span lang-en">Live goats of Anglo Nubian and Boer breeds from Colombia and Brazil. Ideal for ethnic market USA, Caribbean, Middle East and Africa. Weight 25–50 kg. ICA Colombia and MAPA Brazil certification. Halal certified available.</span>
+        <span lang-ar">ماعز حية من سلالات أنجلو نوبيان وبوير من كولومبيا والبرازيل. مثالية للسوق الإثنية والشرق الأوسط. وزن 25-50 كجم. شهادة ICA وMAPA.</span>
+        <span lang-zh">来自哥伦比亚和巴西的盎格鲁努比亚和波尔品种活山羊。适合族裔市场、美国、加勒比、中东和非洲。重量25-50公斤。</span>
+      </p>
+      <div class="prod-tags"><span class="ptag ptag-red">Anglo Nubiana</span><span class="ptag ptag-red">Boer</span><span class="ptag">ICA · MAPA</span><span class="ptag">Halal Cert.</span><span class="ptag">25–50 kg</span></div>
+    </div>
+  </div>
+
+  <!-- RAZAS -->
+  <p class="eyebrow eyebrow-red" style="margin-top:4rem;"><span lang-es>Razas Certificadas</span><span lang-en">Certified Breeds</span><span lang-ar>السلالات المعتمدة</span><span lang-zh>认证品种</span></p>
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;margin-bottom:0;"><span lang-es>Genética de <em>élite</em></span><span lang-en">Elite <em>genetics</em></span><span lang-ar">وراثة <em>نخبوية</em></span><span lang-zh>精英<em>基因</em></span></h3>
+  <div class="breed-grid">
+    <div class="breed-card"><div class="breed-name">Nelore</div><div class="breed-type"><span lang-es>Bovino · Brasil</span><span lang-en">Cattle · Brazil</span></div><p class="breed-desc"><span lang-es">Raza Zebu de alta rusticidad y adaptabilidad tropical. Carne magra, alta tolerancia al calor. 80% del rebaño ganadero brasileño.</span><span lang-en">Zebu breed of high rusticity and tropical adaptability. Lean meat, high heat tolerance. 80% of Brazil's livestock herd.</span></p></div>
+    <div class="breed-card"><div class="breed-name">Angus Cruzado</div><div class="breed-type"><span lang-es>Bovino Premium</span><span lang-en">Premium Cattle</span></div><p class="breed-desc"><span lang-es">Cruce Angus × Nelore. Carne con mayor marmoleado. Ideal para mercados premium y cortes especiales de exportación.</span><span lang-en">Angus × Nelore cross. Higher marbled meat. Ideal for premium markets and special export cuts.</span></p></div>
+    <div class="breed-card"><div class="breed-name">Dorper</div><div class="breed-type"><span lang-es>Ovino · Brasil</span><span lang-en">Sheep · Brazil</span></div><p class="breed-desc"><span lang-es">Raza ovino de doble propósito, carne y piel. Alta prolificidad. Preferida en Medio Oriente por su sabor intenso y conformación corporal.</span><span lang-en">Dual-purpose sheep breed, meat and skin. High prolificacy. Preferred in the Middle East for its intense flavor and body conformation.</span></p></div>
+    <div class="breed-card"><div class="breed-name">Ile de France</div><div class="breed-type"><span lang-es>Ovino Premium</span><span lang-en">Premium Sheep</span></div><p class="breed-desc"><span lang-es">Ovino carnicero de origen francés. Musculatura superior, poca grasa. Muy apreciado en mercados gourmet y restauración de alta gama.</span><span lang-en">French-origin meat sheep. Superior musculature, little fat. Highly appreciated in gourmet markets and high-end restaurants.</span></p></div>
+  </div>
+</div>
+</div>
+
+<!-- CORTES DE CARNE -->
+<div style="background:var(--dark);padding:6rem 4rem;">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow"><span lang-es>Cortes Premium · Exportación</span><span lang-en">Premium Cuts · Export</span><span lang-ar>قطع ممتازة · تصدير</span><span lang-zh>优质切割 · 出口</span></p>
+  <h2 class="sec-title"><span lang-es>Cortes <em>certificados</em> de élite</span><span lang-en">Certified <em>elite</em> cuts</span><span lang-ar">قطع <em>معتمدة</em> نخبوية</span><span lang-zh>认证<em>精英</em>切割</span></h2>
+  <div class="cuts-grid">
+    <div class="cut-card"><div class="cut-icon">🥩</div><div class="cut-name">Rib Eye</div><p class="cut-spec"><span lang-es">Lomo ancho con hueso. Alta marmorización. Ref. IMPS 112A. Congelado o fresco.</span><span lang-en">Bone-in ribeye. High marbling. Ref. IMPS 112A. Frozen or fresh.</span></p><span class="cut-badge">USDA Ref.</span></div>
+    <div class="cut-card"><div class="cut-icon">🥩</div><div class="cut-name">Striploin</div><p class="cut-spec"><span lang-es">Lomo fino sin hueso. Corte NY Strip. Congelado IQF. Halal disponible.</span><span lang-en">Boneless fine loin. NY Strip cut. IQF frozen. Halal available.</span></p><span class="cut-badge">NY Strip</span></div>
+    <div class="cut-card"><div class="cut-icon">🥩</div><div class="cut-name">Tenderloin</div><p class="cut-spec"><span lang-es">Solomillo. El corte más tierno. Empaque individual. MOQ 500 kg.</span><span lang-en">Tenderloin. The most tender cut. Individual packaging. MOQ 500 kg.</span></p><span class="cut-badge">Premium</span></div>
+    <div class="cut-card"><div class="cut-icon">🥩</div><div class="cut-name">Chuck / Paleta</div><p class="cut-spec"><span lang-es">Paleta bovina. Ideal para guisos, mercado masivo. Precio competitivo.</span><span lang-en">Chuck roast. Ideal for stews, mass market. Competitive price.</span></p><span class="cut-badge">Mass Market</span></div>
+    <div class="cut-card"><div class="cut-icon">🐑</div><div class="cut-name">Rack de Cordero</div><p class="cut-spec"><span lang-es">Costillar de cordero Halal. 8 costillas. Premium gastronómico.</span><span lang-en">Halal lamb rack. 8 ribs. Gastronomic premium.</span></p><span class="cut-badge">Halal</span></div>
+    <div class="cut-card"><div class="cut-icon">🐑</div><div class="cut-name">Pierna de Cordero</div><p class="cut-spec"><span lang-es">Pierna entera o deshuesada. Congelado. MOQ 1 MT. Medio Oriente.</span><span lang-en">Whole or boneless leg. Frozen. MOQ 1 MT. Middle East.</span></p><span class="cut-badge">Halal</span></div>
+    <div class="cut-card"><div class="cut-icon">🐑</div><div class="cut-name">Hombro de Cordero</div><p class="cut-spec"><span lang-es">Paleta de cordero entera. Cocción lenta. Mercado árabe y mediterráneo.</span><span lang-en">Whole lamb shoulder. Slow cooking. Arab and Mediterranean market.</span></p><span class="cut-badge">Arab Market</span></div>
+    <div class="cut-card"><div class="cut-icon">🥩</div><div class="cut-name">Cortes Especiales</div><p class="cut-spec"><span lang-es">Flank, skirt, brisket, short rib. Por pedido. MOQ flexible.</span><span lang-en">Flank, skirt, brisket, short rib. By order. Flexible MOQ.</span></p><span class="cut-badge">Custom</span></div>
+  </div>
+</div>
+</div>
+
+<!-- SPLIT — BUQUES GANADEROS -->
+<div class="split" id="buques">
+  <div class="split-img">
+    <img src="./imagenes/mv-alkuwait-glv.jpg" alt="Buque Ganadero MV Al Kuwait GLV"
+         onerror="this.style.background='linear-gradient(135deg,#1a0000,#2a0808)';this.style.minHeight='520px';">
+  </div>
+  <div class="split-content">
+    <p class="eyebrow eyebrow-red"><span lang-es>Logística Viva · Buques Ganaderos</span><span lang-en">Live Logistics · Livestock Vessels</span><span lang-ar>اللوجستيات الحية · سفن الماشية</span><span lang-zh">活体物流 · 牲畜运输船</span></p>
+    <h2 class="sec-title"><span lang-es>Flota <em>especializada</em>.<br>Máximo bienestar animal.</span><span lang-en">Specialized <em>fleet</em>.<br>Maximum animal welfare.</span><span lang-ar">أسطول <em>متخصص</em>.<br>أقصى رعاية للحيوان.</span><span lang-zh">专业<em>船队</em>.<br>最大化动物福利.</span></h2>
+    <p style="font-size:1rem;color:var(--text-dim);line-height:1.75;margin-bottom:1.5rem;">
+      <span lang-es">El transporte de animales vivos exige logística de precisión. GLV Global Food Services coordina el embarque en buques ganaderos certificados con sistemas de ventilación, alimentación automatizada y veterinarios a bordo. Rutas principales: Miami → UAE, Kuwait, Jordania, Caribe.</span>
+      <span lang-en">Transporting live animals requires precision logistics. GLV Global Food Services coordinates shipment on certified livestock vessels with ventilation systems, automated feeding and onboard veterinarians. Main routes: Miami → UAE, Kuwait, Jordan, Caribbean.</span>
+      <span lang-ar">نقل الحيوانات الحية يتطلب لوجستيات دقيقة. تنسق GLV الشحن على سفن ماشية معتمدة. المسارات الرئيسية: ميامي → الإمارات، الكويت، الأردن، الكاريبي.</span>
+      <span lang-zh">活体动物运输需要精准物流。GLV协调在认证牲畜船上装运，配备通风系统、自动喂料和船上兽医。主要航线：迈阿密→阿联酋、科威特、约旦、加勒比。</span>
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:2rem;">
+      <div style="background:rgba(139,26,26,0.12);border-left:2px solid var(--red);padding:1rem 1.2rem;">
+        <div style="font-size:0.78rem;color:#e87070;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.3rem;"><span lang-es>Bienestar Animal</span><span lang-en">Animal Welfare</span></div>
+        <div style="font-size:0.9rem;color:var(--text-dim);"><span lang-es>Vet. a bordo 24/7</span><span lang-en">Vet. onboard 24/7</span></div>
+      </div>
+      <div style="background:rgba(139,26,26,0.12);border-left:2px solid var(--red);padding:1rem 1.2rem;">
+        <div style="font-size:0.78rem;color:#e87070;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.3rem;">Halal</div>
+        <div style="font-size:0.9rem;color:var(--text-dim);"><span lang-es>Certificado destino</span><span lang-en">Destination certified</span></div>
+      </div>
+      <div style="background:rgba(139,26,26,0.12);border-left:2px solid var(--red);padding:1rem 1.2rem;">
+        <div style="font-size:0.78rem;color:#e87070;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.3rem;">OIE</div>
+        <div style="font-size:0.9rem;color:var(--text-dim);"><span lang-es>Certificados sanidad</span><span lang-en">Health certificates</span></div>
+      </div>
+      <div style="background:rgba(139,26,26,0.12);border-left:2px solid var(--red);padding:1rem 1.2rem;">
+        <div style="font-size:0.78rem;color:#e87070;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.3rem;">Trazabilidad</div>
+        <div style="font-size:0.9rem;color:var(--text-dim);">GPS + Chip ID</div>
+      </div>
+    </div>
+    <a href="./index.html#cotizar" class="btn-gold"><span lang-es>Cotizar Embarque →</span><span lang-en">Quote Shipment →</span><span lang-ar>← طلب شحن</span><span lang-zh>询价货运 →</span></a>
+  </div>
+</div>
+
+<!-- BUQUES OPERADOS -->
+<div id="buques" style="background:var(--dark2);padding:6rem 4rem;border-top:1px solid rgba(139,26,26,0.2);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow eyebrow-red" style="justify-content:center;"><span lang-es>Buques Ganaderos Referencia</span><span lang-en">Reference Livestock Vessels</span><span lang-ar>سفن الماشية المرجعية</span><span lang-zh">参考牲畜运输船</span></p>
+  <h2 class="sec-title" style="text-align:center;"><span lang-es>Logística <em>de precisión</em> para vida</span><span lang-en">Precision <em>logistics</em> for life</span><span lang-ar">لوجستيات <em>دقيقة</em> للحياة</span><span lang-zh">生命的<em>精准</em>物流</span></h2>
+  <div class="ship-grid">
+    <div class="ship-card">
+      <div class="ship-name">MV Al Kuwait</div>
+      <div class="ship-type"><span lang-es>Buque Ganadero · Clase Jumbo</span><span lang-en">Livestock Carrier · Jumbo Class</span></div>
+      <ul class="ship-specs">
+        <li><strong><span lang-es>Capacidad:</span><span lang-en">Capacity:</span></strong> 100,000+ <span lang-es>animales</span><span lang-en">animals</span></li>
+        <li><strong>Ruta:</strong> Miami → ME · África · Caribe</li>
+        <li><strong><span lang-es>Ventilación:</span><span lang-en">Ventilation:</span></strong> <span lang-es>Forzada + natural</span><span lang-en">Forced + natural</span></li>
+        <li><strong>Vet. a bordo:</strong> 24/7</li>
+      </ul>
+    </div>
+    <div class="ship-card">
+      <div class="ship-name">MV Ocean Shearer</div>
+      <div class="ship-type"><span lang-es>Buque Ovino · Australia–Medio Oriente</span><span lang-en">Sheep Carrier · Australia–Middle East</span></div>
+      <ul class="ship-specs">
+        <li><strong><span lang-es>Especialidad:</span><span lang-en">Specialty:</span></strong> <span lang-es>Ovinos vivos</span><span lang-en">Live sheep</span></li>
+        <li><strong>Ruta:</strong> Brasil → Caribe → ME</li>
+        <li><strong>Certificación:</strong> OIE · MAPA · ICA</li>
+        <li><strong>Halal:</strong> <span lang-es>Supervisión a bordo</span><span lang-en">Onboard supervision</span></li>
+      </ul>
+    </div>
+    <div class="ship-card">
+      <div class="ship-name">MV Gelbray</div>
+      <div class="ship-type"><span lang-es>Buque Ganadero · Bovinos</span><span lang-en">Livestock Carrier · Cattle</span></div>
+      <ul class="ship-specs">
+        <li><strong><span lang-es>Capacidad:</span><span lang-en">Capacity:</span></strong> <span lang-es>Bovinos + caprinos</span><span lang-en">Cattle + goats</span></li>
+        <li><strong>Ruta:</strong> Colombia · Brasil → Caribe</li>
+        <li><strong>GPS:</strong> <span lang-es>Trazabilidad total</span><span lang-en">Full traceability</span></li>
+        <li><strong><span lang-es>Sistema:</span><span lang-en">System:</span></strong> <span lang-es>Chip ID individual</span><span lang-en">Individual chip ID</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MERCADOS -->
+<div style="padding:6rem 4rem;background:var(--dark);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow"><span lang-es>Mercados Destino</span><span lang-en">Destination Markets</span><span lang-ar>الأسواق المستهدفة</span><span lang-zh>目标市场</span></p>
+  <h2 class="sec-title"><span lang-es>Desde Miami <em>al mundo</em></span><span lang-en">From Miami <em>to the world</em></span><span lang-ar>من ميامي <em>إلى العالم</em></span><span lang-zh>从迈阿密<em>走向世界</em></span></h2>
+  <div class="mkt-grid">
+    <div class="mkt-card"><span class="mkt-flag">🇦🇪</span><div class="mkt-name">UAE · Dubai</div><div class="mkt-detail"><span lang-es">Halal · Ovinos premium</span><span lang-en">Halal · Premium sheep</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇸🇦</span><div class="mkt-name">Arabia Saudita</div><div class="mkt-detail">Halal · <span lang-es>Alta demanda</span><span lang-en">High demand</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇯🇴</span><div class="mkt-name">Jordania</div><div class="mkt-detail"><span lang-es">Ovinos · Caprinos</span><span lang-en">Sheep · Goats</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇰🇼</span><div class="mkt-name">Kuwait</div><div class="mkt-detail">Halal · <span lang-es>Cortes bovinos</span><span lang-en">Beef cuts</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇩🇴</span><div class="mkt-name">Rep. Dominicana</div><div class="mkt-detail"><span lang-es">Caprinos · Mercado étnico</span><span lang-en">Goats · Ethnic market</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇹🇹</span><div class="mkt-name">Trinidad & Tobago</div><div class="mkt-detail"><span lang-es">Caprinos vivos</span><span lang-en">Live goats</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇳🇦</span><div class="mkt-name">Namibia · África</div><div class="mkt-detail"><span lang-es">Bovinos engorde</span><span lang-en">Fattening cattle</span></div></div>
+    <div class="mkt-card"><span class="mkt-flag">🇺🇸</span><div class="mkt-name">USA · Mercado Étnico</div><div class="mkt-detail"><span lang-es">Caprinos · Cordero Halal</span><span lang-en">Goats · Halal Lamb</span></div></div>
+  </div>
+  <div class="certs-row">
+    <span class="cert">MAPA Brasil</span><span class="cert">ICA Colombia</span><span class="cert">INAC Uruguay</span>
+    <span class="cert">OIE Health Cert.</span><span class="cert">Halal Certified</span><span class="cert">FDA Registered</span>
+    <span class="cert">FOB · CIF · DDP</span><span class="cert">L/C · Wire</span>
+  </div>
+</div>
+</div>
+
+<!-- PROCESO -->
+<div style="background:var(--dark2);padding:6rem 4rem;border-top:1px solid rgba(139,26,26,0.15);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow eyebrow-red" style="justify-content:center;"><span lang-es>Proceso Operativo</span><span lang-en">Operational Process</span><span lang-ar>العملية التشغيلية</span><span lang-zh>运营流程</span></p>
+  <h2 class="sec-title" style="text-align:center;"><span lang-es>De <em>origen</em> a destino vivo</span><span lang-en">From <em>origin</em> to live destination</span><span lang-ar>من <em>المصدر</em> إلى الوجهة حياً</span><span lang-zh">从<em>产地</em>到目的地</span></h2>
+  <div class="process-grid">
+    <div class="proc-step"><div class="proc-num">01</div><div class="proc-title">Sourcing</div><p class="proc-desc"><span lang-es">Selección en fincas Colombia y Brasil. Visita personal GLV. Registro sanitario individual.</span><span lang-en">Selection on farms Colombia and Brazil. GLV personal visit. Individual health registry.</span></p></div>
+    <div class="proc-step"><div class="proc-num">02</div><div class="proc-title"><span lang-es">Sanidad</span><span lang-en">Health</span></div><p class="proc-desc"><span lang-es">Exámenes veterinarios completos. Certificados MAPA / ICA. Cuarentena pre-embarque.</span><span lang-en">Complete veterinary exams. MAPA / ICA certificates. Pre-shipment quarantine.</span></p></div>
+    <div class="proc-step"><div class="proc-num">03</div><div class="proc-title"><span lang-es">Embarque</span><span lang-en">Loading</span></div><p class="proc-desc"><span lang-es">Carga en buque ganadero certificado. Supervisión veterinaria. Capacidad según especie.</span><span lang-en">Loading on certified livestock vessel. Veterinary supervision. Capacity according to species.</span></p></div>
+    <div class="proc-step"><div class="proc-num">04</div><div class="proc-title">Miami Hub</div><p class="proc-desc"><span lang-es">Tránsito PortMIA si aplica. Inspección USDA/FDA. Documentación completa.</span><span lang-en">PortMIA transit if applicable. USDA/FDA inspection. Complete documentation.</span></p></div>
+    <div class="proc-step"><div class="proc-num">05</div><div class="proc-title"><span lang-es">Entrega</span><span lang-en">Delivery</span></div><p class="proc-desc"><span lang-es">Desembarque supervisado. Certificados Halal si aplica. Soporte post-entrega.</span><span lang-en">Supervised disembarkation. Halal certificates if applicable. Post-delivery support.</span></p></div>
+  </div>
+</div>
+</div>
+
+<!-- CTA -->
+<div style="background:linear-gradient(135deg,#0A0A0A 0%,#1a0800 40%,#0A0A0A 100%);border-top:1px solid rgba(201,168,76,0.3);border-bottom:1px solid rgba(201,168,76,0.3);padding:6rem 4rem;text-align:center;">
+  <div style="max-width:800px;margin:0 auto;">
+    <p style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;">GLV Global Food Services LLC — Miami, Florida</p>
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.5rem);font-weight:900;color:#fff;margin-bottom:1.5rem;">
+      <span lang-es>¿Listo para <em style="color:var(--gold)">cotizar?</em></span>
+      <span lang-en>Ready to <em style="color:var(--gold)">quote?</em></span>
+      <span lang-ar>هل أنت مستعد <em style="color:var(--gold)">للتسعير؟</em></span>
+      <span lang-zh>准备好<em style="color:var(--gold)">询价</em>了吗？</span>
+    </h2>
+    <p style="font-size:1.05rem;color:var(--text-dim);margin-bottom:2.5rem;line-height:1.7;max-width:600px;margin-left:auto;margin-right:auto;">
+      <span lang-es>Animales vivos, cortes o proteínas. Nuestro equipo en Miami responde en menos de 24 horas hábiles. FOB · CIF · DDP · Halal.</span>
+      <span lang-en>Live animals, cuts or proteins. Our Miami team responds in under 24 business hours. FOB · CIF · DDP · Halal.</span>
+      <span lang-ar>حيوانات حية وقطع لحوم. يستجيب فريقنا في أقل من 24 ساعة عمل. FOB · CIF · DDP · Halal.</span>
+      <span lang-zh>活体动物、肉类切割或蛋白质。我们的迈阿密团队在24个工作小时内响应。</span>
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <a href="./index.html#cotizar" class="btn-gold" style="font-size:0.95rem;padding:1.1rem 2.5rem;">
+        <span lang-es>Solicitar Cotización →</span><span lang-en>Request a Quote →</span><span lang-ar>← طلب عرض سعر</span><span lang-zh>申请报价 →</span>
+      </a>
+      <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20quisiera%20cotizar%20animales%20vivos%20o%20cortes%20de%20carne" target="_blank" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2.5rem;transition:all 0.2s;">
+        💬 WhatsApp 🇨🇴
+      </a>
+      <a href="https://wa.me/5511946610038?text=Hola%20GLV%2C%20quisiera%20cotizar%20animales%20vivos%20o%20cortes" target="_blank" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2.5rem;transition:all 0.2s;">
+        💬 WhatsApp 🇧🇷
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- WA FLOAT -->
+<div class="wa-float">
+  <a href="https://wa.me/573160865294" target="_blank" class="wa-btn">💬 <span>🇨🇴 +57 316 086 5294</span></a>
+  <a href="https://wa.me/5511946610038" target="_blank" class="wa-btn">💬 <span>🇧🇷 +55 11 9466 10038</span></a>
+</div>
+
+<!-- FOOTER MINI -->
+<div class="footer-mini">
+  <div class="footer-mini-logo">GLV Global Food Services LLC</div>
+  <div class="footer-mini-links">
+    <a href="./index.html"><span lang-es>Inicio</span><span lang-en>Home</span></a>
+    <a href="./huevo-proteinas.html"><span lang-es>Huevo & Proteínas</span><span lang-en">Eggs</span></a>
+    <a href="./coco-aceites.html"><span lang-es>Coco & Aceites</span><span lang-en">Oils</span></a>
+    <a href="./granos-cereales.html"><span lang-es>Granos</span><span lang-en">Grains</span></a>
+    <a href="./frutas.html"><span lang-es>Frutas</span><span lang-en">Fruits</span></a>
+    <a href="./comercio-internacional.html"><span lang-es>Comercio</span><span lang-en">Trade</span></a>
+    <a href="./index.html#cotizar"><span lang-es>Cotizar</span><span lang-en>Quote</span></a>
+  </div>
+  <div style="font-size:0.82rem;color:var(--text-dim);">📧 <a href="mailto:info@glvglobalfoodservices.com" style="color:var(--gold);">info@glvglobalfoodservices.com</a></div>
+</div>
+
+<script>
+function setLang(l){document.body.className='lang-'+l;document.querySelectorAll('.lang-btn').forEach(b=>{b.classList.remove('active');if((l==='es'&&b.textContent==='ES')||(l==='en'&&b.textContent==='EN')||(l==='ar'&&b.textContent.includes('عربي'))||(l==='zh'&&b.textContent.includes('中文')))b.classList.add('active');});localStorage.setItem('glv-lang',l);}
+(function(){var s=localStorage.getItem('glv-lang')||'es';setLang(s);})();
+</script>
+</body>
+</html>
