@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $to      = 'info@glvglobalfoodservices.com';
+$to2     = 'info@glvservicesexp.com';
 $name    = strip_tags(trim($_POST['name']    ?? ''));
 $company = strip_tags(trim($_POST['company'] ?? ''));
 $email   = filter_var(trim($_POST['email']   ?? ''), FILTER_SANITIZE_EMAIL);
@@ -59,6 +60,7 @@ $headers .= "MIME-Version: 1.0\r\n";
 $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
 
 $sent = mail($to, $subject, $body, $headers);
+mail($to2, $subject, $body, $headers);
 
 if ($sent) {
     // Auto-reply to client

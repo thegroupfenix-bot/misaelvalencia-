@@ -1476,12 +1476,23 @@ footer {
         <textarea id="fMessage" name="message" rows="3" placeholder="Especificaciones, certificaciones requeridas, frecuencia de compra..."></textarea>
       </div>
 
+      <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:6px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:rgba(255,255,255,0.6);line-height:1.5;">
+        ⚠️ <span lang-es>Los valores indicados son <strong style="color:var(--gold)">solo de referencia</strong>. La cotización oficial será enviada por nuestro equipo comercial según disponibilidad, volumen y condiciones del mercado.</span>
+        <span lang-en">Values shown are <strong style="color:var(--gold)">reference only</strong>. The official quote will be sent by our commercial team based on availability, volume and market conditions.</span>
+        <span lang-ar>القيم المشار إليها هي <strong style="color:var(--gold)">مرجعية فقط</strong>. سيتم إرسال عرض السعر الرسمي من قبل فريقنا التجاري.</span>
+        <span lang-zh">所示价值仅供<strong style="color:var(--gold)">参考</strong>。正式报价将由我们的商业团队根据可用性、数量和市场情况发送。</span>
+      </div>
       <div class="form-submit-dual">
         <button type="button" class="btn-wa-submit" onclick="sendViaWhatsApp()">
           💬 WhatsApp Directo
         </button>
         <button type="submit" class="btn-email-submit">
           ✉ <span lang-es>Enviar por Email</span><span lang-en">Send by Email</span><span lang-ar>إرسال بالبريد</span><span lang-zh>发送邮件</span>
+        </button>
+      </div>
+      <div style="margin-top:1rem;">
+        <button type="button" id="btnPDF" onclick="generatePDF()" style="display:none;width:100%;padding:12px;background:rgba(201,168,76,0.15);border:1px solid var(--gold);color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:0;transition:all 0.2s;">
+          📄 <span lang-es>Descargar Cotización de Referencia (PDF)</span><span lang-en">Download Reference Quote (PDF)</span>
         </button>
       </div>
     </form>
@@ -1723,6 +1734,7 @@ function handleQuote(e) {
       if (overlay) overlay.classList.remove('show');
       var msg = document.getElementById('formSuccess');
       if (msg) { msg.style.display = 'block'; setTimeout(function(){ msg.style.display='none'; }, 6000); }
+      document.getElementById('btnPDF').style.display = 'block';
       var waMsg = buildWAMessage();
       setTimeout(function() {
         window.open('https://wa.me/573160865294?text=' + waMsg, '_blank');
@@ -1782,6 +1794,93 @@ document.querySelectorAll('.svc-card, .market-card, .stat, .entity-card, .step, 
   el.style.transition = 'opacity 0.55s ease, transform 0.55s ease';
   observer.observe(el);
 });
+
+function generatePDF() {
+  const d = {
+    name:    document.getElementById('fName').value,
+    company: document.getElementById('fCompany').value,
+    email:   document.getElementById('fEmail').value,
+    phone:   document.getElementById('fPhone').value,
+    product: document.getElementById('fProduct').value,
+    dest:    document.getElementById('fDest').value,
+    volume:  document.getElementById('fVolume').value,
+    incoterm:document.getElementById('fIncoterm').value,
+    payment: document.getElementById('fPayment').value,
+    message: document.getElementById('fMessage').value,
+  };
+  const ref = 'GLV-' + new Date().getFullYear() + '-' + Math.floor(Math.random()*90000+10000);
+  const date = new Date().toLocaleDateString('es-US',{year:'numeric',month:'long',day:'numeric'});
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Cotización Referencia — ${ref}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Arial,sans-serif;color:#1a1a1a;padding:2.5cm;font-size:11pt;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1rem;border-bottom:3px solid #C9A84C;}
+.logo{font-size:18pt;font-weight:700;color:#1a1a1a;}
+.logo small{display:block;font-size:9pt;color:#666;font-weight:400;margin-top:2px;}
+.ref-box{text-align:right;}
+.ref-num{font-size:14pt;font-weight:700;color:#C9A84C;}
+.ref-date{font-size:9pt;color:#666;margin-top:2px;}
+.disclaimer{background:#fff8e1;border-left:4px solid #C9A84C;padding:0.7rem 1rem;margin-bottom:1.5rem;font-size:9.5pt;color:#7a6000;}
+h2{font-size:12pt;color:#C9A84C;text-transform:uppercase;letter-spacing:1px;margin:1.5rem 0 0.6rem;}
+table{width:100%;border-collapse:collapse;margin-bottom:0.5rem;}
+td{padding:0.45rem 0.6rem;border-bottom:1px solid #eee;font-size:10.5pt;}
+td:first-child{color:#666;width:35%;font-weight:500;}
+td:last-child{color:#1a1a1a;font-weight:600;}
+.footer-note{margin-top:3rem;padding-top:1rem;border-top:2px solid #C9A84C;font-size:8.5pt;color:#888;line-height:1.6;}
+.footer-logo{font-weight:700;color:#1a1a1a;font-size:10pt;}
+@media print{body{padding:1.5cm;}@page{margin:1.5cm;}}
+</style></head><body>
+<div class="header">
+  <div>
+    <div class="logo">GLV Global Food Services LLC<small>Miami, Florida, USA · Where Food Moves Markets</small></div>
+  </div>
+  <div class="ref-box">
+    <div class="ref-num">Ref: ${ref}</div>
+    <div class="ref-date">${date}</div>
+    <div style="font-size:8pt;color:#999;margin-top:2px;">COTIZACIÓN DE REFERENCIA</div>
+  </div>
+</div>
+<div class="disclaimer">
+  ⚠️ <strong>IMPORTANTE:</strong> Los valores y condiciones indicados en este documento son <strong>solo de referencia</strong>.
+  La cotización oficial con precios confirmados, certificados y condiciones finales será enviada por nuestro equipo comercial
+  después de verificar disponibilidad, volumen y condiciones actuales del mercado. Este documento no constituye una oferta vinculante.
+</div>
+<h2>Datos del Solicitante</h2>
+<table>
+  <tr><td>Nombre</td><td>${d.name||'—'}</td></tr>
+  <tr><td>Empresa · País</td><td>${d.company||'—'}</td></tr>
+  <tr><td>Email</td><td>${d.email||'—'}</td></tr>
+  <tr><td>WhatsApp / Tel</td><td>${d.phone||'—'}</td></tr>
+</table>
+<h2>Solicitud de Cotización</h2>
+<table>
+  <tr><td>Producto</td><td>${d.product||'—'}</td></tr>
+  <tr><td>Destino</td><td>${d.dest||'—'}</td></tr>
+  <tr><td>Volumen requerido</td><td>${d.volume||'—'}</td></tr>
+  <tr><td>Incoterm</td><td>${d.incoterm||'—'}</td></tr>
+  <tr><td>Método de pago</td><td>${d.payment||'—'}</td></tr>
+  ${d.message?`<tr><td>Mensaje</td><td>${d.message}</td></tr>`:''}
+</table>
+<h2>Próximos Pasos</h2>
+<table>
+  <tr><td>Respuesta estimada</td><td>Menos de 24 horas hábiles</td></tr>
+  <tr><td>Incoterms manejados</td><td>FOB · CIF · DDP · EXW</td></tr>
+  <tr><td>Certificaciones</td><td>USDA · HACCP · IFS · Halal · MAPA · ICA</td></tr>
+  <tr><td>Forma de pago</td><td>L/C · Wire Transfer · D/P</td></tr>
+</table>
+<div class="footer-note">
+  <div class="footer-logo">GLV Global Food Services LLC</div>
+  📍 Miami, Florida, USA &nbsp;·&nbsp; 📧 info@glvglobalfoodservices.com &nbsp;·&nbsp; info@glvservicesexp.com<br>
+  💬 +57 316 086 5294 (Colombia) &nbsp;·&nbsp; +55 11 9466 10038 (Brasil)<br><br>
+  Parte del GLV Global Holding — Colombia · USA · Brasil · UAE · Italia · Hong Kong · China<br>
+  Este documento fue generado automáticamente desde glvglobalfoodservices.com
+</div>
+</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),500);
+}
 </script>
 
 </body>
