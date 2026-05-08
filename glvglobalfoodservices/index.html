@@ -82,6 +82,11 @@ nav {
   padding:0.4rem 0.7rem; transition:color 0.2s;
 }
 .nav-links a:hover { color:var(--gold); }
+.nav-dropdown { position:relative; }
+.nav-sub { display:none; position:absolute; top:100%; left:0; background:rgba(10,10,10,0.98); border:1px solid rgba(201,168,76,0.2); min-width:260px; z-index:2000; list-style:none; padding:0.5rem 0; border-radius:0 0 6px 6px; }
+.nav-dropdown:hover .nav-sub { display:block; }
+.nav-sub li a { display:flex; align-items:center; gap:0.6rem; padding:0.6rem 1.2rem; font-size:0.78rem; color:var(--text-dim); text-decoration:none; transition:all 0.2s; white-space:nowrap; }
+.nav-sub li a:hover { color:var(--gold); background:rgba(201,168,76,0.06); }
 .nav-right { display:flex; align-items:center; gap:1rem; }
 .lang-switcher { display:flex; gap:0.3rem; }
 .lang-btn {
@@ -654,10 +659,20 @@ footer {
     <span>LLC · MIAMI · FLORIDA · USA</span>
   </a>
   <ul class="nav-links" id="navLinks">
-    <li><a href="#servicios"><span lang-es>Servicios</span><span lang-en>Services</span><span lang-ar>الخدمات</span><span lang-zh>服务</span></a></li>
-    <li><a href="#productos"><span lang-es>Productos</span><span lang-en>Products</span><span lang-ar>المنتجات</span><span lang-zh>产品</span></a></li>
+    <li><a href="#inicio">GLV</a></li>
+    <li class="nav-dropdown">
+      <a href="#servicios"><span lang-es>Líneas ▾</span><span lang-en>Lines ▾</span><span lang-ar>الخطوط ▾</span><span lang-zh>业务线 ▾</span></a>
+      <ul class="nav-sub">
+        <li><a href="./huevo-proteinas.html">🥚 <span lang-es>Huevo & Proteínas</span><span lang-en>Eggs & Proteins</span><span lang-ar>البيض والبروتينات</span><span lang-zh>鸡蛋与蛋白质</span></a></li>
+        <li><a href="./coco-aceites.html">🥥 <span lang-es>Coco & Aceites</span><span lang-en>Coconut & Oils</span><span lang-ar>جوز الهند والزيوت</span><span lang-zh>椰子与油脂</span></a></li>
+        <li><a href="./granos-cereales.html">🌾 <span lang-es>Granos & Cereales</span><span lang-en>Grains & Cereals</span><span lang-ar>الحبوب والغلال</span><span lang-zh>谷物与粮食</span></a></li>
+        <li><a href="./animales-vivos.html">🐄 <span lang-es>Animales Vivos & Cortes</span><span lang-en>Live Animals & Cuts</span><span lang-ar>الحيوانات الحية</span><span lang-zh>活体动物与肉类</span></a></li>
+        <li><a href="./frutas.html">🥭 <span lang-es>Frutas Tropicales</span><span lang-en>Tropical Fruits</span><span lang-ar>الفواكه الاستوائية</span><span lang-zh>热带水果</span></a></li>
+        <li><a href="./comercio-internacional.html">🚢 <span lang-es>Comercio Internacional</span><span lang-en>International Trade</span><span lang-ar>التجارة الدولية</span><span lang-zh>国际贸易</span></a></li>
+      </ul>
+    </li>
     <li><a href="#mercados"><span lang-es>Mercados</span><span lang-en>Markets</span><span lang-ar>الأسواق</span><span lang-zh>市场</span></a></li>
-    <li><a href="#holding"><span lang-es>Holding</span><span lang-en>Holding</span><span lang-ar>القابضة</span><span lang-zh>集团</span></a></li>
+    <li><a href="#holding">Holding</a></li>
     <li><a href="#contacto"><span lang-es>Contacto</span><span lang-en>Contact</span><span lang-ar>اتصل</span><span lang-zh>联系</span></a></li>
   </ul>
   <div class="nav-right">
