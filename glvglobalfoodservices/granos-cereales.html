@@ -7,13 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--gold:#C9A84C;--gold-light:#E8C97A;--amber:#d4882a;--dark:#0A0A0A;--dark2:#111111;--dark3:#1A1A1A;--text:#E8E8E8;--text-dim:#888;--white:#FFFFFF;}
+:root{--gold:#C9A84C;--gold-light:#E8C97A;--amber:#d4882a;--dark:#0F0F0F;--dark2:#181818;--dark3:#242424;--text:#E8E8E8;--text-dim:#888;--white:#FFFFFF;}
 *{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
 body{background:var(--dark);color:var(--text);font-family:'Barlow',sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
 [lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
 body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
 body.lang-ar{direction:rtl;}
-nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,0.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
 .nav-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
 .nav-logo-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);}
 .nav-right{display:flex;align-items:center;gap:1rem;}
@@ -27,7 +27,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .hero{position:relative;height:100vh;min-height:680px;overflow:hidden;display:flex;align-items:center;padding-top:64px;}
 .hero-bg{position:absolute;inset:0;z-index:0;}
 .hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 35%;}
-.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,0.97) 0%,rgba(10,10,10,0.88) 42%,rgba(10,10,10,0.35) 68%,rgba(10,10,10,0.0) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");-webkit-mask-size:100% 100%;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");mask-size:100% 100%;}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(15,15,15,0.97) 0%,rgba(15,15,15,0.88) 42%,rgba(15,15,15,0.35) 68%,rgba(15,15,15,0.0) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");-webkit-mask-size:100% 100%;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");mask-size:100% 100%;}
 .hero-content{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 4rem;width:100%;}
 .hero-div-tag{display:inline-flex;align-items:center;gap:0.8rem;font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;}
 .hero-div-tag::before{content:'III';background:var(--gold);color:var(--dark);font-size:0.65rem;font-weight:700;padding:0.2rem 0.6rem;}
@@ -84,7 +84,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .stat:last-child{border-right:none;}
 .stat-num{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:var(--gold);line-height:1;}
 .stat-label{font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-top:0.4rem;display:block;}
-@media(max-width:768px){nav{padding:0 1.2rem;}.hero-content{padding:0 1.5rem;}.stats-inner{grid-template-columns:repeat(2,1fr);}.rice-grid{grid-template-columns:repeat(2,1fr);}.prod-row{grid-template-columns:1fr;}.footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}.hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(10,10,10,0.82);}}
+@media(max-width:768px){nav{padding:0 1.2rem;}.hero-content{padding:0 1.5rem;}.stats-inner{grid-template-columns:repeat(2,1fr);}.rice-grid{grid-template-columns:repeat(2,1fr);}.prod-row{grid-template-columns:1fr;}.footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}.hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(15,15,15,0.82);}}
 </style>
 </head>
 <body class="lang-es">
@@ -227,7 +227,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 </div>
 
 <!-- CTA -->
-<div style="background:linear-gradient(135deg,#0A0A0A 0%,#1a0f00 40%,#0A0A0A 100%);border-top:1px solid rgba(201,168,76,0.3);border-bottom:1px solid rgba(201,168,76,0.3);padding:6rem 4rem;text-align:center;">
+<div style="background:linear-gradient(135deg,#0F0F0F 0%,#1a0f00 40%,#0F0F0F 100%);border-top:1px solid rgba(201,168,76,0.3);border-bottom:1px solid rgba(201,168,76,0.3);padding:6rem 4rem;text-align:center;">
   <div style="max-width:800px;margin:0 auto;">
     <p style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;">GLV Global Food Services LLC — Miami, Florida</p>
     <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.5rem);font-weight:900;color:#fff;margin-bottom:1.5rem;">
@@ -243,7 +243,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
       <span lang-zh>巴斯马蒂大米17个品种。最低1 FCL起订。24小时内响应。</span>
     </p>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
-      <a href="./index.html#cotizar" style="background:var(--gold);color:#0A0A0A;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.88rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:1.1rem 2.5rem;display:inline-block;">
+      <a href="./index.html#cotizar" style="background:var(--gold);color:#0F0F0F;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.88rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:1.1rem 2.5rem;display:inline-block;">
         <span lang-es>Solicitar Cotización →</span><span lang-en>Request a Quote →</span><span lang-ar>← طلب عرض سعر</span><span lang-zh>申请报价 →</span>
       </a>
       <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20quisiera%20cotizar%20granos%20o%20cereales" target="_blank" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;">

@@ -13,9 +13,9 @@
   --gold: #C9A84C;
   --gold2: #E8C96A;
   --gold3: #A07830;
-  --dark: #0A0A0A;
-  --dark2: #111111;
-  --dark3: #1A1A1A;
+  --dark: #0F0F0F;
+  --dark2: #181818;
+  --dark3: #242424;
   --dark4: #222222;
   --text: #E8E0D0;
   --text2: #B0A898;
@@ -36,7 +36,7 @@ body.lang-es .block-es,body.lang-en .block-en,body.lang-ar .block-ar,body.lang-z
 body.lang-es .flex-es,body.lang-en .flex-en,body.lang-ar .flex-ar,body.lang-zh .flex-zh{display:flex}
 
 /* ── NAVBAR ── */
-nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(201,168,76,.15);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(201,168,76,.15);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px}
 .nav-brand{display:flex;align-items:center;gap:12px;text-decoration:none}
 .nav-logo-box{width:40px;height:40px;background:linear-gradient(135deg,var(--gold),var(--gold3));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;font-size:18px;color:var(--dark);letter-spacing:-1px}
 .nav-brand-text{display:flex;flex-direction:column;line-height:1.1}
@@ -54,7 +54,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,.9
 .hero{position:relative;height:100vh;min-height:700px;overflow:hidden;display:flex;align-items:center}
 .hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,var(--blue-dark) 0%,#0a1a2a 40%,var(--dark) 100%)}
 .hero-bg::before{content:'';position:absolute;inset:0;background:url('./imagenes/hero-comercio-internacional.jpg') center/cover no-repeat;opacity:.25;mix-blend-mode:luminosity}
-.hero-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(10,10,10,.85) 55%,transparent 100%)}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(15,15,15,.85) 55%,transparent 100%)}
 .hero-content{position:relative;z-index:2;padding:0 80px;max-width:760px}
 .division-badge{display:inline-flex;align-items:center;gap:10px;margin-bottom:32px}
 .division-num{width:48px;height:48px;background:var(--blue);border:2px solid var(--blue-light);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:900;font-size:18px;color:var(--text)}
@@ -949,7 +949,7 @@ footer{background:var(--dark);border-top:1px solid rgba(201,168,76,.1);padding:4
 </div>
 
 <!-- CTA -->
-<div style="background:linear-gradient(135deg,#0A0A0A 0%,#001a30 40%,#0A0A0A 100%);border-top:1px solid rgba(201,168,76,0.3);border-bottom:1px solid rgba(201,168,76,0.3);padding:6rem 4rem;text-align:center;">
+<div style="background:linear-gradient(135deg,#0F0F0F 0%,#001a30 40%,#0F0F0F 100%);border-top:1px solid rgba(201,168,76,0.3);border-bottom:1px solid rgba(201,168,76,0.3);padding:6rem 4rem;text-align:center;">
   <div style="max-width:800px;margin:0 auto;">
     <p style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;">GLV Global Food Services LLC — Miami, Florida</p>
     <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.5rem);font-weight:900;color:#fff;margin-bottom:1.5rem;">
@@ -965,7 +965,7 @@ footer{background:var(--dark);border-top:1px solid rgba(201,168,76,.1);padding:4
       <span lang-zh">迈阿密 · PortMIA港 · 加勒比和拉丁美洲枢纽。24小时内响应。</span>
     </p>
     <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
-      <a href="./index.html#cotizar" style="background:var(--gold);color:#0A0A0A;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.88rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:1.1rem 2.5rem;display:inline-block;transition:all 0.2s;">
+      <a href="./index.html#cotizar" style="background:var(--gold);color:#0F0F0F;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.88rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;padding:1.1rem 2.5rem;display:inline-block;transition:all 0.2s;">
         <span lang-es>Solicitar Cotización →</span><span lang-en">Request a Quote →</span><span lang-ar>← طلب عرض سعر</span><span lang-zh>申请报价 →</span>
       </a>
       <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20quisiera%20cotizar%20una%20operacion%20de%20comercio%20internacional" target="_blank" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;">
