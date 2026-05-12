@@ -26,11 +26,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,0.
 .nav-back:hover{color:var(--gold);}
 .nav-cta{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.2rem;transition:all 0.2s;}
 .nav-cta:hover{background:var(--gold-light);}
-.hero{position:relative;height:100vh;min-height:680px;overflow:hidden;display:flex;align-items:flex-start;padding-top:calc(64px + 5rem);}
+.hero{position:relative;min-height:100vh;overflow:hidden;}
 .hero-bg{position:absolute;inset:0;z-index:0;}
 .hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 40%;}
 .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(15,15,15,0.97) 0%,rgba(15,15,15,0.88) 42%,rgba(15,15,15,0.3) 68%,rgba(15,15,15,0.0) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");-webkit-mask-size:100% 100%;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");mask-size:100% 100%;}
-.hero-content{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 4rem;width:100%;}
+.hero-content{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:calc(64px + 3.5rem) 4rem 0;width:100%;}
 .hero-div-tag{display:inline-flex;align-items:center;gap:0.8rem;font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;}
 .hero-div-tag::before{content:'II';background:var(--gold);color:var(--dark);font-size:0.65rem;font-weight:700;padding:0.2rem 0.6rem;}
 .hero-title{font-family:'Playfair Display',serif;font-size:clamp(2.8rem,5.5vw,5.5rem);font-weight:900;line-height:1.0;color:var(--white);margin-bottom:1.2rem;}
@@ -88,7 +88,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,0.
 .footer-mini-links{display:flex;gap:1.5rem;flex-wrap:wrap;}
 .footer-mini-links a{font-size:0.85rem;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
 .footer-mini-links a:hover{color:var(--gold);}
-@media(max-width:768px){nav{padding:0 1.2rem;}.hero-content{padding:0 1.5rem;}.stats-inner{grid-template-columns:repeat(2,1fr);}.prod-grid,.cert-grid{grid-template-columns:1fr;}.split{grid-template-columns:1fr;}.split-img{height:300px;}.footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}.hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(15,15,15,0.82);}}
+@media(max-width:768px){nav{padding:0 1.2rem;}.hero-content{padding:calc(64px + 2rem) 1.5rem 0;}.stats-inner{grid-template-columns:repeat(2,1fr);}.prod-grid,.cert-grid{grid-template-columns:1fr;}.split{grid-template-columns:1fr;}.split-img{height:300px;}.footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}.hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(15,15,15,0.82);}}
 </style>
 </head>
 <body class="lang-es">
@@ -253,10 +253,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,0.
       <a href="./index.html#cotizar" class="btn-gold" style="font-size:0.95rem;padding:1.1rem 2.5rem;">
         <span lang-es">Solicitar Cotización →</span><span lang-en">Request a Quote →</span><span lang-ar>← طلب عرض سعر</span><span lang-zh>申请报价 →</span>
       </a>
-      <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20quisiera%20cotizar%20coco%20o%20aceites%20certificados" target="_blank" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;transition:all 0.2s;">
+      <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20quisiera%20cotizar%20coco%20o%20aceites%20certificados" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;transition:all 0.2s;">
         💬 WhatsApp 🇨🇴
       </a>
-      <a href="https://wa.me/5511946610038?text=Hola%20GLV%2C%20quisiera%20cotizar%20coco%20o%20aceites" target="_blank" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;transition:all 0.2s;">
+      <a href="https://wa.me/5511946610038?text=Hola%20GLV%2C%20quisiera%20cotizar%20coco%20o%20aceites" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;transition:all 0.2s;">
         💬 WhatsApp 🇧🇷
       </a>
     </div>
@@ -264,8 +264,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,0.
 </div>
 
 <div class="wa-float">
-  <a href="https://wa.me/573160865294" target="_blank" class="wa-btn">💬 🇨🇴 +57 316 086 5294</a>
-  <a href="https://wa.me/5511946610038" target="_blank" class="wa-btn">💬 🇧🇷 +55 11 9466 10038</a>
+  <a href="https://wa.me/573160865294" target="_blank" rel="noopener noreferrer" class="wa-btn">💬 🇨🇴 +57 316 086 5294</a>
+  <a href="https://wa.me/5511946610038" target="_blank" rel="noopener noreferrer" class="wa-btn">💬 🇧🇷 +55 11 9466 10038</a>
 </div>
 
 <div class="footer-mini">
@@ -283,7 +283,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,0.
 </div>
 
 <script>
-function setLang(l){document.body.className='lang-'+l;document.querySelectorAll('.lang-btn').forEach(b=>{b.classList.remove('active');if((l==='es'&&b.textContent==='ES')||(l==='en'&&b.textContent==='EN')||(l==='ar'&&b.textContent.includes('عربي'))||(l==='zh'&&b.textContent.includes('中文')))b.classList.add('active');});localStorage.setItem('glv-lang',l);}
+function setLang(l){if(!['es','en','ar','zh'].includes(l))return;document.body.className='lang-'+l;document.querySelectorAll('.lang-btn').forEach(b=>{b.classList.remove('active');if((l==='es'&&b.textContent==='ES')||(l==='en'&&b.textContent==='EN')||(l==='ar'&&b.textContent.includes('عربي'))||(l==='zh'&&b.textContent.includes('中文')))b.classList.add('active');});localStorage.setItem('glv-lang',l);}
 (function(){var s=localStorage.getItem('glv-lang')||'es';setLang(s);})();
 </script>
 </body>

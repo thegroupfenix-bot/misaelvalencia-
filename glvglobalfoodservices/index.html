@@ -1326,8 +1326,8 @@ footer {
     <div class="contact-item-box">
       <div class="contact-item-label">WhatsApp</div>
       <div class="contact-item-value">
-        🇨🇴 <a href="https://wa.me/573160865294" target="_blank">+57 316 086 5294</a><br>
-        🇧🇷 <a href="https://wa.me/5511946610038" target="_blank">+55 11 9466 10038</a>
+        🇨🇴 <a href="https://wa.me/573160865294" target="_blank" rel="noopener noreferrer">+57 316 086 5294</a><br>
+        🇧🇷 <a href="https://wa.me/5511946610038" target="_blank" rel="noopener noreferrer">+55 11 9466 10038</a>
       </div>
     </div>
     <div class="contact-item-box">
@@ -1509,9 +1509,9 @@ footer {
     <p style="margin-top:1.5rem;font-size:0.9rem;color:var(--text-dim);">
       📧 <a href="mailto:info@glvglobalfoodservices.com" style="color:var(--gold);">info@glvglobalfoodservices.com</a>
       &nbsp;·&nbsp;
-      💬 <a href="https://wa.me/573160865294" target="_blank" style="color:var(--gold);">WhatsApp 🇨🇴</a>
+      💬 <a href="https://wa.me/573160865294" target="_blank" rel="noopener noreferrer" style="color:var(--gold);">WhatsApp 🇨🇴</a>
       &nbsp;·&nbsp;
-      💬 <a href="https://wa.me/5511946610038" target="_blank" style="color:var(--gold);">WhatsApp 🇧🇷</a>
+      💬 <a href="https://wa.me/5511946610038" target="_blank" rel="noopener noreferrer" style="color:var(--gold);">WhatsApp 🇧🇷</a>
     </p>
   </div>
 </section>
@@ -1531,8 +1531,8 @@ footer {
         <p style="font-size:0.9rem;color:var(--text-dim);line-height:1.8;">
           📍 Miami, Florida, USA<br>
           📧 <a href="mailto:info@glvglobalfoodservices.com" style="color:var(--gold);">info@glvglobalfoodservices.com</a><br>
-          💬 <a href="https://wa.me/573160865294" target="_blank" style="color:var(--gold);">🇨🇴 +57 316 086 5294</a><br>
-          💬 <a href="https://wa.me/5511946610038" target="_blank" style="color:var(--gold);">🇧🇷 +55 11 9466 10038</a>
+          💬 <a href="https://wa.me/573160865294" target="_blank" rel="noopener noreferrer" style="color:var(--gold);">🇨🇴 +57 316 086 5294</a><br>
+          💬 <a href="https://wa.me/5511946610038" target="_blank" rel="noopener noreferrer" style="color:var(--gold);">🇧🇷 +55 11 9466 10038</a>
         </p>
       </div>
       <div>
@@ -1555,13 +1555,13 @@ footer {
           <span lang-en">GLV Global Holding</span>
         </div>
         <ul class="footer-links">
-          <li><a href="https://glvservicesexp.com" target="_blank">🇨🇴 GLV Services SAS · HQ</a></li>
+          <li><a href="https://glvservicesexp.com" target="_blank" rel="noopener noreferrer">🇨🇴 GLV Services SAS · HQ</a></li>
           <li><a href="#holding">🇺🇸 GLV Global Food Services LLC ★</a></li>
-          <li><a href="https://glvservicesexp.com" target="_blank">🇧🇷 GLV Global Foods Brasil</a></li>
-          <li><a href="https://glvservicesexp.com" target="_blank">🇦🇪 GLV Global Commodities Dubai</a></li>
-          <li><a href="https://glvservicesexp.com" target="_blank">🇮🇹 GLV Global Foods Italia</a></li>
-          <li><a href="https://glvservicesexp.com" target="_blank">🇭🇰 GLV International HK</a></li>
-          <li><a href="https://glvservicesexp.com" target="_blank">🇨🇳 GLV 全球供应链</a></li>
+          <li><a href="https://glvservicesexp.com" target="_blank" rel="noopener noreferrer">🇧🇷 GLV Global Foods Brasil</a></li>
+          <li><a href="https://glvservicesexp.com" target="_blank" rel="noopener noreferrer">🇦🇪 GLV Global Commodities Dubai</a></li>
+          <li><a href="https://glvservicesexp.com" target="_blank" rel="noopener noreferrer">🇮🇹 GLV Global Foods Italia</a></li>
+          <li><a href="https://glvservicesexp.com" target="_blank" rel="noopener noreferrer">🇭🇰 GLV International HK</a></li>
+          <li><a href="https://glvservicesexp.com" target="_blank" rel="noopener noreferrer">🇨🇳 GLV 全球供应链</a></li>
         </ul>
       </div>
       <div>
@@ -1589,11 +1589,11 @@ footer {
 
 <!-- ═══════════ WHATSAPP FLOTANTE ═══════════ -->
 <div class="whatsapp-float">
-  <a href="https://wa.me/573160865294" target="_blank" class="wa-btn">
+  <a href="https://wa.me/573160865294" target="_blank" rel="noopener noreferrer" class="wa-btn">
     <span class="wa-icon">💬</span>
     <span class="wa-label"><span class="wa-flag">🇨🇴</span> Colombia<br><small>+57 316 086 5294</small></span>
   </a>
-  <a href="https://wa.me/5511946610038" target="_blank" class="wa-btn">
+  <a href="https://wa.me/5511946610038" target="_blank" rel="noopener noreferrer" class="wa-btn">
     <span class="wa-icon">💬</span>
     <span class="wa-label"><span class="wa-flag">🇧🇷</span> Brasil<br><small>+55 11 9466 10038</small></span>
   </a>
@@ -1603,6 +1603,7 @@ footer {
 <script>
 /* ─── LANGUAGE SYSTEM ─── */
 function setLang(lang) {
+  if (!['es','en','ar','zh'].includes(lang)) return;
   document.body.className = 'lang-' + lang;
   document.querySelectorAll('.lang-btn').forEach(function(b) {
     b.classList.remove('active');
