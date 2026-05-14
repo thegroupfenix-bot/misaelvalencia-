@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Misael Valencia | Soluciones Digitales</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-logo">MV<span class="dot">.</span></div>
+    <ul class="nav-links">
+      <li><a href="#inicio">Inicio</a></li>
+      <li><a href="#servicios">Servicios</a></li>
+      <li><a href="#proyectos">Proyectos</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ul>
+    <a href="#contacto" class="btn-nav">Hablemos</a>
+    <button class="menu-toggle" onclick="toggleMenu()">&#9776;</button>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="inicio">
+    <div class="hero-content">
+      <p class="hero-tag">Desarrollo Web &amp; Negocios Digitales</p>
+      <h1>Transforma tu <span class="highlight">visión</span> en realidad digital</h1>
+      <p class="hero-sub">Creamos páginas web profesionales y estrategias digitales que impulsan tu negocio al siguiente nivel.</p>
+      <div class="hero-actions">
+        <a href="#servicios" class="btn-primary">Ver servicios</a>
+        <a href="#proyectos" class="btn-secondary">Ver proyectos</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="card-float card1">
+        <span class="card-icon">&#128640;</span>
+        <span>Lanzamiento rápido</span>
+      </div>
+      <div class="card-float card2">
+        <span class="card-icon">&#128200;</span>
+        <span>+200% conversiones</span>
+      </div>
+      <div class="hero-circle"></div>
+    </div>
+  </section>
+
+  <!-- SERVICIOS -->
+  <section class="section" id="servicios">
+    <div class="section-header">
+      <p class="section-tag">Lo que ofrecemos</p>
+      <h2>Nuestros Servicios</h2>
+    </div>
+    <div class="cards-grid">
+      <div class="service-card">
+        <div class="service-icon">&#127760;</div>
+        <h3>Páginas Web</h3>
+        <p>Diseño y desarrollo de sitios web modernos, responsivos y optimizados para convertir visitantes en clientes.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#128717;</div>
+        <h3>Tiendas Online</h3>
+        <p>E-commerce completo con carrito de compras, pagos seguros y gestión de inventario para vender en línea.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#128269;</div>
+        <h3>SEO &amp; Marketing</h3>
+        <p>Posiciona tu negocio en Google y atrae más clientes con estrategias de marketing digital efectivas.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#127963;</div>
+        <h3>Branding Digital</h3>
+        <p>Construye una identidad de marca sólida con logos, paletas de colores y materiales visuales profesionales.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#128241;</div>
+        <h3>Apps Móviles</h3>
+        <p>Desarrollo de aplicaciones móviles para iOS y Android que conectan tu negocio con tus clientes.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">&#129302;</div>
+        <h3>Automatización</h3>
+        <p>Automatiza procesos de tu negocio con herramientas digitales que ahorran tiempo y reducen errores.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROYECTOS -->
+  <section class="section section-dark" id="proyectos">
+    <div class="section-header">
+      <p class="section-tag">Portafolio</p>
+      <h2>Proyectos Destacados</h2>
+    </div>
+    <div class="projects-grid">
+      <div class="project-card">
+        <div class="project-img" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+          <span class="project-emoji">&#127968;</span>
+        </div>
+        <div class="project-info">
+          <h3>Inmobiliaria Digital</h3>
+          <p>Plataforma web para listado y venta de propiedades con mapa interactivo.</p>
+          <span class="tag">Web</span><span class="tag">React</span>
+        </div>
+      </div>
+      <div class="project-card">
+        <div class="project-img" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+          <span class="project-emoji">&#128083;</span>
+        </div>
+        <div class="project-info">
+          <h3>Tienda de Moda</h3>
+          <p>E-commerce completo con pasarela de pagos y gestión de pedidos en tiempo real.</p>
+          <span class="tag">E-commerce</span><span class="tag">Node.js</span>
+        </div>
+      </div>
+      <div class="project-card">
+        <div class="project-img" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+          <span class="project-emoji">&#127829;</span>
+        </div>
+        <div class="project-info">
+          <h3>Restaurante Online</h3>
+          <p>Sistema de pedidos en línea con menú digital y reservas de mesa automatizadas.</p>
+          <span class="tag">App</span><span class="tag">Firebase</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats-section">
+    <div class="stat">
+      <h2 class="stat-num">50+</h2>
+      <p>Proyectos entregados</p>
+    </div>
+    <div class="stat">
+      <h2 class="stat-num">100%</h2>
+      <p>Clientes satisfechos</p>
+    </div>
+    <div class="stat">
+      <h2 class="stat-num">5+</h2>
+      <p>Años de experiencia</p>
+    </div>
+    <div class="stat">
+      <h2 class="stat-num">24/7</h2>
+      <p>Soporte disponible</p>
+    </div>
+  </section>
+
+  <!-- CONTACTO -->
+  <section class="section" id="contacto">
+    <div class="section-header">
+      <p class="section-tag">Contáctanos</p>
+      <h2>Trabajemos Juntos</h2>
+    </div>
+    <div class="contact-wrapper">
+      <div class="contact-info">
+        <h3>Listo para empezar tu proyecto?</h3>
+        <p>Cuéntanos tu idea y te daremos una propuesta personalizada sin costo. Respondemos en menos de 24 horas.</p>
+        <div class="contact-item">
+          <span class="contact-icon">&#128231;</span>
+          <span>misael@misaelvalencia.com</span>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">&#128222;</span>
+          <span>+1 (555) 000-0000</span>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">&#127759;</span>
+          <span>Disponible en todo el mundo</span>
+        </div>
+      </div>
+      <form class="contact-form" onsubmit="handleSubmit(event)">
+        <div class="form-group">
+          <input type="text" placeholder="Tu nombre" required />
+        </div>
+        <div class="form-group">
+          <input type="email" placeholder="Tu correo electrónico" required />
+        </div>
+        <div class="form-group">
+          <select>
+            <option value="">¿Qué necesitas?</option>
+            <option>Página Web</option>
+            <option>Tienda Online</option>
+            <option>SEO / Marketing</option>
+            <option>App Móvil</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <textarea placeholder="Cuéntanos sobre tu proyecto..." rows="4" required></textarea>
+        </div>
+        <button type="submit" class="btn-primary full-width">Enviar mensaje &#8594;</button>
+        <p class="form-success" id="successMsg">Mensaje enviado. Te contactaremos pronto!</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="nav-logo">MV<span class="dot">.</span></div>
+        <p>Soluciones digitales que transforman negocios.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Servicios</h4>
+        <a href="#servicios">Páginas Web</a>
+        <a href="#servicios">Tiendas Online</a>
+        <a href="#servicios">SEO</a>
+        <a href="#servicios">Branding</a>
+      </div>
+      <div class="footer-links">
+        <h4>Empresa</h4>
+        <a href="#inicio">Inicio</a>
+        <a href="#proyectos">Proyectos</a>
+        <a href="#contacto">Contacto</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Misael Valencia. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coco & Aceites Certificados — Línea II · GLV Global Food Services LLC</title>
+<meta name="description" content="GLV Global Food Services — Coco Rayado, Aceite de Coco, Agua de Coco certificados Brasil. Aceite de Soja, Girasol, Palma. IFS, HACCP, GPM. Miami, Florida.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#C9A84C;--gold-light:#E8C97A;--green:#2d7a4f;--green-light:#3da066;--dark:#0F0F0F;--dark2:#181818;--dark3:#242424;--mid:#2A2A2A;--text:#E8E8E8;--text-dim:#888;--white:#FFFFFF;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--dark);color:var(--text);font-family:'Barlow',sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
+[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+body.lang-ar{direction:rtl;}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(15,15,15,0.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
+.nav-logo-sub{font-family:'Barlow Condensed',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text-dim);line-height:1.3;}
+.nav-right{display:flex;align-items:center;gap:1rem;}
+.lang-switcher{display:flex;gap:0.3rem;}
+.lang-btn{background:none;border:1px solid rgba(201,168,76,0.25);color:var(--text-dim);font-size:0.65rem;font-weight:700;padding:0.25rem 0.55rem;cursor:pointer;transition:all 0.2s;font-family:'Barlow',sans-serif;}
+.lang-btn:hover,.lang-btn.active{background:var(--gold);color:var(--dark);border-color:var(--gold);}
+.nav-back{font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.nav-back:hover{color:var(--gold);}
+.nav-cta{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 1.2rem;transition:all 0.2s;}
+.nav-cta:hover{background:var(--gold-light);}
+.hero{position:relative;min-height:100vh;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;z-index:0;}
+.hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 40%;}
+.hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(15,15,15,0.97) 0%,rgba(15,15,15,0.88) 42%,rgba(15,15,15,0.3) 68%,rgba(15,15,15,0.0) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");-webkit-mask-size:100% 100%;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L60,0 Q70,50 60,100 L0,100 Z'/%3E%3C/svg%3E");mask-size:100% 100%;}
+.hero-content{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:calc(64px + 3.5rem) 4rem 0;width:100%;}
+.hero-div-tag{display:inline-flex;align-items:center;gap:0.8rem;font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;}
+.hero-div-tag::before{content:'II';background:var(--gold);color:var(--dark);font-size:0.65rem;font-weight:700;padding:0.2rem 0.6rem;}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(2.8rem,5.5vw,5.5rem);font-weight:900;line-height:1.0;color:var(--white);margin-bottom:1.2rem;}
+.hero-title em{font-style:italic;color:var(--gold);}
+.hero-sub{font-size:1.05rem;color:var(--text-dim);line-height:1.7;max-width:580px;margin-bottom:2rem;}
+.hero-btns{display:flex;gap:1rem;flex-wrap:wrap;}
+.btn-gold{background:var(--gold);color:var(--dark);text-decoration:none;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;border:none;cursor:pointer;font-family:'Barlow',sans-serif;}
+.btn-gold:hover{background:var(--gold-light);transform:translateY(-1px);}
+.btn-green{background:var(--green);color:#fff;text-decoration:none;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;}
+.btn-green:hover{background:var(--green-light);transform:translateY(-1px);}
+.btn-outline{border:1px solid rgba(201,168,76,0.4);color:var(--gold);text-decoration:none;font-size:0.8rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 2rem;transition:all 0.2s;display:inline-block;}
+.btn-outline:hover{border-color:var(--gold);background:rgba(201,168,76,0.08);}
+.stats-bar{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.12);border-bottom:1px solid rgba(201,168,76,0.12);padding:2.5rem 4rem;}
+.stats-inner{max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+.stat{text-align:center;border-right:1px solid rgba(201,168,76,0.1);padding:0 1rem;}
+.stat:last-child{border-right:none;}
+.stat-num{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:var(--gold);line-height:1;}
+.stat-label{font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-top:0.4rem;display:block;}
+.ticker{background:linear-gradient(90deg,#001a0a,#002d12,#001a0a);overflow:hidden;white-space:nowrap;padding:0.6rem 0;border-bottom:1px solid rgba(45,122,79,0.3);}
+.ticker-inner{display:inline-block;animation:tick 28s linear infinite;font-family:'Barlow Condensed',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.15em;color:rgba(150,230,150,0.9);}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.eyebrow{font-family:'Barlow Condensed',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem;}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold);}
+.eyebrow-green{color:var(--green-light);}
+.eyebrow-green::before{background:var(--green-light);}
+.sec-title{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,3vw,3rem);font-weight:900;line-height:1.1;margin-bottom:1.2rem;}
+.sec-title em{font-style:italic;color:var(--gold);}
+.sec-title-green em{color:var(--green-light);}
+.prod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(201,168,76,0.1);margin-top:3rem;}
+.prod-card{background:var(--dark2);padding:2.5rem 2rem;transition:background 0.3s;}
+.prod-card:hover{background:var(--dark3);}
+.prod-icon{font-size:2.5rem;margin-bottom:1rem;}
+.prod-name{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--white);margin-bottom:0.4rem;}
+.prod-sub{font-size:0.88rem;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;}
+.prod-sub-green{color:var(--green-light);}
+.prod-desc{font-size:0.95rem;color:var(--text-dim);line-height:1.6;margin-bottom:1rem;}
+.prod-tags{display:flex;flex-wrap:wrap;gap:0.4rem;}
+.ptag{font-size:0.72rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.2rem 0.5rem;text-transform:uppercase;}
+.ptag-green{border-color:rgba(45,122,79,0.4);color:#5ec88a;}
+.cert-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(45,122,79,0.15);margin-top:3rem;}
+.cert-card{background:var(--dark2);padding:2rem 1.5rem;border-top:2px solid var(--green);}
+.cert-name{font-size:1.1rem;font-weight:700;color:var(--green-light);margin-bottom:0.5rem;letter-spacing:0.08em;}
+.cert-desc{font-size:0.9rem;color:var(--text-dim);line-height:1.6;}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:500px;}
+.split-img{position:relative;overflow:hidden;background:#000;}
+.split-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.split-content{padding:5rem 4rem;display:flex;flex-direction:column;justify-content:center;background:var(--dark2);}
+.certs-row{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-top:3rem;}
+.cert{font-size:0.72rem;font-weight:700;letter-spacing:0.12em;border:1px solid rgba(201,168,76,0.3);color:var(--gold);padding:0.4rem 0.9rem;text-transform:uppercase;}
+.wa-float{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:0.8rem;align-items:flex-end;}
+.wa-btn{display:flex;align-items:center;gap:0.7rem;background:#25D366;color:white;text-decoration:none;padding:0.6rem 1rem 0.6rem 0.7rem;font-size:0.9rem;font-weight:700;box-shadow:0 4px 20px rgba(37,211,102,0.4);transition:transform 0.2s;}
+.wa-btn:hover{transform:translateY(-2px);}
+.footer-mini{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.15);padding:3rem 4rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+.footer-mini-logo{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--gold);}
+.footer-mini-links{display:flex;gap:1.5rem;flex-wrap:wrap;}
+.footer-mini-links a{font-size:0.85rem;color:var(--text-dim);text-decoration:none;transition:color 0.2s;}
+.footer-mini-links a:hover{color:var(--gold);}
+@media(max-width:768px){nav{padding:0 1.2rem;}.hero-content{padding:calc(64px + 2rem) 1.5rem 0;}.stats-inner{grid-template-columns:repeat(2,1fr);}.prod-grid,.cert-grid{grid-template-columns:1fr;}.split{grid-template-columns:1fr;}.split-img{height:300px;}.footer-mini{padding:2rem 1.5rem;flex-direction:column;text-align:center;}.hero-bg::after{-webkit-mask-image:none;mask-image:none;background:rgba(15,15,15,0.82);}}
+</style>
+</head>
+<body class="lang-es">
+<nav>
+  <a href="./index.html" class="nav-logo">GLV Global Food Services<span class="nav-logo-sub">LLC · MIAMI · FLORIDA</span></a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('es')">ES</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('ar')">عربي</button>
+      <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    </div>
+    <a href="./index.html" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span></a>
+    <a href="./index.html#cotizar" class="nav-cta"><span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-ar>سعر</span><span lang-zh>报价</span></a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-bg">
+    <img src="./imagenes/hero-coco-aceites.jpg" alt="Coco y Aceites GLV Miami"
+         onerror="this.style.display='none'">
+  </div>
+  <div class="hero-content">
+    <div class="hero-div-tag">
+      <span lang-es>Línea II — Coco & Aceites · Brasil Certificado</span>
+      <span lang-en>Line II — Coconut & Oils · Certified Brazil</span>
+      <span lang-ar>الخط الثاني — جوز الهند والزيوت · البرازيل</span>
+      <span lang-zh>业务线 II — 椰子与油脂 · 巴西认证</span>
+    </div>
+    <h1 class="hero-title">
+      <span lang-es>Coco <em>certificado</em>.<br>Desde Brasil.</span>
+      <span lang-en><em>Certified</em> Coconut.<br>From Brazil.</span>
+      <span lang-ar>جوز هند <em>معتمد</em>.<br>من البرازيل.</span>
+      <span lang-zh><em>认证</em>椰子.<br>来自巴西.</span>
+    </h1>
+    <p class="hero-sub">
+      <span lang-es>Socio productor certificado en Brasil con estándares IFS, HACCP y GPM. Coco Rayado, Aceite de Coco, Agua de Coco, Aceites Vegetales. Canal directo sin intermediarios desde Miami hacia USA, Caribe y el mundo.</span>
+      <span lang-en>Certified producer partner in Brazil with IFS, HACCP and GPM standards. Shredded Coconut, Coconut Oil, Coconut Water, Vegetable Oils. Direct channel without intermediaries from Miami to USA, Caribbean and the world.</span>
+      <span lang-ar>شريك منتج معتمد في البرازيل بمعايير IFS وHACCP وGPM. جوز هند مبشور وزيت وماء جوز الهند. قناة مباشرة من ميامي.</span>
+      <span lang-zh>巴西认证生产商合作伙伴，符合IFS、HACCP和GPM标准。椰丝、椰子油、椰子水、植物油。从迈阿密直接渠道无中间商。</span>
+    </p>
+    <div class="hero-btns">
+      <a href="./index.html#cotizar" class="btn-gold"><span lang-es>Solicitar Cotización</span><span lang-en>Request Quote</span><span lang-ar>اطلب عرض سعر</span><span lang-zh>申请报价</span></a>
+      <a href="./index.html" class="btn-outline"><span lang-es>← Volver</span><span lang-en>← Back</span><span lang-ar>رجوع ←</span><span lang-zh>← 返回</span></a>
+    </div>
+  </div>
+</section>
+
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat"><div class="stat-num">IFS</div><span class="stat-label">Brasil Cert.</span></div>
+    <div class="stat"><div class="stat-num">HACCP</div><span class="stat-label">Food Safety</span></div>
+    <div class="stat"><div class="stat-num">GPM</div><span class="stat-label">Good Practice</span></div>
+    <div class="stat"><div class="stat-num">6+</div><span class="stat-label"><span lang-es>Productos Coco</span><span lang-en>Coconut Products</span></span></div>
+  </div>
+</div>
+
+<div class="ticker">
+  <div class="ticker-inner">
+    🥥 COCO RAYADO · SHREDDED COCONUT &nbsp;·&nbsp; 🫙 ACEITE DE COCO · COCONUT OIL &nbsp;·&nbsp; 💧 AGUA DE COCO · COCONUT WATER &nbsp;·&nbsp; 🌻 ACEITE GIRASOL &nbsp;·&nbsp; 🌿 ACEITE SOJA &nbsp;·&nbsp; 🇧🇷 IFS · HACCP · GPM BRASIL &nbsp;·&nbsp; 🇺🇸 MIAMI DISTRIBUTION &nbsp;·&nbsp;
+    🥥 COCO RAYADO · SHREDDED COCONUT &nbsp;·&nbsp; 🫙 ACEITE DE COCO · COCONUT OIL &nbsp;·&nbsp; 💧 AGUA DE COCO · COCONUT WATER &nbsp;·&nbsp; 🌻 ACEITE GIRASOL &nbsp;·&nbsp; 🌿 ACEITE SOJA &nbsp;·&nbsp; 🇧🇷 IFS · HACCP · GPM BRASIL &nbsp;·&nbsp; 🇺🇸 MIAMI DISTRIBUTION &nbsp;·&nbsp;
+  </div>
+</div>
+
+<!-- PRODUCTOS COCO -->
+<div style="background:var(--dark2);padding:6rem 4rem;border-top:1px solid rgba(45,122,79,0.15);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow eyebrow-green"><span lang-es>Derivados de Coco · Productor Certificado Brasil</span><span lang-en>Coconut Derivatives · Certified Producer Brazil</span></p>
+  <h2 class="sec-title sec-title-green"><span lang-es>Coco. <em>Directo</em> del productor.</span><span lang-en>Coconut. <em>Direct</em> from producer.</span><span lang-ar>جوز الهند. <em>مباشرة</em> من المنتج.</span><span lang-zh>椰子.<em>直接</em>来自生产商.</span></h2>
+  <div class="prod-grid">
+    <div class="prod-card">
+      <div class="prod-icon">🥥</div>
+      <div class="prod-name"><span lang-es>Coco Rayado</span><span lang-en>Shredded Coconut</span><span lang-ar>جوز هند مبشور</span><span lang-zh>椰丝</span></div>
+      <div class="prod-sub prod-sub-green">IFS · HACCP · GPM · Brasil</div>
+      <p class="prod-desc"><span lang-es>Coco rayado deshidratado, fino y mediano. Productor certificado en Brasil con IFS, HACCP y GPM. Sin aditivos, sin conservantes. Empaque en bolsas de 1kg, 5kg y sacos de 25kg.</span><span lang-en>Dehydrated shredded coconut, fine and medium. Certified producer in Brazil with IFS, HACCP and GPM. No additives, no preservatives. Packaging in 1kg, 5kg bags and 25kg sacks.</span><span lang-ar>جوز هند مبشور مجفف، ناعم ومتوسط. منتج معتمد في البرازيل. بدون مضافات.</span><span lang-zh>脱水椰丝，细中两种规格。巴西认证生产商，IFS、HACCP、GPM认证。无添加剂，无防腐剂。</span></p>
+      <div class="prod-tags"><span class="ptag ptag-green">IFS</span><span class="ptag ptag-green">HACCP</span><span class="ptag ptag-green">GPM</span><span class="ptag">1kg · 5kg · 25kg</span><span class="ptag">No Additives</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🫙</div>
+      <div class="prod-name"><span lang-es>Aceite de Coco</span><span lang-en>Coconut Oil</span><span lang-ar>زيت جوز الهند</span><span lang-zh>椰子油</span></div>
+      <div class="prod-sub prod-sub-green">Virgen Extra · Refinado · Brasil</div>
+      <p class="prod-desc"><span lang-es>Aceite de coco virgen extra prensado en frío y aceite refinado. Certificación orgánica disponible. Ideal para food industry, cosmética y retail. Envases desde 1L hasta contenedor IBC.</span><span lang-en>Extra virgin cold-pressed coconut oil and refined oil. Organic certification available. Ideal for food industry, cosmetics and retail. Containers from 1L to IBC tank.</span><span lang-ar>زيت جوز الهند بكر ممتاز ومكرر. شهادة عضوية متاحة. مثالي للصناعة الغذائية ومستحضرات التجميل.</span><span lang-zh>特级初榨冷榨椰子油和精炼油。有机认证可选。适合食品工业、化妆品和零售。从1L到IBC桶。</span></p>
+      <div class="prod-tags"><span class="ptag ptag-green">Virgen Extra</span><span class="ptag ptag-green">Refinado</span><span class="ptag">Organic Opt.</span><span class="ptag">1L → IBC</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">💧</div>
+      <div class="prod-name"><span lang-es>Agua de Coco</span><span lang-en>Coconut Water</span><span lang-ar>ماء جوز الهند</span><span lang-zh>椰子水</span></div>
+      <div class="prod-sub prod-sub-green">Natural · Sin azúcar · Brasil Certificado</div>
+      <p class="prod-desc"><span lang-es>Agua de coco 100% natural, pasteurizada. Sin azúcar añadida. Presentaciones: 330ml, 500ml, 1L, bag-in-box 10L. Certificación IFS y HACCP. Etiqueta privada disponible para marcas propias.</span><span lang-en>100% natural pasteurized coconut water. No added sugar. Presentations: 330ml, 500ml, 1L, bag-in-box 10L. IFS and HACCP certification. Private label available.</span><span lang-ar>ماء جوز الهند 100% طبيعي ومبستر. بدون سكر مضاف. أحجام متعددة. متاح بعلامة تجارية خاصة.</span><span lang-zh>100%天然巴氏灭菌椰子水。无添加糖。规格：330ml、500ml、1L、10L盒中袋。可贴牌。</span></p>
+      <div class="prod-tags"><span class="ptag ptag-green">100% Natural</span><span class="ptag ptag-green">No Sugar Added</span><span class="ptag">Private Label</span><span class="ptag">330ml–10L</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- PRODUCTOS ACEITES -->
+<div style="background:var(--dark);padding:6rem 4rem;">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow"><span lang-es>Aceites Vegetales · Argentina & Colombia</span><span lang-en>Vegetable Oils · Argentina & Colombia</span><span lang-ar>الزيوت النباتية · الأرجنتين وكولومبيا</span><span lang-zh>植物油 · 阿根廷和哥伦比亚</span></p>
+  <h2 class="sec-title"><span lang-es>Aceites de <em>alta calidad</em></span><span lang-en>Oils of <em>high quality</em></span><span lang-ar>زيوت <em>عالية الجودة</em></span><span lang-zh><em>高品质</em>植物油</span></h2>
+  <div class="prod-grid">
+    <div class="prod-card">
+      <div class="prod-icon">🌿</div>
+      <div class="prod-name"><span lang-es>Aceite de Soja</span><span lang-en>Soybean Oil</span><span lang-ar>زيت الصويا</span><span lang-zh>豆油</span></div>
+      <div class="prod-sub">Crudo & Refinado · Argentina · FOB</div>
+      <p class="prod-desc"><span lang-es>Aceite de soja crudo (SBO Crude) y refinado (RBD) desde Argentina. MOQ 1 FCL. Destinos: USA, Caribe, Europa vía Italy SRL. Documentación completa, origen verificado.</span><span lang-en>Crude soybean oil (SBO Crude) and refined (RBD) from Argentina. MOQ 1 FCL. Destinations: USA, Caribbean, Europe via Italy SRL. Complete documentation, verified origin.</span><span lang-ar>زيت الصويا الخام والمكرر من الأرجنتين. MOQ 1 FCL.</span><span lang-zh>来自阿根廷的原油和精炼豆油(RBD)。最低订量1 FCL。</span></p>
+      <div class="prod-tags"><span class="ptag">SBO Crude</span><span class="ptag">RBD Refined</span><span class="ptag">Argentina</span><span class="ptag">MOQ 1 FCL</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🌻</div>
+      <div class="prod-name"><span lang-es>Aceite de Girasol</span><span lang-en>Sunflower Oil</span><span lang-ar>زيت عباد الشمس</span><span lang-zh>葵花籽油</span></div>
+      <div class="prod-sub">High Oleic & Refined · Argentina</div>
+      <p class="prod-desc"><span lang-es>Aceite de girasol alto oleico y refinado. Sin trans. Alta estabilidad para frituras industriales. Argentina, trazabilidad verificada. Presentaciones bulk y envasado.</span><span lang-en>High oleic and refined sunflower oil. Trans-free. High stability for industrial frying. Argentina, verified traceability. Bulk and packaged presentations.</span><span lang-ar>زيت عباد الشمس عالي الأوليك والمكرر. خالٍ من الدهون المتحولة. ثبات عالٍ للقلي الصناعي.</span><span lang-zh>高油酸和精炼葵花籽油。无反式脂肪。高稳定性适合工业油炸。阿根廷，可追溯。</span></p>
+      <div class="prod-tags"><span class="ptag">High Oleic</span><span class="ptag">No Trans Fat</span><span class="ptag">Argentina</span><span class="ptag">Bulk & Packed</span></div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">🌴</div>
+      <div class="prod-name"><span lang-es>Oleína de Palma</span><span lang-en>Palm Olein</span><span lang-ar>زيت النخيل</span><span lang-zh>棕榈油精</span></div>
+      <div class="prod-sub">RBD · Colombia · RSPO Opt.</div>
+      <p class="prod-desc"><span lang-es>Oleína de palma refinada (RBD) desde Colombia. Certificación RSPO disponible. Ideal para industria alimentaria, snacks y margarinas. MOQ 1 FCL. FOB Barranquilla o Cartagena.</span><span lang-en>Refined palm olein (RBD) from Colombia. RSPO certification available. Ideal for food industry, snacks and margarines. MOQ 1 FCL. FOB Barranquilla or Cartagena.</span><span lang-ar>زيت نخيل مكرر RBD من كولومبيا. شهادة RSPO متاحة. مثالي للصناعة الغذائية.</span><span lang-zh>来自哥伦比亚的精炼棕榈油精(RBD)。RSPO认证可选。最低订量1 FCL。</span></p>
+      <div class="prod-tags"><span class="ptag">RBD Colombia</span><span class="ptag">RSPO Opt.</span><span class="ptag">MOQ 1 FCL</span><span class="ptag">FOB Cartagena</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- CERTS -->
+<div style="background:var(--dark2);padding:6rem 4rem;border-top:1px solid rgba(45,122,79,0.2);border-bottom:1px solid rgba(45,122,79,0.2);">
+<div style="max-width:1400px;margin:0 auto;">
+  <p class="eyebrow eyebrow-green" style="justify-content:center;"><span lang-es>Certificaciones · Productor Brasil</span><span lang-en>Certifications · Brazil Producer</span></p>
+  <h2 class="sec-title" style="text-align:center;"><span lang-es>Calidad <em>verificada</em> en origen</span><span lang-en>Quality <em>verified</em> at origin</span><span lang-ar>جودة <em>موثقة</em> من المصدر</span><span lang-zh>源头<em>验证</em>质量</span></h2>
+  <div class="cert-grid">
+    <div class="cert-card"><div class="cert-name">IFS Food</div><p class="cert-desc"><span lang-es>International Featured Standards. Certificación global para proveedores de alimentos. Nuestro productor en Brasil opera bajo estándar IFS v8.</span><span lang-en>International Featured Standards. Global certification for food suppliers. Our Brazil producer operates under IFS v8 standard.</span></p></div>
+    <div class="cert-card"><div class="cert-name">HACCP</div><p class="cert-desc"><span lang-es>Análisis de Peligros y Puntos Críticos de Control. Sistema de inocuidad alimentaria implementado en toda la línea de producción de coco en Brasil.</span><span lang-en>Hazard Analysis and Critical Control Points. Food safety system implemented throughout the entire coconut production line in Brazil.</span></p></div>
+    <div class="cert-card"><div class="cert-name">GPM / GMP</div><p class="cert-desc"><span lang-es>Buenas Prácticas de Manufactura. Control riguroso de higiene, trazabilidad y condiciones de producción en la planta procesadora de Brasil.</span><span lang-en">Good Manufacturing Practices. Rigorous control of hygiene, traceability and production conditions at the Brazil processing plant.</span></p></div>
+  </div>
+  <div class="certs-row">
+    <span class="cert">IFS v8</span><span class="cert">HACCP</span><span class="cert">GPM · GMP</span>
+    <span class="cert">🇧🇷 Productor Certificado</span><span class="cert">FDA Registered</span>
+    <span class="cert">Orgánico Opt.</span><span class="cert">RSPO Palma</span><span class="cert">FOB · CIF · DDP</span>
+  </div>
+</div>
+</div>
+
+<!-- CTA -->
+<div style="background:linear-gradient(135deg,#0F0F0F 0%,#001a08 40%,#0F0F0F 100%);border-top:1px solid rgba(201,168,76,0.3);border-bottom:1px solid rgba(201,168,76,0.3);padding:6rem 4rem;text-align:center;">
+  <div style="max-width:800px;margin:0 auto;">
+    <p style="font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:1rem;">GLV Global Food Services LLC — Miami, Florida</p>
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.5rem);font-weight:900;color:#fff;margin-bottom:1.5rem;">
+      <span lang-es>¿Listo para <em style="color:var(--gold)">cotizar coco o aceites?</em></span>
+      <span lang-en">Ready to <em style="color:var(--gold)">quote coconut or oils?</em></span>
+      <span lang-ar>هل أنت مستعد <em style="color:var(--gold)">للتسعير؟</em></span>
+      <span lang-zh>准备好<em style="color:var(--gold)">询价</em>了吗？</span>
+    </h2>
+    <p style="font-size:1.05rem;color:var(--text-dim);margin-bottom:2.5rem;line-height:1.7;max-width:600px;margin-left:auto;margin-right:auto;">
+      <span lang-es">Productor certificado en Brasil. IFS · HACCP · GPM. Nuestro equipo responde en menos de 24 horas hábiles.</span>
+      <span lang-en">Certified producer in Brazil. IFS · HACCP · GPM. Our team responds in under 24 business hours.</span>
+      <span lang-ar">منتج معتمد في البرازيل. يستجيب فريقنا في أقل من 24 ساعة عمل.</span>
+      <span lang-zh">巴西认证生产商。我们的团队在24个工作小时内响应。</span>
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <a href="./index.html#cotizar" class="btn-gold" style="font-size:0.95rem;padding:1.1rem 2.5rem;">
+        <span lang-es">Solicitar Cotización →</span><span lang-en">Request a Quote →</span><span lang-ar>← طلب عرض سعر</span><span lang-zh>申请报价 →</span>
+      </a>
+      <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20quisiera%20cotizar%20coco%20o%20aceites%20certificados" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;transition:all 0.2s;">
+        💬 WhatsApp 🇨🇴
+      </a>
+      <a href="https://wa.me/5511946610038?text=Hola%20GLV%2C%20quisiera%20cotizar%20coco%20o%20aceites" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:0.6rem;background:#25D366;color:#fff;text-decoration:none;font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:1.1rem 2rem;transition:all 0.2s;">
+        💬 WhatsApp 🇧🇷
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="wa-float">
+  <a href="https://wa.me/573160865294" target="_blank" rel="noopener noreferrer" class="wa-btn">💬 🇨🇴 +57 316 086 5294</a>
+  <a href="https://wa.me/5511946610038" target="_blank" rel="noopener noreferrer" class="wa-btn">💬 🇧🇷 +55 11 9466 10038</a>
+</div>
+
+<div class="footer-mini">
+  <div class="footer-mini-logo">GLV Global Food Services LLC</div>
+  <div class="footer-mini-links">
+    <a href="./index.html"><span lang-es>Inicio</span><span lang-en">Home</span></a>
+    <a href="./huevo-proteinas.html"><span lang-es>Huevo</span><span lang-en">Eggs</span></a>
+    <a href="./granos-cereales.html"><span lang-es>Granos</span><span lang-en">Grains</span></a>
+    <a href="./animales-vivos.html"><span lang-es>Animales Vivos</span><span lang-en">Live Animals</span></a>
+    <a href="./frutas.html"><span lang-es>Frutas</span><span lang-en">Fruits</span></a>
+    <a href="./comercio-internacional.html"><span lang-es>Comercio</span><span lang-en">Trade</span></a>
+    <a href="./index.html#cotizar"><span lang-es>Cotizar</span><span lang-en">Quote</span></a>
+  </div>
+  <div style="font-size:0.82rem;color:var(--text-dim);">📧 <a href="mailto:info@glvglobalfoodservices.com" style="color:var(--gold);">info@glvglobalfoodservices.com</a></div>
+</div>
+
+<script>
+function setLang(l){if(!['es','en','ar','zh'].includes(l))return;document.body.className='lang-'+l;document.querySelectorAll('.lang-btn').forEach(b=>{b.classList.remove('active');if((l==='es'&&b.textContent==='ES')||(l==='en'&&b.textContent==='EN')||(l==='ar'&&b.textContent.includes('عربي'))||(l==='zh'&&b.textContent.includes('中文')))b.classList.add('active');});localStorage.setItem('glv-lang',l);}
+(function(){var s=localStorage.getItem('glv-lang')||'es';setLang(s);})();
+</script>
+</body>
+</html>
