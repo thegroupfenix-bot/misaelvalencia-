@@ -1,5 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/$(whoami)/public_html/
+    - export DEPLOYPATH=/home/glvserv1/public_html/
     - /bin/cp -R . $DEPLOYPATH
+    - mv $DEPLOYPATH/htaccess $DEPLOYPATH/.htaccess
