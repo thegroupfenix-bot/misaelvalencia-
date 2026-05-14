@@ -1,4 +1,6 @@
 ---
 deployment:
   tasks:
-    - /bin/cp -R /home/glvserv1/repositories/misaelvalencia/. /home/glvserv1/public_html/
+    - export DEPLOYPATH=/home/glvserv1/public_html/
+    - /bin/cp -R . $DEPLOYPATH
+    - mv $DEPLOYPATH/htaccess $DEPLOYPATH/.htaccess
