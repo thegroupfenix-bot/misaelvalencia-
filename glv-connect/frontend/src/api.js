@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || "";
+const BASE = import.meta.env.VITE_API_URL || "https://misaelvalencia-production.up.railway.app";
 
 function getToken() {
   return localStorage.getItem("glv_token");
