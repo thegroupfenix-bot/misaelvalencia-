@@ -11,6 +11,7 @@ require("./db/database"); // run migrations + seed on startup
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const authRouter      = require("./routes/auth");
 const documentsRouter = require("./routes/documents");
@@ -19,25 +20,21 @@ const usersRouter     = require("./routes/users");
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",").map(o => o.trim());
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || allowedOrigins.some(o => origin.startsWith(o))) return cb(null, true);
-    cb(new Error("CORS not allowed"));
-  },
-  credentials: true,
-}));
+app.use(cors({ origin: "*", credentials: false }));
 app.use(express.json());
-
-// trust proxy so req.ip returns the real client IP behind nginx/LiteSpeed
 app.set("trust proxy", 1);
 
+// API routes
 app.use("/auth",      authRouter);
 app.use("/documents", documentsRouter);
 app.use("/audit",     auditRouter);
 app.use("/users",     usersRouter);
-
 app.get("/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+
+// Serve React frontend
+const DIST = path.join(__dirname, "public");
+app.use(express.static(DIST));
+app.get("*", (_req, res) => res.sendFile(path.join(DIST, "index.html")));
 
 app.use((err, _req, res, _next) => {
   console.error(err);
