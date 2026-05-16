@@ -27,8 +27,6 @@ function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [agentProfile, setAgentProfile] = useState(null);
-  const [profileChecked, setProfileChecked] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [lang, setLang] = useState("es");
 
   useEffect(() => {
@@ -38,14 +36,6 @@ function AuthProvider({ children }) {
       .then((u) => {
         setUser(u);
         if (u?.preferred_lang) setLang(u.preferred_lang);
-        return api.getProfile();
-      })
-      .then((p) => {
-        setAgentProfile(p);
-        if (p && p.completed === 0) {
-          setShowProfileModal(true);
-        }
-        setProfileChecked(true);
       })
       .catch(() => localStorage.removeItem("glv_token"))
       .finally(() => setLoading(false));
@@ -60,16 +50,6 @@ function AuthProvider({ children }) {
     localStorage.setItem("glv_token", token);
     setUser(u);
     if (u?.preferred_lang) setLang(u.preferred_lang);
-    try {
-      const p = await api.getProfile();
-      setAgentProfile(p);
-      if (!p || p.completed === 0) {
-        setShowProfileModal(true);
-      }
-      setProfileChecked(true);
-    } catch {
-      setProfileChecked(true);
-    }
     return u;
   };
 
@@ -77,16 +57,15 @@ function AuthProvider({ children }) {
     localStorage.removeItem("glv_token");
     setUser(null);
     setAgentProfile(null);
-    setShowProfileModal(false);
-    setProfileChecked(false);
   };
 
   const handleProfileComplete = async () => {
     try {
+      const updated = await api.me();
+      setUser(updated);
       const p = await api.getProfile();
       setAgentProfile(p);
     } catch {}
-    setShowProfileModal(false);
   };
 
   const refreshProfile = async () => {
@@ -104,16 +83,20 @@ function AuthProvider({ children }) {
     );
   }
 
+  const needsPasswordChange = user?.first_login === 1;
+  const needsProfileSetup = user && !needsPasswordChange && !user.profile_completed;
+
   return (
     <AuthContext.Provider value={{ user, login, logout, agentProfile, refreshProfile, lang, setLang }}>
-      {/* First-login forced password change */}
-      {user?.first_login === 1 && (
+      {/* PASO 2: Cambio de contraseña obligatorio en primer acceso */}
+      {needsPasswordChange && (
         <ChangePasswordModal isFirstLogin onComplete={async () => {
           const updated = await api.me();
           setUser(updated);
         }} />
       )}
-      {showProfileModal && user && !user.first_login && (
+      {/* PASO 3: Completar perfil (solo si contraseña ya cambiada y perfil incompleto) */}
+      {needsProfileSetup && (
         <ProfileModal user={user} onComplete={handleProfileComplete} />
       )}
       {children}
