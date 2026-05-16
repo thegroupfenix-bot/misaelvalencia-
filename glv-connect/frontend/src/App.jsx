@@ -991,12 +991,15 @@ function OperationsView({ user, setView, showNotif }) {
   const [operations, setOperations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [viewMode, setViewMode] = useState("table"); // "table" | "kanban"
 
   const load = () => {
     setLoading(true);
     api.getOperations().then(setOperations).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  const STATUSES = ["DRAFT", "NEGOTIATING", "ACTIVE", "PENDING_DOCS", "SIGNED", "SHIPPED", "COMPLETED", "CANCELLED"];
 
   const STATUS_COLORS = {
     DRAFT: { bg: "#f3f4f6", text: "#374151" },
@@ -1009,6 +1012,46 @@ function OperationsView({ user, setView, showNotif }) {
     CANCELLED: { bg: "#fee2e2", text: "#991b1b" },
   };
 
+  const KanbanBoard = () => (
+    <div style={{ display: "flex", flexDirection: "row", overflowX: "auto", gap: 12, paddingBottom: 16, alignItems: "flex-start" }}>
+      {STATUSES.map(status => {
+        const sc = STATUS_COLORS[status] || { bg: "#f3f4f6", text: "#374151" };
+        const colOps = operations.filter(op => op.status === status);
+        return (
+          <div key={status} style={{ minWidth: 200, maxWidth: 220, flex: "0 0 200px" }}>
+            <div style={{ background: sc.bg, borderRadius: "8px 8px 0 0", padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `2px solid ${sc.text}33` }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: sc.text, letterSpacing: "0.04em" }}>{status}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: sc.text, background: "rgba(255,255,255,0.6)", borderRadius: 20, padding: "1px 7px" }}>{colOps.length}</span>
+            </div>
+            <div style={{ background: "var(--color-background-secondary)", borderRadius: "0 0 8px 8px", minHeight: 80, padding: 8, display: "flex", flexDirection: "column", gap: 8, border: "0.5px solid var(--color-border-tertiary)", borderTop: "none" }}>
+              {colOps.length === 0 && (
+                <div style={{ textAlign: "center", padding: "16px 0", color: "var(--color-text-secondary)", fontSize: 11 }}>Sin operaciones</div>
+              )}
+              {colOps.map(op => {
+                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
+                const contractValue = commercial?.summary?.contractValue;
+                return (
+                  <div key={op.id} onClick={() => setView(`op-detail:${op.id}`)}
+                    style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 8, padding: "10px 12px", cursor: "pointer", boxShadow: "none" }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(27,42,74,0.13)"}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}>
+                    <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "#1B2A4A", fontWeight: 700, marginBottom: 4 }}>{op.operation_id || op.id}</div>
+                    <div style={{ fontSize: 12, color: "var(--color-text-primary)", fontWeight: 500, marginBottom: 4, lineHeight: 1.3 }}>{op.counterpart_name || "—"}</div>
+                    {contractValue && (
+                      <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: commercial.currency || "USD", maximumFractionDigits: 0 }).format(contractValue)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
@@ -1016,10 +1059,17 @@ function OperationsView({ user, setView, showNotif }) {
           <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>Operaciones Comerciales</h1>
           <p style={{ color: "var(--color-text-secondary)", fontSize: 13, margin: 0 }}>{operations.length} operaciones registradas</p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-          <i className="ti ti-plus" style={{ fontSize: 16 }} />Nueva Operación
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => setViewMode(viewMode === "table" ? "kanban" : "table")}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: "var(--color-background-primary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+            <i className={`ti ${viewMode === "table" ? "ti-layout-columns" : "ti-table"}`} style={{ fontSize: 15 }} />
+            {viewMode === "table" ? "Vista Kanban" : "Vista Tabla"}
+          </button>
+          <button onClick={() => setShowCreate(true)}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+            <i className="ti ti-plus" style={{ fontSize: 16 }} />Nueva Operación
+          </button>
+        </div>
       </div>
 
       {loading ? <LoadingSpinner /> : operations.length === 0 ? (
@@ -1031,6 +1081,8 @@ function OperationsView({ user, setView, showNotif }) {
             Crear primera operación
           </button>
         </div>
+      ) : viewMode === "kanban" ? (
+        <KanbanBoard />
       ) : (
         <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
