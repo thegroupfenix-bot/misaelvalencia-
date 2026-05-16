@@ -54,6 +54,7 @@ export const api = {
   adminUpdateUser:  (id, data)  => request("PATCH", `/admin/users/${id}`, data),
   adminResetPwd:    (id, pwd)   => request("POST",  `/admin/users/${id}/reset-password`, { temporary_password: pwd }),
   adminGetRoles:    ()          => request("GET",   "/admin/roles"),
+  adminDeleteUser:  (id)        => request("DELETE", `/admin/users/${id}`),
 
   // Clients
   getClients:   (type)   => request("GET",  `/clients${type ? `?type=${type}` : ""}`),

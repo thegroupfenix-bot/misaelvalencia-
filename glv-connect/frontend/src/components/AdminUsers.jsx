@@ -102,6 +102,83 @@ function CreateUserModal({ onClose, onCreated }) {
   );
 }
 
+function EditUserModal({ user, onClose, onUpdated, showNotif }) {
+  const [form, setForm] = useState({
+    name: user.name || "",
+    email: user.email || "",
+    role: user.role || "AGENTE",
+    department: user.department || "",
+    position: user.position || "",
+    country: user.country || "",
+    preferred_lang: user.preferred_lang || "es",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.name || !form.email) {
+      setError("Nombre y email son obligatorios."); return;
+    }
+    setError(""); setSaving(true);
+    try {
+      await api.adminUpdateUser(user.id, form);
+      showNotif(`Usuario ${user.username} actualizado`);
+      onUpdated();
+      onClose();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3200, padding: "1rem" }}>
+      <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", padding: "2rem", boxShadow: "0 8px 48px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+          <div>
+            <h2 style={{ fontSize: 19, fontWeight: 700, color: "#1B2A4A", margin: "0 0 2px" }}>Editar Usuario</h2>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>@{user.username}</p>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#6b7280" }}>×</button>
+        </div>
+
+        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#991b1b" }}>{error}</div>}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <F label="Nombre completo *"><I value={form.name} onChange={v => set("name", v)} placeholder="Nombre Apellido" /></F>
+          <F label="Email *"><I value={form.email} onChange={v => set("email", v)} placeholder="correo@empresa.com" /></F>
+          <F label="Rol">
+            <select value={form.role} onChange={e => set("role", e.target.value)} style={inputSt}>
+              {ALL_ROLES.map(r => <option key={r.id} value={r.id}>{r.label?.es} ({r.id})</option>)}
+            </select>
+          </F>
+          <F label="Idioma preferido">
+            <select value={form.preferred_lang} onChange={e => set("preferred_lang", e.target.value)} style={inputSt}>
+              {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+            </select>
+          </F>
+          <F label="Departamento"><I value={form.department} onChange={v => set("department", v)} placeholder="Comercial, Finanzas..." /></F>
+          <F label="Cargo / Posición"><I value={form.position} onChange={v => set("position", v)} placeholder="Agente Sr., Analista..." /></F>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <F label="País de operación"><I value={form.country} onChange={v => set("country", v)} placeholder="Colombia, Brasil..." /></F>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+          <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "1px solid #d1d5db", background: "none", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+          <button onClick={handleSave} disabled={saving}
+            style={{ padding: "9px 24px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ResetPwdModal({ user, onClose, showNotif }) {
   const [pwd, setPwd] = useState("");
   const [saving, setSaving] = useState(false);
@@ -145,6 +222,7 @@ export function AdminUsers({ showNotif }) {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [resetUser, setResetUser] = useState(null);
+  const [editUser, setEditUser] = useState(null);
   const [filter, setFilter] = useState("");
 
   const load = () => {
@@ -157,6 +235,15 @@ export function AdminUsers({ showNotif }) {
     try {
       await api.adminUpdateUser(user.id, { active: !user.active });
       showNotif(`Usuario ${user.active ? "desactivado" : "activado"}`);
+      load();
+    } catch (e) { showNotif(e.message, "error"); }
+  };
+
+  const deleteUser = async (user) => {
+    if (!window.confirm(`¿Eliminar permanentemente al usuario "${user.name}" (@${user.username})?\n\nEsta acción no se puede deshacer.`)) return;
+    try {
+      await api.adminDeleteUser(user.id);
+      showNotif(`Usuario ${user.username} eliminado`);
       load();
     } catch (e) { showNotif(e.message, "error"); }
   };
@@ -188,7 +275,7 @@ export function AdminUsers({ showNotif }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--color-background-secondary)" }}>
-                {["Usuario", "Nombre", "Rol", "Depto / Cargo", "Idioma", "Estado", "Perfil", ""].map(h => (
+                {["Usuario", "Nombre", "Rol", "Depto / Cargo", "Idioma", "Estado", "Perfil", "Acciones"].map(h => (
                   <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -218,7 +305,11 @@ export function AdminUsers({ showNotif }) {
                     </span>
                   </td>
                   <td style={{ padding: "10px 14px" }}>
-                    <div style={{ display: "flex", gap: 6 }}>
+                    <div style={{ display: "flex", gap: 5 }}>
+                      <button onClick={() => setEditUser(u)} title="Editar usuario"
+                        style={{ padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 11, color: "#2563eb" }}>
+                        <i className="ti ti-pencil" style={{ fontSize: 13 }} />
+                      </button>
                       <button onClick={() => setResetUser(u)} title="Restablecer contraseña"
                         style={{ padding: "4px 9px", borderRadius: 6, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 11, color: "#d97706" }}>
                         <i className="ti ti-key" style={{ fontSize: 13 }} />
@@ -227,6 +318,10 @@ export function AdminUsers({ showNotif }) {
                         style={{ padding: "4px 9px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 11,
                           background: u.active ? "#fee2e2" : "#dcfce7", color: u.active ? "#991b1b" : "#166534" }}>
                         <i className={`ti ${u.active ? "ti-user-off" : "ti-user-check"}`} style={{ fontSize: 13 }} />
+                      </button>
+                      <button onClick={() => deleteUser(u)} title="Eliminar usuario"
+                        style={{ padding: "4px 9px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 11, background: "#fee2e2", color: "#991b1b" }}>
+                        <i className="ti ti-trash" style={{ fontSize: 13 }} />
                       </button>
                     </div>
                   </td>
@@ -239,6 +334,7 @@ export function AdminUsers({ showNotif }) {
 
       {showCreate && <CreateUserModal onClose={() => setShowCreate(false)} onCreated={() => { showNotif("Usuario creado"); load(); }} />}
       {resetUser && <ResetPwdModal user={resetUser} onClose={() => setResetUser(null)} showNotif={showNotif} />}
+      {editUser && <EditUserModal user={editUser} onClose={() => setEditUser(null)} onUpdated={load} showNotif={showNotif} />}
     </div>
   );
 }

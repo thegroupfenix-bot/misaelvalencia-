@@ -124,4 +124,25 @@ router.get("/roles", (req, res) => {
   res.json(ALL_ROLES);
 });
 
+// DELETE /admin/users/:id — permanently delete user
+router.delete("/users/:id", (req, res) => {
+  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+  if (user.role === "SUPER_ADMIN" && req.user.id !== user.id) {
+    return res.status(403).json({ error: "No puede eliminar un Super Admin" });
+  }
+
+  if (user.id === req.user.id) {
+    return res.status(400).json({ error: "No puede eliminar su propia cuenta" });
+  }
+
+  db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+  db.prepare("INSERT INTO audit_log (username, action, ip) VALUES (?, ?, ?)").run(
+    req.user.username, `deleted_user:${user.username}`, req.ip
+  );
+
+  res.json({ ok: true });
+});
+
 module.exports = router;
