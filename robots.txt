@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /cotizacion-privada/
+Disallow: /admin/
+Disallow: /portal/
+
+# Portal interno — bloquear indexación
+User-agent: *
+Disallow: /portal-funcionarios/
+
+Sitemap: https://www.glvservicesexp.com/sitemap.xml
+Sitemap: https://www.glvservicesexp.com/sitemap-images.xml
