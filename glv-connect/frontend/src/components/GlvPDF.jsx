@@ -354,7 +354,7 @@ function DocPDF({ doc, agentProfile }) {
     mandatoryInfo = "INFORMACIÓN MANDATORIA — GRANOS Y CEREALES:\n• Producto libre de organismos genéticamente modificados no autorizados en destino\n• Humedad máxima garantizada según contrato\n• Libre de plagas y contaminantes según normativa Codex Alimentarius\n• Fumigación y tratamiento fitosanitario incluidos en el precio CFR";
   }
 
-  const tcText = `TÉRMINOS Y CONDICIONES GENERALES:\n1. La presente oferta es emitida por ${exporter} en su calidad de exportador internacional certificado.\n2. Los precios son CFR (Cost and Freight) según Incoterms 2020, en el puerto de destino indicado.\n3. La aceptación formal de esta oferta activa el proceso de elaboración del SPA (Sales Purchase Agreement).\n4. Todos los precios están denominados en Dólares Americanos (USD).\n5. Cualquier controversia será resuelta mediante arbitraje internacional según las reglas de la CCI (París).\n6. La ley aplicable es la establecida en el contrato definitivo (SPA).\n7. GLV Global Food Services LLC se reserva el derecho de modificar precios por causas de fuerza mayor o cambios en normativas sanitarias internacionales.\n8. La entidad SBLC designada es: Active Value International General Trading L.L.C — Dubai, UAE.`;
+  const tcText = `TÉRMINOS Y CONDICIONES GENERALES:\n1. La presente oferta es emitida por ${exporter} en su calidad de exportador internacional certificado.\n2. Los precios son según el/los Incoterm(s) pactado(s) conforme a Incoterms 2020, en el puerto de destino indicado.\n3. La aceptación formal de esta oferta activa el proceso de elaboración del SPA (Sales Purchase Agreement).\n4. Todos los precios están denominados en la moneda indicada en la oferta.\n5. Cualquier controversia será resuelta mediante arbitraje internacional según las reglas de la CCI (París).\n6. La ley aplicable es la establecida en el contrato definitivo (SPA).\n7. GLV Global Food Services LLC se reserva el derecho de modificar precios por causas de fuerza mayor o cambios en normativas sanitarias internacionales.`;
 
   const fcoNote = (L.fco_note || "").replace("{days}", validityDays).replace("{date}", doc.date);
   const scoNoteEs = "NOTA: Esta oferta es de carácter indicativo. Los precios y condiciones están sujetos a confirmación mediante Full Corporate Offer (FCO). No constituye compromiso contractual.";
@@ -522,6 +522,56 @@ function DocPDF({ doc, agentProfile }) {
           )}
         </View>
 
+        {/* Commercial data table — multi-product rows from CommercialEngine */}
+        {(() => {
+          const cd = doc.commercialData || doc.commercial_data;
+          const rows = cd?.rows?.filter(r => r.category && r.quantity) || [];
+          if (rows.length === 0) return null;
+          return (
+            <View style={{ marginBottom: 16 }}>
+              <View style={{ backgroundColor: "#1B2A4A", borderRadius: 6, padding: "6 10", marginBottom: 4 }}>
+                <View style={{ flexDirection: "row" }}>
+                  {["Producto", "Origen", "Cantidad", "Unidad", "Incoterm", "Precio/U", "Valor Embarque", "Valor Contrato"].map(h => (
+                    <Text key={h} style={{ flex: 1, fontSize: 7, color: "#fff", fontWeight: "bold", textAlign: "center" }}>{h}</Text>
+                  ))}
+                </View>
+              </View>
+              {rows.map((row, i) => {
+                const catLabel = row.category || "—";
+                const inc = (row.incoterms || ["CFR"])[0];
+                const price = row.incotermPrices?.[inc] || row.unitPrice || "—";
+                const sv = row.summary?.shipmentValue;
+                const cv = row.summary?.contractValue;
+                const currency = row.currency || "USD";
+                const fmtV = (v) => v ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v) : "—";
+                return (
+                  <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "5 10", borderRadius: 4 }}>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{catLabel}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151" }}>{row.origin || "—"}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{row.quantity || "—"}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{(row.unitType || "").split("/")[0].trim()}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{inc}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{price ? `${currency} ${price}` : "—"}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv)}</Text>
+                    <Text style={{ flex: 1, fontSize: 8, color: "#1B2A4A", fontWeight: "bold", textAlign: "right" }}>{fmtV(cv)}</Text>
+                  </View>
+                );
+              })}
+              {rows.length > 1 && (() => {
+                const currency = rows[0]?.currency || "USD";
+                const totalCV = rows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
+                const fmtV = (v) => new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v);
+                return (
+                  <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "6 10", borderRadius: 4, marginTop: 2 }}>
+                    <Text style={{ flex: 6, fontSize: 8, color: "#fff", fontWeight: "bold" }}>TOTAL PROGRAMA EXPORTACIÓN ({rows.length} productos)</Text>
+                    <Text style={{ flex: 1, fontSize: 8.5, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
+                  </View>
+                );
+              })()}
+            </View>
+          );
+        })()}
+
         {/* Section 3: Price */}
         <SectionTitle esText={ES.price} secText={L.price} />
         <View style={s.grid}>
@@ -546,11 +596,13 @@ function DocPDF({ doc, agentProfile }) {
               value={fmtCurrency(totalValue)} style={{ backgroundColor: "#f0fdf4" }} highlight />
           )}
           <BiInfoBox esLabel="Moneda" secLabel={docLang !== "es" ? L.currency_lbl : null}
-            value="USD — Dólares Americanos" />
+            value={doc.commercialData?.currency || doc.commercial_data?.currency || "USD — Dólares Americanos"} />
           <BiInfoBox esLabel="Validez de la oferta" secLabel={docLang !== "es" ? L.validity_lbl : null}
             value={`${validityDays} días / days`} />
-          <BiInfoBox esLabel="Entidad SBLC / Garantía" secLabel={docLang !== "es" ? L.sblc_lbl : null}
-            value="Active Value International General Trading L.L.C" />
+          {(paymentOption.includes?.("SBLC") || paymentOption.includes?.("LC")) && (
+            <BiInfoBox esLabel="Entidad Garantía / Banco emisor" secLabel={docLang !== "es" ? L.sblc_lbl : null}
+              value={doc.guaranteeBank || doc.guarantee_bank || "Por confirmar en contrato"} />
+          )}
         </View>
 
         {/* Section 4: Certifications */}

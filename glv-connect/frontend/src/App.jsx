@@ -642,18 +642,16 @@ function DocList({ type, user, setModal, setView, showNotif }) {
 function NewDocForm({ type, user, setView, showNotif }) {
   const { agentProfile } = useAuth();
   const [allDocs, setAllDocs] = useState([]);
+  const [commercialData, setCommercialData] = useState({});
   const [form, setFormState] = useState({
     client: "", clientCountry: "", clientRepresentative: "", clientEmail: "", clientPhone: "",
     product: "", destination: "", origin: "Brazil", headcount: "", avgWeight: 45,
     paymentMethod: "SBLC", programDuration: "5 años", validityDays: "30", observations: "", parentId: "",
-    // Custom product fields
     customProductName: "", customProductDesc: "", customUnit: "kg", customPaymentType: "TT",
-    // Payment selector fields
     paymentOption: "", docTrigger: "", hasGuarantee: false, guaranteeType: null, guaranteeBank: "",
-    // FCO specific
     fcoConfirmed: false, clientIdDocB64: null,
   });
-  const [chinaAlert, setChinaAlert] = useState(false);
+  const chinaAlert = (commercialData?.destination || form.destination || "").toLowerCase().includes("china");
   const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
   const clientIdRef = useRef();
@@ -665,12 +663,6 @@ function NewDocForm({ type, user, setView, showNotif }) {
   const setField = (k, v) => {
     setFormState(prev => {
       const next = { ...prev, [k]: v };
-      if (k === "destination" && v === "China") {
-        setChinaAlert(true);
-        next.origin = "Colombia";
-      } else if (k === "destination") {
-        setChinaAlert(false);
-      }
       // If FCO selects parent SCO, preload data
       if (k === "parentId" && type === "FCO" && v) {
         const sco = allDocs.find(d => d.id === v);
@@ -712,13 +704,14 @@ function NewDocForm({ type, user, setView, showNotif }) {
     reader.readAsDataURL(file);
   });
 
-  const destInfo = PRICE_TABLE[form.destination] || {};
+  const effectiveDestination = commercialData?.destination || form.destination || "";
+  const effectiveProduct = commercialData?.rows?.[0]?.category || commercialData?.category || form.product || "";
+  const destInfo = PRICE_TABLE[effectiveDestination] || {};
   const pricePerKg = destInfo.price || 0;
   const totalKg = (parseFloat(form.headcount) || 0) * (parseFloat(form.avgWeight) || 0);
-  const totalValue = totalKg * pricePerKg;
-  const isAnimalProduct = form.product && (form.product.includes("Animales") || form.product.includes("Ovina") || form.product.includes("Bovina"));
+  const totalValue = commercialData?.summary?.contractValue || (totalKg * pricePerKg) || null;
+  const isAnimalProduct = effectiveProduct === "LIVE_ANIMALS" || (form.product && (form.product.includes("Animales") || form.product.includes("Ovina") || form.product.includes("Bovina")));
   const isCustomProduct = form.product === "Outro" || form.product === "Otro";
-  const isAnimalOrLong = isAnimalProduct || form.programDuration.includes("5") || form.programDuration.includes("año");
 
   const exporter = chinaAlert ? "GLV Services SAS (Colombia)" : "GLV Global Food Services LLC (Miami, FL)";
   const domain   = chinaAlert ? "glvservicesexp.com" : "glvglobalfoodservices.com";
@@ -734,11 +727,11 @@ function NewDocForm({ type, user, setView, showNotif }) {
       client: form.client,
       clientRepresentative: form.clientRepresentative,
       clientEmail: form.clientEmail,
-      product: form.product,
-      pricePerKg: pricePerKg,
-      totalValue: totalValue,
+      product: effectiveProduct || form.product,
+      pricePerKg,
+      totalValue,
       headcount: form.headcount,
-      destination: form.destination,
+      destination: effectiveDestination,
       payment_option: form.paymentOption,
       validityDays: form.validityDays,
       doc_trigger: form.docTrigger,
@@ -763,15 +756,14 @@ function NewDocForm({ type, user, setView, showNotif }) {
         clientRepresentative: form.clientRepresentative,
         clientEmail: form.clientEmail,
         clientPhone: form.clientPhone,
-        product: form.product,
-        destination: form.destination,
-        origin: form.origin,
+        product: effectiveProduct || form.product,
+        destination: effectiveDestination,
+        origin: chinaAlert ? "Colombia" : (commercialData?.origin || form.origin || "Brazil"),
         headcount: form.headcount,
         avgWeight: form.avgWeight,
         paymentMethod: form.paymentMethod,
         observations: form.observations,
         parentId: form.parentId,
-        // New fields
         payment_option: form.paymentOption,
         doc_trigger: form.docTrigger,
         has_guarantee: form.hasGuarantee ? 1 : 0,
@@ -782,6 +774,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
         custom_product_desc: isCustomProduct ? form.customProductDesc : null,
         custom_unit: isCustomProduct ? form.customUnit : null,
         fco_confirmed: form.fcoConfirmed ? 1 : 0,
+        commercial_data: Object.keys(commercialData).length > 0 ? commercialData : null,
         client_id_doc_b64: form.clientIdDocB64,
       };
 
@@ -839,19 +832,11 @@ function NewDocForm({ type, user, setView, showNotif }) {
           <FormField label="Teléfono / WhatsApp" value={form.clientPhone} onChange={v => setField("clientPhone", v)} placeholder="+1 000 000 0000" />
         </FormSection>
 
-        <FormSection title="Datos comerciales">
-          <SelectField label="Producto *" value={form.product} onChange={v => setField("product", v)}>
-            <option value="">Seleccionar producto</option>
-            {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
-          </SelectField>
-          <SelectField label="Destino *" value={form.destination} onChange={v => setField("destination", v)}>
-            <option value="">Seleccionar destino</option>
-            {Object.keys(PRICE_TABLE).map(d => <option key={d} value={d}>{d} — {PRICE_TABLE[d].port}</option>)}
-          </SelectField>
-          <SelectField label="Origen" value={form.origin} onChange={v => setField("origin", v)} disabled={chinaAlert}>
-            {Object.keys(ORIGINS).map(o => <option key={o} value={o}>{o} — {ORIGINS[o].split("/")[0].trim()}</option>)}
-          </SelectField>
-        </FormSection>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <FormSection title="Programa Comercial de Exportación">
+            <CommercialEngine value={commercialData} onChange={setCommercialData} />
+          </FormSection>
+        </div>
 
         {/* Custom product fields — MODULE 3 */}
         {isCustomProduct && (
@@ -961,7 +946,6 @@ function NewDocForm({ type, user, setView, showNotif }) {
             <div><p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 4px" }}>Exportador</p><p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>{exporter}</p></div>
             <div><p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 4px" }}>Dominio</p><p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>{domain}</p></div>
             {gaccNote && <div><p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 4px" }}>GACC</p><p style={{ fontSize: 13, fontWeight: 600, color: "#d97706", margin: 0 }}>{gaccNote}</p></div>}
-            <div><p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 4px" }}>Entidad SBLC</p><p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>Active Value International General Trading L.L.C</p></div>
           </div>
         </div>
       </FormSection>

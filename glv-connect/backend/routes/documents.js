@@ -49,6 +49,20 @@ function toRow(d) {
     parentId: d.parent_id,
     observations: d.observations,
     createdAt: d.created_at,
+    paymentOption: d.payment_option,
+    docTrigger: d.doc_trigger,
+    hasGuarantee: d.has_guarantee,
+    guaranteeType: d.guarantee_type,
+    guaranteeBank: d.guarantee_bank,
+    validityDays: d.validity_days || 15,
+    customProductName: d.custom_product_name,
+    customProductDesc: d.custom_product_desc,
+    customUnit: d.custom_unit,
+    fcoConfirmed: d.fco_confirmed,
+    clientIdDocB64: d.client_id_doc_b64,
+    productCategory: d.product_category,
+    lang: d.lang,
+    commercialData: d.commercial_data ? (typeof d.commercial_data === "string" ? JSON.parse(d.commercial_data) : d.commercial_data) : null,
   };
 }
 
@@ -91,10 +105,19 @@ router.post("/", async (req, res) => {
     clientEmail, clientPhone, destination, product,
     headcount, avgWeight, origin, paymentMethod,
     observations, parentId,
+    // Extended fields
+    payment_option, doc_trigger, has_guarantee, guarantee_type, guarantee_bank,
+    validity_days, custom_product_name, custom_product_desc, custom_unit,
+    fco_confirmed, client_id_doc_b64,
+    commercial_data,
   } = req.body;
 
-  if (!type || !client || !product || !destination) {
-    return res.status(400).json({ error: "Faltan campos obligatorios: type, client, product, destination" });
+  // Derive product from commercial_data if not provided directly
+  const effectiveProduct = product || (commercial_data?.rows?.[0]?.category) || (commercial_data?.category) || null;
+  const effectiveDestination = destination || commercial_data?.destination || null;
+
+  if (!type || !client || !effectiveProduct || !effectiveDestination) {
+    return res.status(400).json({ error: "Faltan campos obligatorios: type, client, product/commercial_data, destination" });
   }
   if (!["SCO", "FCO", "SPA"].includes(type)) {
     return res.status(400).json({ error: "Tipo inválido" });
@@ -103,16 +126,16 @@ router.post("/", async (req, res) => {
     return res.status(403).json({ error: "Solo DIRECTIVO puede crear SPA" });
   }
 
-  const isChina = destination === "China";
+  const isChina = effectiveDestination?.toLowerCase().includes("china");
   const exporter = isChina ? "GLV Services SAS (Colombia)" : "GLV Global Food Services LLC (Miami, FL)";
   const domain = isChina ? "glvservicesexp.com" : "glvglobalfoodservices.com";
   const gaccNote = isChina ? "GACC No. YA11000PDY110K805" : null;
   const effectiveOrigin = isChina ? "Colombia" : (origin || "Brazil");
 
-  const destInfo = PRICE_TABLE[destination] || {};
+  const destInfo = PRICE_TABLE[effectiveDestination] || {};
   const pricePerKg = destInfo.price || null;
   const totalKg = (parseFloat(headcount) || 0) * (parseFloat(avgWeight) || 0);
-  const totalValue = totalKg && pricePerKg ? totalKg * pricePerKg : null;
+  const totalValue = totalKg && pricePerKg ? totalKg * pricePerKg : (commercial_data?.summary?.contractValue || commercial_data?.rows?.[0]?.summary?.contractValue || null);
 
   const id = genId(type);
   const status = type === "SPA" ? "Activo" : "Emitido";
@@ -122,15 +145,24 @@ router.post("/", async (req, res) => {
     INSERT INTO documents
       (id, type, status, client, client_country, client_representative, client_email, client_phone,
        agent, date, destination, product, headcount, avg_weight, price_per_kg, origin,
-       total_value, payment_method, exporter, domain, gacc_note, parent_id, observations)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       total_value, payment_method, exporter, domain, gacc_note, parent_id, observations,
+       payment_option, doc_trigger, has_guarantee, guarantee_type, guarantee_bank,
+       validity_days, custom_product_name, custom_product_desc, custom_unit,
+       fco_confirmed, client_id_doc_b64, commercial_data)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id, type, status, client, clientCountry || null, clientRepresentative || null,
     clientEmail || null, clientPhone || null,
-    req.user.username, date, destination, product,
+    req.user.username, date, effectiveDestination, effectiveProduct,
     parseFloat(headcount) || null, parseFloat(avgWeight) || null, pricePerKg,
-    effectiveOrigin, totalValue, paymentMethod || "SBLC",
-    exporter, domain, gaccNote, parentId || null, observations || null
+    effectiveOrigin, totalValue, paymentMethod || null,
+    exporter, domain, gaccNote, parentId || null, observations || null,
+    payment_option || null, doc_trigger || null, has_guarantee ? 1 : 0,
+    guarantee_type || null, guarantee_bank || null,
+    parseInt(validity_days) || 15,
+    custom_product_name || null, custom_product_desc || null, custom_unit || null,
+    fco_confirmed ? 1 : 0, client_id_doc_b64 || null,
+    commercial_data ? JSON.stringify(commercial_data) : null
   );
 
   db.prepare(
