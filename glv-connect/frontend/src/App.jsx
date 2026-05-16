@@ -1332,12 +1332,117 @@ function OperationDetail({ opId, user, setView, showNotif }) {
   );
 }
 
+// ─── Client Detail Modal ──────────────────────────────────────────────────────
+function ClientDetailModal({ client, onClose, onSaved, showNotif }) {
+  const [form, setForm] = useState({
+    name: client.name || "",
+    type: client.type || "CLIENT",
+    country: client.country || "",
+    representative: client.representative || "",
+    email: client.email || "",
+    phone: client.phone || "",
+    tax_id: client.tax_id || "",
+    notes: client.notes || "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const inputSt = { width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" };
+
+  const handleSave = async () => {
+    if (!form.name) { setError("El nombre es obligatorio."); return; }
+    setError(""); setSaving(true);
+    try {
+      await api.updateClient(client.id, form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const TYPE_COLORS = { CLIENT: { bg: "#dbeafe", text: "#1e40af" }, SUPPLIER: { bg: "#dcfce7", text: "#166534" }, PARTNER: { bg: "#ede9fe", text: "#4c1d95" } };
+  const tc = TYPE_COLORS[form.type] || { bg: "#f3f4f6", text: "#374151" };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: "1rem" }}>
+      <div style={{ background: "var(--color-background-primary)", borderRadius: 16, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", padding: "2rem", boxShadow: "0 8px 48px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+          <div>
+            <h2 style={{ fontSize: 19, fontWeight: 700, color: "var(--color-text-primary)", margin: "0 0 4px" }}>Detalle / Editar Contraparte</h2>
+            <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: tc.bg, color: tc.text, fontWeight: 500 }}>{form.type}</span>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "var(--color-text-secondary)" }}>×</button>
+        </div>
+
+        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#991b1b" }}>{error}</div>}
+        {saved && <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#166534" }}>Cambios guardados correctamente.</div>}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Nombre / Razón social *</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Empresa o persona" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Tipo</label>
+            <select value={form.type} onChange={e => set("type", e.target.value)} style={inputSt}>
+              <option value="CLIENT">Cliente</option>
+              <option value="SUPPLIER">Proveedor</option>
+              <option value="PARTNER">Socio Comercial</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>País</label>
+            <input value={form.country} onChange={e => set("country", e.target.value)} placeholder="País" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Representante</label>
+            <input value={form.representative} onChange={e => set("representative", e.target.value)} placeholder="Nombre del contacto" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Email</label>
+            <input value={form.email} onChange={e => set("email", e.target.value)} placeholder="correo@empresa.com" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Teléfono</label>
+            <input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="+1 000 000 0000" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>NIT / Tax ID</label>
+            <input value={form.tax_id} onChange={e => set("tax_id", e.target.value)} placeholder="Identificación fiscal" style={inputSt} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Notas</label>
+            <textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={3} placeholder="Notas adicionales..."
+              style={{ ...inputSt, resize: "vertical" }} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+          <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>Cerrar</button>
+          <button onClick={handleSave} disabled={saving}
+            style={{ padding: "9px 24px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Clients View ─────────────────────────────────────────────────────────────
 function ClientsView({ user, showNotif }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -1345,9 +1450,11 @@ function ClientsView({ user, showNotif }) {
   };
   useEffect(load, []);
 
-  const filtered = clients.filter(c =>
-    !filter || c.name?.toLowerCase().includes(filter.toLowerCase()) || c.country?.toLowerCase().includes(filter.toLowerCase()) || c.type?.toLowerCase().includes(filter.toLowerCase())
-  );
+  const filtered = clients.filter(c => {
+    const matchesText = !filter || c.name?.toLowerCase().includes(filter.toLowerCase()) || c.country?.toLowerCase().includes(filter.toLowerCase()) || c.type?.toLowerCase().includes(filter.toLowerCase());
+    const matchesType = !typeFilter || c.type === typeFilter;
+    return matchesText && matchesType;
+  });
 
   const TYPE_COLORS = { CLIENT: { bg: "#dbeafe", text: "#1e40af" }, SUPPLIER: { bg: "#dcfce7", text: "#166534" }, PARTNER: { bg: "#ede9fe", text: "#4c1d95" } };
 
@@ -1364,15 +1471,22 @@ function ClientsView({ user, showNotif }) {
         </button>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Buscar por nombre, país o tipo..."
-          style={{ padding: "9px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 14, width: 320, boxSizing: "border-box", background: "var(--color-background-primary)", color: "var(--color-text-primary)" }} />
+          style={{ padding: "9px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 14, width: 300, boxSizing: "border-box", background: "var(--color-background-primary)", color: "var(--color-text-primary)" }} />
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+          style={{ padding: "9px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 14, background: "var(--color-background-primary)", color: "var(--color-text-primary)", cursor: "pointer" }}>
+          <option value="">Todos los tipos</option>
+          <option value="CLIENT">Cliente</option>
+          <option value="SUPPLIER">Proveedor</option>
+          <option value="PARTNER">Socio Comercial</option>
+        </select>
       </div>
 
       {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "4rem", color: "var(--color-text-secondary)" }}>
           <i className="ti ti-building-off" style={{ fontSize: 48, display: "block", marginBottom: 12, opacity: 0.4 }} />
-          <p>{filter ? "Sin resultados para la búsqueda." : "No hay contrapartes registradas aún."}</p>
+          <p>{filter || typeFilter ? "Sin resultados para la búsqueda." : "No hay contrapartes registradas aún."}</p>
         </div>
       ) : (
         <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
@@ -1388,9 +1502,12 @@ function ClientsView({ user, showNotif }) {
               {filtered.map(c => {
                 const tc = TYPE_COLORS[c.type] || { bg: "#f3f4f6", text: "#374151" };
                 return (
-                  <tr key={c.id} style={{ borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+                  <tr key={c.id} onClick={() => setSelectedClient(c)}
+                    style={{ borderTop: "0.5px solid var(--color-border-tertiary)", cursor: "pointer" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--color-background-secondary)"}
+                    onMouseLeave={e => e.currentTarget.style.background = ""}>
                     <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{c.name}</td>
-                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.contact_name || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.representative || "—"}</td>
                     <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.country || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
                       <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: tc.bg, color: tc.text, fontWeight: 500 }}>{c.type || "CLIENT"}</span>
@@ -1411,12 +1528,20 @@ function ClientsView({ user, showNotif }) {
       )}
 
       {showCreate && <CreateClientModal onClose={() => setShowCreate(false)} onCreated={() => { showNotif("Contraparte registrada"); load(); }} />}
+      {selectedClient && (
+        <ClientDetailModal
+          client={selectedClient}
+          onClose={() => setSelectedClient(null)}
+          onSaved={() => load()}
+          showNotif={showNotif}
+        />
+      )}
     </div>
   );
 }
 
 function CreateClientModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ name: "", type: "CLIENT", country: "", contact_name: "", email: "", phone: "", tax_id: "", notes: "" });
+  const [form, setForm] = useState({ name: "", type: "CLIENT", country: "", representative: "", email: "", phone: "", tax_id: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -1466,7 +1591,7 @@ function CreateClientModal({ onClose, onCreated }) {
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Representante</label>
-            <input value={form.contact_name} onChange={e => set("contact_name", e.target.value)} placeholder="Nombre del contacto" style={inputSt} />
+            <input value={form.representative} onChange={e => set("representative", e.target.value)} placeholder="Nombre del contacto" style={inputSt} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Email</label>
