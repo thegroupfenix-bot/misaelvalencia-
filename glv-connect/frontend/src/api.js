@@ -66,7 +66,21 @@ export const api = {
     const q = new URLSearchParams(params).toString();
     return request("GET", `/operations${q ? `?${q}` : ""}`);
   },
-  getOperation:    (id)       => request("GET",   `/operations/${id}`),
-  createOperation: (data)     => request("POST",  "/operations", data),
+  getOperation:    (id)         => request("GET",   `/operations/${id}`),
+  createOperation: (data)       => request("POST",  "/operations", data),
   updateOpStatus:  (id, status) => request("PATCH", `/operations/${id}/status`, { status }),
+
+  // Finance (Phase 7)
+  getFinanceSummary:   () => request("GET", "/finance/summary"),
+  getFinanceInvoices:  () => request("GET", "/finance/invoices"),
+  getFinanceByCountry: () => request("GET", "/finance/by-country"),
+
+  // Tasks / Quality ISO (Phase 8)
+  getTasks:   (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request("GET", `/tasks${q ? `?${q}` : ""}`);
+  },
+  createTask: (data)     => request("POST",   "/tasks", data),
+  updateTask: (id, data) => request("PATCH",  `/tasks/${id}`, data),
+  deleteTask: (id)       => request("DELETE", `/tasks/${id}`),
 };
