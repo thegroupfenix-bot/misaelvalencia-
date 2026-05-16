@@ -4,8 +4,15 @@ import { api } from "./api.js";
 import { downloadPDF } from "./components/GlvPDF.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { PaymentSelector } from "./components/PaymentSelector.jsx";
+import { ChangePasswordModal } from "./components/ChangePasswordModal.jsx";
+import { AdminUsers } from "./components/AdminUsers.jsx";
+import { CommercialEngine } from "./components/CommercialEngine.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
+import { LANGUAGES, t } from "./i18n.js";
+
+const ADMINS    = new Set(["SUPER_ADMIN","CORPORATE_ADMIN"]);
+const DIRECTORS = new Set(["SUPER_ADMIN","CORPORATE_ADMIN","DIRECTOR","DIRECTIVO","CFO","COMMERCIAL_DIRECTOR"]);
 
 // ─── Auth context ────────────────────────────────────────────────────────────
 const AuthContext = createContext(null);
@@ -20,6 +27,7 @@ function AuthProvider({ children }) {
   const [agentProfile, setAgentProfile] = useState(null);
   const [profileChecked, setProfileChecked] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [lang, setLang] = useState("es");
 
   useEffect(() => {
     const token = localStorage.getItem("glv_token");
@@ -27,6 +35,7 @@ function AuthProvider({ children }) {
     api.me()
       .then((u) => {
         setUser(u);
+        if (u?.preferred_lang) setLang(u.preferred_lang);
         return api.getProfile();
       })
       .then((p) => {
@@ -40,11 +49,15 @@ function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (user?.preferred_lang) setLang(user.preferred_lang);
+  }, [user?.preferred_lang]);
+
   const login = async (username, password) => {
     const { token, user: u } = await api.login(username, password);
     localStorage.setItem("glv_token", token);
     setUser(u);
-    // Check profile after login
+    if (u?.preferred_lang) setLang(u.preferred_lang);
     try {
       const p = await api.getProfile();
       setAgentProfile(p);
@@ -90,8 +103,15 @@ function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, agentProfile, refreshProfile }}>
-      {showProfileModal && user && (
+    <AuthContext.Provider value={{ user, login, logout, agentProfile, refreshProfile, lang, setLang }}>
+      {/* First-login forced password change */}
+      {user?.first_login === 1 && (
+        <ChangePasswordModal isFirstLogin onComplete={async () => {
+          const updated = await api.me();
+          setUser(updated);
+        }} />
+      )}
+      {showProfileModal && user && !user.first_login && (
         <ProfileModal user={user} onComplete={handleProfileComplete} />
       )}
       {children}
@@ -159,36 +179,37 @@ export default function App() {
 
 // ─── Portal shell ─────────────────────────────────────────────────────────────
 function Portal() {
-  const { user, logout } = useAuth();
+  const { user, logout, lang, setLang, agentProfile } = useAuth();
   const [view, setView] = useState("dashboard");
   const [modal, setModal] = useState(null);
   const [notification, setNotification] = useState(null);
-  const [firstLogin, setFirstLogin] = useState(user?.role === "AGENTE");
 
   const showNotif = (msg, type = "success") => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3500);
   };
 
-  if (firstLogin) {
-    return <OnboardingScreen user={user} onContinue={() => setFirstLogin(false)} />;
-  }
+  const isDirector = DIRECTORS.has(user?.role);
+  const isAdmin    = ADMINS.has(user?.role);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-background-tertiary)", fontFamily: "var(--font-sans)" }}>
-      <Sidebar user={user} view={view} setView={setView} onLogout={logout} />
+      <Sidebar user={user} view={view} setView={setView} onLogout={logout} lang={lang} setLang={setLang} />
       <main style={{ flex: 1, padding: "2rem", overflowY: "auto" }}>
         {notification && <Notification msg={notification.msg} type={notification.type} />}
-        {view === "dashboard"     && <Dashboard user={user} setView={setView} setModal={setModal} />}
-        {view === "sco"           && <DocList type="SCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "fco"           && <DocList type="FCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "spa"           && user.role === "DIRECTIVO" && <DocList type="SPA" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "audit"         && user.role === "DIRECTIVO" && <AuditLog />}
-        {view === "usuarios"      && user.role === "DIRECTIVO" && <UsersPanel />}
-        {view === "admin-images"  && user.role === "DIRECTIVO" && <ImageAdmin showNotif={showNotif} />}
-        {view === "new-sco"       && <NewDocForm type="SCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-fco"       && <NewDocForm type="FCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-spa"       && user.role === "DIRECTIVO" && <NewDocForm type="SPA" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "dashboard"    && <Dashboard user={user} setView={setView} setModal={setModal} />}
+        {view === "sco"          && <DocList type="SCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
+        {view === "fco"          && <DocList type="FCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
+        {view === "spa"          && isDirector && <DocList type="SPA" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
+        {view === "operations"   && <OperationsView user={user} setView={setView} showNotif={showNotif} />}
+        {view === "clients"      && <ClientsView user={user} showNotif={showNotif} />}
+        {view === "audit"        && isDirector && <AuditLog />}
+        {view === "usuarios"     && isDirector && <UsersPanel />}
+        {view === "admin-users"  && isAdmin    && <AdminUsers showNotif={showNotif} />}
+        {view === "admin-images" && isAdmin    && <ImageAdmin showNotif={showNotif} />}
+        {view === "new-sco"      && <NewDocForm type="SCO" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-fco"      && <NewDocForm type="FCO" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-spa"      && isDirector && <NewDocForm type="SPA" user={user} setView={setView} showNotif={showNotif} />}
       </main>
       {modal && <DocPreviewModal doc={modal} onClose={() => setModal(null)} />}
     </div>
@@ -294,48 +315,76 @@ function OnboardingScreen({ user, onContinue }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ user, view, setView, onLogout }) {
+function Sidebar({ user, view, setView, onLogout, lang, setLang }) {
+  const isDirector = DIRECTORS.has(user?.role);
+  const isAdmin    = ADMINS.has(user?.role);
+
   const navItems = [
-    { id: "dashboard", icon: "ti-dashboard",        label: "Dashboard" },
-    { id: "sco",       icon: "ti-file-description", label: "SCO" },
-    { id: "fco",       icon: "ti-file-check",       label: "FCO" },
-    ...(user.role === "DIRECTIVO" ? [
+    { id: "dashboard",    icon: "ti-dashboard",        label: "Dashboard" },
+    { id: "operations",   icon: "ti-briefcase",        label: "Operaciones" },
+    { id: "clients",      icon: "ti-building",         label: "Clientes" },
+    { id: "sco",          icon: "ti-file-description", label: "SCO" },
+    { id: "fco",          icon: "ti-file-check",       label: "FCO" },
+    ...(isDirector ? [
       { id: "spa",         icon: "ti-file-certificate", label: "SPA / Contratos" },
       { id: "audit",       icon: "ti-shield",           label: "Auditoría" },
       { id: "usuarios",    icon: "ti-users",            label: "Usuarios" },
-      { id: "admin-images",icon: "ti-photo",            label: "Imágenes Drive" },
+    ] : []),
+    ...(isAdmin ? [
+      { id: "admin-users",  icon: "ti-user-cog",   label: "Gestión Usuarios" },
+      { id: "admin-images", icon: "ti-photo",       label: "Imágenes Drive" },
     ] : []),
   ];
 
+  const ROLE_COLORS = {
+    SUPER_ADMIN: "#dc2626", CORPORATE_ADMIN: "#7c3aed", CFO: "#0369a1",
+    DIRECTOR: "#1B2A4A", DIRECTIVO: "#1B2A4A", COMMERCIAL_DIRECTOR: "#0891b2",
+    COMPLIANCE: "#7c3aed", ACCOUNTING: "#059669", TREASURY: "#059669",
+    AUDIT: "#d97706", TAX_REVIEWER: "#d97706", COUNTRY_ACCOUNTANT: "#d97706",
+    LOGISTICS: "#6b7280", AGENTE: "#2563eb", CLIENT: "#374151", SUPPLIER: "#374151",
+  };
+  const roleColor = ROLE_COLORS[user?.role] || "#6b7280";
+
   return (
-    <aside style={{ width: 220, background: "#1B2A4A", display: "flex", flexDirection: "column", padding: "1.5rem 0" }}>
-      <div style={{ padding: "0 1.25rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <aside style={{ width: 230, background: "#1B2A4A", display: "flex", flexDirection: "column", padding: "1.5rem 0", minHeight: "100vh" }}>
+      <div style={{ padding: "0 1.25rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ color: "#1B2A4A", fontSize: 18, fontWeight: 700 }}>G</span>
           </div>
           <div>
             <p style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>GLV-Connect</p>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>v2.1.0</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>Corporate SAT v3.0</p>
           </div>
         </div>
+        {/* Language selector */}
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {LANGUAGES.map(l => (
+            <button key={l.code} onClick={() => setLang(l.code)} title={l.name}
+              style={{ padding: "2px 6px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 14,
+                background: lang === l.code ? "rgba(255,255,255,0.25)" : "transparent",
+                opacity: lang === l.code ? 1 : 0.55 }}>
+              {l.flag}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ padding: "1rem 0.75rem", flex: 1 }}>
+      <div style={{ padding: "0.75rem 0.75rem", flex: 1, overflowY: "auto" }}>
         {navItems.map(item => (
           <button key={item.id} onClick={() => setView(item.id)}
             style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, border: "none",
               background: view === item.id ? "rgba(255,255,255,0.15)" : "transparent",
               color: view === item.id ? "#fff" : "rgba(255,255,255,0.65)",
-              cursor: "pointer", fontSize: 14, fontWeight: view === item.id ? 500 : 400, marginBottom: 2 }}>
-            <i className={`ti ${item.icon}`} style={{ fontSize: 18 }} />
+              cursor: "pointer", fontSize: 13, fontWeight: view === item.id ? 500 : 400, marginBottom: 2, textAlign: "left" }}>
+            <i className={`ti ${item.icon}`} style={{ fontSize: 17, minWidth: 17 }} />
             {item.label}
           </button>
         ))}
       </div>
-      <div style={{ padding: "1rem 0.75rem", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-        <div style={{ padding: "8px 12px", marginBottom: 8 }}>
-          <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: "0 0 2px" }}>{user.name.split(" ")[0]}</p>
-          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: user.role === "DIRECTIVO" ? "#2563eb" : "#059669", color: "#fff" }}>{user.role}</span>
+      <div style={{ padding: "0.75rem 0.75rem", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ padding: "8px 12px", marginBottom: 6 }}>
+          <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: "0 0 4px" }}>{user.name.split(" ")[0]}</p>
+          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: roleColor + "33", color: "#fff", border: `1px solid ${roleColor}55` }}>{user.role}</span>
         </div>
         <button onClick={onLogout}
           style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13 }}>
@@ -413,7 +462,7 @@ function Dashboard({ user, setView, setModal }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <QuickAction icon="ti-file-description" label="Nueva SCO" sub="Cotización comercial inicial" color="#2563eb" onClick={() => setView("new-sco")} />
                 <QuickAction icon="ti-file-check"       label="Nueva FCO" sub="Oferta formal completa"     color="#7c3aed" onClick={() => setView("new-fco")} />
-                {user.role === "DIRECTIVO" && (
+                {DIRECTORS.has(user.role) && (
                   <QuickAction icon="ti-file-certificate" label="Nuevo SPA / Contrato" sub="Solo para directivos" color="#059669" onClick={() => setView("new-spa")} />
                 )}
               </div>
@@ -854,6 +903,334 @@ function NewDocForm({ type, user, setView, showNotif }) {
           <i className="ti ti-file-plus" style={{ fontSize: 16, marginRight: 6, verticalAlign: -2 }} />
           {submitting ? "Generando..." : `Generar ${type} y enviar a auditoría`}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Operations View ─────────────────────────────────────────────────────────
+function OperationsView({ user, setView, showNotif }) {
+  const [operations, setOperations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    api.getOperations().then(setOperations).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const STATUS_COLORS = {
+    DRAFT: { bg: "#f3f4f6", text: "#374151" },
+    ACTIVE: { bg: "#dcfce7", text: "#166534" },
+    NEGOTIATING: { bg: "#dbeafe", text: "#1e40af" },
+    PENDING_DOCS: { bg: "#fef3c7", text: "#92400e" },
+    SIGNED: { bg: "#ede9fe", text: "#4c1d95" },
+    SHIPPED: { bg: "#f0fdf4", text: "#059669" },
+    COMPLETED: { bg: "#dcfce7", text: "#166534" },
+    CANCELLED: { bg: "#fee2e2", text: "#991b1b" },
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>Operaciones Comerciales</h1>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, margin: 0 }}>{operations.length} operaciones registradas</p>
+        </div>
+        <button onClick={() => setShowCreate(true)}
+          style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+          <i className="ti ti-plus" style={{ fontSize: 16 }} />Nueva Operación
+        </button>
+      </div>
+
+      {loading ? <LoadingSpinner /> : operations.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "4rem", color: "var(--color-text-secondary)" }}>
+          <i className="ti ti-briefcase-off" style={{ fontSize: 48, display: "block", marginBottom: 12, opacity: 0.4 }} />
+          <p>No hay operaciones registradas aún.</p>
+          <button onClick={() => setShowCreate(true)}
+            style={{ marginTop: 12, padding: "9px 20px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, cursor: "pointer" }}>
+            Crear primera operación
+          </button>
+        </div>
+      ) : (
+        <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--color-background-secondary)" }}>
+                {["ID Operación", "Producto / Categoría", "Contraparte", "Valor Contrato", "Estado", "Agente", "Fecha"].map(h => (
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {operations.map(op => {
+                const sc = STATUS_COLORS[op.status] || STATUS_COLORS.DRAFT;
+                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
+                return (
+                  <tr key={op.id} style={{ borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+                    <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", fontSize: 12, color: "#1B2A4A", fontWeight: 600 }}>{op.operation_id || op.id}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-primary)" }}>
+                      <span style={{ fontSize: 12 }}>{op.product_name || commercial?.product || "—"}</span>
+                      {commercial?.category && <span style={{ display: "block", fontSize: 11, color: "var(--color-text-secondary)" }}>{commercial.category}</span>}
+                    </td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-primary)" }}>{op.counterpart_name || "—"}</td>
+                    <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                      {commercial?.summary?.contractValue
+                        ? new Intl.NumberFormat("en-US", { style: "currency", currency: commercial.currency || "USD", maximumFractionDigits: 0 }).format(commercial.summary.contractValue)
+                        : "—"}
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: sc.bg, color: sc.text, fontWeight: 500 }}>{op.status}</span>
+                    </td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{op.agent_username || op.created_by}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{op.created_at?.split("T")[0] || op.date || "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showCreate && <CreateOperationModal onClose={() => setShowCreate(false)} onCreated={() => { showNotif("Operación creada"); load(); }} showNotif={showNotif} />}
+    </div>
+  );
+}
+
+function CreateOperationModal({ onClose, onCreated, showNotif }) {
+  const [counterpartName, setCounterpartName] = useState("");
+  const [counterpartCountry, setCounterpartCountry] = useState("");
+  const [notes, setNotes] = useState("");
+  const [commercial, setCommercial] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!counterpartName) { showNotif("El nombre de la contraparte es obligatorio.", "error"); return; }
+    if (!commercial?.category) { showNotif("Seleccione una categoría de producto.", "error"); return; }
+    setSaving(true);
+    try {
+      await api.createOperation({
+        counterpart_name: counterpartName,
+        counterpart_country: counterpartCountry,
+        notes,
+        commercial_data: commercial,
+        product_name: commercial?.product || commercial?.category || "",
+        origin: counterpartCountry,
+        destination: "",
+      });
+      onCreated();
+      onClose();
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: "1rem" }}>
+      <div style={{ background: "var(--color-background-primary)", borderRadius: 16, width: "100%", maxWidth: 820, maxHeight: "92vh", overflowY: "auto", padding: "2rem", boxShadow: "0 8px 48px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>Nueva Operación Comercial</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "var(--color-text-secondary)" }}>×</button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Contraparte / Cliente *</label>
+            <input value={counterpartName} onChange={e => setCounterpartName(e.target.value)} placeholder="Nombre de empresa o cliente"
+              style={{ width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>País de destino</label>
+            <input value={counterpartCountry} onChange={e => setCounterpartCountry(e.target.value)} placeholder="País"
+              style={{ width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }} />
+          </div>
+        </div>
+
+        <CommercialEngine value={commercial} onChange={setCommercial} />
+
+        <div style={{ marginTop: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Notas internas</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notas, instrucciones especiales..."
+            style={{ width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", resize: "vertical", boxSizing: "border-box" }} />
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+          <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>Cancelar</button>
+          <button onClick={handleCreate} disabled={saving}
+            style={{ padding: "9px 24px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
+            {saving ? "Creando..." : "Crear Operación"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Clients View ─────────────────────────────────────────────────────────────
+function ClientsView({ user, showNotif }) {
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    api.getClients().then(setClients).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const filtered = clients.filter(c =>
+    !filter || c.name?.toLowerCase().includes(filter.toLowerCase()) || c.country?.toLowerCase().includes(filter.toLowerCase()) || c.type?.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const TYPE_COLORS = { CLIENT: { bg: "#dbeafe", text: "#1e40af" }, SUPPLIER: { bg: "#dcfce7", text: "#166534" }, PARTNER: { bg: "#ede9fe", text: "#4c1d95" } };
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>Clientes & Contrapartes</h1>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, margin: 0 }}>{clients.length} contrapartes registradas</p>
+        </div>
+        <button onClick={() => setShowCreate(true)}
+          style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+          <i className="ti ti-building-plus" style={{ fontSize: 16 }} />Nueva Contraparte
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Buscar por nombre, país o tipo..."
+          style={{ padding: "9px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 14, width: 320, boxSizing: "border-box", background: "var(--color-background-primary)", color: "var(--color-text-primary)" }} />
+      </div>
+
+      {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "4rem", color: "var(--color-text-secondary)" }}>
+          <i className="ti ti-building-off" style={{ fontSize: 48, display: "block", marginBottom: 12, opacity: 0.4 }} />
+          <p>{filter ? "Sin resultados para la búsqueda." : "No hay contrapartes registradas aún."}</p>
+        </div>
+      ) : (
+        <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--color-background-secondary)" }}>
+                {["Empresa", "Representante", "País", "Tipo", "Email", "Teléfono", "Estado"].map(h => (
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(c => {
+                const tc = TYPE_COLORS[c.type] || { bg: "#f3f4f6", text: "#374151" };
+                return (
+                  <tr key={c.id} style={{ borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{c.name}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.contact_name || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.country || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: tc.bg, color: tc.text, fontWeight: 500 }}>{c.type || "CLIENT"}</span>
+                    </td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{c.email || "—"}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{c.phone || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: c.active !== false ? "#dcfce7" : "#fee2e2", color: c.active !== false ? "#166534" : "#991b1b" }}>
+                        {c.active !== false ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showCreate && <CreateClientModal onClose={() => setShowCreate(false)} onCreated={() => { showNotif("Contraparte registrada"); load(); }} />}
+    </div>
+  );
+}
+
+function CreateClientModal({ onClose, onCreated }) {
+  const [form, setForm] = useState({ name: "", type: "CLIENT", country: "", contact_name: "", email: "", phone: "", tax_id: "", notes: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const inputSt = { width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" };
+
+  const handleCreate = async () => {
+    if (!form.name) { setError("El nombre es obligatorio."); return; }
+    setError(""); setSaving(true);
+    try {
+      await api.createClient(form);
+      onCreated();
+      onClose();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: "1rem" }}>
+      <div style={{ background: "var(--color-background-primary)", borderRadius: 16, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto", padding: "2rem", boxShadow: "0 8px 48px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>Nueva Contraparte</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "var(--color-text-secondary)" }}>×</button>
+        </div>
+
+        {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#991b1b" }}>{error}</div>}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Nombre / Razón social *</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Empresa o persona" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Tipo</label>
+            <select value={form.type} onChange={e => set("type", e.target.value)} style={inputSt}>
+              <option value="CLIENT">Cliente</option>
+              <option value="SUPPLIER">Proveedor</option>
+              <option value="PARTNER">Socio Comercial</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>País</label>
+            <input value={form.country} onChange={e => set("country", e.target.value)} placeholder="País" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Representante</label>
+            <input value={form.contact_name} onChange={e => set("contact_name", e.target.value)} placeholder="Nombre del contacto" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Email</label>
+            <input value={form.email} onChange={e => set("email", e.target.value)} placeholder="correo@empresa.com" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Teléfono</label>
+            <input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="+1 000 000 0000" style={inputSt} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>NIT / Tax ID</label>
+            <input value={form.tax_id} onChange={e => set("tax_id", e.target.value)} placeholder="Identificación fiscal" style={inputSt} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Notas</label>
+            <textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} placeholder="Notas adicionales..."
+              style={{ ...inputSt, resize: "vertical" }} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+          <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>Cancelar</button>
+          <button onClick={handleCreate} disabled={saving}
+            style={{ padding: "9px 24px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
+            {saving ? "Guardando..." : "Registrar Contraparte"}
+          </button>
+        </div>
       </div>
     </div>
   );
