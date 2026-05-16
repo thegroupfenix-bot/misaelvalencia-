@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../db/database");
-const { authenticate, requireLevel } = require("../middleware/rbac");
+const { authenticate } = require("../middleware/auth");
+const { requireLevel } = require("../middleware/rbac");
 
 const router = express.Router();
 router.use(authenticate);
