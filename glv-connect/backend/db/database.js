@@ -55,7 +55,44 @@ db.exec(`
     doc_id    TEXT,
     ip        TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS agent_profiles (
+    user_id       INTEGER PRIMARY KEY REFERENCES users(id),
+    cargo         TEXT,
+    phone         TEXT,
+    country       TEXT,
+    languages     TEXT,
+    signature_b64 TEXT,
+    photo_b64     TEXT,
+    reg_number    TEXT,
+    completed     INTEGER NOT NULL DEFAULT 0,
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS image_library (
+    key        TEXT PRIMARY KEY,
+    file_id    TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
+
+// Add new columns to documents table (ALTER TABLE ADD COLUMN is safe to retry with try/catch)
+const docAlterColumns = [
+  "ALTER TABLE documents ADD COLUMN custom_product_name TEXT",
+  "ALTER TABLE documents ADD COLUMN custom_product_desc TEXT",
+  "ALTER TABLE documents ADD COLUMN custom_unit TEXT",
+  "ALTER TABLE documents ADD COLUMN payment_option TEXT",
+  "ALTER TABLE documents ADD COLUMN doc_trigger TEXT",
+  "ALTER TABLE documents ADD COLUMN has_guarantee INTEGER DEFAULT 0",
+  "ALTER TABLE documents ADD COLUMN guarantee_type TEXT",
+  "ALTER TABLE documents ADD COLUMN guarantee_bank TEXT",
+  "ALTER TABLE documents ADD COLUMN validity_days INTEGER DEFAULT 15",
+  "ALTER TABLE documents ADD COLUMN client_id_doc_b64 TEXT",
+  "ALTER TABLE documents ADD COLUMN fco_confirmed INTEGER DEFAULT 0",
+];
+for (const sql of docAlterColumns) {
+  try { db.exec(sql); } catch (e) {}
+}
 
 function seedUsers() {
   const count = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
