@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PRODUCT_CATEGORIES, DELIVERY_FREQUENCIES, CURRENCIES, INCOTERMS } from "../config/productCategories.js";
+import { searchCountries } from "../config/worldCountries.js";
 import { calcCommercialSummary, fmtMoney, fmtNum } from "../utils/calculations.js";
 
 const s = {
@@ -13,6 +14,9 @@ const s = {
 };
 
 const CATEGORY_KEYS = Object.keys(PRODUCT_CATEGORIES);
+
+// ─── Incoterms that show individual price fields ────────────────────────────
+const PRICED_INCOTERMS = ["FOB", "CFR", "CIF", "DDP"];
 
 function Field({ label, children, required }) {
   return (
@@ -35,6 +39,128 @@ function Select({ value, onChange, children }) {
     <select value={value ?? ""} onChange={e => onChange(e.target.value)} style={s.select}>
       {children}
     </select>
+  );
+}
+
+// ─── Country Search Combobox ──────────────────────────────────────────────────
+function CountrySearch({ value, onChange }) {
+  const [query, setQuery] = useState(value || "");
+  const [open, setOpen] = useState(false);
+  const [results, setResults] = useState([]);
+  const ref = useRef();
+
+  useEffect(() => {
+    if (query.length > 0) {
+      setResults(searchCountries(query).slice(0, 8));
+    } else {
+      setResults([]);
+    }
+  }, [query]);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const select = (country) => {
+    setQuery(country.name);
+    onChange(country.name);
+    setOpen(false);
+    setResults([]);
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <input
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(""); }}
+        onFocus={() => query && setOpen(true)}
+        placeholder="Buscar país destino... / Search destination country..."
+        style={s.input}
+      />
+      {open && results.length > 0 && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200,
+          background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-secondary)",
+          borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", maxHeight: 240, overflowY: "auto",
+        }}>
+          {results.map(c => (
+            <button key={c.code} type="button" onMouseDown={() => select(c)}
+              style={{
+                width: "100%", textAlign: "left", padding: "8px 12px", border: "none",
+                background: "none", cursor: "pointer", fontSize: 13, display: "flex",
+                justifyContent: "space-between", alignItems: "center",
+                borderBottom: "0.5px solid var(--color-border-tertiary)",
+                color: "var(--color-text-primary)",
+              }}>
+              <span>{c.name}</span>
+              {c.port && <span style={{ fontSize: 11, color: "var(--color-text-secondary)", maxWidth: "55%", textAlign: "right" }}>{c.port.split("/")[0].trim()}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Multi-Incoterm Selector ──────────────────────────────────────────────────
+function IncotermSelector({ selected, onChange, prices, onPriceChange }) {
+  const toggle = (inc) => {
+    if (selected.includes(inc)) {
+      if (selected.length === 1) return; // at least one required
+      onChange(selected.filter(i => i !== inc));
+    } else {
+      onChange([...selected, inc]);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        {INCOTERMS.map(inc => {
+          const active = selected.includes(inc);
+          return (
+            <button key={inc} type="button" onClick={() => toggle(inc)}
+              style={{
+                padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                border: active ? "2px solid #1B2A4A" : "1px solid #d1d5db",
+                background: active ? "#1B2A4A" : "var(--color-background-primary)",
+                color: active ? "#fff" : "var(--color-text-secondary)",
+                transition: "all 0.15s",
+              }}>
+              {inc}
+            </button>
+          );
+        })}
+      </div>
+      {/* Dynamic price fields for priced incoterms */}
+      {PRICED_INCOTERMS.filter(i => selected.includes(i)).length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", gap: 10 }}>
+          {PRICED_INCOTERMS.filter(i => selected.includes(i)).map(inc => (
+            <div key={inc} style={{ background: "var(--color-background-secondary)", borderRadius: 8, padding: "10px 12px", border: "0.5px solid var(--color-border-tertiary)" }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#1B2A4A", display: "block", marginBottom: 5, textTransform: "uppercase" }}>
+                Precio {inc}
+              </label>
+              <input
+                type="number"
+                value={prices[inc] ?? ""}
+                onChange={e => onPriceChange(inc, e.target.value)}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                style={{ ...s.input, marginBottom: 0 }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {selected.length > 1 && (
+        <p style={{ fontSize: 11, color: "#6b7280", margin: "8px 0 0" }}>
+          Múltiples Incoterms seleccionados — el PDF mostrará todos con sus precios respectivos.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -115,13 +241,15 @@ export function CommercialEngine({ value, onChange }) {
   const [specs, setSpecs] = useState(value?.specs || {});
   const [qty, setQty] = useState(value?.quantity || "");
   const [unitType, setUnitType] = useState(value?.unitType || "");
+  const [incoterms, setIncoterms] = useState(value?.incoterms || ["CFR"]);
+  const [incotermPrices, setIncotermPrices] = useState(value?.incotermPrices || {});
   const [unitPrice, setUnitPrice] = useState(value?.unitPrice || "");
   const [currency, setCurrency] = useState(value?.currency || "USD");
-  const [incoterm, setIncoterm] = useState(value?.incoterm || "CFR");
   const [frequency, setFrequency] = useState(value?.deliveryFrequency || "ONE_SHIPMENT");
   const [numShipments, setNumShipments] = useState(value?.numShipments || "1");
   const [duration, setDuration] = useState(value?.contractDuration || "12");
   const [containerCap, setContainerCap] = useState("");
+  const [destination, setDestination] = useState(value?.destination || "");
 
   const catDef = cat ? PRODUCT_CATEGORIES[cat] : null;
 
@@ -132,11 +260,20 @@ export function CommercialEngine({ value, onChange }) {
     }
   }, [cat]);
 
+  const handleIncotermPrice = (inc, price) => {
+    setIncotermPrices(prev => ({ ...prev, [inc]: price }));
+    // Set primary unit price from the first priced incoterm if not set
+    if (!unitPrice && price) setUnitPrice(price);
+  };
+
+  // Use primary incoterm price for calculations (first selected priced incoterm, or unitPrice)
+  const primaryPrice = incotermPrices[incoterms[0]] || unitPrice;
+
   const summary = calcCommercialSummary({
     category: cat,
     quantity: qty,
     unitType,
-    unitPrice,
+    unitPrice: primaryPrice,
     currency,
     deliveryFrequency: frequency,
     numShipments,
@@ -154,16 +291,19 @@ export function CommercialEngine({ value, onChange }) {
       specs,
       quantity: qty,
       unitType,
-      unitPrice,
+      unitPrice: primaryPrice,
+      incotermPrices,
+      incoterms,
+      incoterm: incoterms[0] || "CFR",
       currency,
-      incoterm,
       deliveryFrequency: frequency,
       numShipments,
       contractDuration: duration,
       containerCapacity: containerCap,
+      destination,
       summary,
     });
-  }, [cat, product, specs, qty, unitType, unitPrice, currency, incoterm, frequency, numShipments, duration, containerCap]);
+  }, [cat, product, specs, qty, unitType, primaryPrice, incotermPrices, incoterms, currency, frequency, numShipments, duration, containerCap, destination]);
 
   return (
     <div>
@@ -193,6 +333,16 @@ export function CommercialEngine({ value, onChange }) {
         {cat && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
       </div>
 
+      {/* Destination */}
+      {cat && (
+        <div style={s.section}>
+          <p style={s.title}>Destino / Destination Country</p>
+          <Field label="País de Destino">
+            <CountrySearch value={destination} onChange={setDestination} />
+          </Field>
+        </div>
+      )}
+
       {/* Commercial terms */}
       {cat && (
         <div style={s.section}>
@@ -207,17 +357,9 @@ export function CommercialEngine({ value, onChange }) {
                 {catDef?.units?.map(u => <option key={u} value={u}>{u}</option>)}
               </Select>
             </Field>
-            <Field label="Precio por Unidad *" required>
-              <Input type="number" value={unitPrice} onChange={setUnitPrice} placeholder="Ej: 4.90" min="0" />
-            </Field>
             <Field label="Moneda">
               <Select value={currency} onChange={setCurrency}>
                 {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
-              </Select>
-            </Field>
-            <Field label="Incoterm">
-              <Select value={incoterm} onChange={setIncoterm}>
-                {INCOTERMS.map(i => <option key={i} value={i}>{i}</option>)}
               </Select>
             </Field>
             {catDef?.containerCapacity && (
@@ -226,6 +368,21 @@ export function CommercialEngine({ value, onChange }) {
               </Field>
             )}
           </div>
+          {/* Multi-Incoterm Selector */}
+          <Field label="Incoterm(s) — selecciona uno o varios">
+            <IncotermSelector
+              selected={incoterms}
+              onChange={setIncoterms}
+              prices={incotermPrices}
+              onPriceChange={handleIncotermPrice}
+            />
+          </Field>
+          {/* Fallback unit price if no incoterm price set */}
+          {PRICED_INCOTERMS.filter(i => incoterms.includes(i)).length === 0 && (
+            <Field label="Precio por Unidad *" required>
+              <Input type="number" value={unitPrice} onChange={setUnitPrice} placeholder="Ej: 4.90" min="0" />
+            </Field>
+          )}
         </div>
       )}
 

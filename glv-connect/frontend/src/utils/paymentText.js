@@ -1,13 +1,14 @@
 export function generatePaymentText({
   productCategory,
   paymentOption,
+  blocks,
   docTrigger,
   totalValue,
   currency = "USD",
   guaranteeType,
   bankName,
 }) {
-  const livestock = ["Ovino", "Bovino", "animal", "vivo"].some(
+  const livestock = ["LIVE_ANIMALS", "Ovino", "Bovino", "animal", "vivo"].some(
     k => productCategory?.toLowerCase().includes(k.toLowerCase())
   );
   const fmt = (v) =>
@@ -22,14 +23,33 @@ export function generatePaymentText({
         text: `- 100% del valor total (${fmt(totalValue || 0)}) cubierto por SBLC irrevocable confirmado banco a banco (MT199), pagadero contra:\n  • Certificado SGS de peso confirmado\n  • Certificado Halal\n  • Certificado zoosanitario oficial\n  • Booking confirmado`,
       },
       "PAGO-AV-3": {
-        text: `- 50% del valor total (${fmt((totalValue || 0) * 0.5)}) pagadero como anticipo contra firma de contrato.\n\n- 50% del saldo restante (${fmt((totalValue || 0) * 0.5)}) cubierto por SBLC, con los mismos hitos de la opción prioritaria.`,
+        text: `- 50% del valor total (${fmt((totalValue || 0) * 0.5)}) pagadero como anticipo contra firma de contrato.\n\n- 50% del saldo restante (${fmt((totalValue || 0) * 0.5)}) cubierto por SBLC, con los mismos hitos de la opción recomendada.`,
       },
     };
     const opt = opts[paymentOption] || opts["PAGO-AV-1"];
-    return `CONDICIONES DE PAGO — RÉGIMEN ANIMALES VIVOS\n\nLa presente oferta contempla la siguiente estructura de pago para operaciones con animales vivos:\n\n${opt.text}\n\nEsta estructura protege la integridad operativa de ambas partes y es la modalidad estándar de GLV Global Food Services LLC para exportación de animales vivos.`;
+    return `CONDICIONES DE PAGO — RÉGIMEN ANIMALES VIVOS\n\nLa presente oferta contempla la siguiente estructura de pago para operaciones con animales vivos:\n\n${opt.text}`;
   }
 
-  // TT
+  // Multi-block payment text
+  if (blocks && blocks.length > 0) {
+    const activeBlocks = blocks.filter(b => b && b.option);
+    if (activeBlocks.length > 0) {
+      const lines = activeBlocks.map((b, i) => {
+        let line = `CONDICIÓN ${i + 1}: ${b.option}`;
+        if (b.notes) line += `\n  ${b.notes}`;
+        return line;
+      }).join("\n\n");
+
+      const docLines =
+        docTrigger === "DOC-B"
+          ? "  • Confirmación de booking del buque\n  • Certificado SGS de alineamiento / inspección\n  • Contenedores confirmados y cargados\n  • Certificado sanitario de exportación"
+          : "  • Bill of Lading\n  • Factura comercial\n  • Packing list\n  • Certificado de origen";
+
+      return `CONDICIONES DE PAGO\n\nLa presente oferta contempla la siguiente estructura de pago:\n\n${lines}\n\nDocumentos requeridos para desembolso del saldo:\n${docLines}`;
+    }
+  }
+
+  // Legacy single TT
   const match = (paymentOption || "TT 30/70").match(/(\d+)\/(\d+)/);
   const pct1 = match ? parseInt(match[1]) : 30;
   const pct2 = match ? parseInt(match[2]) : 70;
@@ -42,11 +62,10 @@ export function generatePaymentText({
 
   let text = `CONDICIONES DE PAGO\n\nLa presente oferta contempla la siguiente estructura de pago mediante transferencia bancaria internacional (T/T — Wire Transfer):\n\n- ${pct1}% del valor total (${fmt(val * pct1 / 100)}) pagadero como anticipo previo al inicio de operaciones.\n\n- ${pct2}% del saldo restante (${fmt(val * pct2 / 100)}), pagadero contra presentación de:\n${docLines}`;
 
-  if (guaranteeType) {
-    text += `\n\nGARANTÍA ADICIONAL: El saldo está cubierto por ${guaranteeType}${bankName ? ` emitida por ${bankName}` : ""}.`;
-    if (guaranteeType === "SBLC") {
-      text += "\nBeneficiario designado: Active Value International General Trading L.L.C — Dubai, UAE (si aplica)";
-    }
+  if (guaranteeType && bankName) {
+    text += `\n\nGARANTÍA ADICIONAL: El saldo está cubierto por ${guaranteeType} emitida por ${bankName}.`;
+  } else if (guaranteeType) {
+    text += `\n\nGARANTÍA ADICIONAL: El saldo está cubierto por ${guaranteeType}.`;
   }
 
   return text;

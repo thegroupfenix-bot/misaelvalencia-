@@ -12,7 +12,8 @@ router.get("/users", (req, res) => {
   const users = db.prepare(`
     SELECT u.id, u.username, u.role, u.name, u.email, u.department, u.position,
            u.country, u.preferred_lang, u.first_login, u.active, u.created_at,
-           p.cargo, p.phone, p.completed as profile_completed
+           u.profile_completed,
+           p.cargo, p.phone, p.completed as agent_profile_completed
     FROM users u
     LEFT JOIN agent_profiles p ON p.user_id = u.id
     ORDER BY u.role, u.name
@@ -105,8 +106,11 @@ router.post("/users/:id/reset-password", (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
   if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
+  const AGENT_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
   const hash = bcrypt.hashSync(temporary_password, 10);
-  db.prepare("UPDATE users SET password = ?, first_login = 1 WHERE id = ?").run(hash, req.params.id);
+  const resetProfile = AGENT_ROLES.has(user.role) ? 0 : user.profile_completed || 1;
+  db.prepare("UPDATE users SET password = ?, first_login = 1, profile_completed = ? WHERE id = ?")
+    .run(hash, resetProfile, req.params.id);
 
   db.prepare("INSERT INTO audit_log (username, action, ip) VALUES (?, ?, ?)").run(
     req.user.username, `reset_password:${user.username}`, req.ip
@@ -118,6 +122,27 @@ router.post("/users/:id/reset-password", (req, res) => {
 // GET /admin/roles — list all available roles
 router.get("/roles", (req, res) => {
   res.json(ALL_ROLES);
+});
+
+// DELETE /admin/users/:id — permanently delete user
+router.delete("/users/:id", (req, res) => {
+  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+  if (user.role === "SUPER_ADMIN" && req.user.id !== user.id) {
+    return res.status(403).json({ error: "No puede eliminar un Super Admin" });
+  }
+
+  if (user.id === req.user.id) {
+    return res.status(400).json({ error: "No puede eliminar su propia cuenta" });
+  }
+
+  db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+  db.prepare("INSERT INTO audit_log (username, action, ip) VALUES (?, ?, ?)").run(
+    req.user.username, `deleted_user:${user.username}`, req.ip
+  );
+
+  res.json({ ok: true });
 });
 
 module.exports = router;

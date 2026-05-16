@@ -31,9 +31,11 @@ export const PRODUCT_CATEGORIES = {
     color: "#2563eb",
     icon: "ti-meat",
     products: {
-      LAMB_CUTS: { label: { es: "Cortes de Cordero", en: "Lamb Cuts" } },
-      BEEF_CUTS: { label: { es: "Cortes de Res",     en: "Beef Cuts" } },
-      CARCASSES: { label: { es: "Carcasas",           en: "Carcasses" } },
+      LAMB_CUTS:      { label: { es: "Cortes de Cordero",   en: "Lamb Cuts" } },
+      BEEF_CUTS:      { label: { es: "Cortes de Res",       en: "Beef Cuts" } },
+      CARCASSES:      { label: { es: "Carcasas",            en: "Carcasses" } },
+      FROZEN_POULTRY: { label: { es: "Pollo Congelado",     en: "Frozen Poultry" } },
+      PORK_CUTS:      { label: { es: "Cortes de Cerdo",     en: "Pork Cuts" } },
     },
     units: ["KG", "Tonelada Métrica / MT", "Contenedor / Container", "Cartón / Carton"],
     defaultUnit: "Tonelada Métrica / MT",
@@ -45,6 +47,54 @@ export const PRODUCT_CATEGORIES = {
       { key: "netWeight",    label: { es: "Peso Neto por Unidad",  en: "Net Weight/Unit" },type: "number", required: false },
       { key: "grossWeight",  label: { es: "Peso Bruto por Unidad", en: "Gross Weight/Unit" },type: "number", required: false },
       { key: "freezingTemp", label: { es: "Temperatura (-°C)",     en: "Temp (-°C)" },     type: "number", required: false, default: 18 },
+      { key: "halalCert",    label: { es: "Certificación Halal",   en: "Halal Certification" }, type: "checkbox", required: false },
+    ],
+  },
+
+  FROZEN_POULTRY: {
+    label: { es: "Aves Congeladas", en: "Frozen Poultry", fr: "Volaille Congelée", zh: "冷冻禽肉", ar: "الدواجن المجمدة" },
+    color: "#ca8a04",
+    icon: "ti-feather",
+    products: {
+      WHOLE_CHICKEN:   { label: { es: "Pollo Entero",         en: "Whole Chicken" } },
+      CHICKEN_PARTS:   { label: { es: "Partes de Pollo",      en: "Chicken Parts" } },
+      WHOLE_TURKEY:    { label: { es: "Pavo Entero",          en: "Whole Turkey" } },
+      DUCK:            { label: { es: "Pato",                 en: "Duck" } },
+      CHICKEN_MDM:     { label: { es: "Pollo MDM",            en: "Chicken MDM" } },
+    },
+    units: ["KG", "Tonelada Métrica / MT", "Contenedor / Container", "Cartón / Carton"],
+    defaultUnit: "Tonelada Métrica / MT",
+    calculationMode: "WEIGHT",
+    containerCapacity: 25,
+    fields: [
+      { key: "cutType",      label: { es: "Tipo de Corte / Parte", en: "Cut Type / Part" }, type: "text",   required: true, placeholder: "Pechuga, Pierna, Entero..." },
+      { key: "packaging",    label: { es: "Empaque",               en: "Packaging" },       type: "select", options: ["IQF Individual","Master Carton 10kg","Master Carton 15kg","Granel Congelado"], required: true },
+      { key: "freezingTemp", label: { es: "Temperatura (-°C)",     en: "Temp (-°C)" },      type: "number", required: false, default: 18 },
+      { key: "halalCert",    label: { es: "Certificación Halal",   en: "Halal Certification" }, type: "checkbox", required: false },
+      { key: "vetCert",      label: { es: "Cert. Veterinario",     en: "Vet Certificate" }, type: "text",   required: false, placeholder: "Número de certificado" },
+    ],
+  },
+
+  CANNED_MEAT: {
+    label: { es: "Carne en Conserva", en: "Canned Meat", fr: "Viande en Conserve", zh: "罐装肉", ar: "اللحوم المعلبة" },
+    color: "#9333ea",
+    icon: "ti-package",
+    products: {
+      CANNED_BEEF:    { label: { es: "Carne Bovina en Lata",   en: "Canned Beef" } },
+      CANNED_LAMB:    { label: { es: "Carne de Cordero en Lata",en: "Canned Lamb" } },
+      CANNED_CHICKEN: { label: { es: "Pollo en Lata",          en: "Canned Chicken" } },
+      CORNED_BEEF:    { label: { es: "Corned Beef",            en: "Corned Beef" } },
+      PATE:           { label: { es: "Paté / Carne Procesada", en: "Pâté / Processed Meat" } },
+    },
+    units: ["Unidad / Unit", "Caja / Box", "Tonelada Métrica / MT", "Contenedor / Container"],
+    defaultUnit: "Caja / Box",
+    calculationMode: "UNIT",
+    containerCapacity: 20,
+    fields: [
+      { key: "canSize",    label: { es: "Tamaño de Lata",       en: "Can Size" },          type: "select", options: ["340g","400g","500g","1kg","2.5kg","3kg"], required: true },
+      { key: "unitsPerBox",label: { es: "Unidades por Caja",   en: "Units per Box" },     type: "number", required: false, default: 24 },
+      { key: "shelfLife",  label: { es: "Vida Útil (meses)",   en: "Shelf Life (months)"},type: "number", required: false, default: 36 },
+      { key: "halalCert",  label: { es: "Certificación Halal", en: "Halal Certification"},type: "checkbox", required: false },
     ],
   },
 
@@ -53,11 +103,11 @@ export const PRODUCT_CATEGORIES = {
     color: "#d97706",
     icon: "ti-grain",
     products: {
-      SOYBEANS: { label: { es: "Soja en Grano", en: "Soybeans" },     containerCapacity: 27 },
-      CORN:     { label: { es: "Maíz Amarillo", en: "Yellow Corn" },  containerCapacity: 27 },
-      WHEAT:    { label: { es: "Trigo",          en: "Wheat" },         containerCapacity: 25 },
-      RICE:     { label: { es: "Arroz",          en: "Rice" },          containerCapacity: 27 },
-      SUGAR:    { label: { es: "Azúcar Blanca",  en: "White Sugar" }, containerCapacity: 27 },
+      SOYBEANS: { label: { es: "Soja en Grano",  en: "Soybeans" },    containerCapacity: 27 },
+      CORN:     { label: { es: "Maíz Amarillo",  en: "Yellow Corn" }, containerCapacity: 27 },
+      WHEAT:    { label: { es: "Trigo",           en: "Wheat" },        containerCapacity: 25 },
+      RICE:     { label: { es: "Arroz",           en: "Rice" },         containerCapacity: 27 },
+      SUGAR:    { label: { es: "Azúcar Blanca",   en: "White Sugar" }, containerCapacity: 27 },
     },
     units: ["Tonelada Métrica / MT", "Contenedor / Container", "Saco / Bag", "Granel / Bulk Vessel"],
     defaultUnit: "Tonelada Métrica / MT",
@@ -73,6 +123,106 @@ export const PRODUCT_CATEGORIES = {
     ],
   },
 
+  BEANS: {
+    label: { es: "Frijoles y Legumbres", en: "Beans & Legumes", fr: "Haricots & Légumineuses", zh: "豆类", ar: "الفاصولياء والبقوليات" },
+    color: "#7c2d12",
+    icon: "ti-plant-2",
+    products: {
+      BLACK_BEANS:      { label: { es: "Frijol Negro",          en: "Black Beans" } },
+      RED_KIDNEY:       { label: { es: "Frijol Rojo (Kidney)",  en: "Red Kidney Beans" } },
+      PINTO_BEANS:      { label: { es: "Frijol Pinto",          en: "Pinto Beans" } },
+      CRANBERRY_BEANS:  { label: { es: "Frijol Cranberry",      en: "Cranberry Beans" } },
+      NAVY_BEANS:       { label: { es: "Frijol Blanco Pequeño", en: "Navy Beans" } },
+      CARIOCA_BEANS:    { label: { es: "Frijol Carioca",        en: "Carioca Beans" } },
+      WHITE_BEANS:      { label: { es: "Frijol Blanco",         en: "White Beans" } },
+      SMALL_RED:        { label: { es: "Frijol Rojo Pequeño",   en: "Small Red Beans" } },
+      MUNG_BEANS:       { label: { es: "Frijol Mungo",          en: "Mung Beans" } },
+      LIMA_BEANS:       { label: { es: "Frijol Lima",           en: "Lima Beans" } },
+      BLACK_TURTLE:     { label: { es: "Frijol Negro Tortuga",  en: "Black Turtle Beans" } },
+      SPECKLED_BEANS:   { label: { es: "Frijol Moteado",        en: "Speckled Beans" } },
+    },
+    units: ["Tonelada Métrica / MT", "Saco 50kg / Bag 50kg", "Contenedor / Container", "KG"],
+    defaultUnit: "Tonelada Métrica / MT",
+    calculationMode: "WEIGHT",
+    containerCapacity: 25,
+    fields: [
+      { key: "moisture",    label: { es: "Humedad (%)",         en: "Moisture (%)" },       type: "number", required: false, default: 14 },
+      { key: "brokenPct",   label: { es: "Granos Rotos (%)",   en: "Broken (%)" },         type: "number", required: false },
+      { key: "foreignMat",  label: { es: "Mat. Extrañas (%)",  en: "Foreign Matter (%)" }, type: "number", required: false },
+      { key: "packaging",   label: { es: "Presentación",       en: "Packaging" },          type: "select", options: ["Bolsa 50kg PP","Big Bag 1MT","Granel / Bulk","Bolsa 25kg"], required: true },
+      { key: "crop",        label: { es: "Cosecha / Crop Year",en: "Crop Year" },           type: "text",   required: false, placeholder: "2024/2025" },
+      { key: "origin",      label: { es: "País de Origen",     en: "Country of Origin" },  type: "text",   required: false, placeholder: "Brasil, Argentina..." },
+    ],
+  },
+
+  LENTILS: {
+    label: { es: "Lentejas", en: "Lentils", fr: "Lentilles", zh: "扁豆", ar: "العدس" },
+    color: "#78350f",
+    icon: "ti-circle",
+    products: {
+      GREEN_LENTILS: { label: { es: "Lenteja Verde",     en: "Green Lentils" } },
+      RED_LENTILS:   { label: { es: "Lenteja Roja",      en: "Red Lentils" } },
+      BROWN_LENTILS: { label: { es: "Lenteja Marrón",    en: "Brown Lentils" } },
+      BLACK_LENTILS: { label: { es: "Lenteja Beluga",    en: "Beluga Black Lentils" } },
+    },
+    units: ["Tonelada Métrica / MT", "Saco 50kg / Bag 50kg", "Contenedor / Container", "KG"],
+    defaultUnit: "Tonelada Métrica / MT",
+    calculationMode: "WEIGHT",
+    containerCapacity: 25,
+    fields: [
+      { key: "moisture",  label: { es: "Humedad (%)",        en: "Moisture (%)" },      type: "number", required: false, default: 13 },
+      { key: "purity",    label: { es: "Pureza (%)",         en: "Purity (%)" },        type: "number", required: false, default: 99 },
+      { key: "packaging", label: { es: "Presentación",      en: "Packaging" },         type: "select", options: ["Bolsa 25kg","Bolsa 50kg","Big Bag 1MT","Granel"], required: true },
+      { key: "crop",      label: { es: "Cosecha / Crop Year",en: "Crop Year" },         type: "text",   required: false },
+    ],
+  },
+
+  CHICKPEAS: {
+    label: { es: "Garbanzos", en: "Chickpeas", fr: "Pois Chiches", zh: "鹰嘴豆", ar: "الحمص" },
+    color: "#a16207",
+    icon: "ti-circle-dot",
+    products: {
+      DESI_CHICKPEAS:   { label: { es: "Garbanzo Desi",   en: "Desi Chickpeas" } },
+      KABULI_CHICKPEAS: { label: { es: "Garbanzo Kabuli", en: "Kabuli Chickpeas" } },
+      SPLIT_CHICKPEAS:  { label: { es: "Garbanzo Partido (Chana Dal)", en: "Split Chickpeas (Chana Dal)" } },
+    },
+    units: ["Tonelada Métrica / MT", "Saco 50kg / Bag 50kg", "Contenedor / Container", "KG"],
+    defaultUnit: "Tonelada Métrica / MT",
+    calculationMode: "WEIGHT",
+    containerCapacity: 25,
+    fields: [
+      { key: "size",      label: { es: "Tamaño/Calibre",    en: "Size/Caliber" },      type: "select", options: ["6mm","7mm","8mm","9mm","10mm","Mixed"], required: false },
+      { key: "moisture",  label: { es: "Humedad (%)",        en: "Moisture (%)" },      type: "number", required: false, default: 12 },
+      { key: "purity",    label: { es: "Pureza (%)",         en: "Purity (%)" },        type: "number", required: false, default: 98 },
+      { key: "packaging", label: { es: "Presentación",      en: "Packaging" },         type: "select", options: ["Bolsa 25kg","Bolsa 50kg","Big Bag 1MT","Granel"], required: true },
+    ],
+  },
+
+  ANIMAL_FEED: {
+    label: { es: "Alimento Animal", en: "Animal Feed", fr: "Aliments pour Animaux", zh: "动物饲料", ar: "الأعلاف الحيوانية" },
+    color: "#15803d",
+    icon: "ti-garden-cart",
+    products: {
+      SOYBEAN_MEAL:  { label: { es: "Harina de Soja",     en: "Soybean Meal" } },
+      CORN_GLUTEN:   { label: { es: "Gluten de Maíz",     en: "Corn Gluten Meal" } },
+      FISH_MEAL:     { label: { es: "Harina de Pescado",  en: "Fish Meal" } },
+      ALFALFA:       { label: { es: "Alfalfa",            en: "Alfalfa / Hay" } },
+      BRAN:          { label: { es: "Salvado de Trigo",   en: "Wheat Bran" } },
+      COMPOUND_FEED: { label: { es: "Concentrado / Pienso Compuesto", en: "Compound Feed" } },
+    },
+    units: ["Tonelada Métrica / MT", "Saco 50kg / Bag 50kg", "Contenedor / Container", "Granel / Bulk Vessel"],
+    defaultUnit: "Tonelada Métrica / MT",
+    calculationMode: "WEIGHT",
+    containerCapacity: 27,
+    fields: [
+      { key: "protein",    label: { es: "Proteína (%)",        en: "Protein (%)" },        type: "number", required: false },
+      { key: "moisture",   label: { es: "Humedad (%)",         en: "Moisture (%)" },       type: "number", required: false, default: 12 },
+      { key: "fatContent", label: { es: "Grasa (%)",           en: "Fat Content (%)" },    type: "number", required: false },
+      { key: "packaging",  label: { es: "Presentación",       en: "Packaging" },          type: "select", options: ["Bolsa 50kg","Big Bag 1MT","Granel / Bulk","Pellets Bolsa 25kg"], required: true },
+      { key: "species",    label: { es: "Especie Destino",    en: "Target Species" },     type: "text",   required: false, placeholder: "Bovinos, Aves, Cerdos..." },
+    ],
+  },
+
   OILS: {
     label: { es: "Aceites Vegetales", en: "Vegetable Oils", fr: "Huiles Végétales", zh: "植物油", ar: "الزيوت النباتية" },
     color: "#7c3aed",
@@ -80,6 +230,8 @@ export const PRODUCT_CATEGORIES = {
     products: {
       PALM_OIL:     { label: { es: "Aceite de Palma",  en: "Palm Oil" } },
       SOYBEAN_OIL:  { label: { es: "Aceite de Soja",  en: "Soybean Oil" } },
+      SUNFLOWER_OIL:{ label: { es: "Aceite de Girasol",en: "Sunflower Oil" } },
+      CORN_OIL:     { label: { es: "Aceite de Maíz",  en: "Corn Oil" } },
     },
     units: ["Litro / Liter", "Tonelada Métrica / MT", "Contenedor / Container", "IBC Tank", "Flexi Tank"],
     defaultUnit: "Tonelada Métrica / MT",
@@ -98,19 +250,29 @@ export const PRODUCT_CATEGORIES = {
     color: "#db2777",
     icon: "ti-plant",
     products: {
-      AVOCADO:    { label: { es: "Aguacate Hass",   en: "Hass Avocado" } },
-      BANANA:     { label: { es: "Banano Cavendish",en: "Cavendish Banana" } },
-      PULP_IQF:   { label: { es: "Pulpa IQF",       en: "IQF Pulp" } },
+      AVOCADO:        { label: { es: "Aguacate Hass",        en: "Hass Avocado" } },
+      BANANA:         { label: { es: "Banano Cavendish",     en: "Cavendish Banana" } },
+      MANGO:          { label: { es: "Mango",                en: "Mango" } },
+      PINEAPPLE:      { label: { es: "Piña",                 en: "Pineapple" } },
+      PAPAYA:         { label: { es: "Papaya",               en: "Papaya" } },
+      LIME:           { label: { es: "Lima / Limón Persa",   en: "Lime / Persian Lime" } },
+      LEMON:          { label: { es: "Limón Amarillo",       en: "Yellow Lemon" } },
+      PASSION_FRUIT:  { label: { es: "Maracuyá",            en: "Passion Fruit" } },
+      DRAGON_FRUIT:   { label: { es: "Pitahaya / Dragon Fruit", en: "Dragon Fruit" } },
+      COCONUT:        { label: { es: "Coco",                 en: "Coconut" } },
+      GUAVA:          { label: { es: "Guayaba",              en: "Guava" } },
+      PULP_IQF:       { label: { es: "Pulpa Congelada IQF",  en: "Frozen Fruit Pulp IQF" } },
     },
-    units: ["KG", "Tonelada Métrica / MT", "Paleta / Pallet", "Caja / Box"],
+    units: ["KG", "Tonelada Métrica / MT", "Paleta / Pallet", "Caja / Box", "Contenedor / Container"],
     defaultUnit: "Tonelada Métrica / MT",
     calculationMode: "WEIGHT",
     containerCapacity: 18,
     fields: [
       { key: "fruitType",  label: { es: "Tipo de Fruta",   en: "Fruit Type" },     type: "text",    required: true },
-      { key: "frozen",     label: { es: "IQF / Congelado", en: "IQF / Frozen" },   type: "select",  options: ["Fresco / Fresh","IQF","Congelado / Frozen","Deshidratado"], required: true },
+      { key: "frozen",     label: { es: "Estado / Condición", en: "Condition" },   type: "select",  options: ["Fresco / Fresh","IQF","Congelado / Frozen","Deshidratado / Dried","Pulpa / Pulp"], required: true },
       { key: "packaging",  label: { es: "Empaque",         en: "Packaging" },      type: "text",    required: false, placeholder: "Caja 10kg, Bolsa 5kg..." },
       { key: "caliber",    label: { es: "Calibre / Grado", en: "Grade / Caliber" },type: "text",    required: false },
+      { key: "certOrganic",label: { es: "Cert. Orgánico",  en: "Organic Cert." },  type: "checkbox",required: false },
     ],
   },
 
@@ -125,12 +287,12 @@ export const PRODUCT_CATEGORIES = {
     units: ["Unidad / Unit", "Caja / Box", "Paleta / Pallet", "Contenedor / Container"],
     defaultUnit: "Caja / Box",
     calculationMode: "UNIT",
-    containerCapacity: 1080000, // units per container
+    containerCapacity: 1080000,
     fields: [
-      { key: "eggType",    label: { es: "Tipo de Huevo",   en: "Egg Type" },     type: "select",  options: ["Fértil Incubable","Comercial Blanco","Comercial Rojo","Orgánico"], required: true },
-      { key: "hatchRate",  label: { es: "Tasa de Eclosión (%)",en: "Hatch Rate (%)" },type: "number", required: false, default: 90 },
-      { key: "packaging",  label: { es: "Empaque",         en: "Packaging" },    type: "select",  options: ["Caja 360u","Caja 180u","Bandeja 30u","Paleta"], required: true },
-      { key: "certSanitary",label:{ es: "Cert. Sanitario", en: "Sanitary Cert" },type: "text",   required: false },
+      { key: "eggType",    label: { es: "Tipo de Huevo",        en: "Egg Type" },      type: "select", options: ["Fértil Incubable","Comercial Blanco","Comercial Rojo","Orgánico"], required: true },
+      { key: "hatchRate",  label: { es: "Tasa de Eclosión (%)", en: "Hatch Rate (%)" },type: "number", required: false, default: 90 },
+      { key: "packaging",  label: { es: "Empaque",              en: "Packaging" },     type: "select", options: ["Caja 360u","Caja 180u","Bandeja 30u","Paleta"], required: true },
+      { key: "certSanitary",label:{ es: "Cert. Sanitario",      en: "Sanitary Cert" },type: "text",   required: false },
     ],
   },
 
@@ -144,35 +306,36 @@ export const PRODUCT_CATEGORIES = {
     calculationMode: "WEIGHT",
     containerCapacity: 25,
     fields: [
-      { key: "customName",  label: { es: "Nombre del Producto",    en: "Product Name" },      type: "text",   required: true },
-      { key: "customDesc",  label: { es: "Descripción / Specs",    en: "Description / Specs" },type: "textarea",required: false },
-      { key: "customUnit",  label: { es: "Unidad de Medida",       en: "Unit of Measure" },   type: "text",   required: false },
-      { key: "customHs",    label: { es: "Código HS / Arancelario",en: "HS Code" },            type: "text",   required: false },
+      { key: "customName",  label: { es: "Nombre del Producto",    en: "Product Name" },      type: "text",     required: true },
+      { key: "customDesc",  label: { es: "Descripción / Specs",    en: "Description / Specs" },type: "textarea", required: false },
+      { key: "customUnit",  label: { es: "Unidad de Medida",       en: "Unit of Measure" },   type: "text",     required: false },
+      { key: "customHs",    label: { es: "Código HS / Arancelario",en: "HS Code" },           type: "text",     required: false },
     ],
   },
 };
 
 // Delivery frequency options
 export const DELIVERY_FREQUENCIES = [
-  { id: "ONE_SHIPMENT", label: { es: "Embarque único", en: "Single Shipment" } },
-  { id: "MONTHLY",      label: { es: "Mensual",         en: "Monthly" } },
-  { id: "BIMONTHLY",    label: { es: "Bimestral",       en: "Bimonthly" } },
-  { id: "QUARTERLY",    label: { es: "Trimestral",      en: "Quarterly" } },
-  { id: "CUSTOM",       label: { es: "Personalizado",   en: "Custom Schedule" } },
+  { id: "ONE_SHIPMENT", label: { es: "Embarque único",    en: "Single Shipment" } },
+  { id: "MONTHLY",      label: { es: "Mensual",           en: "Monthly" } },
+  { id: "BIMONTHLY",    label: { es: "Bimestral",         en: "Bimonthly" } },
+  { id: "QUARTERLY",    label: { es: "Trimestral",        en: "Quarterly" } },
+  { id: "CUSTOM",       label: { es: "Personalizado",     en: "Custom Schedule" } },
 ];
 
 // Currencies
 export const CURRENCIES = [
-  { code: "USD", symbol: "$",  name: "US Dollar" },
-  { code: "EUR", symbol: "€",  name: "Euro" },
-  { code: "BRL", symbol: "R$", name: "Real Brasileño" },
-  { code: "COP", symbol: "$",  name: "Peso Colombiano" },
-  { code: "AED", symbol: "د.إ",name: "Dirham UAE" },
-  { code: "CNY", symbol: "¥",  name: "Yuan Chino" },
+  { code: "USD", symbol: "$",   name: "US Dollar" },
+  { code: "EUR", symbol: "€",   name: "Euro" },
+  { code: "BRL", symbol: "R$",  name: "Real Brasileño" },
+  { code: "COP", symbol: "$",   name: "Peso Colombiano" },
+  { code: "AED", symbol: "د.إ", name: "Dirham UAE" },
+  { code: "CNY", symbol: "¥",   name: "Yuan Chino" },
+  { code: "SAR", symbol: "﷼",   name: "Riyal Saudí" },
 ];
 
-// Incoterms
-export const INCOTERMS = ["CFR","CIF","FOB","EXW","DAP","DDP","FAS","FCA"];
+// Incoterms — supported for multi-select pricing
+export const INCOTERMS = ["CFR", "CIF", "FOB", "DDP", "EXW", "DAP", "FAS", "FCA"];
 
 // All 15 system roles
 export const ALL_ROLES = [
