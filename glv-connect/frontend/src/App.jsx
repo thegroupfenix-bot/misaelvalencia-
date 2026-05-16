@@ -7,6 +7,8 @@ import { PaymentSelector } from "./components/PaymentSelector.jsx";
 import { ChangePasswordModal } from "./components/ChangePasswordModal.jsx";
 import { AdminUsers } from "./components/AdminUsers.jsx";
 import { CommercialEngine } from "./components/CommercialEngine.jsx";
+import { FinanceView } from "./components/FinanceView.jsx";
+import { TasksView } from "./components/TasksView.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
 import { LANGUAGES, t } from "./i18n.js";
@@ -203,6 +205,8 @@ function Portal() {
         {view === "spa"          && isDirector && <DocList type="SPA" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
         {view === "operations"   && <OperationsView user={user} setView={setView} showNotif={showNotif} />}
         {view === "clients"      && <ClientsView user={user} showNotif={showNotif} />}
+        {view === "finance"      && isDirector && <FinanceView showNotif={showNotif} />}
+        {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
         {view === "audit"        && isDirector && <AuditLog />}
         {view === "usuarios"     && isDirector && <UsersPanel />}
         {view === "admin-users"  && isAdmin    && <AdminUsers showNotif={showNotif} />}
@@ -325,8 +329,10 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang }) {
     { id: "clients",      icon: "ti-building",         label: "Clientes" },
     { id: "sco",          icon: "ti-file-description", label: "SCO" },
     { id: "fco",          icon: "ti-file-check",       label: "FCO" },
+    { id: "tasks",        icon: "ti-checklist",        label: "Tareas & Calidad" },
     ...(isDirector ? [
       { id: "spa",         icon: "ti-file-certificate", label: "SPA / Contratos" },
+      { id: "finance",     icon: "ti-currency-dollar",  label: "Finanzas" },
       { id: "audit",       icon: "ti-shield",           label: "Auditoría" },
       { id: "usuarios",    icon: "ti-users",            label: "Usuarios" },
     ] : []),
@@ -460,8 +466,10 @@ function Dashboard({ user, setView, setModal }) {
             <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: "var(--color-text-primary)" }}>Acciones rápidas</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <QuickAction icon="ti-file-description" label="Nueva SCO" sub="Cotización comercial inicial" color="#2563eb" onClick={() => setView("new-sco")} />
-                <QuickAction icon="ti-file-check"       label="Nueva FCO" sub="Oferta formal completa"     color="#7c3aed" onClick={() => setView("new-fco")} />
+                <QuickAction icon="ti-briefcase"       label="Nueva Operación"  sub="Operación comercial"       color="#0891b2" onClick={() => setView("operations")} />
+                <QuickAction icon="ti-file-description" label="Nueva SCO"        sub="Cotización comercial"     color="#2563eb" onClick={() => setView("new-sco")} />
+                <QuickAction icon="ti-file-check"       label="Nueva FCO"        sub="Oferta formal completa"   color="#7c3aed" onClick={() => setView("new-fco")} />
+                <QuickAction icon="ti-checklist"        label="Ver Tareas"       sub="Gestión de calidad"       color="#d97706" onClick={() => setView("tasks")} />
                 {DIRECTORS.has(user.role) && (
                   <QuickAction icon="ti-file-certificate" label="Nuevo SPA / Contrato" sub="Solo para directivos" color="#059669" onClick={() => setView("new-spa")} />
                 )}
