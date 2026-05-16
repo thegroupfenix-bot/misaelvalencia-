@@ -13,26 +13,33 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
-const authRouter      = require("./routes/auth");
-const documentsRouter = require("./routes/documents");
-const auditRouter     = require("./routes/audit");
-const usersRouter     = require("./routes/users");
-const profileRouter   = require("./routes/profile");
-const imagesRouter    = require("./routes/images");
+const authRouter       = require("./routes/auth");
+const documentsRouter  = require("./routes/documents");
+const auditRouter      = require("./routes/audit");
+const usersRouter      = require("./routes/users");
+const profileRouter    = require("./routes/profile");
+const imagesRouter     = require("./routes/images");
+const adminRouter      = require("./routes/admin");
+const clientsRouter    = require("./routes/clients");
+const operationsRouter = require("./routes/operations");
 
 const app = express();
 
 app.use(cors({ origin: "*", credentials: false }));
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.set("trust proxy", 1);
 
 // API routes
-app.use("/auth",      authRouter);
-app.use("/documents", documentsRouter);
-app.use("/audit",     auditRouter);
-app.use("/users",     usersRouter);
-app.use("/profile",   profileRouter);
-app.use("/images",    imagesRouter);
+app.use("/auth",       authRouter);
+app.use("/documents",  documentsRouter);
+app.use("/audit",      auditRouter);
+app.use("/users",      usersRouter);
+app.use("/profile",    profileRouter);
+app.use("/images",     imagesRouter);
+app.use("/admin",      adminRouter);
+app.use("/clients",    clientsRouter);
+app.use("/operations", operationsRouter);
 app.get("/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 // Serve React frontend
