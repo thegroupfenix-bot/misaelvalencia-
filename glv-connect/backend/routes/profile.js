@@ -62,6 +62,10 @@ router.put("/me", (req, res) => {
            signature_b64 || null, photo_b64 || null, reg_number || null, completed);
   }
 
+  if (completed) {
+    db.prepare("UPDATE users SET profile_completed = 1 WHERE id = ?").run(req.user.id);
+  }
+
   const updated = db.prepare("SELECT * FROM agent_profiles WHERE user_id = ?").get(req.user.id);
   const user = db.prepare("SELECT id, username, name, email, role FROM users WHERE id = ?").get(req.user.id);
 

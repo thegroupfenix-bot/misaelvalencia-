@@ -17,6 +17,7 @@ function buildPayload(user) {
     position: user.position || null,
     preferred_lang: user.preferred_lang || "es",
     first_login: user.first_login || 0,
+    profile_completed: user.profile_completed || 0,
   };
 }
 

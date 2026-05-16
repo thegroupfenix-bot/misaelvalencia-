@@ -217,6 +217,10 @@ safeAlter("ALTER TABLE operations ADD COLUMN counterpart_name TEXT");
 safeAlter("ALTER TABLE operations ADD COLUMN product_name TEXT");
 safeAlter("ALTER TABLE operations ADD COLUMN notes TEXT");
 
+// users extras
+safeAlter("ALTER TABLE users ADD COLUMN profile_completed INTEGER NOT NULL DEFAULT 0");
+safeAlter("ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0");
+
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 
