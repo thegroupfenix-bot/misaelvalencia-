@@ -43,6 +43,7 @@ export function TasksView({ user, showNotif }) {
   };
 
   const handleDelete = async (taskId) => {
+    if (!window.confirm("¿Eliminar esta tarea? Esta acción no se puede deshacer.")) return;
     try {
       await api.deleteTask(taskId);
       showNotif("Tarea eliminada");

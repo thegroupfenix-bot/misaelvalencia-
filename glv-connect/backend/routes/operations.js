@@ -21,9 +21,13 @@ function genOperationId(category, origin) {
 router.get("/", (req, res) => {
   const { status, category, agent } = req.query;
   let q = `
-    SELECT o.*, u.name as agent_name, u.username as agent_username, c.name as client_name
+    SELECT o.*,
+           COALESCE(ua.name, ub.name) as agent_name,
+           COALESCE(ua.username, ub.username) as agent_username,
+           c.name as client_name
     FROM operations o
-    LEFT JOIN users u ON u.id = o.assigned_agent OR (o.assigned_agent IS NULL AND u.id = o.created_by)
+    LEFT JOIN users ua ON ua.id = o.assigned_agent
+    LEFT JOIN users ub ON ub.id = o.created_by AND o.assigned_agent IS NULL
     LEFT JOIN clients c ON c.id = o.client_id
   `;
   const conditions = [];
@@ -46,9 +50,13 @@ router.get("/", (req, res) => {
 
 router.get("/:id", (req, res) => {
   const op = db.prepare(`
-    SELECT o.*, u.name as agent_name, u.username as agent_username, c.name as client_name
+    SELECT o.*,
+           COALESCE(ua.name, ub.name) as agent_name,
+           COALESCE(ua.username, ub.username) as agent_username,
+           c.name as client_name
     FROM operations o
-    LEFT JOIN users u ON u.id = o.assigned_agent OR (o.assigned_agent IS NULL AND u.id = o.created_by)
+    LEFT JOIN users ua ON ua.id = o.assigned_agent
+    LEFT JOIN users ub ON ub.id = o.created_by AND o.assigned_agent IS NULL
     LEFT JOIN clients c ON c.id = o.client_id
     WHERE o.id = ?
   `).get(req.params.id);
