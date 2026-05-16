@@ -8,7 +8,7 @@ router.use(authenticate);
 // ─── GET /tasks ───────────────────────────────────────────────────────────────
 router.get("/", (req, res) => {
   try {
-    const { status, priority, assigned_to } = req.query;
+    const { status, priority, assigned_to, operation_id } = req.query;
     let sql = `
       SELECT t.*,
              u.name AS assigned_name, u.username AS assigned_username,
@@ -28,9 +28,10 @@ router.get("/", (req, res) => {
       params.push(req.user.id, req.user.id);
     }
 
-    if (status) { conditions.push("t.status = ?"); params.push(status); }
-    if (priority) { conditions.push("t.priority = ?"); params.push(priority); }
-    if (assigned_to) { conditions.push("t.assigned_to = ?"); params.push(assigned_to); }
+    if (status)       { conditions.push("t.status = ?");       params.push(status); }
+    if (priority)     { conditions.push("t.priority = ?");     params.push(priority); }
+    if (assigned_to)  { conditions.push("t.assigned_to = ?");  params.push(assigned_to); }
+    if (operation_id) { conditions.push("t.operation_id = ?"); params.push(operation_id); }
 
     if (conditions.length) sql += " WHERE " + conditions.join(" AND ");
     sql += " ORDER BY t.created_at DESC LIMIT 200";

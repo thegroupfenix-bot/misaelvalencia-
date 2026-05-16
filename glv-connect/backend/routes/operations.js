@@ -21,9 +21,9 @@ function genOperationId(category, origin) {
 router.get("/", (req, res) => {
   const { status, category, agent } = req.query;
   let q = `
-    SELECT o.*, u.name as agent_name, c.name as client_name
+    SELECT o.*, u.name as agent_name, u.username as agent_username, c.name as client_name
     FROM operations o
-    LEFT JOIN users u ON u.id = o.assigned_agent
+    LEFT JOIN users u ON u.id = o.assigned_agent OR (o.assigned_agent IS NULL AND u.id = o.created_by)
     LEFT JOIN clients c ON c.id = o.client_id
   `;
   const conditions = [];
@@ -46,9 +46,9 @@ router.get("/", (req, res) => {
 
 router.get("/:id", (req, res) => {
   const op = db.prepare(`
-    SELECT o.*, u.name as agent_name, c.name as client_name
+    SELECT o.*, u.name as agent_name, u.username as agent_username, c.name as client_name
     FROM operations o
-    LEFT JOIN users u ON u.id = o.assigned_agent
+    LEFT JOIN users u ON u.id = o.assigned_agent OR (o.assigned_agent IS NULL AND u.id = o.created_by)
     LEFT JOIN clients c ON c.id = o.client_id
     WHERE o.id = ?
   `).get(req.params.id);
@@ -61,38 +61,57 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   const {
     product_category, product_detail, commercial_data,
-    origin_country, destination_country, incoterm, currency,
+    origin_country, destination_country, counterpart_country, incoterm, currency,
     shipment_qty, unit_type, unit_price,
     shipment_value, monthly_value, contract_value,
     delivery_frequency, num_shipments, contract_duration,
     client_id, assigned_agent,
+    // Extended fields from frontend
+    counterpart_name, product_name, notes, origin, destination,
   } = req.body;
 
-  if (!product_category) return res.status(400).json({ error: "Categoría de producto requerida" });
+  // Derive category from commercial_data if not provided directly
+  const cd = commercial_data || {};
+  const cat = product_category || cd.category;
+  if (!cat) return res.status(400).json({ error: "Categoría de producto requerida" });
 
-  const id = genOperationId(product_category, origin_country);
+  const orig = origin_country || origin || null;
+  const dest = destination_country || counterpart_country || destination || null;
+  const cur  = currency || cd.currency || "USD";
+  const sv   = shipment_value || cd.summary?.shipmentValue || null;
+  const mv   = monthly_value  || cd.summary?.monthlyValue  || null;
+  const cv   = contract_value || cd.summary?.contractValue || null;
+
+  const id = genOperationId(cat, orig);
 
   db.prepare(`
     INSERT INTO operations (
-      id, product_category, product_detail, commercial_data,
+      id, status, product_category, product_detail, commercial_data,
       origin_country, destination_country, incoterm, currency,
       shipment_qty, unit_type, unit_price,
       shipment_value, monthly_value, contract_value,
       delivery_frequency, num_shipments, contract_duration,
       client_id, assigned_agent, created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, 'ACTIVE', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id,
-    product_category,
+    id, cat,
     product_detail ? JSON.stringify(product_detail) : null,
     commercial_data ? JSON.stringify(commercial_data) : null,
-    origin_country || null, destination_country || null,
-    incoterm || "CFR", currency || "USD",
-    shipment_qty || null, unit_type || null, unit_price || null,
-    shipment_value || null, monthly_value || null, contract_value || null,
-    delivery_frequency || null, num_shipments || null, contract_duration || null,
+    orig, dest,
+    incoterm || cd.incoterm || "CFR", cur,
+    shipment_qty || null, unit_type || cd.unitType || null, unit_price || cd.unitPrice || null,
+    sv, mv, cv,
+    delivery_frequency || cd.deliveryFrequency || null,
+    num_shipments || cd.numShipments || null,
+    contract_duration || cd.contractDuration || null,
     client_id || null, assigned_agent || req.user.id, req.user.id
   );
+
+  // Store extra fields via safe alter (already migrated in db.js)
+  try {
+    db.prepare("UPDATE operations SET counterpart_name = ?, product_name = ?, notes = ? WHERE id = ?")
+      .run(counterpart_name || null, product_name || null, notes || null, id);
+  } catch (_) {}
 
   db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)").run(
     req.user.username, "operation_created", id, req.ip
@@ -103,14 +122,16 @@ router.post("/", (req, res) => {
 
 router.patch("/:id/status", (req, res) => {
   const { status } = req.body;
-  const valid = ["active","paused","completed","cancelled"];
-  if (!valid.includes(status)) return res.status(400).json({ error: `Estado inválido. Use: ${valid.join(", ")}` });
+  const valid = ["DRAFT","NEGOTIATING","ACTIVE","PENDING_DOCS","SIGNED","SHIPPED","COMPLETED","CANCELLED",
+                 "active","paused","completed","cancelled"];
+  if (!valid.includes(status)) return res.status(400).json({ error: `Estado inválido.` });
 
   const op = db.prepare("SELECT id FROM operations WHERE id = ?").get(req.params.id);
   if (!op) return res.status(404).json({ error: "Operación no encontrada" });
 
-  db.prepare("UPDATE operations SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, req.params.id);
-  res.json({ ok: true, id: req.params.id, status });
+  db.prepare("UPDATE operations SET status = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(status.toUpperCase(), req.params.id);
+  res.json({ ok: true, id: req.params.id, status: status.toUpperCase() });
 });
 
 module.exports = router;

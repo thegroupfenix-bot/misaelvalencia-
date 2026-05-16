@@ -212,6 +212,11 @@ safeAlter("ALTER TABLE documents ADD COLUMN product_specs TEXT");
 safeAlter("ALTER TABLE documents ADD COLUMN operation_id TEXT");
 safeAlter("ALTER TABLE documents ADD COLUMN lang TEXT DEFAULT 'es'");
 
+// operations extras
+safeAlter("ALTER TABLE operations ADD COLUMN counterpart_name TEXT");
+safeAlter("ALTER TABLE operations ADD COLUMN product_name TEXT");
+safeAlter("ALTER TABLE operations ADD COLUMN notes TEXT");
+
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 
