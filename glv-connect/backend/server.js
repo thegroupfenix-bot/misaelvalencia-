@@ -17,6 +17,8 @@ const authRouter      = require("./routes/auth");
 const documentsRouter = require("./routes/documents");
 const auditRouter     = require("./routes/audit");
 const usersRouter     = require("./routes/users");
+const profileRouter   = require("./routes/profile");
+const imagesRouter    = require("./routes/images");
 
 const app = express();
 
@@ -29,6 +31,8 @@ app.use("/auth",      authRouter);
 app.use("/documents", documentsRouter);
 app.use("/audit",     auditRouter);
 app.use("/users",     usersRouter);
+app.use("/profile",   profileRouter);
+app.use("/images",    imagesRouter);
 app.get("/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 // Serve React frontend

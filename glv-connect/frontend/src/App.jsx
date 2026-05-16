@@ -1,7 +1,11 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { api } from "./api.js";
 import { downloadPDF } from "./components/GlvPDF.jsx";
+import { ProfileModal } from "./components/ProfileModal.jsx";
+import { PaymentSelector } from "./components/PaymentSelector.jsx";
+import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
+import { validateDocForm } from "./utils/validateDoc.js";
 
 // ─── Auth context ────────────────────────────────────────────────────────────
 const AuthContext = createContext(null);
@@ -13,12 +17,25 @@ function useAuth() {
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [agentProfile, setAgentProfile] = useState(null);
+  const [profileChecked, setProfileChecked] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("glv_token");
     if (!token) { setLoading(false); return; }
     api.me()
-      .then((u) => setUser(u))
+      .then((u) => {
+        setUser(u);
+        return api.getProfile();
+      })
+      .then((p) => {
+        setAgentProfile(p);
+        if (p && p.completed === 0) {
+          setShowProfileModal(true);
+        }
+        setProfileChecked(true);
+      })
       .catch(() => localStorage.removeItem("glv_token"))
       .finally(() => setLoading(false));
   }, []);
@@ -27,12 +44,41 @@ function AuthProvider({ children }) {
     const { token, user: u } = await api.login(username, password);
     localStorage.setItem("glv_token", token);
     setUser(u);
+    // Check profile after login
+    try {
+      const p = await api.getProfile();
+      setAgentProfile(p);
+      if (!p || p.completed === 0) {
+        setShowProfileModal(true);
+      }
+      setProfileChecked(true);
+    } catch {
+      setProfileChecked(true);
+    }
     return u;
   };
 
   const logout = () => {
     localStorage.removeItem("glv_token");
     setUser(null);
+    setAgentProfile(null);
+    setShowProfileModal(false);
+    setProfileChecked(false);
+  };
+
+  const handleProfileComplete = async () => {
+    try {
+      const p = await api.getProfile();
+      setAgentProfile(p);
+    } catch {}
+    setShowProfileModal(false);
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const p = await api.getProfile();
+      setAgentProfile(p);
+    } catch {}
   };
 
   if (loading) {
@@ -43,7 +89,14 @@ function AuthProvider({ children }) {
     );
   }
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, login, logout, agentProfile, refreshProfile }}>
+      {showProfileModal && user && (
+        <ProfileModal user={user} onComplete={handleProfileComplete} />
+      )}
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 function RequireAuth({ children }) {
@@ -58,7 +111,7 @@ function RequireRole({ role, children }) {
   return children;
 }
 
-// ─── Static data (unchanged from GLV-Connect.jsx) ────────────────────────────
+// ─── Static data ─────────────────────────────────────────────────────────────
 const PRICE_TABLE = {
   "UAE":                 { port: "Jebel Ali / Port Rashid, Dubai",   price: 5.70, transit: "25–28" },
   "Saudi Arabia (East)": { port: "Port of Dammam",                   price: 5.80, transit: "27–30" },
@@ -72,7 +125,10 @@ const PRODUCTS = [
   "Ovinos (Animales Vivos)", "Bovinos (Animales Vivos)", "Aguacate Hass",
   "Banano Cavendish", "Pulpa de Fruta IQF", "Granos (Soya / Maíz)",
   "Aceites Vegetales", "Carne Ovina (Congelada)", "Carne Bovina (Congelada)",
+  "Otro",
 ];
+
+const CUSTOM_UNITS = ["kg", "TM", "litros", "unidades", "cajas", "otra"];
 
 const ORIGINS = {
   "Brazil":    "GLV Global Foods Brasil Ltda. / MAPA",
@@ -85,7 +141,7 @@ const ORIGINS = {
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
-// ─── Root App ────────────────────────────────────────────────────────────────
+// ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <AuthProvider>
@@ -101,7 +157,7 @@ export default function App() {
   );
 }
 
-// ─── Portal shell (sidebar + main) ───────────────────────────────────────────
+// ─── Portal shell ─────────────────────────────────────────────────────────────
 function Portal() {
   const { user, logout } = useAuth();
   const [view, setView] = useState("dashboard");
@@ -123,15 +179,16 @@ function Portal() {
       <Sidebar user={user} view={view} setView={setView} onLogout={logout} />
       <main style={{ flex: 1, padding: "2rem", overflowY: "auto" }}>
         {notification && <Notification msg={notification.msg} type={notification.type} />}
-        {view === "dashboard"  && <Dashboard user={user} setView={setView} setModal={setModal} />}
-        {view === "sco"        && <DocList type="SCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "fco"        && <DocList type="FCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "spa"        && user.role === "DIRECTIVO" && <DocList type="SPA" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "audit"      && user.role === "DIRECTIVO" && <AuditLog />}
-        {view === "usuarios"   && user.role === "DIRECTIVO" && <UsersPanel />}
-        {view === "new-sco"    && <NewDocForm type="SCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-fco"    && <NewDocForm type="FCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-spa"    && user.role === "DIRECTIVO" && <NewDocForm type="SPA" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "dashboard"     && <Dashboard user={user} setView={setView} setModal={setModal} />}
+        {view === "sco"           && <DocList type="SCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
+        {view === "fco"           && <DocList type="FCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
+        {view === "spa"           && user.role === "DIRECTIVO" && <DocList type="SPA" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
+        {view === "audit"         && user.role === "DIRECTIVO" && <AuditLog />}
+        {view === "usuarios"      && user.role === "DIRECTIVO" && <UsersPanel />}
+        {view === "admin-images"  && user.role === "DIRECTIVO" && <ImageAdmin showNotif={showNotif} />}
+        {view === "new-sco"       && <NewDocForm type="SCO" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-fco"       && <NewDocForm type="FCO" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-spa"       && user.role === "DIRECTIVO" && <NewDocForm type="SPA" user={user} setView={setView} showNotif={showNotif} />}
       </main>
       {modal && <DocPreviewModal doc={modal} onClose={() => setModal(null)} />}
     </div>
@@ -243,9 +300,10 @@ function Sidebar({ user, view, setView, onLogout }) {
     { id: "sco",       icon: "ti-file-description", label: "SCO" },
     { id: "fco",       icon: "ti-file-check",       label: "FCO" },
     ...(user.role === "DIRECTIVO" ? [
-      { id: "spa",      icon: "ti-file-certificate", label: "SPA / Contratos" },
-      { id: "audit",    icon: "ti-shield",           label: "Auditoría" },
-      { id: "usuarios", icon: "ti-users",            label: "Usuarios" },
+      { id: "spa",         icon: "ti-file-certificate", label: "SPA / Contratos" },
+      { id: "audit",       icon: "ti-shield",           label: "Auditoría" },
+      { id: "usuarios",    icon: "ti-users",            label: "Usuarios" },
+      { id: "admin-images",icon: "ti-photo",            label: "Imágenes Drive" },
     ] : []),
   ];
 
@@ -258,7 +316,7 @@ function Sidebar({ user, view, setView, onLogout }) {
           </div>
           <div>
             <p style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>GLV-Connect</p>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>v2.0.1</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>v2.1.0</p>
           </div>
         </div>
       </div>
@@ -455,14 +513,23 @@ function DocList({ type, user, setModal, setView, showNotif }) {
 
 // ─── New Document Form ────────────────────────────────────────────────────────
 function NewDocForm({ type, user, setView, showNotif }) {
+  const { agentProfile } = useAuth();
   const [allDocs, setAllDocs] = useState([]);
   const [form, setFormState] = useState({
     client: "", clientCountry: "", clientRepresentative: "", clientEmail: "", clientPhone: "",
     product: "", destination: "", origin: "Brazil", headcount: "", avgWeight: 45,
     paymentMethod: "SBLC", programDuration: "5 años", validityDays: "30", observations: "", parentId: "",
+    // Custom product fields
+    customProductName: "", customProductDesc: "", customUnit: "kg", customPaymentType: "TT",
+    // Payment selector fields
+    paymentOption: "", docTrigger: "", hasGuarantee: false, guaranteeType: null, guaranteeBank: "",
+    // FCO specific
+    fcoConfirmed: false, clientIdDocB64: null,
   });
   const [chinaAlert, setChinaAlert] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const clientIdRef = useRef();
 
   useEffect(() => {
     api.getDocs().then(setAllDocs).catch(() => {});
@@ -477,15 +544,53 @@ function NewDocForm({ type, user, setView, showNotif }) {
       } else if (k === "destination") {
         setChinaAlert(false);
       }
+      // If FCO selects parent SCO, preload data
+      if (k === "parentId" && type === "FCO" && v) {
+        const sco = allDocs.find(d => d.id === v);
+        if (sco) {
+          return {
+            ...next,
+            client: sco.client || next.client,
+            clientCountry: sco.clientCountry || next.clientCountry,
+            clientRepresentative: sco.clientRepresentative || next.clientRepresentative,
+            clientEmail: sco.clientEmail || next.clientEmail,
+            clientPhone: sco.clientPhone || next.clientPhone,
+            product: sco.product || next.product,
+            destination: sco.destination || next.destination,
+            origin: sco.origin || next.origin,
+            headcount: sco.headcount || next.headcount,
+            avgWeight: sco.avgWeight || next.avgWeight,
+          };
+        }
+      }
       return next;
     });
   };
+
+  const handlePaymentChange = (paymentData) => {
+    setFormState(prev => ({
+      ...prev,
+      paymentOption: paymentData.option || "",
+      docTrigger: paymentData.docTrigger || "",
+      hasGuarantee: paymentData.hasGuarantee || false,
+      guaranteeType: paymentData.guaranteeType || null,
+      guaranteeBank: paymentData.bankName || "",
+    }));
+  };
+
+  const toBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
   const destInfo = PRICE_TABLE[form.destination] || {};
   const pricePerKg = destInfo.price || 0;
   const totalKg = (parseFloat(form.headcount) || 0) * (parseFloat(form.avgWeight) || 0);
   const totalValue = totalKg * pricePerKg;
-  const isAnimalProduct = form.product.includes("Animales") || form.product.includes("Ovina") || form.product.includes("Bovina");
+  const isAnimalProduct = form.product && (form.product.includes("Animales") || form.product.includes("Ovina") || form.product.includes("Bovina"));
+  const isCustomProduct = form.product === "Outro" || form.product === "Otro";
   const isAnimalOrLong = isAnimalProduct || form.programDuration.includes("5") || form.programDuration.includes("año");
 
   const exporter = chinaAlert ? "GLV Services SAS (Colombia)" : "GLV Global Food Services LLC (Miami, FL)";
@@ -496,12 +601,64 @@ function NewDocForm({ type, user, setView, showNotif }) {
   const availableSCOs = allDocs.filter(d => d.type === "SCO");
 
   const handleSubmit = async () => {
-    if (!form.client || !form.product || !form.destination) {
-      showNotif("Por favor complete los campos obligatorios.", "error"); return;
+    setValidationErrors([]);
+    // Build form data for validation
+    const fData = {
+      client: form.client,
+      clientRepresentative: form.clientRepresentative,
+      clientEmail: form.clientEmail,
+      product: form.product,
+      pricePerKg: pricePerKg,
+      totalValue: totalValue,
+      headcount: form.headcount,
+      destination: form.destination,
+      payment_option: form.paymentOption,
+      validityDays: form.validityDays,
+      doc_trigger: form.docTrigger,
+      custom_product_name: form.customProductName,
+      custom_product_desc: form.customProductDesc,
+      fco_confirmed: form.fcoConfirmed ? 1 : 0,
+      client_id_doc_b64: form.clientIdDocB64,
+    };
+
+    const errors = validateDocForm(fData, agentProfile, type);
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
     }
+
     setSubmitting(true);
     try {
-      const doc = await api.createDoc({ type, ...form });
+      const payload = {
+        type,
+        client: form.client,
+        clientCountry: form.clientCountry,
+        clientRepresentative: form.clientRepresentative,
+        clientEmail: form.clientEmail,
+        clientPhone: form.clientPhone,
+        product: form.product,
+        destination: form.destination,
+        origin: form.origin,
+        headcount: form.headcount,
+        avgWeight: form.avgWeight,
+        paymentMethod: form.paymentMethod,
+        observations: form.observations,
+        parentId: form.parentId,
+        // New fields
+        payment_option: form.paymentOption,
+        doc_trigger: form.docTrigger,
+        has_guarantee: form.hasGuarantee ? 1 : 0,
+        guarantee_type: form.guaranteeType,
+        guarantee_bank: form.guaranteeBank,
+        validity_days: parseInt(form.validityDays) || 15,
+        custom_product_name: isCustomProduct ? form.customProductName : null,
+        custom_product_desc: isCustomProduct ? form.customProductDesc : null,
+        custom_unit: isCustomProduct ? form.customUnit : null,
+        fco_confirmed: form.fcoConfirmed ? 1 : 0,
+        client_id_doc_b64: form.clientIdDocB64,
+      };
+
+      const doc = await api.createDoc(payload);
       showNotif(`${type} ${doc.id} generado. Copia enviada a contabilidad@glvservicesexp.com`, "success");
       setView(type.toLowerCase());
     } catch (e) {
@@ -521,6 +678,21 @@ function NewDocForm({ type, user, setView, showNotif }) {
         </div>
       </div>
 
+      {/* Validation errors */}
+      {validationErrors.length > 0 && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#991b1b", margin: "0 0 8px" }}>
+            <i className="ti ti-alert-circle" style={{ marginRight: 6, verticalAlign: -2 }} />
+            Por favor corrija los siguientes errores antes de continuar:
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {validationErrors.map((err, i) => (
+              <li key={i} style={{ fontSize: 13, color: "#991b1b", marginBottom: 4 }}>{err}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {chinaAlert && (
         <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", gap: 10 }}>
           <i className="ti ti-alert-triangle" style={{ fontSize: 20, color: "#d97706", marginTop: 1 }} />
@@ -535,8 +707,8 @@ function NewDocForm({ type, user, setView, showNotif }) {
         <FormSection title="Datos del cliente">
           <FormField label="Nombre / Empresa *" value={form.client} onChange={v => setField("client", v)} placeholder="Nombre completo o razón social" />
           <FormField label="País del cliente" value={form.clientCountry} onChange={v => setField("clientCountry", v)} placeholder="País" />
-          <FormField label="Representante" value={form.clientRepresentative} onChange={v => setField("clientRepresentative", v)} placeholder="Nombre del representante" />
-          <FormField label="Email institucional" value={form.clientEmail} onChange={v => setField("clientEmail", v)} placeholder="correo@empresa.com" />
+          <FormField label="Representante *" value={form.clientRepresentative} onChange={v => setField("clientRepresentative", v)} placeholder="Nombre del representante" />
+          <FormField label="Email institucional *" value={form.clientEmail} onChange={v => setField("clientEmail", v)} placeholder="correo@empresa.com" />
           <FormField label="Teléfono / WhatsApp" value={form.clientPhone} onChange={v => setField("clientPhone", v)} placeholder="+1 000 000 0000" />
         </FormSection>
 
@@ -554,6 +726,27 @@ function NewDocForm({ type, user, setView, showNotif }) {
           </SelectField>
         </FormSection>
 
+        {/* Custom product fields — MODULE 3 */}
+        {isCustomProduct && (
+          <FormSection title="Producto personalizado">
+            <FormField label="Nombre del producto *" value={form.customProductName} onChange={v => setField("customProductName", v)} placeholder="Nombre del producto" />
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Descripción breve *</label>
+              <textarea value={form.customProductDesc} onChange={e => setField("customProductDesc", e.target.value)} rows={3}
+                placeholder="Descripción del producto, especificaciones, características..."
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", fontSize: 14, background: "var(--color-background-primary)", color: "var(--color-text-primary)", resize: "vertical", boxSizing: "border-box" }} />
+            </div>
+            <SelectField label="Unidad de medida" value={form.customUnit} onChange={v => setField("customUnit", v)}>
+              {CUSTOM_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+            </SelectField>
+            <SelectField label="Sistema de pago aplicable" value={form.customPaymentType} onChange={v => setField("customPaymentType", v)}>
+              <option value="TT">Transferencia Bancaria (TT)</option>
+              <option value="LC/SBLC">LC / SBLC</option>
+              <option value="Otro">Otro</option>
+            </SelectField>
+          </FormSection>
+        )}
+
         {isAnimalProduct && (
           <FormSection title="Especificaciones del lote">
             <FormField label="Número de cabezas" value={form.headcount} onChange={v => setField("headcount", v)} placeholder="70000" type="number" />
@@ -568,17 +761,15 @@ function NewDocForm({ type, user, setView, showNotif }) {
           </FormSection>
         )}
 
+        {/* Payment selector — MODULE 2 */}
+        {form.product && (
+          <FormSection title="Sistema de pago *">
+            <PaymentSelector productCategory={form.product} onChange={handlePaymentChange} />
+          </FormSection>
+        )}
+
         <FormSection title="Términos financieros">
-          <SelectField label="Método de pago" value={form.paymentMethod} onChange={v => setField("paymentMethod", v)}>
-            <option value="SBLC">SBLC — Stand-By Letter of Credit (90 días)</option>
-            <option value="TT 50/50">TT 50/50 — Transferencia (60 días)</option>
-            <option value="TT 70/30">TT 70/30 — Urgente</option>
-            <option value="LC">LC — Letter of Credit</option>
-          </SelectField>
-          {isAnimalOrLong && form.paymentMethod !== "SBLC" && (
-            <p style={{ fontSize: 12, color: "#d97706", marginBottom: 12 }}>⚠ Para animales vivos / contratos ≥90 días se sugiere SBLC.</p>
-          )}
-          <FormField label="Validez del documento (días)" value={form.validityDays} onChange={v => setField("validityDays", v)} type="number" />
+          <FormField label="Validez del documento (días) *" value={form.validityDays} onChange={v => setField("validityDays", v)} type="number" />
           <FormField label="Duración del programa" value={form.programDuration} onChange={v => setField("programDuration", v)} placeholder="5 años" />
         </FormSection>
 
@@ -588,6 +779,38 @@ function NewDocForm({ type, user, setView, showNotif }) {
               <option value="">Nueva FCO sin SCO de referencia</option>
               {availableSCOs.map(s => <option key={s.id} value={s.id}>{s.id} — {s.client}</option>)}
             </SelectField>
+            <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 12px" }}>Al seleccionar una SCO, sus datos se cargan automáticamente.</p>
+          </FormSection>
+        )}
+
+        {/* FCO specific fields — MODULE 4 */}
+        {type === "FCO" && (
+          <FormSection title="Verificación FCO (obligatorio)">
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 16 }}>
+              <input type="checkbox" checked={form.fcoConfirmed} onChange={e => setField("fcoConfirmed", e.target.checked)}
+                style={{ width: 16, height: 16, marginTop: 2, cursor: "pointer" }} />
+              <span style={{ fontSize: 13, color: "var(--color-text-primary)" }}>
+                <strong>*</strong> Confirmo que los precios y condiciones han sido verificados y aprobados internamente antes de emitir esta FCO.
+              </span>
+            </label>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>
+                Documento de identidad del representante del cliente * <span style={{ fontSize: 11, color: "#6b7280" }}>(PDF/JPG)</span>
+              </label>
+              <input type="file" ref={clientIdRef} accept="image/*,.pdf"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = ev => setField("clientIdDocB64", ev.target.result);
+                  reader.readAsDataURL(file);
+                }}
+                style={{ display: "none" }} />
+              <button type="button" onClick={() => clientIdRef.current.click()}
+                style={{ padding: "9px 16px", borderRadius: 8, border: "1px dashed #d1d5db", background: form.clientIdDocB64 ? "#f0fdf4" : "#f9fafb", cursor: "pointer", fontSize: 13, color: form.clientIdDocB64 ? "#166534" : "#6b7280", width: "100%" }}>
+                {form.clientIdDocB64 ? "✓ Documento cargado — click para cambiar" : "Click para subir documento de identidad"}
+              </button>
+            </div>
           </FormSection>
         )}
 
@@ -720,14 +943,111 @@ function UsersPanel() {
   );
 }
 
+// ─── Image Admin — MODULE 5 ───────────────────────────────────────────────────
+function ImageAdmin({ showNotif }) {
+  const [images, setImages] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [edits, setEdits] = useState({});
+  const [saving, setSaving] = useState({});
+
+  useEffect(() => {
+    api.getImages()
+      .then(rows => {
+        const map = {};
+        rows.forEach(r => { map[r.key] = r.file_id; });
+        setImages(map);
+        setEdits(map);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async (key) => {
+    setSaving(prev => ({ ...prev, [key]: true }));
+    try {
+      await api.updateImage(key, edits[key] || "");
+      setImages(prev => ({ ...prev, [key]: edits[key] || "" }));
+      showNotif(`Imagen "${key}" actualizada.`, "success");
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setSaving(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "0.5rem" }}>Administración de Imágenes — Google Drive</h1>
+      <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 16px", marginBottom: "1.5rem", fontSize: 13, color: "#1e40af" }}>
+        <p style={{ margin: "0 0 6px", fontWeight: 600 }}>Instrucciones para subir imágenes:</p>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          <li>Suba la imagen a Google Drive y configúrela como "Cualquier persona con el enlace puede ver".</li>
+          <li>Copie el ID del archivo desde la URL: drive.google.com/file/d/<strong>[ESTE_ID]</strong>/view</li>
+          <li>Pegue el ID en el campo correspondiente y haga clic en "Guardar".</li>
+        </ol>
+      </div>
+      {loading ? <LoadingSpinner /> : (
+        <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <thead>
+              <tr style={{ background: "var(--color-background-secondary)" }}>
+                {["Preview", "Clave", "Descripción", "File ID de Google Drive", ""].map(h => (
+                  <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(DRIVE_IMAGES).map(([key, meta]) => {
+                const fileId = images[key] || "";
+                const editVal = edits[key] !== undefined ? edits[key] : fileId;
+                const previewUrl = fileId ? driveUrl(fileId) : null;
+                return (
+                  <tr key={key} style={{ borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+                    <td style={{ padding: "10px 16px", width: 90 }}>
+                      {previewUrl ? (
+                        <img src={previewUrl} alt={meta.label} style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 6 }} />
+                      ) : (
+                        <div style={{ width: 80, height: 60, background: "#1B2A4A", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, textAlign: "center", padding: 4 }}>Sin imagen</span>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "10px 16px", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>{key}</td>
+                    <td style={{ padding: "10px 16px", color: "var(--color-text-secondary)" }}>{meta.label}</td>
+                    <td style={{ padding: "10px 16px", minWidth: 240 }}>
+                      <input
+                        value={editVal}
+                        onChange={e => setEdits(prev => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="Pegar File ID de Google Drive"
+                        style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }}
+                      />
+                    </td>
+                    <td style={{ padding: "10px 16px" }}>
+                      <button onClick={() => handleSave(key)} disabled={saving[key]}
+                        style={{ padding: "6px 14px", background: saving[key] ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, cursor: saving[key] ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+                        {saving[key] ? "..." : "Guardar"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Doc Preview Modal ────────────────────────────────────────────────────────
 function DocPreviewModal({ doc, onClose }) {
+  const { agentProfile } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const isChina = doc.destination === "China";
 
   const handleDownload = async () => {
     setDownloading(true);
-    try { await downloadPDF(doc); } catch (e) { console.error(e); }
+    try { await downloadPDF(doc, agentProfile); } catch (e) { console.error(e); }
     finally { setDownloading(false); }
   };
 
@@ -767,7 +1087,7 @@ function DocPreviewModal({ doc, onClose }) {
           <InfoBlock label="Destino" value={doc.destination} />
           <InfoBlock label="Puerto CFR" value={PRICE_TABLE[doc.destination]?.port || "—"} />
           <InfoBlock label="Origen" value={doc.origin} />
-          <InfoBlock label="Método de pago" value={doc.paymentMethod || "SBLC"} />
+          <InfoBlock label="Sistema de pago" value={doc.paymentOption || doc.payment_option || doc.paymentMethod || "SBLC"} />
           {doc.headcount && <InfoBlock label="Número de cabezas" value={new Intl.NumberFormat().format(doc.headcount)} />}
           {doc.avgWeight  && <InfoBlock label="Peso prom. referencia" value={`${doc.avgWeight} kg`} />}
           {doc.pricePerKg && <InfoBlock label="Precio CFR" value={`USD ${Number(doc.pricePerKg).toFixed(2)}/kg`} />}
@@ -784,6 +1104,16 @@ function DocPreviewModal({ doc, onClose }) {
         {doc.gaccNote && (
           <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
             <p style={{ fontSize: 13, color: "#92400e", margin: 0 }}><strong>Código GACC China:</strong> {doc.gaccNote}</p>
+          </div>
+        )}
+
+        {/* Agent signature preview */}
+        {agentProfile?.signature_b64 && (
+          <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
+            <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 6px", fontWeight: 600 }}>FIRMA DEL AGENTE</p>
+            <img src={agentProfile.signature_b64} alt="Firma" style={{ maxHeight: 50, maxWidth: 160, objectFit: "contain" }} />
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#1B2A4A", margin: "4px 0 0" }}>{agentProfile.name}</p>
+            {agentProfile.cargo && <p style={{ fontSize: 11, color: "#374151", margin: 0 }}>{agentProfile.cargo} — GLV Global Food Services LLC</p>}
           </div>
         )}
 

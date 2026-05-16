@@ -33,4 +33,10 @@ export const api = {
 
   getAudit: (limit = 200) => request("GET", `/audit?limit=${limit}`),
   getUsers: () => request("GET", "/users"),
+
+  getProfile: () => request("GET", "/profile/me"),
+  updateProfile: (data) => request("PUT", "/profile/me", data),
+
+  getImages: () => request("GET", "/images"),
+  updateImage: (key, fileId) => request("PUT", `/images/${key}`, { fileId }),
 };
