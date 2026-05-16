@@ -83,8 +83,9 @@ function AuthProvider({ children }) {
     );
   }
 
+  const AGENT_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
   const needsPasswordChange = user?.first_login === 1;
-  const needsProfileSetup = user && !needsPasswordChange && !user.profile_completed;
+  const needsProfileSetup = user && !needsPasswordChange && !user.profile_completed && AGENT_ROLES.has(user.role);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, agentProfile, refreshProfile, lang, setLang }}>
@@ -1245,7 +1246,7 @@ function OperationDetail({ opId, user, setView, showNotif }) {
           <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 0.5 }}>Datos de Operación</p>
           {[
             ["Contraparte",   op.counterpart_name || "—"],
-            ["País destino",  op.counterpart_country || commercial?.destination || "—"],
+            ["País destino",  op.destination_country || commercial?.destination || "—"],
             ["Categoría",     commercial?.category || "—"],
             ["Producto",      commercial?.product || op.product_name || "—"],
             ["Moneda",        commercial?.currency || "USD"],

@@ -221,6 +221,24 @@ safeAlter("ALTER TABLE operations ADD COLUMN notes TEXT");
 safeAlter("ALTER TABLE users ADD COLUMN profile_completed INTEGER NOT NULL DEFAULT 0");
 safeAlter("ALTER TABLE users ADD COLUMN password_changed INTEGER NOT NULL DEFAULT 0");
 
+// Mark non-agent users as profile_completed (they don't need agent profiles)
+try {
+  db.prepare(`
+    UPDATE users SET profile_completed = 1
+    WHERE profile_completed = 0
+    AND role NOT IN ('AGENTE','LOGISTICS','CLIENT','SUPPLIER')
+  `).run();
+} catch (_) {}
+
+// Mark users who already changed password and have a complete agent profile
+try {
+  db.prepare(`
+    UPDATE users SET profile_completed = 1
+    WHERE first_login = 0
+    AND id IN (SELECT user_id FROM agent_profiles WHERE completed = 1)
+  `).run();
+} catch (_) {}
+
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 

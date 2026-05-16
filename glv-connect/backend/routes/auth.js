@@ -69,7 +69,10 @@ router.post("/change-password", authenticate, (req, res) => {
   }
 
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare("UPDATE users SET password = ?, first_login = 0 WHERE id = ?").run(hash, user.id);
+  const AGENT_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
+  const needsProfile = AGENT_ROLES.has(user.role) ? 0 : 1;
+  db.prepare("UPDATE users SET password = ?, first_login = 0, password_changed = 1, profile_completed = ? WHERE id = ?")
+    .run(hash, needsProfile, user.id);
   db.prepare("INSERT INTO audit_log (username, action, ip) VALUES (?, ?, ?)").run(user.username, "password_changed", req.ip);
 
   res.json({ ok: true, message: "Contraseña actualizada" });
