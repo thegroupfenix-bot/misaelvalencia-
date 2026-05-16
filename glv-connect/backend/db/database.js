@@ -211,6 +211,7 @@ safeAlter("ALTER TABLE documents ADD COLUMN product_category TEXT");
 safeAlter("ALTER TABLE documents ADD COLUMN product_specs TEXT");
 safeAlter("ALTER TABLE documents ADD COLUMN operation_id TEXT");
 safeAlter("ALTER TABLE documents ADD COLUMN lang TEXT DEFAULT 'es'");
+safeAlter("ALTER TABLE documents ADD COLUMN commercial_data TEXT");
 
 // operations extras
 safeAlter("ALTER TABLE operations ADD COLUMN counterpart_name TEXT");
