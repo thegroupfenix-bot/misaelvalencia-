@@ -370,6 +370,8 @@ export default function MediaCenter({ user }) {
   const [showUpload, setShowUpload] = useState(false);
   const [selected, setSelected] = useState(null);
   const [r2Status, setR2Status] = useState(null);
+  const [r2Ping, setR2Ping] = useState(null);
+  const [pinging, setPinging] = useState(false);
   const [page, setPage] = useState(0);
   const PER_PAGE = 40;
 
@@ -477,9 +479,23 @@ export default function MediaCenter({ user }) {
                 background: r2Status.configured ? "#dcfce7" : "#fef3c7",
                 color: r2Status.configured ? PALETTE.green : PALETTE.yellow, fontWeight:600 }}>
                 {r2Status.configured
-                  ? `✅ R2 Activo · ${r2Status.auth_mode === "token" ? "API Token" : "S3 Keys"}`
+                  ? `✅ R2 · ${r2Status.auth_mode === "token" ? "API Token" : "S3 Keys"}`
                   : "⚠️ R2 sin configurar"}
               </span>
+            )}
+            {r2Status?.configured && canEdit && (
+              <button onClick={async () => {
+                setPinging(true); setR2Ping(null);
+                try { const r = await api.pingR2(); setR2Ping(r); }
+                catch (e) { setR2Ping({ ok: false, error: e.message }); }
+                finally { setPinging(false); }
+              }} disabled={pinging}
+                style={{ fontSize:12, padding:"4px 12px", borderRadius:20, cursor:"pointer",
+                  background: r2Ping ? (r2Ping.ok ? "#dcfce7" : "#fee2e2") : "#f1f5f9",
+                  color: r2Ping ? (r2Ping.ok ? PALETTE.green : "#dc2626") : PALETTE.gray,
+                  border:"1px solid #e2e8f0", fontWeight:600 }}>
+                {pinging ? "⏳ Probando..." : r2Ping ? (r2Ping.ok ? "🟢 Conexión OK" : "🔴 Error") : "🔌 Probar R2"}
+              </button>
             )}
             {canEdit && (
               <button onClick={() => setShowUpload(true)}

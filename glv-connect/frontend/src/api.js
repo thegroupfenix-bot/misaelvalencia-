@@ -119,4 +119,5 @@ export const api = {
   },
   getMediaCategories:  () => request("GET", "/media/categories"),
   getR2Status:         () => request("GET", "/media/r2-status"),
+  pingR2:              () => request("GET", "/media/r2-ping"),
 };
