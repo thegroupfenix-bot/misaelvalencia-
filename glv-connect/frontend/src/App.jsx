@@ -32,10 +32,14 @@ function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem("glv_token");
     if (!token) { setLoading(false); return; }
+    const PROFILE_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
     api.me()
-      .then((u) => {
+      .then(async (u) => {
         setUser(u);
         if (u?.preferred_lang) setLang(u.preferred_lang);
+        if (PROFILE_ROLES.has(u?.role)) {
+          try { setAgentProfile(await api.getProfile()); } catch {}
+        }
       })
       .catch(() => localStorage.removeItem("glv_token"))
       .finally(() => setLoading(false));
@@ -739,6 +743,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
       custom_product_desc: form.customProductDesc,
       fco_confirmed: form.fcoConfirmed ? 1 : 0,
       client_id_doc_b64: form.clientIdDocB64,
+      commercialData,
     };
 
     const errors = validateDocForm(fData, agentProfile, type);
@@ -874,9 +879,9 @@ function NewDocForm({ type, user, setView, showNotif }) {
         )}
 
         {/* Payment selector — MODULE 2 */}
-        {form.product && (
+        {(effectiveProduct || form.product) && (
           <FormSection title="Sistema de pago *">
-            <PaymentSelector productCategory={form.product} onChange={handlePaymentChange} />
+            <PaymentSelector productCategory={effectiveProduct || form.product} onChange={handlePaymentChange} />
           </FormSection>
         )}
 

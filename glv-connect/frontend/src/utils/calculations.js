@@ -49,6 +49,13 @@ export function calcShipmentValue({
     case "COMMODITIES":
     case "OILS":
     case "FROZEN_MEAT":
+    case "FROZEN_POULTRY":
+    case "CANNED_MEAT":
+    case "BEANS":
+    case "LENTILS":
+    case "CHICKPEAS":
+    case "ANIMAL_FEED":
+    case "COLOMBIAN_EXOTIC_FRUITS":
     case "FRUIT_PRODUCTS": {
       if (unitType?.includes("Container") || unitType?.includes("Contenedor")) {
         const cap = parseFloat(containerCapacity) || 27;
