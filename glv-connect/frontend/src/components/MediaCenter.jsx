@@ -476,7 +476,9 @@ export default function MediaCenter({ user }) {
               <span style={{ fontSize:12, padding:"4px 12px", borderRadius:20,
                 background: r2Status.configured ? "#dcfce7" : "#fef3c7",
                 color: r2Status.configured ? PALETTE.green : PALETTE.yellow, fontWeight:600 }}>
-                {r2Status.configured ? "✅ R2 Activo" : "⚠️ R2 sin configurar"}
+                {r2Status.configured
+                  ? `✅ R2 Activo · ${r2Status.auth_mode === "token" ? "API Token" : "S3 Keys"}`
+                  : "⚠️ R2 sin configurar"}
               </span>
             )}
             {canEdit && (
@@ -503,8 +505,12 @@ export default function MediaCenter({ user }) {
           <div style={{ background:"#fef3c7", border:"1px solid #fcd34d", borderRadius:10,
             padding:"12px 16px", marginBottom:20, fontSize:13, color:"#92400e" }}>
             ⚠️ <strong>R2 no configurado.</strong> Configure las variables de entorno en Railway:
-            CLOUDFLARE_ACCOUNT_ID, R2_BUCKET_NAME, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
-            Los archivos subidos serán registrados pero sin URL de acceso hasta que R2 esté activo.
+            <code style={{ margin:"0 4px", background:"#fde68a", padding:"1px 6px", borderRadius:4 }}>CLOUDFLARE_ACCOUNT_ID</code>
+            <code style={{ margin:"0 4px", background:"#fde68a", padding:"1px 6px", borderRadius:4 }}>R2_BUCKET_NAME</code>
+            <code style={{ margin:"0 4px", background:"#fde68a", padding:"1px 6px", borderRadius:4 }}>R2_API_TOKEN</code>
+            (o alternativamente <code style={{ margin:"0 4px", background:"#fde68a", padding:"1px 6px", borderRadius:4 }}>R2_ACCESS_KEY_ID</code>
+            + <code style={{ margin:"0 4px", background:"#fde68a", padding:"1px 6px", borderRadius:4 }}>R2_SECRET_ACCESS_KEY</code>).
+            Los archivos subidos quedan en espera hasta que R2 esté activo.
           </div>
         )}
 

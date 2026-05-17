@@ -215,9 +215,14 @@ router.get("/match/:category", (req, res) => {
   res.json(rows);
 });
 
-// GET /media/r2-status — check R2 configuration
+// GET /media/r2-status — check R2 configuration and auth mode
 router.get("/r2-status", (_req, res) => {
-  res.json({ configured: r2.isConfigured(), bucket: r2.R2_BUCKET_NAME });
+  const mode = r2.authMode();
+  res.json({
+    configured: r2.isConfigured(),
+    auth_mode: mode,            // "token" | "s3" | null
+    bucket: r2.R2_BUCKET_NAME,
+  });
 });
 
 module.exports = router;
