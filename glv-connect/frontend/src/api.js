@@ -96,4 +96,27 @@ export const api = {
   adminCreatePcCategory: (data)        => request("POST",   "/price-center/categories", data),
   adminUpdatePcCategory: (id, data)    => request("PATCH",  `/price-center/categories/${id}`, data),
   adminCreatePcBreed:    (data)        => request("POST",   "/price-center/breeds", data),
+
+  // ─── Media Center ─────────────────────────────────────────────────────────────
+  getMedia:            (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request("GET", `/media${qs ? "?" + qs : ""}`);
+  },
+  getMediaItem:        (id) => request("GET", `/media/${id}`),
+  uploadMedia:         (formData) => {
+    const token = localStorage.getItem("glv_token");
+    return fetch(`${BASE}/media/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then(r => r.json());
+  },
+  updateMedia:         (id, data) => request("PATCH", `/media/${id}`, data),
+  deleteMedia:         (id) => request("DELETE", `/media/${id}`),
+  getMediaMatch:       (category, params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request("GET", `/media/match/${category}${qs ? "?" + qs : ""}`);
+  },
+  getMediaCategories:  () => request("GET", "/media/categories"),
+  getR2Status:         () => request("GET", "/media/r2-status"),
 };

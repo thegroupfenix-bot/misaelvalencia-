@@ -8,6 +8,7 @@ import { ChangePasswordModal } from "./components/ChangePasswordModal.jsx";
 import { AdminUsers } from "./components/AdminUsers.jsx";
 import { CommercialEngine } from "./components/CommercialEngine.jsx";
 import { PriceCenterView, PriceCenterModal } from "./components/PriceCenterView.jsx";
+import MediaCenter from "./components/MediaCenter.jsx";
 import { FinanceView } from "./components/FinanceView.jsx";
 import { TasksView } from "./components/TasksView.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
@@ -196,7 +197,8 @@ function Portal() {
         {view?.startsWith?.("op-detail:") && <OperationDetail opId={view.split(":")[1]} user={user} setView={setView} showNotif={showNotif} />}
         {view === "clients"      && <ClientsView user={user} showNotif={showNotif} />}
         {view === "finance"      && isDirector && <FinanceView showNotif={showNotif} />}
-        {view === "price-center" && <PriceCenterView user={user} />}
+        {view === "price-center"  && <PriceCenterView user={user} />}
+        {view === "media-center"  && <MediaCenter user={user} />}
         {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
         {view === "audit"        && isDirector && <AuditLog />}
         {view === "usuarios"     && isDirector && <UsersPanel />}
@@ -321,6 +323,7 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang }) {
     { id: "sco",          icon: "ti-file-description", label: "SCO" },
     { id: "fco",          icon: "ti-file-check",       label: "FCO" },
     { id: "price-center", icon: "ti-database",         label: "Price Center" },
+    { id: "media-center", icon: "ti-photo",            label: "Media Center" },
     { id: "tasks",        icon: "ti-checklist",        label: "Tareas & Calidad" },
     ...(isDirector ? [
       { id: "spa",         icon: "ti-file-certificate", label: "SPA / Contratos" },
