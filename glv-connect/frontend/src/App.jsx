@@ -7,6 +7,7 @@ import { PaymentSelector } from "./components/PaymentSelector.jsx";
 import { ChangePasswordModal } from "./components/ChangePasswordModal.jsx";
 import { AdminUsers } from "./components/AdminUsers.jsx";
 import { CommercialEngine } from "./components/CommercialEngine.jsx";
+import { PriceCenterView, PriceCenterModal } from "./components/PriceCenterView.jsx";
 import { FinanceView } from "./components/FinanceView.jsx";
 import { TasksView } from "./components/TasksView.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
@@ -195,6 +196,7 @@ function Portal() {
         {view?.startsWith?.("op-detail:") && <OperationDetail opId={view.split(":")[1]} user={user} setView={setView} showNotif={showNotif} />}
         {view === "clients"      && <ClientsView user={user} showNotif={showNotif} />}
         {view === "finance"      && isDirector && <FinanceView showNotif={showNotif} />}
+        {view === "price-center" && <PriceCenterView user={user} />}
         {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
         {view === "audit"        && isDirector && <AuditLog />}
         {view === "usuarios"     && isDirector && <UsersPanel />}
@@ -318,6 +320,7 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang }) {
     { id: "clients",      icon: "ti-building",         label: "Clientes" },
     { id: "sco",          icon: "ti-file-description", label: "SCO" },
     { id: "fco",          icon: "ti-file-check",       label: "FCO" },
+    { id: "price-center", icon: "ti-database",         label: "Price Center" },
     { id: "tasks",        icon: "ti-checklist",        label: "Tareas & Calidad" },
     ...(isDirector ? [
       { id: "spa",         icon: "ti-file-certificate", label: "SPA / Contratos" },
@@ -658,6 +661,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
   const chinaAlert = (commercialData?.destination || form.destination || "").toLowerCase().includes("china");
   const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
+  const [showPriceCenter, setShowPriceCenter] = useState(false);
   const clientIdRef = useRef();
 
   useEffect(() => {
@@ -746,7 +750,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
       commercialData,
     };
 
-    const errors = validateDocForm(fData, agentProfile, type);
+    const errors = validateDocForm(fData, agentProfile, type, user?.role);
     if (errors.length > 0) {
       setValidationErrors(errors);
       return;
@@ -839,9 +843,17 @@ function NewDocForm({ type, user, setView, showNotif }) {
 
         <div style={{ gridColumn: "1 / -1" }}>
           <FormSection title="Programa Comercial de Exportación">
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <button type="button" onClick={() => setShowPriceCenter(true)}
+                style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid #1B2A4A", background: "#f0f4ff", color: "#1B2A4A", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <i className="ti ti-database" style={{ fontSize: 14 }} />
+                Consultar Price Center
+              </button>
+            </div>
             <CommercialEngine value={commercialData} onChange={setCommercialData} />
           </FormSection>
         </div>
+        {showPriceCenter && <PriceCenterModal user={user} onClose={() => setShowPriceCenter(false)} />}
 
         {/* Custom product fields — MODULE 3 */}
         {isCustomProduct && (

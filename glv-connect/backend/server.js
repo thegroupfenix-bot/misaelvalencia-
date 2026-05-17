@@ -24,6 +24,7 @@ const clientsRouter    = require("./routes/clients");
 const operationsRouter = require("./routes/operations");
 const financeRouter    = require("./routes/finance");
 const tasksRouter      = require("./routes/tasks");
+const priceCenterRouter = require("./routes/price-center");
 
 const app = express();
 
@@ -43,7 +44,8 @@ app.use("/admin",      adminRouter);
 app.use("/clients",    clientsRouter);
 app.use("/operations", operationsRouter);
 app.use("/finance",    financeRouter);
-app.use("/tasks",      tasksRouter);
+app.use("/tasks",        tasksRouter);
+app.use("/price-center", priceCenterRouter);
 app.get("/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 // Serve React frontend

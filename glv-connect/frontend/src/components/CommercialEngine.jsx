@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { PRODUCT_CATEGORIES, DELIVERY_FREQUENCIES, CURRENCIES, INCOTERMS } from "../config/productCategories.js";
 import { searchCountries } from "../config/worldCountries.js";
 import { calcCommercialSummary, fmtMoney, fmtNum } from "../utils/calculations.js";
+import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js";
 
 const ORIGINS = ["Brazil", "Argentina", "Colombia", "Uruguay", "Chile", "Paraguay", "USA", "Canada", "Australia", "New Zealand", "South Africa", "Other"];
 const PRICED_INCOTERMS = ["FOB", "CFR", "CIF", "DDP"];
@@ -106,6 +107,152 @@ function IncotermSelector({ selected, onChange, prices, onPriceChange }) {
   );
 }
 
+// ─── Livestock Breed Selector ─────────────────────────────────────────────────
+const CARGO_TYPES = ["Dry Cargo","Refrigerated Cargo","Frozen Cargo","Live Animals","ISO Tank","Air Cargo"];
+
+function LivestockBreedSelector({ origin, specs, setSpecs }) {
+  const species = specs.species || "SHEEP";
+  const selectedBreeds = specs.breeds || []; // [{ breedId, name, quantity, notes }]
+  const [customBreed, setCustomBreed] = useState("");
+  const [showCustom, setShowCustom] = useState(false);
+
+  const availableBreeds = getBreedsForSpecies(species, origin);
+  const hasBreed = (id) => selectedBreeds.some(b => b.breedId === id);
+
+  const setSpecField = (k, v) => setSpecs(p => ({ ...p, [k]: v }));
+
+  const toggleBreed = (breed) => {
+    if (hasBreed(breed.id)) {
+      setSpecField("breeds", selectedBreeds.filter(b => b.breedId !== breed.id));
+    } else {
+      setSpecField("breeds", [...selectedBreeds, { breedId: breed.id, name: breed.name, quantity: "", notes: "" }]);
+    }
+  };
+
+  const updateBreedQty = (breedId, qty) => {
+    setSpecField("breeds", selectedBreeds.map(b => b.breedId === breedId ? { ...b, quantity: qty } : b));
+  };
+
+  const addCustomBreed = () => {
+    if (!customBreed.trim()) return;
+    setSpecField("breeds", [...selectedBreeds, { breedId: "CUSTOM_" + Date.now(), name: customBreed.trim(), quantity: "", notes: "", custom: true }]);
+    setCustomBreed("");
+    setShowCustom(false);
+  };
+
+  const totalAllocated = selectedBreeds.reduce((s, b) => s + (parseFloat(b.quantity) || 0), 0);
+  const totalHeads = parseFloat(specs.headCount) || 0;
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {/* Species selector */}
+      <div style={{ marginBottom: 12 }}>
+        <label style={s.label}>Especie / Animal Type *</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {Object.entries(SPECIES_LABELS).map(([key, lbl]) => (
+            <button key={key} type="button" onClick={() => { setSpecField("species", key); setSpecField("breeds", []); }}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: species === key ? "2px solid #1B2A4A" : "1px solid #d1d5db", background: species === key ? "#1B2A4A" : "none", color: species === key ? "#fff" : "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              {lbl.es}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Breed selection */}
+      {availableBreeds.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <label style={s.label}>Razas disponibles — {origin || "seleccione origen"}</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            {availableBreeds.map(breed => (
+              <button key={breed.id} type="button" onClick={() => toggleBreed(breed)}
+                style={{ padding: "5px 12px", borderRadius: 20, border: hasBreed(breed.id) ? "2px solid #1B2A4A" : "1px solid #d1d5db", background: hasBreed(breed.id) ? "#1B2A4A" : "#f9fafb", color: hasBreed(breed.id) ? "#fff" : "#374151", fontSize: 12, fontWeight: hasBreed(breed.id) ? 600 : 400, cursor: "pointer" }}>
+                {breed.name}
+                {hasBreed(breed.id) && <span style={{ marginLeft: 5, fontSize: 10, opacity: 0.8 }}>✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Multi-breed quantity allocation */}
+      {selectedBreeds.length > 0 && (
+        <div style={{ background: "#f0f4ff", borderRadius: 10, padding: "12px 14px", marginBottom: 10, border: "1px solid #c7d2fe" }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#1e3a8a", margin: "0 0 10px" }}>
+            Distribución por Raza — Total asignado: {fmtNum(totalAllocated)} cabezas
+            {totalHeads > 0 && totalAllocated !== totalHeads && (
+              <span style={{ marginLeft: 8, color: "#dc2626" }}>⚠ Diferencia: {fmtNum(totalHeads - totalAllocated)} cab.</span>
+            )}
+          </p>
+          {selectedBreeds.map(b => (
+            <div key={b.breedId} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#1B2A4A", minWidth: 140 }}>{b.name}{b.custom && " (personalizada)"}</span>
+              <input type="number" value={b.quantity} onChange={e => updateBreedQty(b.breedId, e.target.value)}
+                placeholder="Cantidad" min="0" style={{ ...s.input, width: 110, flex: "none" }} />
+              <span style={{ fontSize: 11, color: "#6b7280" }}>cabezas</span>
+              <button type="button" onClick={() => setSpecField("breeds", selectedBreeds.filter(x => x.breedId !== b.breedId))}
+                style={{ border: "none", background: "#fee2e2", color: "#991b1b", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: 11 }}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Custom breed */}
+      {showCustom ? (
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={customBreed} onChange={e => setCustomBreed(e.target.value)} placeholder="Nombre de la raza personalizada"
+            onKeyDown={e => e.key === "Enter" && addCustomBreed()} style={{ ...s.input, flex: 1 }} />
+          <button type="button" onClick={addCustomBreed} style={{ padding: "8px 14px", borderRadius: 7, border: "none", background: "#1B2A4A", color: "#fff", cursor: "pointer", fontSize: 12 }}>Agregar</button>
+          <button type="button" onClick={() => setShowCustom(false)} style={{ padding: "8px 10px", borderRadius: 7, border: "1px solid #d1d5db", background: "none", cursor: "pointer", fontSize: 12 }}>✕</button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setShowCustom(true)}
+          style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+          + Agregar raza personalizada
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Cargo Type Selector ──────────────────────────────────────────────────────
+function CargoTypeSelector({ value, onChange, category }) {
+  const defaultCargo = category === "LIVE_ANIMALS" ? "Live Animals"
+    : ["FROZEN_MEAT","FROZEN_POULTRY","CANNED_MEAT"].includes(category) ? "Frozen Cargo"
+    : ["FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS"].includes(category) ? "Refrigerated Cargo"
+    : "Dry Cargo";
+
+  useEffect(() => {
+    if (!value && category) onChange(defaultCargo);
+  }, [category]);
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={s.label}>Tipo de Carga / Cargo Type</label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {CARGO_TYPES.map(ct => {
+          const active = (value || defaultCargo) === ct;
+          const isLiveWarning = ct === "Live Animals" && category !== "LIVE_ANIMALS";
+          return (
+            <button key={ct} type="button" onClick={() => onChange(ct)}
+              style={{ padding: "5px 12px", borderRadius: 20, border: active ? "2px solid #1B2A4A" : "1px solid #d1d5db", background: active ? "#1B2A4A" : "#f9fafb", color: active ? "#fff" : "#374151", fontSize: 12, cursor: "pointer", fontWeight: active ? 600 : 400 }}>
+              {ct}
+            </button>
+          );
+        })}
+      </div>
+      {(value || defaultCargo) === "Frozen Cargo" && (
+        <p style={{ fontSize: 11, color: "#2563eb", margin: "5px 0 0" }}>❄ Contenedor Reefer 40FT por defecto. Nota: disponibilidad de 20FT reefer es limitada en mercados internacionales actuales.</p>
+      )}
+      {(value || defaultCargo) === "Live Animals" && (
+        <p style={{ fontSize: 11, color: "#059669", margin: "5px 0 0" }}>🐄 Transporte en buque ganadero especializado, avión de carga o camión con ventilación. No se calculan contenedores estándar.</p>
+      )}
+      {(value || defaultCargo) === "Refrigerated Cargo" && (
+        <p style={{ fontSize: 11, color: "#0369a1", margin: "5px 0 0" }}>❄ Contenedor refrigerado 40FT Reefer recomendado.</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Dynamic Spec Fields ──────────────────────────────────────────────────────
 function DynamicFields({ category, specs, setSpecs }) {
   const catDef = PRODUCT_CATEGORIES[category];
@@ -152,6 +299,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   const [duration, setDuration] = useState(initial?.contractDuration || "12");
   const [containerCap, setContainerCap] = useState("");
   const [origin, setOrigin] = useState(initial?.origin || "Brazil");
+  const [cargoType, setCargoType] = useState(initial?.cargoType || "");
   const [collapsed, setCollapsed] = useState(false);
 
   const catDef = cat ? PRODUCT_CATEGORIES[cat] : null;
@@ -175,7 +323,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   }) : null;
 
   useEffect(() => {
-    onChange(rowId, { category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices, unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments, contractDuration: duration, containerCapacity: containerCap, origin, summary });
+    onChange(rowId, { category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices, unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments, contractDuration: duration, containerCapacity: containerCap, origin, cargoType, summary });
   }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency, frequency, numShipments, duration, containerCap, origin]);
 
   return (
@@ -223,7 +371,13 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
             )}
           </div>
 
-          {cat && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
+          {/* Livestock breed selector — special flow for LIVE_ANIMALS */}
+          {cat === "LIVE_ANIMALS" && (
+            <LivestockBreedSelector origin={origin} specs={specs} setSpecs={setSpecs} />
+          )}
+
+          {cat && cat !== "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
+          {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
 
           {/* Origin */}
           {cat && (
@@ -233,6 +387,9 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
               </Sel>
             </Field>
           )}
+
+          {/* Cargo type selector */}
+          {cat && <CargoTypeSelector value={cargoType} onChange={setCargoType} category={cat} />}
 
           {/* Quantity + Unit + Currency */}
           {cat && (
