@@ -10,6 +10,13 @@ const r2 = require("../storage/r2");
 const router = express.Router();
 router.use(authenticate);
 
+const ADMIN_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTIVO"]);
+function requireAdmin(req, res, next) {
+  if (!ADMIN_ROLES.has(req.user?.role) && req.user?.username !== "mvalencia")
+    return res.status(403).json({ error: "Acceso restringido" });
+  next();
+}
+
 // multer: memory storage, 20MB limit
 const upload = multer({
   storage: multer.memoryStorage(),
