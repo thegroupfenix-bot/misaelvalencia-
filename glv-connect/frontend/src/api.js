@@ -84,4 +84,16 @@ export const api = {
   createTask: (data)     => request("POST",   "/tasks", data),
   updateTask: (id, data) => request("PATCH",  `/tasks/${id}`, data),
   deleteTask: (id)       => request("DELETE", `/tasks/${id}`),
+
+  // Price Center
+  getPcCategories:       ()           => request("GET",    "/price-center/categories"),
+  getPcProducts:         (params = {}) => { const q = new URLSearchParams(params).toString(); return request("GET", `/price-center/products${q ? `?${q}` : ""}`); },
+  getPcProduct:          (id)          => request("GET",    `/price-center/products/${id}`),
+  getPcBreeds:           (species)     => request("GET",    `/price-center/breeds${species ? `?species=${species}` : ""}`),
+  adminCreatePcProduct:  (data)        => request("POST",   "/price-center/products", data),
+  adminUpdatePcProduct:  (id, data)    => request("PATCH",  `/price-center/products/${id}`, data),
+  adminDeletePcProduct:  (id)          => request("DELETE", `/price-center/products/${id}`),
+  adminCreatePcCategory: (data)        => request("POST",   "/price-center/categories", data),
+  adminUpdatePcCategory: (id, data)    => request("PATCH",  `/price-center/categories/${id}`, data),
+  adminCreatePcBreed:    (data)        => request("POST",   "/price-center/breeds", data),
 };

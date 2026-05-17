@@ -1,10 +1,15 @@
-export function validateDocForm(formData, agentProfile, docType) {
+const AGENT_PROFILE_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
+
+export function validateDocForm(formData, agentProfile, docType, userRole) {
   const errors = [];
 
-  // ─── Perfil del agente ───────────────────────────────────────────────────────
-  if (!agentProfile?.cargo) errors.push("Perfil: Cargo no completado");
-  if (!agentProfile?.phone) errors.push("Perfil: Teléfono no completado");
-  if (!agentProfile?.signature_b64) errors.push("Perfil: Firma digital no cargada");
+  // ─── Perfil del agente (solo para roles agentes, no admins/directores) ───────
+  const requiresProfile = !userRole || AGENT_PROFILE_ROLES.has(userRole);
+  if (requiresProfile) {
+    if (!agentProfile?.cargo) errors.push("Perfil: Cargo no completado");
+    if (!agentProfile?.phone) errors.push("Perfil: Teléfono no completado");
+    if (!agentProfile?.signature_b64) errors.push("Perfil: Firma digital no cargada");
+  }
 
   // ─── Cliente ─────────────────────────────────────────────────────────────────
   if (!formData.client) errors.push("Cliente (razón social) requerido");
