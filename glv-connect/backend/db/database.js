@@ -243,6 +243,41 @@ try {
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 
+// ─── Media Assets table ──────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS media_assets (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename          TEXT NOT NULL,
+    original_name     TEXT NOT NULL,
+    mime_type         TEXT NOT NULL,
+    extension         TEXT,
+    category          TEXT DEFAULT 'general',
+    subcategory       TEXT,
+    country_origin    TEXT,
+    product_relation  TEXT,
+    operation_relation TEXT,
+    document_relation TEXT,
+    uploaded_by       TEXT NOT NULL,
+    upload_date       TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    file_size         INTEGER,
+    image_width       INTEGER,
+    image_height      INTEGER,
+    public_url        TEXT,
+    thumbnail_url     TEXT,
+    storage_provider  TEXT DEFAULT 'r2',
+    checksum_hash     TEXT,
+    r2_key            TEXT,
+    thumbnail_key     TEXT,
+    metadata_json     TEXT DEFAULT '{}',
+    tags_json         TEXT DEFAULT '[]',
+    status            TEXT DEFAULT 'active',
+    visibility        TEXT DEFAULT 'internal',
+    archived          INTEGER DEFAULT 0,
+    audit_reference   TEXT
+  );
+`);
+
 // ─── Price Center tables ──────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS pc_categories (
