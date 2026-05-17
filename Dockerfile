@@ -13,4 +13,5 @@ COPY glv-connect/backend/package*.json ./
 RUN npm install
 COPY glv-connect/backend/ .
 COPY --from=frontend-builder /frontend/dist ./public
+EXPOSE 3001
 CMD ["node", "server.js"]
