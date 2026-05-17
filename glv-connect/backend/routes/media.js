@@ -1,11 +1,17 @@
 const express = require("express");
 const multer = require("multer");
-const sharp = require("sharp");
 const crypto = require("crypto");
 const path = require("path");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
 const r2 = require("../storage/r2");
+
+// sharp is lazy-loaded to avoid crashing the server if native bindings fail
+let _sharp = null;
+function getSharp() {
+  if (!_sharp) _sharp = require("sharp");
+  return _sharp;
+}
 
 const router = express.Router();
 router.use(authenticate);
@@ -131,6 +137,7 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
 
       if (isImage) {
         // Optimize + get dimensions
+        const sharp = getSharp();
         const meta = await sharp(file.buffer).metadata();
         width = meta.width; height = meta.height;
         // Compress if > 2MB

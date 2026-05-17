@@ -1,7 +1,5 @@
 require("dotenv").config();
 
-// Provide a fallback secret so the app doesn't crash on Railway if JWT_SECRET is not set yet.
-// Change this in Railway env vars for production security.
 if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = "glv-connect-dev-secret-change-in-production-2026";
   console.warn("WARNING: JWT_SECRET not set — using insecure default. Set it in Railway environment variables.");
@@ -12,20 +10,21 @@ require("./db/database"); // run migrations + seed on startup
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 
-const authRouter       = require("./routes/auth");
-const documentsRouter  = require("./routes/documents");
-const auditRouter      = require("./routes/audit");
-const usersRouter      = require("./routes/users");
-const profileRouter    = require("./routes/profile");
-const imagesRouter     = require("./routes/images");
-const adminRouter      = require("./routes/admin");
-const clientsRouter    = require("./routes/clients");
-const operationsRouter = require("./routes/operations");
-const financeRouter    = require("./routes/finance");
-const tasksRouter      = require("./routes/tasks");
+const authRouter        = require("./routes/auth");
+const documentsRouter   = require("./routes/documents");
+const auditRouter       = require("./routes/audit");
+const usersRouter       = require("./routes/users");
+const profileRouter     = require("./routes/profile");
+const imagesRouter      = require("./routes/images");
+const adminRouter       = require("./routes/admin");
+const clientsRouter     = require("./routes/clients");
+const operationsRouter  = require("./routes/operations");
+const financeRouter     = require("./routes/finance");
+const tasksRouter       = require("./routes/tasks");
 const priceCenterRouter = require("./routes/price-center");
-const mediaRouter = require("./routes/media");
+const mediaRouter       = require("./routes/media");
 
 const app = express();
 
@@ -35,30 +34,41 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.set("trust proxy", 1);
 
 // API routes
-app.use("/auth",       authRouter);
-app.use("/documents",  documentsRouter);
-app.use("/audit",      auditRouter);
-app.use("/users",      usersRouter);
-app.use("/profile",    profileRouter);
-app.use("/images",     imagesRouter);
-app.use("/admin",      adminRouter);
-app.use("/clients",    clientsRouter);
-app.use("/operations", operationsRouter);
-app.use("/finance",    financeRouter);
+app.use("/auth",         authRouter);
+app.use("/documents",    documentsRouter);
+app.use("/audit",        auditRouter);
+app.use("/users",        usersRouter);
+app.use("/profile",      profileRouter);
+app.use("/images",       imagesRouter);
+app.use("/admin",        adminRouter);
+app.use("/clients",      clientsRouter);
+app.use("/operations",   operationsRouter);
+app.use("/finance",      financeRouter);
 app.use("/tasks",        tasksRouter);
 app.use("/price-center", priceCenterRouter);
-app.use("/media", mediaRouter);
+app.use("/media",        mediaRouter);
 app.get("/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
-app.use(express.static(DIST));
-app.get("*", (_req, res) => res.sendFile(path.join(DIST, "index.html")));
+const indexHtml = path.join(DIST, "index.html");
+
+if (fs.existsSync(indexHtml)) {
+  app.use(express.static(DIST));
+  app.get("*", (_req, res) => res.sendFile(indexHtml));
+} else {
+  console.warn(`WARNING: Frontend build not found at ${DIST} — serving API only`);
+  app.get("*", (_req, res) => res.status(200).json({ ok: true, api: "GLV-Connect", hint: "Frontend not built" }));
+}
 
 app.use((err, _req, res, _next) => {
-  console.error(err);
+  console.error("Server error:", err.message);
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`GLV-Connect API en puerto ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`GLV-Connect API en puerto ${PORT}`);
+  console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
+  console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+});
