@@ -292,20 +292,81 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
             </div>
           )}
 
-          {/* Row mini-summary */}
-          {summary?.shipmentValue > 0 && (
-            <div style={{ background: "linear-gradient(135deg,#1B2A4A 0%,#2d4070 100%)", borderRadius: 10, padding: "12px 14px", color: "#fff", marginTop: 8 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
-                <MiniBox label="Valor por Embarque" value={fmtMoney(summary.shipmentValue, currency)} highlight />
-                {summary.monthlyValue !== summary.shipmentValue && <MiniBox label="Valor Mensual" value={fmtMoney(summary.monthlyValue, currency)} />}
-                <MiniBox label="Valor Total Contrato" value={fmtMoney(summary.contractValue, currency)} big />
-                <MiniBox label="Embarques/año" value={String(summary.shipmentsPerYear)} />
-                {summary.liveAnimalKg > 0 && <MiniBox label="KG Peso Vivo" value={fmtNum(summary.liveAnimalKg) + " kg"} />}
-                {summary.containers && <MiniBox label="Contenedores" value={`${summary.containers.containers} × 20'`} />}
-              </div>
-            </div>
+          {/* Row commercial summary — always shown when category + price are set */}
+          {cat && (
+            <CommercialSummaryPanel summary={summary} currency={currency} unitPrice={primaryPrice} qty={qty} unitType={unitType} specs={specs} frequency={frequency} duration={duration} />
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration }) {
+  const hasPrice = parseFloat(unitPrice) > 0;
+  const hasQty   = parseFloat(qty) > 0;
+
+  const panelStyle = {
+    background: summary?.contractValue > 0
+      ? "linear-gradient(135deg,#1B2A4A 0%,#2d4070 100%)"
+      : "linear-gradient(135deg,#374151 0%,#4b5563 100%)",
+    borderRadius: 10, padding: "14px 16px", color: "#fff", marginTop: 10,
+  };
+
+  const pendingItems = [];
+  if (!hasQty)   pendingItems.push("cantidad");
+  if (!hasPrice) pendingItems.push("precio por unidad");
+
+  if (!hasQty && !hasPrice) {
+    return (
+      <div style={{ ...panelStyle, opacity: 0.7 }}>
+        <p style={{ fontSize: 11, opacity: 0.7, margin: "0 0 6px", letterSpacing: 1, textTransform: "uppercase" }}>Resumen Comercial</p>
+        <p style={{ fontSize: 12, margin: 0, opacity: 0.8 }}>Ingrese {pendingItems.join(" y ")} para ver los cálculos.</p>
+      </div>
+    );
+  }
+
+  const fmtFreq = { ONE_SHIPMENT: "Embarque único", MONTHLY: "Mensual", BIMONTHLY: "Bimestral", QUARTERLY: "Trimestral", CUSTOM: "Personalizado" };
+
+  return (
+    <div style={panelStyle}>
+      <p style={{ fontSize: 11, opacity: 0.7, margin: "0 0 12px", letterSpacing: 1, textTransform: "uppercase" }}>
+        Resumen Comercial del Programa
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))", gap: 10 }}>
+        {hasPrice && <MiniBox label="Precio / Unidad" value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />}
+        {hasQty && <MiniBox label={`Cantidad (${unitType || "unid."})`} value={fmtNum(parseFloat(qty))} />}
+        {summary?.shipmentValue > 0 && <MiniBox label="Valor por Embarque" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
+        {summary?.shipmentValue > 0 && summary?.monthlyValue !== summary?.shipmentValue && (
+          <MiniBox label="Valor Mensual" value={fmtMoney(summary.monthlyValue, currency)} />
+        )}
+        {summary?.shipmentsPerYear != null && (
+          <MiniBox label="Embarques / Año" value={String(summary.shipmentsPerYear)} />
+        )}
+        {duration && <MiniBox label="Duración Contrato" value={`${duration} meses`} />}
+        {summary?.contractValue > 0 && (
+          <MiniBox label="TOTAL PROGRAMA" value={fmtMoney(summary.contractValue, currency)} big />
+        )}
+        {summary?.liveAnimalKg > 0 && (
+          <MiniBox label="Peso Vivo Total" value={fmtNum(summary.liveAnimalKg) + " kg"} />
+        )}
+        {specs?.headCount > 0 && (
+          <MiniBox label="Cabezas" value={fmtNum(parseFloat(specs.headCount))} />
+        )}
+        {specs?.avgWeight > 0 && (
+          <MiniBox label="Peso Prom." value={`${specs.avgWeight} kg/cabeza`} />
+        )}
+        {summary?.containers && (
+          <MiniBox label="Contenedores est." value={`${summary.containers.containers} × 20'`} />
+        )}
+        {summary?.contractValue > 0 && summary?.durationMonths > 0 && (
+          <MiniBox label="Valor Anual" value={fmtMoney(summary.contractValue / (summary.durationMonths / 12), currency)} />
+        )}
+      </div>
+      {!summary?.contractValue && hasQty && hasPrice && (
+        <p style={{ fontSize: 11, opacity: 0.7, margin: "10px 0 0", fontStyle: "italic" }}>
+          Selecciona frecuencia y duración para ver el valor total del contrato.
+        </p>
       )}
     </div>
   );
@@ -330,17 +391,25 @@ function AggregateSummary({ rows, rowData }) {
   const totalShipment = activeRows.reduce((s, r) => s + (r.summary?.shipmentValue || 0), 0);
   const currency = activeRows[0]?.currency || "USD";
 
-  if (activeRows.length === 1) return null; // single row has its own summary
+  if (activeRows.length === 1) return null;
+
+  const totalContainers = activeRows.reduce((s, r) => s + (r.summary?.containers?.containers || 0), 0);
+  const annualValue = activeRows[0]?.summary?.durationMonths > 0
+    ? totalContract / (activeRows[0].summary.durationMonths / 12)
+    : totalContract;
 
   return (
-    <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#1B2A4A 100%)", borderRadius: 12, padding: "1.25rem", color: "#fff", marginTop: 8 }}>
-      <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: 1, opacity: 0.7, margin: "0 0 12px", textTransform: "uppercase" }}>
-        Totales del Programa Comercial ({activeRows.length} productos)
+    <div style={{ background: "linear-gradient(135deg,#0f172a 0%,#1B2A4A 100%)", borderRadius: 12, padding: "1.25rem", color: "#fff", marginTop: 8, border: "1px solid rgba(255,255,255,0.1)" }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, opacity: 0.7, margin: "0 0 14px", textTransform: "uppercase" }}>
+        Totales Consolidados del Programa — {activeRows.length} productos
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
-        <MiniBox label="Valor Total Embarques" value={fmtMoney(totalShipment, currency)} highlight />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+        <MiniBox label="Valor por Embarque" value={fmtMoney(totalShipment, currency)} highlight />
         <MiniBox label="Valor Mensual Total" value={fmtMoney(totalMonthly, currency)} />
-        <MiniBox label="TOTAL CONTRATO PROGRAMA" value={fmtMoney(totalContract, currency)} big />
+        <MiniBox label="Valor Anual Estimado" value={fmtMoney(annualValue, currency)} />
+        <MiniBox label="TOTAL PROGRAMA" value={fmtMoney(totalContract, currency)} big />
+        {totalContainers > 0 && <MiniBox label="Contenedores Tot." value={`${totalContainers} × 20'`} />}
+        <MiniBox label="Líneas de Producto" value={String(activeRows.length)} />
       </div>
     </div>
   );

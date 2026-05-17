@@ -276,6 +276,38 @@ export const PRODUCT_CATEGORIES = {
     ],
   },
 
+  COLOMBIAN_EXOTIC_FRUITS: {
+    label: { es: "Frutas Exóticas Colombianas", en: "Colombian Exotic Fruits", fr: "Fruits Exotiques Colombiens", zh: "哥伦比亚异国水果", ar: "الفواكه الكولومبية الغريبة" },
+    color: "#be185d",
+    icon: "ti-leaf",
+    products: {
+      BOROJO:           { label: { es: "Borojó",              en: "Borojó" } },
+      CHONTADURO:       { label: { es: "Chontaduro",          en: "Chontaduro / Peach Palm" } },
+      GULUPA:           { label: { es: "Gulupa",              en: "Purple Granadilla" } },
+      GRANADILLA:       { label: { es: "Granadilla",          en: "Granadilla / Sweet Passion Fruit" } },
+      UCHUVA:           { label: { es: "Uchuva",              en: "Cape Gooseberry / Physalis" } },
+      LULO:             { label: { es: "Lulo",                en: "Lulo / Naranjilla" } },
+      CURUBA:           { label: { es: "Curuba",              en: "Curuba / Banana Passion Fruit" } },
+      GUANABANA:        { label: { es: "Guanábana",           en: "Soursop / Guanábana" } },
+      FEIJOA:           { label: { es: "Feijoa",              en: "Feijoa / Guavasteen" } },
+      PITAHAYA_AMARILLA:{ label: { es: "Pitahaya Amarilla",   en: "Yellow Dragon Fruit" } },
+      PITAHAYA_ROJA:    { label: { es: "Pitahaya Roja",       en: "Red Dragon Fruit" } },
+      MARACUYA:         { label: { es: "Maracuyá",            en: "Passion Fruit / Maracuyá" } },
+    },
+    units: ["KG", "Tonelada Métrica / MT", "Caja / Box", "Paleta / Pallet", "Contenedor / Container"],
+    defaultUnit: "KG",
+    calculationMode: "WEIGHT",
+    containerCapacity: 15,
+    fields: [
+      { key: "condition",   label: { es: "Estado / Condición",    en: "Condition" },          type: "select", options: ["Fresco / Fresh", "IQF", "Pulpa Congelada / Frozen Pulp", "Deshidratado / Dried", "Pulpa Pasteurizada"], required: true },
+      { key: "packaging",   label: { es: "Empaque",               en: "Packaging" },          type: "text",   required: false, placeholder: "Caja 5kg, Bolsa 1kg, IQF 10kg..." },
+      { key: "caliber",     label: { es: "Calibre / Grado",       en: "Grade / Caliber" },    type: "text",   required: false },
+      { key: "certOrganic", label: { es: "Cert. Orgánico",        en: "Organic Cert." },      type: "checkbox", required: false },
+      { key: "phytoCert",   label: { es: "Cert. Fitosanitario",   en: "Phytosanitary Cert." },type: "text",   required: false, placeholder: "Número de certificado ICA" },
+      { key: "region",      label: { es: "Región de Origen",      en: "Region of Origin" },   type: "text",   required: false, placeholder: "Valle del Cauca, Tolima, Boyacá..." },
+    ],
+  },
+
   EGGS: {
     label: { es: "Huevos y Derivados", en: "Eggs & Derivatives", fr: "Œufs", zh: "蛋类产品", ar: "البيض" },
     color: "#ea580c",
