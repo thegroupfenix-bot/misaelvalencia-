@@ -1,3 +1,4 @@
+# build v2026.05.17-2
 FROM node:20 AS frontend-builder
 WORKDIR /frontend
 COPY glv-connect/frontend/package*.json ./

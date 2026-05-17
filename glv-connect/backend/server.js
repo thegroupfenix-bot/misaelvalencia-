@@ -54,8 +54,14 @@ const DIST = path.join(__dirname, "public");
 const indexHtml = path.join(DIST, "index.html");
 
 if (fs.existsSync(indexHtml)) {
-  app.use(express.static(DIST));
-  app.get("*", (_req, res) => res.sendFile(indexHtml));
+  app.use(express.static(DIST, { dotfiles: "ignore", fallthrough: true }));
+  app.get("*", (_req, res) => {
+    res.sendFile("index.html", { root: DIST }, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: "Cannot serve frontend", detail: err.message });
+      }
+    });
+  });
 } else {
   console.warn(`WARNING: Frontend build not found at ${DIST} — serving API only`);
   app.get("*", (_req, res) => res.status(200).json({ ok: true, api: "GLV-Connect", hint: "Frontend not built" }));
