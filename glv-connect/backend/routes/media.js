@@ -215,14 +215,27 @@ router.get("/match/:category", (req, res) => {
   res.json(rows);
 });
 
-// GET /media/r2-status — check R2 configuration and auth mode
+// GET /media/r2-status — configuration check (fast, no network call)
 router.get("/r2-status", (_req, res) => {
   const mode = r2.authMode();
   res.json({
     configured: r2.isConfigured(),
-    auth_mode: mode,            // "token" | "s3" | null
+    auth_mode: mode,
     bucket: r2.R2_BUCKET_NAME,
   });
+});
+
+// GET /media/r2-ping — live connectivity test against Cloudflare R2 API
+router.get("/r2-ping", requireAdmin, async (_req, res) => {
+  if (!r2.isConfigured()) {
+    return res.status(503).json({ ok: false, error: "R2 not configured" });
+  }
+  try {
+    const result = await r2.ping();
+    res.json(result);
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
 });
 
 module.exports = router;

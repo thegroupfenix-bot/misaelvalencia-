@@ -129,4 +129,34 @@ async function getSignedDownloadUrl(key, expiresIn = 3600) {
   return buildPublicUrl(key);
 }
 
-module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, R2_BUCKET_NAME };
+// ping() — live connectivity test, called by /media/r2-ping endpoint
+async function ping() {
+  const mode = authMode();
+  if (!mode) return { ok: false, mode: null, error: "not configured" };
+
+  if (mode === "token") {
+    // List objects in the bucket with limit=1 to validate token + bucket access
+    const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects?limit=1`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${R2_API_TOKEN}` },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, mode, status: res.status, error: body?.errors?.[0]?.message || "R2 API error" };
+    }
+    return {
+      ok: true,
+      mode,
+      bucket: R2_BUCKET_NAME,
+      account: CLOUDFLARE_ACCOUNT_ID,
+      status: res.status,
+    };
+  }
+
+  // S3 mode — HeadBucket
+  const { HeadBucketCommand } = require("@aws-sdk/client-s3");
+  await getS3Client().send(new HeadBucketCommand({ Bucket: R2_BUCKET_NAME }));
+  return { ok: true, mode, bucket: R2_BUCKET_NAME };
+}
+
+module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, R2_BUCKET_NAME };
