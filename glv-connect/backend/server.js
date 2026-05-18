@@ -94,7 +94,7 @@ app.use((err, _req, res, _next) => {
   if (!res.headersSent) res.status(500).json({ error: "Error interno del servidor" });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`GLV-Connect API en puerto ${PORT}`);
   console.log(`PORT env: ${process.env.PORT ?? "(not set, defaulting to 3001)"}`);
