@@ -36,11 +36,22 @@ router.get("/categories", (req, res) => {
   res.json(cats);
 });
 
+// GET /price-center/breeds
+router.get("/breeds", (req, res) => {
+  const { species } = req.query;
+  let sql = "SELECT * FROM pc_breeds WHERE active = 1";
+  const params = [];
+  if (species) { sql += " AND species = ?"; params.push(species.toUpperCase()); }
+  sql += " ORDER BY species, name";
+  res.json(db.prepare(sql).all(...params).map(b => ({ ...b, origin_countries: parseArr(b.origin_countries) })));
+});
+
 // GET /price-center/products
 router.get("/products", (req, res) => {
-  const { category, search, availability } = req.query;
-  let sql = "SELECT * FROM pc_products WHERE active = 1";
-  const params = [];
+  const { category, search, availability, archived = "0" } = req.query;
+  const isArchived = archived === "1" ? 0 : 1; // active=1 means not archived
+  let sql = "SELECT * FROM pc_products WHERE active = ?";
+  const params = [isArchived];
   if (category)     { sql += " AND category_slug = ?"; params.push(category); }
   if (availability) { sql += " AND availability = ?";  params.push(availability); }
   if (search) {
@@ -53,19 +64,17 @@ router.get("/products", (req, res) => {
 
 // GET /price-center/products/:id
 router.get("/products/:id", (req, res) => {
-  const p = db.prepare("SELECT * FROM pc_products WHERE id = ? AND active = 1").get(req.params.id);
+  const p = db.prepare("SELECT * FROM pc_products WHERE id = ?").get(req.params.id);
   if (!p) return res.status(404).json({ error: "Producto no encontrado" });
   res.json(formatProduct(p));
 });
 
-// GET /price-center/breeds
-router.get("/breeds", (req, res) => {
-  const { species } = req.query;
-  let sql = "SELECT * FROM pc_breeds WHERE active = 1";
-  const params = [];
-  if (species) { sql += " AND species = ?"; params.push(species.toUpperCase()); }
-  sql += " ORDER BY species, name";
-  res.json(db.prepare(sql).all(...params).map(b => ({ ...b, origin_countries: parseArr(b.origin_countries) })));
+// GET /price-center/products/:id/price-history
+router.get("/products/:id/price-history", (req, res) => {
+  const rows = db.prepare(
+    "SELECT * FROM pc_price_history WHERE product_id = ? ORDER BY ts DESC LIMIT 100"
+  ).all(req.params.id);
+  res.json(rows);
 });
 
 // ─── Admin-only CRUD ──────────────────────────────────────────────────────────
@@ -104,24 +113,93 @@ router.post("/products", requireAdmin, (req, res) => {
 // PATCH /price-center/products/:id
 router.patch("/products/:id", requireAdmin, (req, res) => {
   const b = req.body;
+  const existing = db.prepare("SELECT * FROM pc_products WHERE id = ?").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Producto no encontrado" });
+
   const sets = []; const params = [];
   const scalarFields = ["category_slug","name_es","name_en","commercial_name","fob_price","cif_price","moq",
     "packaging","shelf_life","hs_code","container_capacity","image_url","availability","export_notes",
     "supplier_name","reefer_required","frozen_required","cargo_type","pallet_config","loading_config"];
   const jsonFields = ["origin_countries","incoterms","images","certifications","ports","market_segments","specs"];
+
+  const priceChanged = (b.fob_price !== undefined && b.fob_price !== existing.fob_price) ||
+                       (b.cif_price !== undefined && b.cif_price !== existing.cif_price);
+
   for (const f of scalarFields) if (b[f] !== undefined) { sets.push(`${f} = ?`); params.push(b[f]); }
   for (const f of jsonFields)   if (b[f] !== undefined) { sets.push(`${f} = ?`); params.push(JSON.stringify(b[f])); }
-  if (b.fob_price !== undefined || b.cif_price !== undefined) sets.push("price_updated_at = datetime('now')");
+  if (priceChanged) sets.push("price_updated_at = datetime('now')");
   sets.push("updated_at = datetime('now')");
   params.push(req.params.id);
+
   db.prepare(`UPDATE pc_products SET ${sets.join(",")} WHERE id = ?`).run(...params);
+
+  // Log price history entries
+  if (priceChanged) {
+    const insertHist = db.prepare(
+      "INSERT INTO pc_price_history (product_id, field, old_value, new_value, changed_by, reason) VALUES (?,?,?,?,?,?)"
+    );
+    const reason = b.change_reason || null;
+    if (b.fob_price !== undefined && b.fob_price !== existing.fob_price) {
+      insertHist.run(req.params.id, "fob_price", existing.fob_price, b.fob_price, req.user.username, reason);
+    }
+    if (b.cif_price !== undefined && b.cif_price !== existing.cif_price) {
+      insertHist.run(req.params.id, "cif_price", existing.cif_price, b.cif_price, req.user.username, reason);
+    }
+  }
+
   res.json(formatProduct(db.prepare("SELECT * FROM pc_products WHERE id=?").get(req.params.id)));
 });
 
-// DELETE /price-center/products/:id
+// DELETE /price-center/products/:id  (archive — soft delete)
 router.delete("/products/:id", requireAdmin, (req, res) => {
-  db.prepare("UPDATE pc_products SET active = 0 WHERE id = ?").run(req.params.id);
+  db.prepare("UPDATE pc_products SET active = 0, updated_at = datetime('now') WHERE id = ?").run(req.params.id);
   res.json({ ok: true });
+});
+
+// POST /price-center/products/:id/restore
+router.post("/products/:id/restore", requireAdmin, (req, res) => {
+  db.prepare("UPDATE pc_products SET active = 1, updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+  res.json(formatProduct(db.prepare("SELECT * FROM pc_products WHERE id=?").get(req.params.id)));
+});
+
+// POST /price-center/products/:id/duplicate
+router.post("/products/:id/duplicate", requireAdmin, (req, res) => {
+  const src = db.prepare("SELECT * FROM pc_products WHERE id = ?").get(req.params.id);
+  if (!src) return res.status(404).json({ error: "Producto no encontrado" });
+  const result = db.prepare(`
+    INSERT INTO pc_products (category_slug, name_es, name_en, commercial_name, subcategory,
+      origin_countries, fob_price, cif_price, incoterms, moq, packaging, units_per_box,
+      net_weight, gross_weight, shelf_life, hs_code, container_capacity, image_url, images,
+      certifications, availability, export_notes, supplier_name, ports,
+      reefer_required, frozen_required, cargo_type, pallet_config, loading_config, market_segments, specs)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    src.category_slug, `${src.name_es} (copia)`, src.name_en, src.commercial_name, src.subcategory,
+    src.origin_countries, src.fob_price, src.cif_price, src.incoterms, src.moq, src.packaging,
+    src.units_per_box, src.net_weight, src.gross_weight, src.shelf_life, src.hs_code,
+    src.container_capacity, src.image_url, src.images, src.certifications,
+    src.availability, src.export_notes, src.supplier_name, src.ports,
+    src.reefer_required, src.frozen_required, src.cargo_type, src.pallet_config,
+    src.loading_config, src.market_segments, src.specs
+  );
+  res.status(201).json(formatProduct(db.prepare("SELECT * FROM pc_products WHERE id=?").get(result.lastInsertRowid)));
+});
+
+// POST /price-center/products/bulk
+router.post("/products/bulk", requireAdmin, (req, res) => {
+  const { ids, action } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: "ids requeridos" });
+  const placeholders = ids.map(() => "?").join(",");
+  if (action === "archive") {
+    db.prepare(`UPDATE pc_products SET active = 0, updated_at = datetime('now') WHERE id IN (${placeholders})`).run(...ids);
+  } else if (action === "restore") {
+    db.prepare(`UPDATE pc_products SET active = 1, updated_at = datetime('now') WHERE id IN (${placeholders})`).run(...ids);
+  } else if (action === "delete") {
+    db.prepare(`DELETE FROM pc_products WHERE id IN (${placeholders})`).run(...ids);
+  } else {
+    return res.status(400).json({ error: "action debe ser archive, restore o delete" });
+  }
+  res.json({ ok: true, affected: ids.length });
 });
 
 // POST /price-center/categories

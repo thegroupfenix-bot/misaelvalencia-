@@ -90,12 +90,16 @@ export const api = {
   getPcProducts:         (params = {}) => { const q = new URLSearchParams(params).toString(); return request("GET", `/price-center/products${q ? `?${q}` : ""}`); },
   getPcProduct:          (id)          => request("GET",    `/price-center/products/${id}`),
   getPcBreeds:           (species)     => request("GET",    `/price-center/breeds${species ? `?species=${species}` : ""}`),
-  adminCreatePcProduct:  (data)        => request("POST",   "/price-center/products", data),
-  adminUpdatePcProduct:  (id, data)    => request("PATCH",  `/price-center/products/${id}`, data),
-  adminDeletePcProduct:  (id)          => request("DELETE", `/price-center/products/${id}`),
-  adminCreatePcCategory: (data)        => request("POST",   "/price-center/categories", data),
-  adminUpdatePcCategory: (id, data)    => request("PATCH",  `/price-center/categories/${id}`, data),
-  adminCreatePcBreed:    (data)        => request("POST",   "/price-center/breeds", data),
+  adminCreatePcProduct:    (data)       => request("POST",   "/price-center/products", data),
+  adminUpdatePcProduct:    (id, data)   => request("PATCH",  `/price-center/products/${id}`, data),
+  adminArchivePcProduct:   (id)         => request("DELETE", `/price-center/products/${id}`),
+  adminRestorePcProduct:   (id)         => request("POST",   `/price-center/products/${id}/restore`),
+  adminDuplicatePcProduct: (id)         => request("POST",   `/price-center/products/${id}/duplicate`),
+  adminBulkPcProducts:     (data)       => request("POST",   "/price-center/products/bulk", data),
+  getPcPriceHistory:       (id)         => request("GET",    `/price-center/products/${id}/price-history`),
+  adminCreatePcCategory:   (data)       => request("POST",   "/price-center/categories", data),
+  adminUpdatePcCategory:   (id, data)   => request("PATCH",  `/price-center/categories/${id}`, data),
+  adminCreatePcBreed:      (data)       => request("POST",   "/price-center/breeds", data),
 
   // ─── Media Center ─────────────────────────────────────────────────────────────
   getMedia:            (params = {}) => {
