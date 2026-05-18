@@ -69,14 +69,20 @@ app.use("/media",        mediaRouter);
 const DIST = path.join(__dirname, "public");
 const indexHtml = path.join(DIST, "index.html");
 
-if (fs.existsSync(indexHtml)) {
-  app.use(express.static(DIST, { dotfiles: "ignore", fallthrough: true }));
+// Pre-load index.html into memory — avoids file-stream issues with Railway's proxy
+const indexBuffer = fs.existsSync(indexHtml) ? fs.readFileSync(indexHtml) : null;
+
+if (indexBuffer) {
+  console.log(`Frontend cargado en memoria: ${indexBuffer.length} bytes`);
+  // Static assets (JS, CSS, images) — stream from disk with index: false so / falls through
+  app.use(express.static(DIST, { dotfiles: "ignore", fallthrough: true, index: false }));
+  // SPA catch-all — serve from memory buffer, no file streaming
   app.get("*", (_req, res) => {
-    res.sendFile("index.html", { root: DIST }, (err) => {
-      if (err && !res.headersSent) {
-        res.status(500).json({ error: "Cannot serve frontend", detail: err.message });
-      }
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Length": indexBuffer.length,
     });
+    res.end(indexBuffer);
   });
 } else {
   console.warn(`WARNING: Frontend build not found at ${DIST} — serving API only`);
