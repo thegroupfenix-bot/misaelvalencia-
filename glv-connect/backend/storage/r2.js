@@ -173,4 +173,49 @@ function rewriteToPublicUrl(url) {
   }
 }
 
-module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, rewriteToPublicUrl, R2_BUCKET_NAME };
+// listObjects() — paginated listing of all objects under a prefix
+// Returns array of { key, size, uploaded } for ALL pages
+async function listObjects(prefix = "", maxTotal = 10000) {
+  const mode = authMode();
+  if (!mode) throw new Error("R2 not configured");
+
+  const all = [];
+
+  if (mode === "token") {
+    let cursor = null;
+    do {
+      const params = new URLSearchParams({ limit: "1000" });
+      if (prefix) params.set("prefix", prefix);
+      if (cursor) params.set("cursor", cursor);
+      const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects?${params}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${R2_API_TOKEN}` } });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(`R2 list failed [${res.status}]: ${body?.errors?.[0]?.message || res.statusText}`);
+      }
+      const body = await res.json();
+      const objects = body.result?.objects || [];
+      all.push(...objects.map(o => ({ key: o.key, size: o.size, uploaded: o.uploaded })));
+      cursor = body.result?.truncated ? body.result.cursor : null;
+    } while (cursor && all.length < maxTotal);
+    return all;
+  }
+
+  // S3 mode
+  const { ListObjectsV2Command } = require("@aws-sdk/client-s3");
+  let ContinuationToken;
+  do {
+    const cmd = new ListObjectsV2Command({
+      Bucket: R2_BUCKET_NAME,
+      Prefix: prefix || undefined,
+      MaxKeys: 1000,
+      ContinuationToken,
+    });
+    const resp = await getS3Client().send(cmd);
+    (resp.Contents || []).forEach(o => all.push({ key: o.Key, size: o.Size, uploaded: o.LastModified?.toISOString() }));
+    ContinuationToken = resp.IsTruncated ? resp.NextContinuationToken : undefined;
+  } while (ContinuationToken && all.length < maxTotal);
+  return all;
+}
+
+module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, rewriteToPublicUrl, listObjects, R2_BUCKET_NAME };

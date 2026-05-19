@@ -121,7 +121,9 @@ export const api = {
     const qs = new URLSearchParams(params).toString();
     return request("GET", `/media/match/${category}${qs ? "?" + qs : ""}`);
   },
-  getMediaCategories:  () => request("GET", "/media/categories"),
-  getR2Status:         () => request("GET", "/media/r2-status"),
-  pingR2:              () => request("GET", "/media/r2-ping"),
+  getMediaCategories:   () => request("GET",  "/media/categories"),
+  getR2Status:          () => request("GET",  "/media/r2-status"),
+  pingR2:               () => request("GET",  "/media/r2-ping"),
+  reconcileMedia:       () => request("POST", "/media/reconcile"),
+  reconcileMediaStatus: () => request("GET",  "/media/reconcile/status"),
 };

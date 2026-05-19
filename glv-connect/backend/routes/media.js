@@ -310,4 +310,89 @@ router.get("/match/:category", (req, res) => {
 });
 
 
+// POST /media/reconcile — scan R2, restore DB records for orphaned objects
+router.post("/reconcile", requireAdmin, async (req, res) => {
+  if (!r2.isConfigured()) return res.status(503).json({ error: "R2 not configured" });
+
+  const MIME_MAP = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+    webp: "image/webp", gif: "image/gif", svg: "image/svg+xml",
+    pdf: "application/pdf",
+  };
+
+  function categoryFromKey(key) {
+    const parts = key.split("/");
+    const yearIdx = parts.findIndex(p => /^\d{4}$/.test(p));
+    if (yearIdx > 0) return parts.slice(0, yearIdx).join("/");
+    return parts.slice(0, -1).join("/") || "general";
+  }
+
+  try {
+    console.log("[reconcile] Listing R2 objects...");
+    const allObjects = await r2.listObjects("", 20000);
+    const mainAssets = allObjects.filter(o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/"));
+    const thumbIndex = new Set(allObjects.filter(o => o.key.startsWith("thumbnails/")).map(o => o.key));
+    console.log(`[reconcile] R2 total=${allObjects.length} main=${mainAssets.length} thumbs=${thumbIndex.size}`);
+
+    const existingKeys = new Set(
+      db.prepare("SELECT r2_key FROM media_assets WHERE r2_key IS NOT NULL").all().map(r => r.r2_key)
+    );
+    console.log(`[reconcile] DB existing keys: ${existingKeys.size}`);
+
+    const insert = db.prepare(`
+      INSERT INTO media_assets
+        (filename, original_name, mime_type, extension, category, uploaded_by,
+         file_size, public_url, thumbnail_url, r2_key, thumbnail_key,
+         tags_json, metadata_json, status, storage_provider, upload_date, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `);
+
+    const toInsert = [];
+    const domain = process.env.R2_PUBLIC_DOMAIN || "";
+    for (const obj of mainAssets) {
+      if (existingKeys.has(obj.key)) continue;
+      const filename  = obj.key.split("/").pop();
+      const ext       = (filename.split(".").pop() || "").toLowerCase();
+      const mimeType  = MIME_MAP[ext] || "application/octet-stream";
+      const category  = categoryFromKey(obj.key);
+      const publicUrl = domain ? `https://${domain}/${obj.key}` : null;
+      const thumbKey  = `thumbnails/${obj.key.replace(/\.[^.]+$/, ".webp")}`;
+      const thumbUrl  = (thumbIndex.has(thumbKey) && domain) ? `https://${domain}/${thumbKey}` : null;
+      const uploadedAt = (obj.uploaded || new Date().toISOString()).slice(0, 19).replace("T", " ");
+      toInsert.push([
+        filename, filename, mimeType, ext, category, "reconcile",
+        obj.size || 0, publicUrl, thumbUrl, obj.key,
+        thumbUrl ? thumbKey : null,
+        "[]", JSON.stringify({ reconciled: true, reconciled_at: new Date().toISOString() }),
+        "active", "r2", uploadedAt, new Date().toISOString().slice(0, 19).replace("T", " "),
+      ]);
+    }
+
+    if (toInsert.length > 0) {
+      db.transaction(() => { toInsert.forEach(r => insert.run(...r)); })();
+    }
+
+    const totalInDb = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
+    console.log(`[reconcile] Done. restored=${toInsert.length} totalInDb=${totalInDb}`);
+    res.json({ ok: true, scanned: mainAssets.length, already_indexed: mainAssets.length - toInsert.length, restored: toInsert.length, total_in_db: totalInDb });
+  } catch (err) {
+    console.error("[reconcile] Error:", err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// GET /media/reconcile/status — R2 object count vs DB record count
+router.get("/reconcile/status", requireAdmin, async (req, res) => {
+  if (!r2.isConfigured()) return res.json({ configured: false });
+  try {
+    const [r2Count, dbCount] = await Promise.all([
+      r2.listObjects("", 20000).then(arr => arr.filter(o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/")).length),
+      Promise.resolve(db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c),
+    ]);
+    res.json({ r2_objects: r2Count, db_records: dbCount, in_sync: r2Count <= dbCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
