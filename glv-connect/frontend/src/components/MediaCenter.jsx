@@ -321,6 +321,7 @@ function InfoRow({ label, value }) {
 }
 
 function AssetCard({ asset, onSelect }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const isImg = asset.mime_type?.startsWith("image/");
   const thumb = asset.thumbnail_url || asset.public_url;
   return (
@@ -331,11 +332,15 @@ function AssetCard({ asset, onSelect }) {
       onMouseLeave={e => e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.06)"}>
       <div style={{ height:140, background:"#f1f5f9", overflow:"hidden",
         display:"flex", alignItems:"center", justifyContent:"center" }}>
-        {isImg && thumb ? (
+        {isImg && thumb && !imgFailed ? (
           <img src={thumb} alt={asset.original_name} loading="lazy"
-            style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            style={{ width:"100%", height:"100%", objectFit:"cover" }}
+            onError={() => {
+              console.warn(`[AssetCard] img failed: ${thumb} (key: ${asset.r2_key || asset.id})`);
+              setImgFailed(true);
+            }} />
         ) : (
-          <span style={{ fontSize:48 }}>{asset.mime_type==="application/pdf" ? "📄" : "📁"}</span>
+          <span style={{ fontSize:48 }}>{asset.mime_type==="application/pdf" ? "📄" : imgFailed ? "🖼️" : "📁"}</span>
         )}
       </div>
       <div style={{ padding:"10px 12px" }}>
@@ -378,6 +383,7 @@ export default function MediaCenter({ user }) {
   const [page, setPage] = useState(0);
   const [loadError, setLoadError] = useState(null);
   const PER_PAGE = 40;
+  const loadIdRef = useRef(0);
 
   const ADMIN_ROLES = new Set(["SUPER_ADMIN","CORPORATE_ADMIN","DIRECTIVO","DIRECTOR_COMERCIAL"]);
   const canEdit = ADMIN_ROLES.has(user?.role) || user?.username === "mvalencia";
@@ -402,6 +408,7 @@ export default function MediaCenter({ user }) {
   const COUNTRIES = ["Colombia","Brazil","Peru","Chile","Argentina","Uruguay","Australia","New Zealand","South Africa","USA"];
 
   const load = useCallback(async () => {
+    const callId = ++loadIdRef.current;
     setLoading(true);
     setLoadError(null);
     try {
@@ -409,14 +416,24 @@ export default function MediaCenter({ user }) {
       if (filterCat) params.category = filterCat;
       if (filterCountry) params.country = filterCountry;
       if (search) params.search = search;
+      console.log(`[MediaCenter] load #${callId} cat="${filterCat || "all"}" country="${filterCountry || "any"}" search="${search}" page=${page} offset=${page * PER_PAGE}`);
       const data = await api.getMedia(params);
+      // Discard stale responses — a newer load() has already fired
+      if (callId !== loadIdRef.current) {
+        console.log(`[MediaCenter] load #${callId} discarded (superseded by #${loadIdRef.current})`);
+        return;
+      }
+      const assetCount = data.assets?.length ?? 0;
+      console.log(`[MediaCenter] load #${callId} → ${assetCount} assets returned, total=${data.total}`);
+      if (assetCount > 0) console.log(`[MediaCenter] load #${callId} sample[0] key="${data.assets[0].r2_key}" thumb="${data.assets[0].thumbnail_url}" cat="${data.assets[0].category}"`);
       setAssets(data.assets || []);
       setTotal(data.total || 0);
     } catch (e) {
+      if (callId !== loadIdRef.current) return;
       console.error("[MediaCenter] load error:", e);
       setLoadError(e.message || "Error al cargar activos");
     }
-    setLoading(false);
+    if (callId === loadIdRef.current) setLoading(false);
   }, [filterCat, filterCountry, search, page]);
 
   useEffect(() => { load(); }, [load]);
