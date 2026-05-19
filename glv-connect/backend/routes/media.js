@@ -84,21 +84,31 @@ function serializeAsset(r) {
 // GET /media — list assets
 router.get("/", (req, res) => {
   const { category, country, product, search, archived = 0, limit = 100, offset = 0 } = req.query;
-  let sql = "SELECT * FROM media_assets WHERE status != 'deleted' AND archived = ?";
-  const params = [+archived];
-  if (category)  { sql += " AND category LIKE ?"; params.push(`${category}%`); }
-  if (country)   { sql += " AND country_origin = ?"; params.push(country); }
-  if (product)   { sql += " AND product_relation = ?"; params.push(product); }
-  if (search)    { sql += " AND (original_name LIKE ? OR tags_json LIKE ? OR subcategory LIKE ?)"; params.push(`%${search}%`,`%${search}%`,`%${search}%`); }
-  sql += " ORDER BY upload_date DESC LIMIT ? OFFSET ?";
-  params.push(+limit, +offset);
-  const rows = db.prepare(sql).all(...params).map(serializeAsset);
-  const total = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted' AND archived = ?").get(+archived).c;
+  let base = "SELECT * FROM media_assets WHERE status != 'deleted' AND archived = ?";
+  const filterParams = [+archived];
+  if (category)  { base += " AND category LIKE ?"; filterParams.push(`${category}%`); }
+  if (country)   { base += " AND country_origin = ?"; filterParams.push(country); }
+  if (product)   { base += " AND product_relation = ?"; filterParams.push(product); }
+  if (search)    { base += " AND (original_name LIKE ? OR tags_json LIKE ? OR subcategory LIKE ?)"; filterParams.push(`%${search}%`,`%${search}%`,`%${search}%`); }
+  const rows = db.prepare(base + " ORDER BY upload_date DESC LIMIT ? OFFSET ?").all(...filterParams, +limit, +offset).map(serializeAsset);
+  const total = db.prepare(base.replace("SELECT *", "SELECT COUNT(*) AS c")).get(...filterParams).c;
   res.json({ assets: rows, total });
 });
 
 // GET /media/categories — folder structure
 router.get("/categories", (_req, res) => res.json(MEDIA_CATEGORIES));
+
+// GET /media/debug-categories — returns distinct category values stored in DB (admin only)
+// Used to diagnose filter mismatches without querying SQLite directly.
+router.get("/debug-categories", requireAdmin, (_req, res) => {
+  const rows = db.prepare(
+    "SELECT category, COUNT(*) AS count FROM media_assets WHERE status != 'deleted' GROUP BY category ORDER BY count DESC"
+  ).all();
+  const sample = db.prepare(
+    "SELECT id, r2_key, category, original_name FROM media_assets WHERE status != 'deleted' ORDER BY id DESC LIMIT 10"
+  ).all();
+  res.json({ distinct_categories: rows, recent_sample: sample });
+});
 
 // NOTE: all static-path routes MUST be declared before /:id — Express matches in order
 router.get("/r2-status", (_req, res) => {

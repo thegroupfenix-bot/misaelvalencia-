@@ -376,6 +376,7 @@ export default function MediaCenter({ user }) {
   const [reconcileResult, setReconcileResult] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [page, setPage] = useState(0);
+  const [loadError, setLoadError] = useState(null);
   const PER_PAGE = 40;
 
   const ADMIN_ROLES = new Set(["SUPER_ADMIN","CORPORATE_ADMIN","DIRECTIVO","DIRECTOR_COMERCIAL"]);
@@ -402,6 +403,7 @@ export default function MediaCenter({ user }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params = { limit: PER_PAGE, offset: page * PER_PAGE };
       if (filterCat) params.category = filterCat;
@@ -410,7 +412,10 @@ export default function MediaCenter({ user }) {
       const data = await api.getMedia(params);
       setAssets(data.assets || []);
       setTotal(data.total || 0);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error("[MediaCenter] load error:", e);
+      setLoadError(e.message || "Error al cargar activos");
+    }
     setLoading(false);
   }, [filterCat, filterCountry, search, page]);
 
@@ -598,6 +603,19 @@ export default function MediaCenter({ user }) {
           </div>
         )}
 
+        {/* Load error banner */}
+        {loadError && (
+          <div style={{ background:"#fee2e2", border:"1px solid #fca5a5", borderRadius:10,
+            padding:"10px 16px", marginBottom:16, fontSize:13, color:"#991b1b",
+            display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <span>❌ Error al cargar: <strong>{loadError}</strong></span>
+            <button onClick={load} style={{ background:"#dc2626", color:"white", border:"none",
+              borderRadius:8, padding:"4px 12px", cursor:"pointer", fontWeight:700, fontSize:12, marginLeft:12 }}>
+              Reintentar
+            </button>
+          </div>
+        )}
+
         {/* Grid */}
         {loading ? (
           <div style={{ textAlign:"center", padding:60, color:PALETTE.gray, fontSize:16 }}>
@@ -606,7 +624,11 @@ export default function MediaCenter({ user }) {
         ) : assets.length === 0 ? (
           <div style={{ textAlign:"center", padding:60, color:PALETTE.gray }}>
             <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
-            <div style={{ fontWeight:600, fontSize:16 }}>No hay activos en esta categoría</div>
+            <div style={{ fontWeight:600, fontSize:16 }}>
+              {filterCat || filterCountry || search
+                ? "No hay activos con estos filtros"
+                : "No hay activos"}
+            </div>
             <div style={{ fontSize:13, marginTop:4 }}>
               {canEdit ? "Sube el primer archivo usando el botón de arriba" : "El administrador debe subir archivos"}
             </div>
