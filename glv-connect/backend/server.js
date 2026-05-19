@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const BUILD_TS = new Date().toISOString(); // set once at process start — visible in /health
+
 // Catch any unhandled async/sync crash — log it so Railway shows it in deploy logs
 process.on("unhandledRejection", (reason) => {
   console.error("UNHANDLED REJECTION:", reason);
@@ -56,7 +58,7 @@ app.get("/health", (_req, res) => {
     const userCount  = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
     dbInfo = { media_assets: mediaCount, users: userCount };
   } catch (e) { dbInfo = { error: e.message }; }
-  res.json({ ok: true, ts: new Date().toISOString(), db: dbInfo });
+  res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS, db: dbInfo });
 });
 
 // API routes
@@ -109,4 +111,62 @@ app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`PORT env: ${process.env.PORT ?? "(not set, defaulting to 3001)"}`);
   console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
   console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+  console.log(`BUILD_TS: ${BUILD_TS}`);
 });
+
+// Auto-reconcile R2 media 15s after startup — restores orphaned assets after any DB reset
+setTimeout(async () => {
+  const r2 = require("./storage/r2");
+  const db = require("./db/database");
+  if (!r2.isConfigured()) {
+    console.log("[startup-reconcile] R2 not configured — skipping auto-reconcile.");
+    return;
+  }
+  try {
+    console.log("[startup-reconcile] Starting automatic R2 media reconciliation...");
+    const allObjects = await r2.listObjects("", 20000);
+    const mainAssets = allObjects.filter(
+      o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/")
+    );
+    const existingKeys = new Set(
+      db.prepare("SELECT r2_key FROM media_assets WHERE r2_key IS NOT NULL AND status != 'deleted'").all().map(r => r.r2_key)
+    );
+    const missing = mainAssets.filter(o => !existingKeys.has(o.key));
+    if (missing.length === 0) {
+      console.log(`[startup-reconcile] All ${mainAssets.length} R2 objects already indexed. Nothing to restore.`);
+      return;
+    }
+    console.log(`[startup-reconcile] Found ${missing.length} orphaned R2 objects — restoring...`);
+    const insert = db.prepare(`
+      INSERT INTO media_assets (r2_key, url, filename, original_name, category, mime_type, size, status, uploaded_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'reconcile', datetime('now'))
+    `);
+    const insertMany = db.transaction((rows) => {
+      for (const o of rows) {
+        const parts = o.key.split("/");
+        const filename = parts[parts.length - 1];
+        const yearIdx = parts.findIndex(p => /^\d{4}$/.test(p));
+        const category = yearIdx > 0
+          ? parts.slice(0, yearIdx).join("/")
+          : parts.slice(0, -1).join("/") || "general";
+        const ext = filename.split(".").pop().toLowerCase();
+        const mime = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", mp4: "video/mp4", pdf: "application/pdf" }[ext] || "application/octet-stream";
+        const { R2_BUCKET_NAME } = r2;
+        const R2_PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN || null;
+        const R2_ENDPOINT = process.env.R2_ENDPOINT || null;
+        const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || null;
+        let url;
+        if (R2_PUBLIC_DOMAIN) url = `https://${R2_PUBLIC_DOMAIN}/${o.key}`;
+        else if (R2_ENDPOINT) {
+          const base = R2_ENDPOINT.replace(/\/$/, "");
+          url = base.includes(R2_BUCKET_NAME) ? `${base}/${o.key}` : `${base}/${R2_BUCKET_NAME}/${o.key}`;
+        } else url = `https://${R2_BUCKET_NAME}.${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/${o.key}`;
+        insert.run(o.key, url, filename, filename, category, mime, o.size || 0);
+      }
+    });
+    insertMany(missing);
+    console.log(`[startup-reconcile] Done. Restored ${missing.length} assets. Total R2 objects scanned: ${mainAssets.length}.`);
+  } catch (e) {
+    console.warn("[startup-reconcile] Error during auto-reconcile:", e.message);
+  }
+}, 15000);
