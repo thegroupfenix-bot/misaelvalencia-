@@ -348,16 +348,15 @@ router.post("/reconcile", requireAdmin, async (req, res) => {
     `);
 
     const toInsert = [];
-    const domain = process.env.R2_PUBLIC_DOMAIN || "";
     for (const obj of mainAssets) {
       if (existingKeys.has(obj.key)) continue;
       const filename  = obj.key.split("/").pop();
       const ext       = (filename.split(".").pop() || "").toLowerCase();
       const mimeType  = MIME_MAP[ext] || "application/octet-stream";
       const category  = categoryFromKey(obj.key);
-      const publicUrl = domain ? `https://${domain}/${obj.key}` : null;
+      const publicUrl = r2.buildPublicUrl(obj.key);
       const thumbKey  = `thumbnails/${obj.key.replace(/\.[^.]+$/, ".webp")}`;
-      const thumbUrl  = (thumbIndex.has(thumbKey) && domain) ? `https://${domain}/${thumbKey}` : null;
+      const thumbUrl  = thumbIndex.has(thumbKey) ? r2.buildPublicUrl(thumbKey) : null;
       const uploadedAt = (obj.uploaded || new Date().toISOString()).slice(0, 19).replace("T", " ");
       toInsert.push([
         filename, filename, mimeType, ext, category, "reconcile",

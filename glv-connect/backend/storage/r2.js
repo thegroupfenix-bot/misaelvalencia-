@@ -173,35 +173,59 @@ function rewriteToPublicUrl(url) {
   }
 }
 
-// listObjects() — paginated listing of all objects under a prefix
-// Returns array of { key, size, uploaded } for ALL pages
-async function listObjects(prefix = "", maxTotal = 10000) {
+// listObjects() — full recursive listing of all objects under a prefix.
+// Returns array of { key, size, uploaded } including ALL nested depths.
+//
+// Token mode uses delimiter-based recursive traversal because the Cloudflare
+// Management API may return nested paths in `delimitedPrefixes` instead of
+// `objects` when no delimiter is specified.  Explicit delimiter + recursion
+// guarantees every object at every depth is discovered regardless of API
+// default behaviour.
+//
+// S3 mode uses ListObjectsV2 without a Delimiter — the S3 spec guarantees
+// a flat recursive listing when no Delimiter is present.
+async function listObjects(prefix = "", maxTotal = 20000) {
   const mode = authMode();
   if (!mode) throw new Error("R2 not configured");
 
   const all = [];
 
   if (mode === "token") {
-    let cursor = null;
-    do {
-      const params = new URLSearchParams({ limit: "1000" });
-      if (prefix) params.set("prefix", prefix);
-      if (cursor) params.set("cursor", cursor);
-      const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects?${params}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${R2_API_TOKEN}` } });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(`R2 list failed [${res.status}]: ${body?.errors?.[0]?.message || res.statusText}`);
-      }
-      const body = await res.json();
-      const objects = body.result?.objects || [];
-      all.push(...objects.map(o => ({ key: o.key, size: o.size, uploaded: o.uploaded })));
-      cursor = body.result?.truncated ? body.result.cursor : null;
-    } while (cursor && all.length < maxTotal);
+    async function scanPrefix(pfx) {
+      let cursor = null;
+      do {
+        const params = new URLSearchParams({ limit: "1000", delimiter: "/" });
+        if (pfx) params.set("prefix", pfx);
+        if (cursor) params.set("cursor", cursor);
+        const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects?${params}`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${R2_API_TOKEN}` } });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(`R2 list failed [${res.status}]: ${body?.errors?.[0]?.message || res.statusText}`);
+        }
+        const body = await res.json();
+
+        // Leaf objects at this prefix level
+        for (const o of (body.result?.objects || [])) {
+          all.push({ key: o.key, size: o.size, uploaded: o.uploaded });
+          if (all.length >= maxTotal) return;
+        }
+
+        // Recurse into every sub-prefix (handles arbitrary depth)
+        for (const subPrefix of (body.result?.delimitedPrefixes || [])) {
+          if (all.length >= maxTotal) return;
+          await scanPrefix(subPrefix);
+        }
+
+        cursor = body.result?.truncated ? body.result.cursor : null;
+      } while (cursor && all.length < maxTotal);
+    }
+
+    await scanPrefix(prefix);
     return all;
   }
 
-  // S3 mode
+  // S3 mode — no Delimiter = flat recursive listing per S3 spec
   const { ListObjectsV2Command } = require("@aws-sdk/client-s3");
   let ContinuationToken;
   do {
@@ -218,4 +242,4 @@ async function listObjects(prefix = "", maxTotal = 10000) {
   return all;
 }
 
-module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, rewriteToPublicUrl, listObjects, R2_BUCKET_NAME };
+module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, rewriteToPublicUrl, listObjects, buildPublicUrl, R2_BUCKET_NAME };

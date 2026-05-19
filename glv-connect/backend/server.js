@@ -137,31 +137,33 @@ setTimeout(async () => {
       return;
     }
     console.log(`[startup-reconcile] Found ${missing.length} orphaned R2 objects — restoring...`);
+    const MIME_MAP = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", mp4: "video/mp4", pdf: "application/pdf" };
     const insert = db.prepare(`
-      INSERT INTO media_assets (r2_key, url, filename, original_name, category, mime_type, size, status, uploaded_by, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'reconcile', datetime('now'))
+      INSERT INTO media_assets
+        (filename, original_name, mime_type, extension, category, uploaded_by,
+         file_size, public_url, r2_key, tags_json, metadata_json,
+         status, storage_provider, upload_date, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `);
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
     const insertMany = db.transaction((rows) => {
       for (const o of rows) {
         const parts = o.key.split("/");
         const filename = parts[parts.length - 1];
+        const ext = (filename.split(".").pop() || "").toLowerCase();
         const yearIdx = parts.findIndex(p => /^\d{4}$/.test(p));
         const category = yearIdx > 0
           ? parts.slice(0, yearIdx).join("/")
           : parts.slice(0, -1).join("/") || "general";
-        const ext = filename.split(".").pop().toLowerCase();
-        const mime = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", mp4: "video/mp4", pdf: "application/pdf" }[ext] || "application/octet-stream";
-        const { R2_BUCKET_NAME } = r2;
-        const R2_PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN || null;
-        const R2_ENDPOINT = process.env.R2_ENDPOINT || null;
-        const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || null;
-        let url;
-        if (R2_PUBLIC_DOMAIN) url = `https://${R2_PUBLIC_DOMAIN}/${o.key}`;
-        else if (R2_ENDPOINT) {
-          const base = R2_ENDPOINT.replace(/\/$/, "");
-          url = base.includes(R2_BUCKET_NAME) ? `${base}/${o.key}` : `${base}/${R2_BUCKET_NAME}/${o.key}`;
-        } else url = `https://${R2_BUCKET_NAME}.${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/${o.key}`;
-        insert.run(o.key, url, filename, filename, category, mime, o.size || 0);
+        const mime = MIME_MAP[ext] || "application/octet-stream";
+        const publicUrl = r2.buildPublicUrl(o.key);
+        const uploadedAt = (o.uploaded || now).slice(0, 19).replace("T", " ");
+        insert.run(
+          filename, filename, mime, ext, category, "reconcile",
+          o.size || 0, publicUrl, o.key,
+          "[]", JSON.stringify({ reconciled: true }),
+          "active", "r2", uploadedAt, now
+        );
       }
     });
     insertMany(missing);
