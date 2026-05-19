@@ -173,4 +173,80 @@ function rewriteToPublicUrl(url) {
   }
 }
 
-module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, rewriteToPublicUrl, R2_BUCKET_NAME };
+// listObjects() — full recursive listing of all objects under a prefix.
+// Returns array of { key, size, uploaded } including ALL nested depths.
+//
+// Token mode: uses delimiter "/" + recursion so every object at every depth
+// is discovered regardless of Cloudflare API default behaviour.
+// Pagination uses "is_truncated" + "cursor" (Cloudflare field names).
+//
+// S3 mode: ListObjectsV2 without Delimiter gives a flat recursive listing
+// per the S3 spec.
+async function listObjects(prefix = "", maxTotal = 20000) {
+  const mode = authMode();
+  if (!mode) throw new Error("R2 not configured");
+
+  const all = [];
+
+  if (mode === "token") {
+    async function scanPrefix(pfx) {
+      let cursor = null;
+      do {
+        const params = new URLSearchParams({ limit: "1000", delimiter: "/" });
+        if (pfx) params.set("prefix", pfx);
+        if (cursor) params.set("cursor", cursor);
+        const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects?${params}`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${R2_API_TOKEN}` } });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(`R2 list failed [${res.status}]: ${body?.errors?.[0]?.message || res.statusText}`);
+        }
+        const body = await res.json();
+        const result = body.result || body;
+        const objects = result?.objects || (Array.isArray(result) ? result : []);
+        const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
+
+        if (!pfx) {
+          console.log(`[r2-list] root scan: objects=${objects.length} subPrefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} keys=${JSON.stringify(Object.keys(result || {}))}`);
+        }
+
+        for (const o of objects) {
+          all.push({ key: o.key, size: o.size, uploaded: o.uploaded });
+          if (all.length >= maxTotal) return;
+        }
+
+        for (const subPrefix of subPrefixes) {
+          if (all.length >= maxTotal) return;
+          await scanPrefix(subPrefix);
+        }
+
+        // Cloudflare R2 API uses "is_truncated" (not "truncated") for pagination.
+        // Cursor may appear on result directly or on result_info at the top level.
+        const isTruncated = result?.is_truncated ?? result?.truncated ?? false;
+        const nextCursor = result?.cursor || body?.result_info?.cursor || null;
+        cursor = isTruncated ? nextCursor : null;
+      } while (cursor && all.length < maxTotal);
+    }
+
+    await scanPrefix(prefix);
+    return all;
+  }
+
+  // S3 mode — no Delimiter = flat recursive listing per S3 spec
+  const { ListObjectsV2Command } = require("@aws-sdk/client-s3");
+  let ContinuationToken;
+  do {
+    const cmd = new ListObjectsV2Command({
+      Bucket: R2_BUCKET_NAME,
+      Prefix: prefix || undefined,
+      MaxKeys: 1000,
+      ContinuationToken,
+    });
+    const resp = await getS3Client().send(cmd);
+    (resp.Contents || []).forEach(o => all.push({ key: o.Key, size: o.Size, uploaded: o.LastModified?.toISOString() }));
+    ContinuationToken = resp.IsTruncated ? resp.NextContinuationToken : undefined;
+  } while (ContinuationToken && all.length < maxTotal);
+  return all;
+}
+
+module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, rewriteToPublicUrl, listObjects, buildPublicUrl, R2_BUCKET_NAME };
