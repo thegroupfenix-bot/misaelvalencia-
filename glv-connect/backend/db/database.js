@@ -349,6 +349,19 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS pc_price_history (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id  INTEGER NOT NULL,
+    field       TEXT NOT NULL,
+    old_value   REAL,
+    new_value   REAL,
+    changed_by  TEXT NOT NULL,
+    reason      TEXT,
+    ts          TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
 // ─── Seed default users ───────────────────────────────────────────────────────
 function seedPriceCenter() {
   const catCount = db.prepare("SELECT COUNT(*) AS c FROM pc_categories").get().c;

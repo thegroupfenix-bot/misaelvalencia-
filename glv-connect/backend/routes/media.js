@@ -5,6 +5,7 @@ const path = require("path");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
 const r2 = require("../storage/r2");
+const classifier = require("../ai/classifier");
 
 // sharp is lazy-loaded to avoid crashing the server if native bindings fail
 let _sharp = null;
@@ -65,6 +66,21 @@ function sanitizeFilename(original) {
   return `${base}-${uid}${ext}`;
 }
 
+// Rewrite any stored private S3 URL to the public domain
+function fixUrl(url) {
+  return r2.rewriteToPublicUrl(url);
+}
+
+function serializeAsset(r) {
+  return {
+    ...r,
+    public_url: fixUrl(r.public_url),
+    thumbnail_url: fixUrl(r.thumbnail_url),
+    tags: JSON.parse(r.tags_json || "[]"),
+    metadata: JSON.parse(r.metadata_json || "{}"),
+  };
+}
+
 // GET /media — list assets
 router.get("/", (req, res) => {
   const { category, country, product, search, archived = 0, limit = 100, offset = 0 } = req.query;
@@ -76,11 +92,7 @@ router.get("/", (req, res) => {
   if (search)    { sql += " AND (original_name LIKE ? OR tags_json LIKE ? OR subcategory LIKE ?)"; params.push(`%${search}%`,`%${search}%`,`%${search}%`); }
   sql += " ORDER BY upload_date DESC LIMIT ? OFFSET ?";
   params.push(+limit, +offset);
-  const rows = db.prepare(sql).all(...params).map(r => ({
-    ...r,
-    tags: JSON.parse(r.tags_json || "[]"),
-    metadata: JSON.parse(r.metadata_json || "{}"),
-  }));
+  const rows = db.prepare(sql).all(...params).map(serializeAsset);
   const total = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted' AND archived = ?").get(+archived).c;
   res.json({ assets: rows, total });
 });
@@ -92,15 +104,15 @@ router.get("/categories", (_req, res) => res.json(MEDIA_CATEGORIES));
 router.get("/:id", (req, res) => {
   const row = db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id);
   if (!row) return res.status(404).json({ error: "No encontrado" });
-  res.json({ ...row, tags: JSON.parse(row.tags_json || "[]"), metadata: JSON.parse(row.metadata_json || "{}") });
+  res.json(serializeAsset(row));
 });
 
 // POST /media/upload — single or multiple files
 router.post("/upload", upload.array("files", 20), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: "Sin archivos" });
 
-  const { category = "general", subcategory, country_origin, product_relation,
-          operation_relation, document_relation, tags } = req.body;
+  let { category = "general", subcategory, country_origin, product_relation,
+        operation_relation, document_relation, tags } = req.body;
   const tagsArr = tags ? (typeof tags === "string" ? JSON.parse(tags) : tags) : [];
   const uploaded = [];
 
@@ -108,12 +120,13 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
     try {
       const checksum = crypto.createHash("sha256").update(file.buffer).digest("hex");
       const existing = db.prepare("SELECT id, public_url FROM media_assets WHERE checksum_hash = ? AND status != 'deleted'").get(checksum);
-      if (existing) { uploaded.push({ ...existing, duplicate: true }); continue; }
+      if (existing) { uploaded.push({ ...existing, public_url: fixUrl(existing.public_url), duplicate: true }); continue; }
 
-      const filename = sanitizeFilename(file.originalname);
-      const r2Key = buildR2Key(category, filename);
+      // AI classification (runs in parallel with image processing — non-blocking)
+      let aiResult = null;
+      const aiPromise = classifier.classifyImage(file.buffer, file.mimetype).then(r => { aiResult = r; }).catch(() => {});
+
       const isImage = file.mimetype.startsWith("image/");
-
       let thumbUrl = null;
       let thumbKey = null;
       let width = null;
@@ -121,50 +134,98 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
       let uploadBuffer = file.buffer;
 
       if (isImage && !r2.isConfigured()) {
-        // R2 not configured — store metadata only, no URL
+        await aiPromise;
         const record = db.prepare(`
           INSERT INTO media_assets (filename,original_name,mime_type,extension,category,subcategory,
             country_origin,product_relation,operation_relation,document_relation,uploaded_by,
             file_size,checksum_hash,r2_key,tags_json,metadata_json,status,storage_provider)
           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        `).run(filename, file.originalname, file.mimetype, path.extname(filename).slice(1),
-          category, subcategory||null, country_origin||null, product_relation||null,
+        `).run(sanitizeFilename(file.originalname), file.originalname, file.mimetype,
+          path.extname(file.originalname).slice(1),
+          aiResult?.category || category, aiResult?.subcategory || subcategory || null,
+          aiResult?.country_origin || country_origin || null,
+          aiResult?.product_relation || product_relation || null,
           operation_relation||null, document_relation||null, req.user.username,
-          file.size, checksum, r2Key, JSON.stringify(tagsArr), "{}", "pending", "r2");
+          file.size, checksum, "pending",
+          JSON.stringify([...new Set([...(aiResult?.tags||[]), ...tagsArr])]),
+          "{}", "pending", "r2");
         uploaded.push({ id: record.lastInsertRowid, pending: true, message: "R2 not configured" });
         continue;
       }
 
       if (isImage) {
-        // Optimize + get dimensions
         const sharp = getSharp();
         const meta = await sharp(file.buffer).metadata();
         width = meta.width; height = meta.height;
-        // Compress if > 2MB
         if (file.size > 2 * 1024 * 1024) {
           uploadBuffer = await sharp(file.buffer).resize({ width: 2400, withoutEnlargement: true }).webp({ quality: 85 }).toBuffer();
         }
-        // Generate thumbnail
         const thumbBuffer = await sharp(file.buffer).resize({ width: 400, height: 300, fit: "cover" }).webp({ quality: 75 }).toBuffer();
+
+        // Wait for AI before building the final key so we can use the smart name
+        await aiPromise;
+
+        const effectiveCategory = aiResult?.category || category;
+        const smartBase = aiResult?.smart_name
+          ? `${aiResult.smart_name.substring(0, 60)}-${crypto.randomBytes(4).toString("hex")}`
+          : null;
+        const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+        const filename = smartBase ? `${smartBase}${ext}` : sanitizeFilename(file.originalname);
+        const r2Key = buildR2Key(effectiveCategory, filename);
+
         thumbKey = `thumbnails/${r2Key.replace(/\.[^.]+$/, ".webp")}`;
         thumbUrl = await r2.uploadObject(thumbKey, thumbBuffer, "image/webp");
+
+        const publicUrl = await r2.uploadObject(r2Key, uploadBuffer, file.mimetype);
+        const mergedTags = [...new Set([...(aiResult?.tags || []), ...tagsArr])];
+
+        const record = db.prepare(`
+          INSERT INTO media_assets (filename,original_name,mime_type,extension,category,subcategory,
+            country_origin,product_relation,operation_relation,document_relation,uploaded_by,
+            file_size,image_width,image_height,public_url,thumbnail_url,checksum_hash,r2_key,
+            thumbnail_key,tags_json,metadata_json,status,storage_provider)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `).run(filename, file.originalname, file.mimetype, path.extname(filename).slice(1),
+          effectiveCategory,
+          aiResult?.subcategory || subcategory || null,
+          aiResult?.country_origin || country_origin || null,
+          aiResult?.product_relation || product_relation || null,
+          operation_relation||null, document_relation||null, req.user.username,
+          file.size, width, height, publicUrl, thumbUrl, checksum, r2Key,
+          thumbKey, JSON.stringify(mergedTags),
+          JSON.stringify({ ai_classified: !!aiResult, ai_confidence: aiResult?.confidence }),
+          "active", "r2");
+
+        uploaded.push({
+          id: record.lastInsertRowid,
+          filename,
+          public_url: fixUrl(publicUrl),
+          thumbnail_url: fixUrl(thumbUrl),
+          ai_classified: !!aiResult,
+          ai_category: aiResult?.category,
+          ai_tags: aiResult?.tags,
+        });
+        continue;
       }
 
+      // Non-image (PDF, etc.)
+      await aiPromise;
+      const filename = sanitizeFilename(file.originalname);
+      const r2Key = buildR2Key(category, filename);
       const publicUrl = await r2.uploadObject(r2Key, uploadBuffer, file.mimetype);
 
       const record = db.prepare(`
         INSERT INTO media_assets (filename,original_name,mime_type,extension,category,subcategory,
           country_origin,product_relation,operation_relation,document_relation,uploaded_by,
-          file_size,image_width,image_height,public_url,thumbnail_url,checksum_hash,r2_key,
-          thumbnail_key,tags_json,metadata_json,status,storage_provider)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          file_size,public_url,checksum_hash,r2_key,tags_json,metadata_json,status,storage_provider)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).run(filename, file.originalname, file.mimetype, path.extname(filename).slice(1),
         category, subcategory||null, country_origin||null, product_relation||null,
         operation_relation||null, document_relation||null, req.user.username,
-        file.size, width, height, publicUrl, thumbUrl||null, checksum, r2Key,
-        thumbKey||null, JSON.stringify(tagsArr), "{}", "active", "r2");
+        file.size, publicUrl, checksum, r2Key,
+        JSON.stringify(tagsArr), "{}", "active", "r2");
 
-      uploaded.push({ id: record.lastInsertRowid, filename, public_url: publicUrl, thumbnail_url: thumbUrl });
+      uploaded.push({ id: record.lastInsertRowid, filename, public_url: fixUrl(publicUrl) });
     } catch (err) {
       console.error("Upload error:", err.message);
       uploaded.push({ error: err.message, originalname: file.originalname });
@@ -190,7 +251,7 @@ router.patch("/:id", (req, res) => {
   if (archived !== undefined)           { sets.push("archived = ?"); params.push(archived ? 1 : 0); }
   params.push(req.params.id);
   db.prepare(`UPDATE media_assets SET ${sets.join(",")} WHERE id = ?`).run(...params);
-  res.json(db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id));
+  res.json(serializeAsset(db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id)));
 });
 
 // DELETE /media/:id
@@ -210,7 +271,6 @@ router.get("/match/:category", (req, res) => {
   const { country, limit = 6 } = req.query;
   let sql = "SELECT * FROM media_assets WHERE status = 'active' AND archived = 0";
   const params = [];
-  // map product category slug to media category
   const catMap = {
     "LIVE_ANIMALS": "products/live-animals", "LIVESTOCK": "products/live-animals",
     "FROZEN_MEAT": "products/meat", "FROZEN_POULTRY": "products/meat",
@@ -225,28 +285,26 @@ router.get("/match/:category", (req, res) => {
   sql += " AND category LIKE ?"; params.push(`${mediaCat}%`);
   if (country) { sql += " AND (country_origin = ? OR country_origin IS NULL)"; params.push(country); }
   sql += " ORDER BY upload_date DESC LIMIT ?"; params.push(+limit);
-  const rows = db.prepare(sql).all(...params).map(r => ({ ...r, tags: JSON.parse(r.tags_json || "[]") }));
+  const rows = db.prepare(sql).all(...params).map(serializeAsset);
   res.json(rows);
 });
 
-// GET /media/r2-status — configuration check (fast, no network call)
+// GET /media/r2-status
 router.get("/r2-status", (_req, res) => {
-  const mode = r2.authMode();
   res.json({
     configured: r2.isConfigured(),
-    auth_mode: mode,
+    auth_mode: r2.authMode(),
     bucket: r2.R2_BUCKET_NAME,
+    ai_classification: classifier.isEnabled(),
   });
 });
 
-// GET /media/r2-ping — live connectivity test against Cloudflare R2 API
+// GET /media/r2-ping
 router.get("/r2-ping", requireAdmin, async (_req, res) => {
-  if (!r2.isConfigured()) {
-    return res.status(503).json({ ok: false, error: "R2 not configured" });
-  }
+  if (!r2.isConfigured()) return res.status(503).json({ ok: false, error: "R2 not configured" });
   try {
     const result = await r2.ping();
-    res.json(result);
+    res.json({ ...result, ai_classification: classifier.isEnabled() });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }

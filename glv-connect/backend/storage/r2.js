@@ -159,4 +159,18 @@ async function ping() {
   return { ok: true, mode, bucket: R2_BUCKET_NAME };
 }
 
-module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, R2_BUCKET_NAME };
+// Rewrite old S3 private URLs to the public domain (fixes existing DB records)
+function rewriteToPublicUrl(url) {
+  if (!url || !R2_PUBLIC_DOMAIN) return url;
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes("r2.cloudflarestorage.com")) return url;
+    let key = u.pathname.replace(/^\//, "");
+    if (key.startsWith(R2_BUCKET_NAME + "/")) key = key.slice(R2_BUCKET_NAME.length + 1);
+    return `https://${R2_PUBLIC_DOMAIN}/${key}`;
+  } catch {
+    return url;
+  }
+}
+
+module.exports = { uploadObject, deleteObject, getSignedDownloadUrl, isConfigured, authMode, ping, rewriteToPublicUrl, R2_BUCKET_NAME };

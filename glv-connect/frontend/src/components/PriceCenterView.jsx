@@ -11,9 +11,9 @@ function getPriceStatus(updatedAt) {
 }
 
 const PRICE_BADGE = {
-  green:  { bg: "#dcfce7", color: "#166534", dot: "#22c55e", label: "Precio actualizado hoy" },
-  yellow: { bg: "#fef9c3", color: "#854d0e", dot: "#eab308", label: "Precio 1-3 días" },
-  red:    { bg: "#fee2e2", color: "#991b1b", dot: "#ef4444", label: "Verificar antes de cotizar" },
+  green:  { bg: "#dcfce7", color: "#166534", dot: "#22c55e", label: "Actualizado hoy" },
+  yellow: { bg: "#fef9c3", color: "#854d0e", dot: "#eab308", label: "1-3 días" },
+  red:    { bg: "#fee2e2", color: "#991b1b", dot: "#ef4444", label: "Verificar" },
 };
 
 function PriceStatusBadge({ status }) {
@@ -30,8 +30,101 @@ const fmt = (v, currency = "USD") => v != null
   ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(v)
   : "—";
 
+function DetailRow({ label, value }) {
+  if (!value) return null;
+  return (
+    <div style={{ background: "#f8fafc", borderRadius: 8, padding: "8px 12px" }}>
+      <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 2px", fontWeight: 600, textTransform: "uppercase" }}>{label}</p>
+      <p style={{ fontSize: 13, color: "#1B2A4A", margin: 0, fontWeight: 500 }}>{value}</p>
+    </div>
+  );
+}
+
+function InfoSection({ title, children }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: "#374151", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</p>
+      {children}
+    </div>
+  );
+}
+
+function Tag({ text, color }) {
+  return (
+    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: color + "15", color, border: `1px solid ${color}30` }}>{text}</span>
+  );
+}
+
+// ─── Price History Modal ──────────────────────────────────────────────────────
+function PriceHistoryModal({ productId, productName, onClose }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getPcPriceHistory(productId)
+      .then(setHistory)
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false));
+  }, [productId]);
+
+  const fieldLabel = (f) => f === "fob_price" ? "FOB" : f === "cif_price" ? "CIF" : f;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1400, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+      <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1B2A4A", margin: 0 }}>Historial de Precios</h3>
+            <p style={{ fontSize: 12, color: "#6b7280", margin: "2px 0 0" }}>{productName}</p>
+          </div>
+          <button onClick={onClose} style={{ border: "none", background: "none", fontSize: 20, cursor: "pointer", color: "#6b7280" }}>✕</button>
+        </div>
+        <div style={{ overflowY: "auto", flex: 1, padding: "1rem 1.5rem" }}>
+          {loading ? (
+            <p style={{ color: "#6b7280", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>Cargando historial...</p>
+          ) : history.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "2rem 0" }}>
+              <i className="ti ti-history" style={{ fontSize: 36, color: "#d1d5db", display: "block", marginBottom: 8 }} />
+              <p style={{ color: "#6b7280", fontSize: 13 }}>Sin cambios de precio registrados</p>
+            </div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
+                  <th style={{ textAlign: "left", padding: "8px 6px", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>Fecha</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>Campo</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>Anterior</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>Nuevo</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>Usuario</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map(h => (
+                  <tr key={h.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "8px 6px", color: "#6b7280", whiteSpace: "nowrap" }}>
+                      {new Date(h.ts).toLocaleDateString("es-CO")} {new Date(h.ts).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td style={{ padding: "8px 6px", fontWeight: 600, color: "#1B2A4A" }}>{fieldLabel(h.field)}</td>
+                    <td style={{ padding: "8px 6px", textAlign: "right", color: "#ef4444", textDecoration: "line-through" }}>
+                      {h.old_value != null ? fmt(h.old_value) : "—"}
+                    </td>
+                    <td style={{ padding: "8px 6px", textAlign: "right", color: "#16a34a", fontWeight: 600 }}>
+                      {h.new_value != null ? fmt(h.new_value) : "—"}
+                    </td>
+                    <td style={{ padding: "8px 6px", color: "#6b7280" }}>{h.changed_by}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Product Detail Modal ─────────────────────────────────────────────────────
-function ProductModal({ product: p, onClose, isModal }) {
+function ProductModal({ product: p, onClose, isModal, isAdmin, onEdit, onArchive, onDuplicate, onHistoryOpen }) {
   if (!p) return null;
   const status = getPriceStatus(p.price_updated_at);
 
@@ -56,6 +149,23 @@ function ProductModal({ product: p, onClose, isModal }) {
             {p.availability === "seasonal" && <span style={{ background: "rgba(234,179,8,0.2)", color: "#fbbf24", padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600 }}>◑ Temporada</span>}
             {p.availability === "limited" && <span style={{ background: "rgba(239,68,68,0.2)", color: "#f87171", padding: "2px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600 }}>◌ Stock Limitado</span>}
           </div>
+          {/* Admin actions in header */}
+          {isAdmin && (
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <button onClick={() => onEdit(p)} style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                <i className="ti ti-edit" style={{ marginRight: 5 }} />Editar
+              </button>
+              <button onClick={() => onDuplicate(p)} style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                <i className="ti ti-copy" style={{ marginRight: 5 }} />Duplicar
+              </button>
+              <button onClick={() => onHistoryOpen(p)} style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                <i className="ti ti-history" style={{ marginRight: 5 }} />Historial
+              </button>
+              <button onClick={() => { if (confirm(`¿Archivar "${p.name_es}"?`)) { onArchive(p); onClose(); } }} style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid rgba(239,68,68,0.5)", background: "rgba(239,68,68,0.2)", color: "#fca5a5", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                <i className="ti ti-archive" style={{ marginRight: 5 }} />Archivar
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "1.5rem" }}>
@@ -93,7 +203,6 @@ function ProductModal({ product: p, onClose, isModal }) {
             {p.frozen_required ? <DetailRow label="Cadena Congelada" value="Requerida 🧊" /> : null}
           </div>
 
-          {/* Origins */}
           {p.origin_countries?.length > 0 && (
             <InfoSection title="Países de Origen">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -101,8 +210,6 @@ function ProductModal({ product: p, onClose, isModal }) {
               </div>
             </InfoSection>
           )}
-
-          {/* Incoterms */}
           {p.incoterms?.length > 0 && (
             <InfoSection title="Incoterms Disponibles">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -110,8 +217,6 @@ function ProductModal({ product: p, onClose, isModal }) {
               </div>
             </InfoSection>
           )}
-
-          {/* Market segments */}
           {p.market_segments?.length > 0 && (
             <InfoSection title="Segmentos de Mercado">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -119,8 +224,6 @@ function ProductModal({ product: p, onClose, isModal }) {
               </div>
             </InfoSection>
           )}
-
-          {/* Certifications */}
           {p.certifications?.length > 0 && (
             <InfoSection title="Certificaciones">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -128,8 +231,6 @@ function ProductModal({ product: p, onClose, isModal }) {
               </div>
             </InfoSection>
           )}
-
-          {/* Ports */}
           {p.ports?.length > 0 && (
             <InfoSection title="Puertos de Embarque">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -137,15 +238,11 @@ function ProductModal({ product: p, onClose, isModal }) {
               </div>
             </InfoSection>
           )}
-
-          {/* Export notes */}
           {p.export_notes && (
             <InfoSection title="Notas de Exportación">
               <p style={{ fontSize: 13, color: "#374151", margin: 0, lineHeight: 1.6 }}>{p.export_notes}</p>
             </InfoSection>
           )}
-
-          {/* Specs */}
           {p.specs && Object.keys(p.specs).length > 0 && (
             <InfoSection title="Especificaciones Técnicas">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -159,7 +256,6 @@ function ProductModal({ product: p, onClose, isModal }) {
             </InfoSection>
           )}
 
-          {/* Last update */}
           <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 16 }}>
             Precio actualizado: {p.price_updated_at ? new Date(p.price_updated_at).toLocaleDateString("es-CO") : "—"}
             {p.supplier_name && ` · Proveedor: ${p.supplier_name}`}
@@ -170,82 +266,97 @@ function ProductModal({ product: p, onClose, isModal }) {
   );
 }
 
-function DetailRow({ label, value }) {
-  if (!value) return null;
-  return (
-    <div style={{ background: "#f8fafc", borderRadius: 8, padding: "8px 12px" }}>
-      <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 2px", fontWeight: 600, textTransform: "uppercase" }}>{label}</p>
-      <p style={{ fontSize: 13, color: "#1B2A4A", margin: 0, fontWeight: 500 }}>{value}</p>
-    </div>
-  );
-}
-
-function InfoSection({ title, children }) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <p style={{ fontSize: 12, fontWeight: 700, color: "#374151", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>{title}</p>
-      {children}
-    </div>
-  );
-}
-
-function Tag({ text, color }) {
-  return (
-    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: color + "15", color, border: `1px solid ${color}30` }}>{text}</span>
-  );
-}
-
 // ─── Product Card ─────────────────────────────────────────────────────────────
-function ProductCard({ product: p, onClick }) {
+function ProductCard({ product: p, onClick, isAdmin, onEdit, onArchive, onRestore, onDuplicate, onHistoryOpen, selected, onSelect, isArchived }) {
   const status = getPriceStatus(p.price_updated_at);
-  return (
-    <div onClick={() => onClick(p)} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, padding: "1rem", cursor: "pointer", transition: "box-shadow 0.15s, border-color 0.15s", boxSizing: "border-box" }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(27,42,74,0.15)"; e.currentTarget.style.borderColor = "#1B2A4A"; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e5e7eb"; }}>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+  const stopProp = (fn) => (e) => { e.stopPropagation(); fn(p); };
+
+  return (
+    <div style={{ background: isArchived ? "#fafafa" : "#fff", border: `1px solid ${selected ? "#1B2A4A" : "#e5e7eb"}`, borderRadius: 12, padding: "1rem", cursor: "pointer", transition: "box-shadow 0.15s, border-color 0.15s", boxSizing: "border-box", position: "relative", opacity: isArchived ? 0.8 : 1 }}
+      onClick={() => onClick(p)}
+      onMouseEnter={e => { if (!selected) { e.currentTarget.style.boxShadow = "0 4px 20px rgba(27,42,74,0.15)"; e.currentTarget.style.borderColor = "#1B2A4A"; } }}
+      onMouseLeave={e => { if (!selected) { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e5e7eb"; } }}>
+
+      {/* Bulk select checkbox (admin) */}
+      {isAdmin && (
+        <div onClick={e => { e.stopPropagation(); onSelect(p.id); }} style={{ position: "absolute", top: 10, left: 10 }}>
+          <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${selected ? "#1B2A4A" : "#d1d5db"}`, background: selected ? "#1B2A4A" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            {selected && <i className="ti ti-check" style={{ fontSize: 10, color: "#fff" }} />}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, paddingLeft: isAdmin ? 22 : 0 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1B2A4A", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name_es}</h3>
           {p.commercial_name && <p style={{ fontSize: 11, color: "#6b7280", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.commercial_name}</p>}
         </div>
-        <PriceStatusBadge status={status} />
+        {!isArchived && <PriceStatusBadge status={status} />}
+        {isArchived && <span style={{ background: "#f3f4f6", color: "#6b7280", padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 600 }}>ARCHIVADO</span>}
       </div>
 
-      {/* Prices */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        {p.fob_price != null && (
-          <div style={{ flex: 1, background: "#f0fdf4", borderRadius: 8, padding: "8px 10px" }}>
-            <p style={{ fontSize: 10, color: "#166534", margin: "0 0 2px", fontWeight: 700 }}>FOB REF.</p>
-            <p style={{ fontSize: 15, fontWeight: 700, color: "#15803d", margin: 0 }}>{fmt(p.fob_price)}<span style={{ fontSize: 10, fontWeight: 400, color: "#6b7280" }}>/kg</span></p>
+      {!isArchived && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          {p.fob_price != null && (
+            <div style={{ flex: 1, background: "#f0fdf4", borderRadius: 8, padding: "8px 10px" }}>
+              <p style={{ fontSize: 10, color: "#166534", margin: "0 0 2px", fontWeight: 700 }}>FOB REF.</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#15803d", margin: 0 }}>{fmt(p.fob_price)}<span style={{ fontSize: 10, fontWeight: 400, color: "#6b7280" }}>/kg</span></p>
+            </div>
+          )}
+          {p.cif_price != null && (
+            <div style={{ flex: 1, background: "#eff6ff", borderRadius: 8, padding: "8px 10px" }}>
+              <p style={{ fontSize: 10, color: "#1e40af", margin: "0 0 2px", fontWeight: 700 }}>CIF REF.</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#2563eb", margin: 0 }}>{fmt(p.cif_price)}<span style={{ fontSize: 10, fontWeight: 400, color: "#6b7280" }}>/kg</span></p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isArchived && (
+        <>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+            {p.origin_countries?.slice(0, 2).map(c => <Tag key={c} text={c} color="#1B2A4A" />)}
+            {p.incoterms?.slice(0, 3).map(i => <Tag key={i} text={i} color="#2563eb" />)}
           </div>
-        )}
-        {p.cif_price != null && (
-          <div style={{ flex: 1, background: "#eff6ff", borderRadius: 8, padding: "8px 10px" }}>
-            <p style={{ fontSize: 10, color: "#1e40af", margin: "0 0 2px", fontWeight: 700 }}>CIF REF.</p>
-            <p style={{ fontSize: 15, fontWeight: 700, color: "#2563eb", margin: 0 }}>{fmt(p.cif_price)}<span style={{ fontSize: 10, fontWeight: 400, color: "#6b7280" }}>/kg</span></p>
+          <div style={{ display: "flex", gap: 8 }}>
+            {p.moq && <span style={{ fontSize: 11, color: "#6b7280" }}>MOQ: {p.moq}</span>}
+            {p.hs_code && <span style={{ fontSize: 11, color: "#6b7280" }}>HS: {p.hs_code}</span>}
           </div>
-        )}
-      </div>
+          {p.certifications?.length > 0 && (
+            <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {p.certifications.slice(0, 3).map(c => (
+                <span key={c} style={{ fontSize: 10, background: "#f0fdf4", color: "#166534", padding: "1px 6px", borderRadius: 4, border: "1px solid #bbf7d0" }}>{c}</span>
+              ))}
+              {p.certifications.length > 3 && <span style={{ fontSize: 10, color: "#6b7280" }}>+{p.certifications.length - 3}</span>}
+            </div>
+          )}
+        </>
+      )}
 
-      {/* Origins + Incoterms */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-        {p.origin_countries?.slice(0, 2).map(c => <Tag key={c} text={c} color="#1B2A4A" />)}
-        {p.incoterms?.slice(0, 3).map(i => <Tag key={i} text={i} color="#2563eb" />)}
-      </div>
-
-      {/* MOQ + Container */}
-      <div style={{ display: "flex", gap: 8 }}>
-        {p.moq && <span style={{ fontSize: 11, color: "#6b7280" }}>MOQ: {p.moq}</span>}
-        {p.hs_code && <span style={{ fontSize: 11, color: "#6b7280" }}>HS: {p.hs_code}</span>}
-      </div>
-
-      {/* Certifications preview */}
-      {p.certifications?.length > 0 && (
-        <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {p.certifications.slice(0, 3).map(c => (
-            <span key={c} style={{ fontSize: 10, background: "#f0fdf4", color: "#166534", padding: "1px 6px", borderRadius: 4, border: "1px solid #bbf7d0" }}>{c}</span>
-          ))}
-          {p.certifications.length > 3 && <span style={{ fontSize: 10, color: "#6b7280" }}>+{p.certifications.length - 3}</span>}
+      {/* Admin action buttons */}
+      {isAdmin && (
+        <div style={{ display: "flex", gap: 4, marginTop: 10, paddingTop: 8, borderTop: "1px solid #f3f4f6" }} onClick={e => e.stopPropagation()}>
+          {!isArchived ? (
+            <>
+              <button onClick={stopProp(onEdit)} style={{ flex: 1, padding: "5px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#374151", fontWeight: 600 }}>
+                <i className="ti ti-edit" style={{ marginRight: 3 }} />Editar
+              </button>
+              <button onClick={stopProp(onDuplicate)} style={{ flex: 1, padding: "5px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#374151", fontWeight: 600 }}>
+                <i className="ti ti-copy" style={{ marginRight: 3 }} />Duplicar
+              </button>
+              <button onClick={stopProp(onHistoryOpen)} style={{ padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#6b7280" }} title="Historial de precios">
+                <i className="ti ti-history" />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); if (confirm(`¿Archivar "${p.name_es}"?`)) onArchive(p); }} style={{ padding: "5px 8px", border: "1px solid #fee2e2", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#ef4444" }} title="Archivar">
+                <i className="ti ti-archive" />
+              </button>
+            </>
+          ) : (
+            <button onClick={stopProp(onRestore)} style={{ flex: 1, padding: "6px", border: "1px solid #d1fae5", borderRadius: 6, background: "#f0fdf4", cursor: "pointer", fontSize: 11, color: "#166534", fontWeight: 600 }}>
+              <i className="ti ti-restore" style={{ marginRight: 4 }} />Restaurar
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -314,11 +425,13 @@ function AdminProductModal({ categories, product, onSave, onClose }) {
     reefer_required: product?.reefer_required || 0,
     frozen_required: product?.frozen_required || 0,
     export_notes: product?.export_notes || "",
+    supplier_name: product?.supplier_name || "",
     origin_countries: product?.origin_countries?.join(", ") || "",
     incoterms: product?.incoterms?.join(", ") || "FOB, CFR, CIF",
     certifications: product?.certifications?.join(", ") || "",
     ports: product?.ports?.join(", ") || "",
     market_segments: product?.market_segments?.join(", ") || "",
+    change_reason: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -346,12 +459,13 @@ function AdminProductModal({ categories, product, onSave, onClose }) {
 
   const inp = { width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 7, fontSize: 13, boxSizing: "border-box" };
   const lbl = { fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 };
+  const isEdit = !!product;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
       <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto", padding: "1.5rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1B2A4A", margin: 0 }}>{product ? "Editar Producto" : "Nuevo Producto"}</h3>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1B2A4A", margin: 0 }}>{isEdit ? "Editar Producto" : "Nuevo Producto"}</h3>
           <button onClick={onClose} style={{ border: "none", background: "none", fontSize: 20, cursor: "pointer" }}>✕</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -364,13 +478,26 @@ function AdminProductModal({ categories, product, onSave, onClose }) {
           <div><label style={lbl}>Nombre ES *</label><input value={form.name_es} onChange={e => sf("name_es", e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Nombre EN</label><input value={form.name_en} onChange={e => sf("name_en", e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Nombre Comercial</label><input value={form.commercial_name} onChange={e => sf("commercial_name", e.target.value)} style={inp} /></div>
-          <div><label style={lbl}>Precio FOB (USD/kg)</label><input type="number" value={form.fob_price} onChange={e => sf("fob_price", e.target.value)} style={inp} /></div>
-          <div><label style={lbl}>Precio CIF (USD/kg)</label><input type="number" value={form.cif_price} onChange={e => sf("cif_price", e.target.value)} style={inp} /></div>
+          <div>
+            <label style={lbl}>Precio FOB (USD/kg)</label>
+            <input type="number" value={form.fob_price} onChange={e => sf("fob_price", e.target.value)} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Precio CIF (USD/kg)</label>
+            <input type="number" value={form.cif_price} onChange={e => sf("cif_price", e.target.value)} style={inp} />
+          </div>
+          {isEdit && (
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={{ ...lbl, color: "#d97706" }}>Razón del cambio de precio (opcional)</label>
+              <input value={form.change_reason} onChange={e => sf("change_reason", e.target.value)} placeholder="Ej: Actualización mercado, nuevo proveedor..." style={{ ...inp, borderColor: "#f59e0b" }} />
+            </div>
+          )}
           <div><label style={lbl}>MOQ</label><input value={form.moq} onChange={e => sf("moq", e.target.value)} placeholder="Ej: 5 MT" style={inp} /></div>
           <div><label style={lbl}>Empaque</label><input value={form.packaging} onChange={e => sf("packaging", e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Código HS</label><input value={form.hs_code} onChange={e => sf("hs_code", e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Cap. Contenedor (MT)</label><input type="number" value={form.container_capacity} onChange={e => sf("container_capacity", e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Vida Útil</label><input value={form.shelf_life} onChange={e => sf("shelf_life", e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>Proveedor</label><input value={form.supplier_name} onChange={e => sf("supplier_name", e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Disponibilidad</label>
             <select value={form.availability} onChange={e => sf("availability", e.target.value)} style={inp}>
               <option value="available">Disponible</option>
@@ -414,34 +541,40 @@ function AdminProductModal({ categories, product, onSave, onClose }) {
 export function PriceCenterView({ user, isModal = false, onClose, onSelectReference }) {
   const [categories, setCategories] = useState([]);
   const [products, setProducts]     = useState([]);
-  const [selected, setSelected]     = useState(null); // category slug
+  const [selected, setSelected]     = useState(null);
   const [search, setSearch]         = useState("");
   const [loading, setLoading]       = useState(true);
   const [detailProduct, setDetailProduct] = useState(null);
   const [adminModal, setAdminModal] = useState(null); // null | "new" | product
+  const [showArchived, setShowArchived]   = useState(false);
+  const [selectedIds, setSelectedIds]     = useState(new Set());
+  const [historyProduct, setHistoryProduct] = useState(null);
+  const [bulkLoading, setBulkLoading]       = useState(false);
 
   const isAdmin = ["SUPER_ADMIN", "CORPORATE_ADMIN"].includes(user?.role);
 
-  const loadProducts = useCallback(async (catSlug, q) => {
+  const loadProducts = useCallback(async (catSlug, q, archived) => {
     setLoading(true);
     try {
       const params = {};
       if (catSlug) params.category = catSlug;
       if (q) params.search = q;
+      if (archived) params.archived = "1";
       const data = await api.getPcProducts(params);
       setProducts(data);
+      setSelectedIds(new Set());
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
     api.getPcCategories().then(setCategories).catch(() => {});
-    loadProducts(null, "");
+    loadProducts(null, "", false);
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => loadProducts(selected, search), 300);
+    const t = setTimeout(() => loadProducts(selected, search, showArchived), 300);
     return () => clearTimeout(t);
-  }, [selected, search]);
+  }, [selected, search, showArchived]);
 
   const counts = {};
   products.forEach(p => { counts[p.category_slug] = (counts[p.category_slug] || 0) + 1; });
@@ -453,7 +586,41 @@ export function PriceCenterView({ user, isModal = false, onClose, onSelectRefere
     } else {
       await api.adminUpdatePcProduct(adminModal.id, data);
     }
-    loadProducts(selected, search);
+    loadProducts(selected, search, showArchived);
+  };
+
+  const handleArchive = async (p) => {
+    await api.adminArchivePcProduct(p.id);
+    loadProducts(selected, search, showArchived);
+  };
+
+  const handleRestore = async (p) => {
+    await api.adminRestorePcProduct(p.id);
+    loadProducts(selected, search, showArchived);
+  };
+
+  const handleDuplicate = async (p) => {
+    await api.adminDuplicatePcProduct(p.id);
+    loadProducts(selected, search, showArchived);
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulk = async (action) => {
+    if (!selectedIds.size) return;
+    const label = action === "archive" ? "archivar" : action === "restore" ? "restaurar" : "eliminar definitivamente";
+    if (!confirm(`¿${label.charAt(0).toUpperCase() + label.slice(1)} ${selectedIds.size} producto(s)?`)) return;
+    setBulkLoading(true);
+    try {
+      await api.adminBulkPcProducts({ ids: [...selectedIds], action });
+      loadProducts(selected, search, showArchived);
+    } finally { setBulkLoading(false); }
   };
 
   const containerStyle = isModal ? {
@@ -479,22 +646,53 @@ export function PriceCenterView({ user, isModal = false, onClose, onSelectRefere
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {isAdmin && (
-              <button onClick={() => setAdminModal("new")}
-                style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-                + Nuevo Producto
-              </button>
+              <>
+                <button onClick={() => setShowArchived(v => !v)}
+                  style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: showArchived ? "rgba(234,179,8,0.3)" : "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                  <i className={`ti ${showArchived ? "ti-eye" : "ti-archive"}`} style={{ marginRight: 5 }} />
+                  {showArchived ? "Ver activos" : "Ver archivados"}
+                </button>
+                {!showArchived && (
+                  <button onClick={() => setAdminModal("new")}
+                    style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                    + Nuevo Producto
+                  </button>
+                )}
+              </>
             )}
             {isModal && (
               <button onClick={onClose} style={{ border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: 18, cursor: "pointer", borderRadius: 8, padding: "5px 10px" }}>✕</button>
             )}
           </div>
         </div>
-        {/* Reference only notice */}
         <div style={{ marginTop: 10, background: "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.3)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#fbbf24" }}>
           <i className="ti ti-alert-triangle" style={{ marginRight: 6 }} />
           <strong>MÓDULO DE REFERENCIA:</strong> Los precios aquí publicados son orientativos. El agente debe verificar y negociar valores finales antes de emitir cualquier SCO.
         </div>
       </div>
+
+      {/* Bulk action toolbar */}
+      {isAdmin && selectedIds.size > 0 && (
+        <div style={{ padding: "10px 16px", background: "#1B2A4A", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{selectedIds.size} seleccionado(s)</span>
+          <button onClick={() => setSelectedIds(new Set())} style={{ padding: "5px 12px", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 6, background: "none", color: "#fff", cursor: "pointer", fontSize: 12 }}>Deseleccionar</button>
+          {!showArchived && (
+            <button onClick={() => handleBulk("archive")} disabled={bulkLoading} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#dc2626", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              <i className="ti ti-archive" style={{ marginRight: 4 }} />Archivar seleccionados
+            </button>
+          )}
+          {showArchived && (
+            <>
+              <button onClick={() => handleBulk("restore")} disabled={bulkLoading} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#059669", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                <i className="ti ti-restore" style={{ marginRight: 4 }} />Restaurar seleccionados
+              </button>
+              <button onClick={() => handleBulk("delete")} disabled={bulkLoading} style={{ padding: "5px 12px", border: "none", borderRadius: 6, background: "#7f1d1d", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                <i className="ti ti-trash" style={{ marginRight: 4 }} />Eliminar definitivamente
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Search bar */}
       <div style={{ padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
@@ -508,13 +706,19 @@ export function PriceCenterView({ user, isModal = false, onClose, onSelectRefere
 
       {/* Body */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
-        {/* Category sidebar */}
-        <div style={{ width: 230, minWidth: 230, overflowY: "auto", borderRight: "1px solid #e5e7eb", padding: "1rem" }}>
-          <CategorySidebar categories={categories} selected={selected} onSelect={setSelected} counts={counts} />
-        </div>
+        {!showArchived && (
+          <div style={{ width: 230, minWidth: 230, overflowY: "auto", borderRight: "1px solid #e5e7eb", padding: "1rem" }}>
+            <CategorySidebar categories={categories} selected={selected} onSelect={setSelected} counts={counts} />
+          </div>
+        )}
 
-        {/* Products grid */}
         <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
+          {showArchived && (
+            <div style={{ marginBottom: 16, padding: "10px 14px", background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 8, fontSize: 13, color: "#92400e" }}>
+              <i className="ti ti-archive" style={{ marginRight: 6 }} />
+              <strong>Productos archivados</strong> — Visibles solo para administradores. Restaura o elimina definitivamente.
+            </div>
+          )}
           {loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 200 }}>
               <p style={{ color: "#6b7280", fontSize: 14 }}>Cargando productos...</p>
@@ -522,12 +726,23 @@ export function PriceCenterView({ user, isModal = false, onClose, onSelectRefere
           ) : products.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 200 }}>
               <i className="ti ti-database-off" style={{ fontSize: 40, color: "#d1d5db", marginBottom: 12 }} />
-              <p style={{ color: "#6b7280", fontSize: 14 }}>No se encontraron productos</p>
+              <p style={{ color: "#6b7280", fontSize: 14 }}>{showArchived ? "No hay productos archivados" : "No se encontraron productos"}</p>
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
               {products.map(p => (
-                <ProductCard key={p.id} product={p} onClick={setDetailProduct} />
+                <ProductCard key={p.id} product={p}
+                  onClick={setDetailProduct}
+                  isAdmin={isAdmin}
+                  isArchived={showArchived}
+                  selected={selectedIds.has(p.id)}
+                  onSelect={toggleSelect}
+                  onEdit={(prod) => setAdminModal(prod)}
+                  onArchive={handleArchive}
+                  onRestore={handleRestore}
+                  onDuplicate={handleDuplicate}
+                  onHistoryOpen={setHistoryProduct}
+                />
               ))}
             </div>
           )}
@@ -544,7 +759,16 @@ export function PriceCenterView({ user, isModal = false, onClose, onSelectRefere
       {detailProduct && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 700, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <ProductModal product={detailProduct} onClose={() => setDetailProduct(null)} isModal />
+            <ProductModal
+              product={detailProduct}
+              onClose={() => setDetailProduct(null)}
+              isModal
+              isAdmin={isAdmin}
+              onEdit={(p) => { setDetailProduct(null); setAdminModal(p); }}
+              onArchive={(p) => { handleArchive(p); setDetailProduct(null); }}
+              onDuplicate={(p) => { handleDuplicate(p); setDetailProduct(null); }}
+              onHistoryOpen={(p) => { setDetailProduct(null); setHistoryProduct(p); }}
+            />
             {onSelectReference && (
               <div style={{ padding: "0 1.5rem 1.5rem" }}>
                 <button onClick={() => { onSelectReference(detailProduct); setDetailProduct(null); }}
@@ -559,13 +783,22 @@ export function PriceCenterView({ user, isModal = false, onClose, onSelectRefere
         </div>
       )}
 
-      {/* Admin product modal */}
+      {/* Admin product form modal */}
       {adminModal && (
         <AdminProductModal
           categories={categories}
           product={adminModal !== "new" ? adminModal : null}
           onSave={handleSaveProduct}
           onClose={() => setAdminModal(null)}
+        />
+      )}
+
+      {/* Price history modal */}
+      {historyProduct && (
+        <PriceHistoryModal
+          productId={historyProduct.id}
+          productName={historyProduct.name_es}
+          onClose={() => setHistoryProduct(null)}
         />
       )}
     </>
