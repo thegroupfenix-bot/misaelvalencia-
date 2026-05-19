@@ -372,6 +372,9 @@ export default function MediaCenter({ user }) {
   const [r2Status, setR2Status] = useState(null);
   const [r2Ping, setR2Ping] = useState(null);
   const [pinging, setPinging] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState(null);
+  const [syncStatus, setSyncStatus] = useState(null);
   const [page, setPage] = useState(0);
   const PER_PAGE = 40;
 
@@ -415,7 +418,23 @@ export default function MediaCenter({ user }) {
 
   useEffect(() => {
     api.getR2Status().then(s => setR2Status(s)).catch(() => {});
+    if (canEdit) api.reconcileMediaStatus().then(s => setSyncStatus(s)).catch(() => {});
   }, []);
+
+  const handleReconcile = async () => {
+    setReconciling(true);
+    setReconcileResult(null);
+    try {
+      const result = await api.reconcileMedia();
+      setReconcileResult(result);
+      if (result.restored > 0) load();
+      api.reconcileMediaStatus().then(s => setSyncStatus(s)).catch(() => {});
+    } catch (e) {
+      setReconcileResult({ ok: false, error: e.message });
+    } finally {
+      setReconciling(false);
+    }
+  };
 
   const handleSearch = e => { setSearch(e.target.value); setPage(0); };
   const pages = Math.ceil(total / PER_PAGE);
@@ -497,6 +516,15 @@ export default function MediaCenter({ user }) {
                 {pinging ? "⏳ Probando..." : r2Ping ? (r2Ping.ok ? "🟢 Conexión OK" : "🔴 Error") : "🔌 Probar R2"}
               </button>
             )}
+            {canEdit && r2Status?.configured && (
+              <button onClick={handleReconcile} disabled={reconciling}
+                style={{ padding:"8px 16px", borderRadius:10, cursor: reconciling ? "not-allowed" : "pointer",
+                  fontWeight:700, fontSize:13, border:"1px solid #d97706",
+                  background: reconciling ? "#fef3c7" : "#fffbeb", color:"#92400e",
+                  display:"flex", alignItems:"center", gap:6 }}>
+                {reconciling ? "⏳ Sincronizando..." : "🔄 Sincronizar R2"}
+              </button>
+            )}
             {canEdit && (
               <button onClick={() => setShowUpload(true)}
                 style={{ padding:"10px 20px", background:PALETTE.navy, color:"white",
@@ -507,6 +535,46 @@ export default function MediaCenter({ user }) {
             )}
           </div>
         </div>
+
+        {/* Sync status banner */}
+        {syncStatus && !syncStatus.in_sync && canEdit && (
+          <div style={{ background:"#fef3c7", border:"1px solid #f59e0b", borderRadius:10,
+            padding:"10px 16px", marginBottom:16, fontSize:13, color:"#92400e",
+            display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <span>
+              ⚠️ <strong>Desincronización detectada:</strong> R2 tiene {syncStatus.r2_objects} objetos,
+              DB tiene {syncStatus.db_records} registros.
+              Archivos en R2 sin indexar: <strong>{syncStatus.r2_objects - syncStatus.db_records}</strong>
+            </span>
+            <button onClick={handleReconcile} disabled={reconciling}
+              style={{ padding:"6px 14px", background:"#d97706", color:"white", border:"none",
+                borderRadius:8, cursor:"pointer", fontWeight:700, fontSize:12, marginLeft:12 }}>
+              {reconciling ? "Sincronizando..." : "Sincronizar ahora"}
+            </button>
+          </div>
+        )}
+
+        {/* Reconcile result banner */}
+        {reconcileResult && (
+          <div style={{ background: reconcileResult.ok ? "#f0fdf4" : "#fee2e2",
+            border: `1px solid ${reconcileResult.ok ? "#86efac" : "#fca5a5"}`,
+            borderRadius:10, padding:"10px 16px", marginBottom:16, fontSize:13,
+            color: reconcileResult.ok ? "#166534" : "#991b1b",
+            display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            {reconcileResult.ok ? (
+              <span>
+                ✅ Sincronización completa — R2 escaneado: <strong>{reconcileResult.scanned}</strong> objetos ·
+                Ya indexados: <strong>{reconcileResult.already_indexed}</strong> ·
+                Restaurados: <strong>{reconcileResult.restored}</strong> ·
+                Total en DB: <strong>{reconcileResult.total_in_db}</strong>
+              </span>
+            ) : (
+              <span>❌ Error: {reconcileResult.error}</span>
+            )}
+            <button onClick={() => setReconcileResult(null)}
+              style={{ background:"none", border:"none", cursor:"pointer", fontSize:16, marginLeft:12, color:"inherit" }}>×</button>
+          </div>
+        )}
 
         {/* Search */}
         <div style={{ marginBottom:20 }}>

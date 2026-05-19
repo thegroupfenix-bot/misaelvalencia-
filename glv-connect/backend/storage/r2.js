@@ -176,12 +176,14 @@ function rewriteToPublicUrl(url) {
 // listObjects() — full recursive listing of all objects under a prefix.
 // Returns array of { key, size, uploaded } including ALL nested depths.
 //
-// Token mode: uses delimiter "/" + recursion so every object at every depth
-// is discovered regardless of Cloudflare API default behaviour.
-// Pagination uses "is_truncated" + "cursor" (Cloudflare field names).
+// Token mode uses delimiter-based recursive traversal because the Cloudflare
+// Management API may return nested paths in `delimitedPrefixes` instead of
+// `objects` when no delimiter is specified.  Explicit delimiter + recursion
+// guarantees every object at every depth is discovered regardless of API
+// default behaviour.  Pagination uses "is_truncated" + "cursor" (CF field names).
 //
-// S3 mode: ListObjectsV2 without Delimiter gives a flat recursive listing
-// per the S3 spec.
+// S3 mode uses ListObjectsV2 without a Delimiter — the S3 spec guarantees
+// a flat recursive listing when no Delimiter is present.
 async function listObjects(prefix = "", maxTotal = 20000) {
   const mode = authMode();
   if (!mode) throw new Error("R2 not configured");
@@ -202,19 +204,23 @@ async function listObjects(prefix = "", maxTotal = 20000) {
           throw new Error(`R2 list failed [${res.status}]: ${body?.errors?.[0]?.message || res.statusText}`);
         }
         const body = await res.json();
+        // Defensive: handle multiple possible Cloudflare API response shapes
         const result = body.result || body;
         const objects = result?.objects || (Array.isArray(result) ? result : []);
+        // CF API field may be delimitedPrefixes or (less common) commonPrefixes
         const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
 
         if (!pfx) {
           console.log(`[r2-list] root scan: objects=${objects.length} subPrefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} keys=${JSON.stringify(Object.keys(result || {}))}`);
         }
 
+        // Leaf objects at this prefix level
         for (const o of objects) {
           all.push({ key: o.key, size: o.size, uploaded: o.uploaded });
           if (all.length >= maxTotal) return;
         }
 
+        // Recurse into every sub-prefix (handles arbitrary depth)
         for (const subPrefix of subPrefixes) {
           if (all.length >= maxTotal) return;
           await scanPrefix(subPrefix);

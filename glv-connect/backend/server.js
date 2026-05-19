@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const BUILD_TS = new Date().toISOString(); // set once at process start — visible in /health
+
 // Catch any unhandled async/sync crash — log it so Railway shows it in deploy logs
 process.on("unhandledRejection", (reason) => {
   console.error("UNHANDLED REJECTION:", reason);
@@ -56,7 +58,7 @@ app.get("/health", (_req, res) => {
     const userCount  = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
     dbInfo = { media_assets: mediaCount, users: userCount };
   } catch (e) { dbInfo = { error: e.message }; }
-  res.json({ ok: true, ts: new Date().toISOString(), db: dbInfo });
+  res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS, db: dbInfo });
 });
 
 // API routes
@@ -109,4 +111,64 @@ app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`PORT env: ${process.env.PORT ?? "(not set, defaulting to 3001)"}`);
   console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
   console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+  console.log(`BUILD_TS: ${BUILD_TS}`);
 });
+
+// Auto-reconcile R2 media 15s after startup — restores orphaned assets after any DB reset
+setTimeout(async () => {
+  const r2 = require("./storage/r2");
+  const db = require("./db/database");
+  if (!r2.isConfigured()) {
+    console.log("[startup-reconcile] R2 not configured — skipping auto-reconcile.");
+    return;
+  }
+  try {
+    console.log("[startup-reconcile] Starting automatic R2 media reconciliation...");
+    const allObjects = await r2.listObjects("", 20000);
+    const mainAssets = allObjects.filter(
+      o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/")
+    );
+    const existingKeys = new Set(
+      db.prepare("SELECT r2_key FROM media_assets WHERE r2_key IS NOT NULL AND status != 'deleted'").all().map(r => r.r2_key)
+    );
+    const missing = mainAssets.filter(o => !existingKeys.has(o.key));
+    if (missing.length === 0) {
+      console.log(`[startup-reconcile] All ${mainAssets.length} R2 objects already indexed. Nothing to restore.`);
+      return;
+    }
+    console.log(`[startup-reconcile] Found ${missing.length} orphaned R2 objects — restoring...`);
+    const MIME_MAP = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", mp4: "video/mp4", pdf: "application/pdf" };
+    const insert = db.prepare(`
+      INSERT INTO media_assets
+        (filename, original_name, mime_type, extension, category, uploaded_by,
+         file_size, public_url, r2_key, tags_json, metadata_json,
+         status, storage_provider, upload_date, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `);
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const insertMany = db.transaction((rows) => {
+      for (const o of rows) {
+        const parts = o.key.split("/");
+        const filename = parts[parts.length - 1];
+        const ext = (filename.split(".").pop() || "").toLowerCase();
+        const yearIdx = parts.findIndex(p => /^\d{4}$/.test(p));
+        const category = yearIdx > 0
+          ? parts.slice(0, yearIdx).join("/")
+          : parts.slice(0, -1).join("/") || "general";
+        const mime = MIME_MAP[ext] || "application/octet-stream";
+        const publicUrl = r2.buildPublicUrl(o.key);
+        const uploadedAt = (o.uploaded || now).slice(0, 19).replace("T", " ");
+        insert.run(
+          filename, filename, mime, ext, category, "reconcile",
+          o.size || 0, publicUrl, o.key,
+          "[]", JSON.stringify({ reconciled: true }),
+          "active", "r2", uploadedAt, now
+        );
+      }
+    });
+    insertMany(missing);
+    console.log(`[startup-reconcile] Done. Restored ${missing.length} assets. Total R2 objects scanned: ${mainAssets.length}.`);
+  } catch (e) {
+    console.warn("[startup-reconcile] Error during auto-reconcile:", e.message);
+  }
+}, 15000);
