@@ -208,22 +208,31 @@ async function listObjects(prefix = "", maxTotal = 20000) {
           throw new Error(`R2 list failed [${res.status}]: ${body?.errors?.[0]?.message || res.statusText}`);
         }
         const body = await res.json();
-        // Defensive: handle multiple possible Cloudflare API response shapes
+        // CF Management API returns body.result as a PLAIN ARRAY (not {objects:[...]}).
+        // Pagination state lives in body.result_info, NOT inside result.
+        // Confirmed by r2-traverse-test diagnostic:
+        //   result_keys = ["0","1",...,"19"]  → result IS the array
+        //   body.result_info = { cursor, is_truncated, per_page: 20 }
         const result = body.result || body;
-        const objects = result?.objects || (Array.isArray(result) ? result : []);
-        // Defensive fallback: recurse into any grouped prefixes the API may still return
-        const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
+        const objects = Array.isArray(result)
+          ? result
+          : (result?.objects || []);
+        // Fallback: if API grouped by prefix (delimiter mode), recurse into those too
+        const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes
+          || body?.result_info?.delimited || [];
 
-        console.log(`[r2-list] pfx="${pfx||"(root)"}" objects=${objects.length} prefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} truncated=${result?.truncated} total=${all.length} result_keys=${JSON.stringify(Object.keys(result||{}))} body_keys=${JSON.stringify(Object.keys(body||{}))}`);
+        console.log(`[r2-list] pfx="${pfx||"(root)"}" objects=${objects.length} prefixes=${subPrefixes.length} is_truncated=${body?.result_info?.is_truncated} cursor=${!!(body?.result_info?.cursor)} total=${all.length}`);
 
         for (const o of objects) {
-          // CF Management API uses "key"; S3-compat may use "Key" — try both
+          // CF Management API field is "key"; S3-compat may use "Key"
           const key = o.key ?? o.Key ?? o.name ?? o.object_name ?? null;
           if (!key) {
-            console.warn(`[r2-list] object missing key field — fields: ${JSON.stringify(Object.keys(o))}`);
+            console.warn(`[r2-list] object missing key — fields: ${JSON.stringify(Object.keys(o))}`);
             continue;
           }
-          all.push({ key, size: o.size ?? o.Size ?? 0, uploaded: o.uploaded ?? o.LastModified ?? null });
+          // Timestamp field is "last_modified" in CF Management API
+          const uploaded = o.uploaded ?? o.last_modified ?? o.LastModified ?? null;
+          all.push({ key, size: o.size ?? o.Size ?? 0, uploaded });
           if (all.length >= maxTotal) return;
         }
 
@@ -234,11 +243,16 @@ async function listObjects(prefix = "", maxTotal = 20000) {
 
         if (all.length >= maxTotal) return;
 
-        // Cloudflare R2 API uses "is_truncated" (not "truncated") for pagination.
-        // Cursor may appear on result directly or on result_info at the top level.
-        const isTruncated = result?.is_truncated ?? result?.truncated ?? false;
-        const nextCursor = result?.cursor || body?.result_info?.cursor || null;
+        // Pagination state is in body.result_info (result itself is a plain array).
+        // Confirmed: body.result_info.is_truncated and body.result_info.cursor.
+        const isTruncated = body?.result_info?.is_truncated
+          ?? result?.is_truncated ?? result?.truncated ?? false;
+        const nextCursor = body?.result_info?.cursor ?? result?.cursor ?? null;
         cursor = isTruncated ? nextCursor : null;
+        if (isTruncated && !nextCursor) {
+          console.warn("[r2-list] is_truncated=true but no cursor — stopping to avoid infinite loop");
+          break;
+        }
       } while (cursor && all.length < maxTotal);
     }
 

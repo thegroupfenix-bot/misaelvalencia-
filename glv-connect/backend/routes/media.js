@@ -430,16 +430,23 @@ router.post("/reconcile", requireAdmin, async (_req, res) => {
   }
 
   try {
-    console.log("[reconcile] Listing R2 objects with full paginated traversal...");
+    console.log("[reconcile] Starting — listing all R2 objects with full cursor pagination...");
     const allObjects = await r2.listObjects("", 20000);
+    console.log(`[reconcile] listObjects returned ${allObjects.length} total objects`);
+
     const mainAssets = allObjects.filter(o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/"));
     const thumbIndex = new Set(allObjects.filter(o => o.key.startsWith("thumbnails/")).map(o => o.key));
     console.log(`[reconcile] R2 total=${allObjects.length} main=${mainAssets.length} thumbs=${thumbIndex.size}`);
 
-    const existingKeys = new Set(
-      db.prepare("SELECT r2_key FROM media_assets WHERE r2_key IS NOT NULL").all().map(r => r.r2_key)
+    // Sample first 3 keys for visibility in Railway logs
+    mainAssets.slice(0, 3).forEach((o, i) =>
+      console.log(`[reconcile] sample[${i}] key="${o.key}" size=${o.size}`)
     );
-    console.log(`[reconcile] DB existing keys: ${existingKeys.size}`);
+
+    const existingKeys = new Set(
+      db.prepare("SELECT r2_key FROM media_assets WHERE r2_key IS NOT NULL AND status != 'deleted'").all().map(r => r.r2_key)
+    );
+    console.log(`[reconcile] DB existing r2_key count: ${existingKeys.size}`);
 
     const insert = db.prepare(`
       INSERT INTO media_assets
@@ -450,8 +457,9 @@ router.post("/reconcile", requireAdmin, async (_req, res) => {
     `);
 
     const toInsert = [];
+    let skippedDuplicate = 0;
     for (const obj of mainAssets) {
-      if (existingKeys.has(obj.key)) continue;
+      if (existingKeys.has(obj.key)) { skippedDuplicate++; continue; }
       const filename  = obj.key.split("/").pop();
       const ext       = (filename.split(".").pop() || "").toLowerCase();
       const mimeType  = MIME_MAP[ext] || "application/octet-stream";
@@ -469,21 +477,31 @@ router.post("/reconcile", requireAdmin, async (_req, res) => {
       ]);
     }
 
+    console.log(`[reconcile] to_insert=${toInsert.length} skipped_duplicate=${skippedDuplicate}`);
+
     if (toInsert.length > 0) {
-      db.transaction(() => { toInsert.forEach(row => insert.run(...row)); })();
+      try {
+        db.transaction(() => { toInsert.forEach(row => insert.run(...row)); })();
+        console.log(`[reconcile] DB transaction committed — ${toInsert.length} rows inserted`);
+      } catch (dbErr) {
+        console.error(`[reconcile] DB transaction failed: ${dbErr.message}`);
+        throw dbErr;
+      }
+    } else {
+      console.log("[reconcile] Nothing to insert — all scanned objects already indexed or mainAssets empty");
     }
 
     const totalInDb = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
-    console.log(`[reconcile] Done. restored=${toInsert.length} totalInDb=${totalInDb}`);
+    console.log(`[reconcile] Done. scanned=${mainAssets.length} restored=${toInsert.length} skipped=${skippedDuplicate} totalInDb=${totalInDb}`);
     res.json({
       ok: true,
       scanned: mainAssets.length,
-      already_indexed: mainAssets.length - toInsert.length,
+      already_indexed: skippedDuplicate,
       restored: toInsert.length,
       total_in_db: totalInDb,
     });
   } catch (err) {
-    console.error("[reconcile] Error:", err.message);
+    console.error("[reconcile] Error:", err.message, err.stack);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
