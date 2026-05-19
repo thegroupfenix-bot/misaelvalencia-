@@ -100,6 +100,26 @@ router.get("/", (req, res) => {
 // GET /media/categories — folder structure
 router.get("/categories", (_req, res) => res.json(MEDIA_CATEGORIES));
 
+// NOTE: /r2-status and /r2-ping MUST be declared before /:id — Express matches in order
+router.get("/r2-status", (_req, res) => {
+  res.json({
+    configured: r2.isConfigured(),
+    auth_mode: r2.authMode(),
+    bucket: r2.R2_BUCKET_NAME,
+    ai_classification: classifier.isEnabled(),
+  });
+});
+
+router.get("/r2-ping", requireAdmin, async (_req, res) => {
+  if (!r2.isConfigured()) return res.status(503).json({ ok: false, error: "R2 not configured" });
+  try {
+    const result = await r2.ping();
+    res.json({ ...result, ai_classification: classifier.isEnabled() });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 // GET /media/:id
 router.get("/:id", (req, res) => {
   const row = db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id);
@@ -289,25 +309,5 @@ router.get("/match/:category", (req, res) => {
   res.json(rows);
 });
 
-// GET /media/r2-status
-router.get("/r2-status", (_req, res) => {
-  res.json({
-    configured: r2.isConfigured(),
-    auth_mode: r2.authMode(),
-    bucket: r2.R2_BUCKET_NAME,
-    ai_classification: classifier.isEnabled(),
-  });
-});
-
-// GET /media/r2-ping
-router.get("/r2-ping", requireAdmin, async (_req, res) => {
-  if (!r2.isConfigured()) return res.status(503).json({ ok: false, error: "R2 not configured" });
-  try {
-    const result = await r2.ping();
-    res.json({ ...result, ai_classification: classifier.isEnabled() });
-  } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
-  }
-});
 
 module.exports = router;

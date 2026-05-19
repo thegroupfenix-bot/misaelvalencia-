@@ -48,7 +48,16 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.set("trust proxy", 1);
 
 // Health check first — before all other routes
-app.get("/health", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+app.get("/health", (_req, res) => {
+  let dbInfo = {};
+  try {
+    const db = require("./db/database");
+    const mediaCount = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
+    const userCount  = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
+    dbInfo = { media_assets: mediaCount, users: userCount };
+  } catch (e) { dbInfo = { error: e.message }; }
+  res.json({ ok: true, ts: new Date().toISOString(), db: dbInfo });
+});
 
 // API routes
 app.use("/auth",         authRouter);

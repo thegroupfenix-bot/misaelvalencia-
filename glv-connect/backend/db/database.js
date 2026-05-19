@@ -1,8 +1,19 @@
 const Database = require("better-sqlite3");
 const path = require("path");
+const fs = require("fs");
 const bcrypt = require("bcryptjs");
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, "glvconnect.sqlite");
+// /data must be a Railway Volume (persistent). Without it, DB resets on every redeploy.
+const VOLUME_PATH = "/data/glvconnect.sqlite";
+const LOCAL_PATH  = process.env.DB_PATH || path.join(__dirname, "glvconnect.sqlite");
+const DB_PATH = fs.existsSync("/data") ? VOLUME_PATH : LOCAL_PATH;
+
+console.log(`[DB] path: ${DB_PATH}`);
+if (!fs.existsSync("/data")) {
+  console.warn("[DB] WARNING: /data volume not found — DB is EPHEMERAL, will reset on redeploy.");
+  console.warn("[DB] FIX: Create a Railway Volume mounted at /data");
+}
+
 const db = new Database(DB_PATH);
 
 db.pragma("journal_mode = WAL");
