@@ -110,6 +110,7 @@ router.get("/r2-status", (_req, res) => {
   });
 });
 
+// GET /media/r2-ping  — must be BEFORE /:id
 router.get("/r2-ping", requireAdmin, async (_req, res) => {
   if (!r2.isConfigured()) return res.status(503).json({ ok: false, error: "R2 not configured" });
   try {
@@ -336,9 +337,24 @@ router.get("/match/:category", (req, res) => {
   res.json(rows);
 });
 
+// GET /media/reconcile/status — R2 object count vs DB record count
+router.get("/reconcile/status", requireAdmin, async (_req, res) => {
+  if (!r2.isConfigured()) return res.json({ configured: false });
+  try {
+    const [r2Count, dbCount] = await Promise.all([
+      r2.listObjects("", 20000).then(arr =>
+        arr.filter(o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/")).length
+      ),
+      Promise.resolve(db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c),
+    ]);
+    res.json({ r2_objects: r2Count, db_records: dbCount, in_sync: r2Count <= dbCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-// POST /media/reconcile — scan R2, restore DB records for orphaned objects
-router.post("/reconcile", requireAdmin, async (req, res) => {
+// POST /media/reconcile — scan ALL R2 objects (full cursor pagination), restore missing DB records
+router.post("/reconcile", requireAdmin, async (_req, res) => {
   if (!r2.isConfigured()) return res.status(503).json({ error: "R2 not configured" });
 
   const MIME_MAP = {
@@ -355,7 +371,7 @@ router.post("/reconcile", requireAdmin, async (req, res) => {
   }
 
   try {
-    console.log("[reconcile] Listing R2 objects...");
+    console.log("[reconcile] Listing R2 objects with full paginated traversal...");
     const allObjects = await r2.listObjects("", 20000);
     const mainAssets = allObjects.filter(o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/"));
     const thumbIndex = new Set(allObjects.filter(o => o.key.startsWith("thumbnails/")).map(o => o.key));
@@ -395,29 +411,21 @@ router.post("/reconcile", requireAdmin, async (req, res) => {
     }
 
     if (toInsert.length > 0) {
-      db.transaction(() => { toInsert.forEach(r => insert.run(...r)); })();
+      db.transaction(() => { toInsert.forEach(row => insert.run(...row)); })();
     }
 
     const totalInDb = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
     console.log(`[reconcile] Done. restored=${toInsert.length} totalInDb=${totalInDb}`);
-    res.json({ ok: true, scanned: mainAssets.length, already_indexed: mainAssets.length - toInsert.length, restored: toInsert.length, total_in_db: totalInDb });
+    res.json({
+      ok: true,
+      scanned: mainAssets.length,
+      already_indexed: mainAssets.length - toInsert.length,
+      restored: toInsert.length,
+      total_in_db: totalInDb,
+    });
   } catch (err) {
     console.error("[reconcile] Error:", err.message);
     res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// GET /media/reconcile/status — R2 object count vs DB record count
-router.get("/reconcile/status", requireAdmin, async (req, res) => {
-  if (!r2.isConfigured()) return res.json({ configured: false });
-  try {
-    const [r2Count, dbCount] = await Promise.all([
-      r2.listObjects("", 20000).then(arr => arr.filter(o => !o.key.startsWith("thumbnails/") && !o.key.endsWith("/")).length),
-      Promise.resolve(db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c),
-    ]);
-    res.json({ r2_objects: r2Count, db_records: dbCount, in_sync: r2Count <= dbCount });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 

@@ -180,7 +180,7 @@ function rewriteToPublicUrl(url) {
 // Management API may return nested paths in `delimitedPrefixes` instead of
 // `objects` when no delimiter is specified.  Explicit delimiter + recursion
 // guarantees every object at every depth is discovered regardless of API
-// default behaviour.
+// default behaviour.  Pagination uses "is_truncated" + "cursor" (CF field names).
 //
 // S3 mode uses ListObjectsV2 without a Delimiter — the S3 spec guarantees
 // a flat recursive listing when no Delimiter is present.
@@ -211,8 +211,7 @@ async function listObjects(prefix = "", maxTotal = 20000) {
         const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
 
         if (!pfx) {
-          // Log root-level shape once so Railway logs show us the actual API format
-          console.log(`[r2-list] root scan: objects=${objects.length} subPrefixes=${subPrefixes.length} keys=${JSON.stringify(Object.keys(result || {}))}`);
+          console.log(`[r2-list] root scan: objects=${objects.length} subPrefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} keys=${JSON.stringify(Object.keys(result || {}))}`);
         }
 
         // Leaf objects at this prefix level
@@ -227,7 +226,11 @@ async function listObjects(prefix = "", maxTotal = 20000) {
           await scanPrefix(subPrefix);
         }
 
-        cursor = result?.truncated ? (result.cursor || null) : null;
+        // Cloudflare R2 API uses "is_truncated" (not "truncated") for pagination.
+        // Cursor may appear on result directly or on result_info at the top level.
+        const isTruncated = result?.is_truncated ?? result?.truncated ?? false;
+        const nextCursor = result?.cursor || body?.result_info?.cursor || null;
+        cursor = isTruncated ? nextCursor : null;
       } while (cursor && all.length < maxTotal);
     }
 
