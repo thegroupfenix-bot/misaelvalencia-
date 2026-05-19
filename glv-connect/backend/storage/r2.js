@@ -195,8 +195,10 @@ async function listObjects(prefix = "", maxTotal = 20000) {
     async function fetchFlat(pfx) {
       let cursor = null;
       do {
-        // No delimiter — CF Management API returns all nested objects in a flat stream
-        const params = new URLSearchParams({ limit: "1000" });
+        // No delimiter — CF Management API returns all nested objects in a flat stream.
+        // Using limit=100 (not 1000) — CF Management API may silently cap or alter
+        // behaviour at large limit values; paginate instead.
+        const params = new URLSearchParams({ limit: "100" });
         if (pfx) params.set("prefix", pfx);
         if (cursor) params.set("cursor", cursor);
         const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects?${params}`;
@@ -212,10 +214,16 @@ async function listObjects(prefix = "", maxTotal = 20000) {
         // Defensive fallback: recurse into any grouped prefixes the API may still return
         const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
 
-        console.log(`[r2-list] pfx="${pfx||"(root)"}" objects=${objects.length} subPrefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} total=${all.length} keys=${JSON.stringify(Object.keys(result || {}))}`);
+        console.log(`[r2-list] pfx="${pfx||"(root)"}" objects=${objects.length} prefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} truncated=${result?.truncated} total=${all.length} result_keys=${JSON.stringify(Object.keys(result||{}))} body_keys=${JSON.stringify(Object.keys(body||{}))}`);
 
         for (const o of objects) {
-          all.push({ key: o.key, size: o.size, uploaded: o.uploaded });
+          // CF Management API uses "key"; S3-compat may use "Key" — try both
+          const key = o.key ?? o.Key ?? o.name ?? o.object_name ?? null;
+          if (!key) {
+            console.warn(`[r2-list] object missing key field — fields: ${JSON.stringify(Object.keys(o))}`);
+            continue;
+          }
+          all.push({ key, size: o.size ?? o.Size ?? 0, uploaded: o.uploaded ?? o.LastModified ?? null });
           if (all.length >= maxTotal) return;
         }
 

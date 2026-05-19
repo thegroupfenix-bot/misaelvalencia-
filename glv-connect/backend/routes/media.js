@@ -148,6 +148,65 @@ router.get("/r2-raw-list", requireAdmin, async (_req, res) => {
   }
 });
 
+// GET /media/r2-traverse-test — deep traversal diagnostic
+// Probes 8 specific API call variants and returns raw response shapes as JSON.
+// Run from console: fetch('/media/r2-traverse-test', {headers:{Authorization:'Bearer '+localStorage.getItem('glv_token')}}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)))
+router.get("/r2-traverse-test", requireAdmin, async (_req, res) => {
+  if (!r2.isConfigured()) return res.status(503).json({ error: "R2 not configured" });
+  if (r2.authMode() !== "token") return res.json({ note: "only available in token mode" });
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const token = process.env.R2_API_TOKEN;
+  const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${r2.R2_BUCKET_NAME}/objects`;
+
+  async function probe(params) {
+    const url = `${base}?${new URLSearchParams(params)}`;
+    try {
+      const r2res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const body = await r2res.json().catch(() => ({}));
+      const result = body.result || body;
+      const objects  = result?.objects  || (Array.isArray(result) ? result : []);
+      const prefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
+      return {
+        http_status:      r2res.status,
+        ok:               r2res.ok,
+        body_keys:        Object.keys(body),
+        result_keys:      Object.keys(result || {}),
+        objects_count:    objects.length,
+        prefixes_count:   prefixes.length,
+        first_obj:        objects[0] || null,
+        first_obj_fields: objects[0] ? Object.keys(objects[0]) : [],
+        first_prefix:     prefixes[0] || null,
+        is_truncated:     result?.is_truncated,
+        truncated:        result?.truncated,
+        cursor:           result?.cursor,
+        result_info:      body?.result_info || null,
+      };
+    } catch (e) {
+      return { error: e.message };
+    }
+  }
+
+  const results = {};
+  // Baseline: confirmed working in previous session
+  results.A_root_nodelim_limit10   = await probe({ limit: "10" });
+  // What listObjects actually sends now (limit=1000, no delimiter)
+  results.B_root_nodelim_limit1000 = await probe({ limit: "1000" });
+  // Root with delimiter (old approach — shows top-level folder grouping)
+  results.C_root_delim_limit10     = await probe({ limit: "10", delimiter: "/" });
+  // Sub-prefix: products/ (no delimiter, small limit — expected: all live-animal files)
+  results.D_products_nodelim       = await probe({ limit: "10", prefix: "products/" });
+  // Sub-prefix: products/ WITH delimiter (expected: delimitedPrefixes: ["products/live-animals/"])
+  results.E_products_delim         = await probe({ limit: "10", prefix: "products/", delimiter: "/" });
+  // Deeper: products/live-animals/ (no delimiter — expected: all files under this path)
+  results.F_live_animals_nodelim   = await probe({ limit: "10", prefix: "products/live-animals/" });
+  // Leaf level: products/live-animals/2026/05/ (expected: actual image files)
+  results.G_leaf_nodelim           = await probe({ limit: "10", prefix: "products/live-animals/2026/05/" });
+  // Leaf with delimiter (control — should return the files, not sub-prefixes)
+  results.H_leaf_delim             = await probe({ limit: "10", prefix: "products/live-animals/2026/05/", delimiter: "/" });
+
+  res.json({ bucket: r2.R2_BUCKET_NAME, tests: results });
+});
+
 // GET /media/:id
 router.get("/:id", (req, res) => {
   const row = db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id);
