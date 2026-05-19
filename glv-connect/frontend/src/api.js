@@ -4,16 +4,23 @@ function getToken() {
   return localStorage.getItem("glv_token");
 }
 
-async function request(method, path, body) {
+async function request(method, path, body, signal) {
   const headers = { "Content-Type": "application/json" };
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  } catch (e) {
+    if (e.name === "AbortError") throw e;
+    throw new Error("Error de red");
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -102,9 +109,9 @@ export const api = {
   adminCreatePcBreed:      (data)       => request("POST",   "/price-center/breeds", data),
 
   // ─── Media Center ─────────────────────────────────────────────────────────────
-  getMedia:            (params = {}) => {
+  getMedia:            (params = {}, signal) => {
     const qs = new URLSearchParams(params).toString();
-    return request("GET", `/media${qs ? "?" + qs : ""}`);
+    return request("GET", `/media${qs ? "?" + qs : ""}`, undefined, signal);
   },
   getMediaItem:        (id) => request("GET", `/media/${id}`),
   uploadMedia:         (formData) => {

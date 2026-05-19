@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../api.js";
 
 const PALETTE = {
@@ -321,9 +321,33 @@ function InfoRow({ label, value }) {
 }
 
 function AssetCard({ asset, onSelect }) {
+  const [retryCount, setRetryCount] = useState(0);
   const [imgFailed, setImgFailed] = useState(false);
+  const retryTimerRef = useRef(null);
   const isImg = asset.mime_type?.startsWith("image/");
   const thumb = asset.thumbnail_url || asset.public_url;
+
+  useEffect(() => () => { if (retryTimerRef.current) clearTimeout(retryTimerRef.current); }, []);
+
+  const handleImgError = () => {
+    if (retryCount < 2) {
+      const delay = (retryCount + 1) * 1500; // 1.5s, 3s
+      console.warn(`[AssetCard] img error, retry ${retryCount + 1}/2 in ${delay}ms: ${thumb}`);
+      retryTimerRef.current = setTimeout(() => setRetryCount(c => c + 1), delay);
+    } else {
+      console.warn(`[AssetCard] img failed after retries: ${thumb} (key: ${asset.r2_key || asset.id})`);
+      setImgFailed(true);
+    }
+  };
+
+  // Add cache-buster on retry to bypass browser cache
+  const imgSrc = retryCount > 0 && thumb ? `${thumb}?_r=${retryCount}` : thumb;
+
+  // Use thumbnail first; if it fails AND there's a separate public_url, try that next
+  const fallbackSrc = retryCount === 1 && asset.thumbnail_url && asset.public_url && asset.thumbnail_url !== asset.public_url
+    ? asset.public_url  // fallback to original on first retry
+    : imgSrc;
+
   return (
     <div onClick={() => onSelect(asset)} style={{ background:PALETTE.white, borderRadius:12,
       border:`1px solid ${PALETTE.border}`, overflow:"hidden", cursor:"pointer",
@@ -333,12 +357,14 @@ function AssetCard({ asset, onSelect }) {
       <div style={{ height:140, background:"#f1f5f9", overflow:"hidden",
         display:"flex", alignItems:"center", justifyContent:"center" }}>
         {isImg && thumb && !imgFailed ? (
-          <img src={thumb} alt={asset.original_name} loading="lazy"
+          <img
+            key={retryCount}
+            src={fallbackSrc}
+            alt={asset.original_name}
+            loading="lazy"
             style={{ width:"100%", height:"100%", objectFit:"cover" }}
-            onError={() => {
-              console.warn(`[AssetCard] img failed: ${thumb} (key: ${asset.r2_key || asset.id})`);
-              setImgFailed(true);
-            }} />
+            onError={handleImgError}
+          />
         ) : (
           <span style={{ fontSize:48 }}>{asset.mime_type==="application/pdf" ? "📄" : imgFailed ? "🖼️" : "📁"}</span>
         )}
@@ -365,8 +391,31 @@ function AssetCard({ asset, onSelect }) {
   );
 }
 
+class MediaErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('[MediaCenter] ErrorBoundary caught:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ textAlign:'center', padding:60, color:'#991b1b' }}>
+          <div style={{ fontSize:48, marginBottom:12 }}>⚠️</div>
+          <div style={{ fontWeight:600, fontSize:16 }}>Error de renderizado</div>
+          <div style={{ fontSize:13, marginTop:4, marginBottom:16 }}>{this.state.error?.message}</div>
+          <button onClick={() => this.setState({ hasError: false, error: null })}
+            style={{ padding:'8px 20px', background:'#1B2A4A', color:'white', border:'none', borderRadius:8, cursor:'pointer' }}>
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function MediaCenter({ user }) {
   const [assets, setAssets] = useState([]);
+  const [prevAssets, setPrevAssets] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -407,7 +456,7 @@ export default function MediaCenter({ user }) {
 
   const COUNTRIES = ["Colombia","Brazil","Peru","Chile","Argentina","Uruguay","Australia","New Zealand","South Africa","USA"];
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal) => {
     const callId = ++loadIdRef.current;
     setLoading(true);
     setLoadError(null);
@@ -416,27 +465,32 @@ export default function MediaCenter({ user }) {
       if (filterCat) params.category = filterCat;
       if (filterCountry) params.country = filterCountry;
       if (search) params.search = search;
-      console.log(`[MediaCenter] load #${callId} cat="${filterCat || "all"}" country="${filterCountry || "any"}" search="${search}" page=${page} offset=${page * PER_PAGE}`);
-      const data = await api.getMedia(params);
-      // Discard stale responses — a newer load() has already fired
-      if (callId !== loadIdRef.current) {
-        console.log(`[MediaCenter] load #${callId} discarded (superseded by #${loadIdRef.current})`);
+      console.log(`[MediaCenter] load #${callId} cat="${filterCat || "all"}" page=${page}`);
+      const data = await api.getMedia(params, signal);
+      if (signal?.aborted || callId !== loadIdRef.current) {
+        console.log(`[MediaCenter] load #${callId} aborted/superseded`);
         return;
       }
       const assetCount = data.assets?.length ?? 0;
-      console.log(`[MediaCenter] load #${callId} → ${assetCount} assets returned, total=${data.total}`);
+      console.log(`[MediaCenter] load #${callId} → ${assetCount} assets, total=${data.total}`);
       if (assetCount > 0) console.log(`[MediaCenter] load #${callId} sample[0] key="${data.assets[0].r2_key}" thumb="${data.assets[0].thumbnail_url}" cat="${data.assets[0].category}"`);
+      setPrevAssets(data.assets || []);
       setAssets(data.assets || []);
       setTotal(data.total || 0);
     } catch (e) {
-      if (callId !== loadIdRef.current) return;
+      if (e.name === 'AbortError' || signal?.aborted || callId !== loadIdRef.current) return;
       console.error("[MediaCenter] load error:", e);
       setLoadError(e.message || "Error al cargar activos");
+    } finally {
+      if (!signal?.aborted && callId === loadIdRef.current) setLoading(false);
     }
-    if (callId === loadIdRef.current) setLoading(false);
   }, [filterCat, filterCountry, search, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [load]);
 
   useEffect(() => {
     api.getR2Status().then(s => setR2Status(s)).catch(() => {});
@@ -449,7 +503,7 @@ export default function MediaCenter({ user }) {
     try {
       const result = await api.reconcileMedia();
       setReconcileResult(result);
-      if (result.restored > 0) load();
+      if (result.restored > 0) load(undefined);
       api.reconcileMediaStatus().then(s => setSyncStatus(s)).catch(() => {});
     } catch (e) {
       setReconcileResult({ ok: false, error: e.message });
@@ -626,7 +680,7 @@ export default function MediaCenter({ user }) {
             padding:"10px 16px", marginBottom:16, fontSize:13, color:"#991b1b",
             display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <span>❌ Error al cargar: <strong>{loadError}</strong></span>
-            <button onClick={load} style={{ background:"#dc2626", color:"white", border:"none",
+            <button onClick={() => load(undefined)} style={{ background:"#dc2626", color:"white", border:"none",
               borderRadius:8, padding:"4px 12px", cursor:"pointer", fontWeight:700, fontSize:12, marginLeft:12 }}>
               Reintentar
             </button>
@@ -634,57 +688,71 @@ export default function MediaCenter({ user }) {
         )}
 
         {/* Grid */}
-        {loading ? (
-          <div style={{ textAlign:"center", padding:60, color:PALETTE.gray, fontSize:16 }}>
-            Cargando activos...
-          </div>
-        ) : assets.length === 0 ? (
-          <div style={{ textAlign:"center", padding:60, color:PALETTE.gray }}>
-            <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
-            <div style={{ fontWeight:600, fontSize:16 }}>
-              {filterCat || filterCountry || search
-                ? "No hay activos con estos filtros"
-                : "No hay activos"}
-            </div>
-            <div style={{ fontSize:13, marginTop:4 }}>
-              {canEdit ? "Sube el primer archivo usando el botón de arriba" : "El administrador debe subir archivos"}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div style={{ display:"grid",
-              gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:14 }}>
-              {assets.map(a => (
-                <AssetCard key={a.id} asset={a} onSelect={setSelected} />
-              ))}
-            </div>
-            {pages > 1 && (
-              <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:24 }}>
-                <button onClick={() => setPage(p=>Math.max(0,p-1))} disabled={page===0}
-                  style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${PALETTE.border}`,
-                    background:PALETTE.white, cursor: page===0?"not-allowed":"pointer", fontSize:13 }}>
-                  ← Anterior
-                </button>
-                <span style={{ padding:"6px 12px", fontSize:13, color:PALETTE.gray }}>
-                  Página {page+1} de {pages} · {total} activos
-                </span>
-                <button onClick={() => setPage(p=>Math.min(pages-1,p+1))} disabled={page===pages-1}
-                  style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${PALETTE.border}`,
-                    background:PALETTE.white, cursor: page===pages-1?"not-allowed":"pointer", fontSize:13 }}>
-                  Siguiente →
-                </button>
+        <MediaErrorBoundary>
+          <div style={{ position: "relative" }}>
+            {loading && assets.length === 0 && (
+              <div style={{ textAlign:"center", padding:60, color:PALETTE.gray, fontSize:16 }}>
+                <div style={{ fontSize:32, marginBottom:12, animation:"spin 1s linear infinite" }}>⏳</div>
+                Cargando activos...
               </div>
             )}
-          </>
-        )}
+            {loading && assets.length > 0 && (
+              <div style={{ position:"absolute", inset:0, background:"rgba(248,250,252,0.75)",
+                zIndex:5, display:"flex", alignItems:"center", justifyContent:"center",
+                borderRadius:12, pointerEvents:"none" }}>
+                <div style={{ background:"white", padding:"12px 24px", borderRadius:10,
+                  boxShadow:"0 4px 20px rgba(0,0,0,0.15)", fontSize:13, color:PALETTE.navy, fontWeight:600 }}>
+                  ⏳ Actualizando...
+                </div>
+              </div>
+            )}
+            {!loading && assets.length === 0 && (
+              <div style={{ textAlign:"center", padding:60, color:PALETTE.gray }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
+                <div style={{ fontWeight:600, fontSize:16 }}>
+                  {filterCat || filterCountry || search ? "No hay activos con estos filtros" : "No hay activos"}
+                </div>
+                <div style={{ fontSize:13, marginTop:4 }}>
+                  {canEdit ? "Sube el primer archivo usando el botón de arriba" : "El administrador debe subir archivos"}
+                </div>
+              </div>
+            )}
+            {assets.length > 0 && (
+              <>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:14 }}>
+                  {assets.map(a => (
+                    <AssetCard key={a.id} asset={a} onSelect={setSelected} />
+                  ))}
+                </div>
+                {pages > 1 && (
+                  <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:24 }}>
+                    <button onClick={() => setPage(p=>Math.max(0,p-1))} disabled={page===0}
+                      style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${PALETTE.border}`,
+                        background:PALETTE.white, cursor: page===0?"not-allowed":"pointer", fontSize:13 }}>
+                      ← Anterior
+                    </button>
+                    <span style={{ padding:"6px 12px", fontSize:13, color:PALETTE.gray }}>
+                      Página {page+1} de {pages} · {total} activos
+                    </span>
+                    <button onClick={() => setPage(p=>Math.min(pages-1,p+1))} disabled={page===pages-1}
+                      style={{ padding:"6px 14px", borderRadius:8, border:`1px solid ${PALETTE.border}`,
+                        background:PALETTE.white, cursor: page===pages-1?"not-allowed":"pointer", fontSize:13 }}>
+                      Siguiente →
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </MediaErrorBoundary>
       </div>
 
       {showUpload && (
-        <UploadModal user={user} onClose={() => setShowUpload(false)} onUploaded={() => { load(); setShowUpload(false); }} />
+        <UploadModal user={user} onClose={() => setShowUpload(false)} onUploaded={() => { load(undefined); setShowUpload(false); }} />
       )}
       {selected && (
         <AssetDetailModal asset={selected} canEdit={canEdit}
-          onClose={() => setSelected(null)} onUpdated={() => { load(); setSelected(null); }} />
+          onClose={() => setSelected(null)} onUpdated={() => { load(undefined); setSelected(null); }} />
       )}
     </div>
   );
