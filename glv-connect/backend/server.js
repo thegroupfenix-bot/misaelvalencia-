@@ -35,6 +35,7 @@ const financeRouter     = require("./routes/finance");
 const tasksRouter       = require("./routes/tasks");
 const priceCenterRouter = require("./routes/price-center");
 const mediaRouter       = require("./routes/media");
+const backupRouter      = require("./routes/backup");
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use("/finance",      financeRouter);
 app.use("/tasks",        tasksRouter);
 app.use("/price-center", priceCenterRouter);
 app.use("/media",        mediaRouter);
+app.use("/backup",       backupRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
@@ -113,6 +115,18 @@ app.listen(Number(PORT), "0.0.0.0", () => {
   console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
   console.log(`BUILD_TS: ${BUILD_TS}`);
 });
+
+// Start backup scheduler (only if R2 configured) — 5s after start
+setTimeout(() => {
+  const backup = require("./services/backup");
+  const r2 = require("./storage/r2");
+  if (r2.isConfigured()) {
+    backup.scheduleDailyBackup();
+    console.log("[server] Daily backup scheduler started");
+  } else {
+    console.log("[server] Backup scheduler skipped — R2 not configured");
+  }
+}, 5000);
 
 // Auto-reconcile R2 media 15s after startup — restores orphaned assets after any DB reset
 setTimeout(async () => {

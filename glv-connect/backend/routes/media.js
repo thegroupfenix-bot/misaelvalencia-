@@ -6,6 +6,7 @@ const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
 const r2 = require("../storage/r2");
 const classifier = require("../ai/classifier");
+const fs = require("fs");
 
 // sharp is lazy-loaded to avoid crashing the server if native bindings fail
 let _sharp = null;
@@ -22,6 +23,51 @@ function requireAdmin(req, res, next) {
   if (!ADMIN_ROLES.has(req.user?.role) && req.user?.username !== "mvalencia")
     return res.status(403).json({ error: "Acceso restringido" });
   next();
+}
+
+/**
+ * validateUploadSecurity(buffer, mimetype, originalname)
+ * Checks magic bytes, blocks executables, and scans SVGs for XSS patterns.
+ * @returns {{ ok: boolean, reason: string|null }}
+ */
+function validateUploadSecurity(buffer, mimetype, originalname) {
+  if (!buffer || buffer.length < 4) return { ok: true, reason: null };
+
+  const b0 = buffer[0], b1 = buffer[1], b2 = buffer[2], b3 = buffer[3];
+
+  // Block Windows executables (MZ) and Linux ELF binaries
+  if (b0 === 0x4D && b1 === 0x5A) return { ok: false, reason: "Executable file detected (MZ header)" };
+  if (b0 === 0x7F && b1 === 0x45 && b2 === 0x4C && b3 === 0x46) return { ok: false, reason: "Executable file detected (ELF header)" };
+
+  const ext = path.extname(originalname).toLowerCase();
+
+  if (mimetype === "image/svg+xml" || ext === ".svg") {
+    // Scan first 4096 bytes for dangerous SVG patterns
+    const sample = buffer.slice(0, 4096).toString("utf8");
+    if (/<script/i.test(sample))     return { ok: false, reason: "SVG contains <script> tag" };
+    if (/javascript:/i.test(sample)) return { ok: false, reason: "SVG contains javascript: URI" };
+    if (/on\w+\s*=/i.test(sample))   return { ok: false, reason: "SVG contains inline event handler" };
+    return { ok: true, reason: null };
+  }
+
+  if (mimetype === "image/jpeg" || ext === ".jpg" || ext === ".jpeg") {
+    if (!(b0 === 0xFF && b1 === 0xD8 && b2 === 0xFF)) return { ok: false, reason: "File does not match JPEG magic bytes" };
+  } else if (mimetype === "image/png" || ext === ".png") {
+    if (!(b0 === 0x89 && b1 === 0x50 && b2 === 0x4E && b3 === 0x47)) return { ok: false, reason: "File does not match PNG magic bytes" };
+  } else if (mimetype === "image/gif" || ext === ".gif") {
+    if (!(b0 === 0x47 && b1 === 0x49 && b2 === 0x46 && b3 === 0x38)) return { ok: false, reason: "File does not match GIF magic bytes" };
+  } else if (mimetype === "image/webp" || ext === ".webp") {
+    // RIFF....WEBP: bytes 0-3 = RIFF, bytes 8-11 = WEBP
+    if (buffer.length >= 12) {
+      const riff = buffer.slice(0, 4).toString("ascii");
+      const webp = buffer.slice(8, 12).toString("ascii");
+      if (riff !== "RIFF" || webp !== "WEBP") return { ok: false, reason: "File does not match WebP magic bytes" };
+    }
+  } else if (mimetype === "application/pdf" || ext === ".pdf") {
+    if (!(b0 === 0x25 && b1 === 0x50 && b2 === 0x44 && b3 === 0x46)) return { ok: false, reason: "File does not match PDF magic bytes" };
+  }
+
+  return { ok: true, reason: null };
 }
 
 // multer: memory storage, 20MB limit
@@ -84,23 +130,95 @@ function serializeAsset(r) {
 // GET /media — list assets
 router.get("/", (req, res) => {
   const { category, country, product, search, archived = 0, limit = 100, offset = 0 } = req.query;
-  let sql = "SELECT * FROM media_assets WHERE status != 'deleted' AND archived = ?";
-  const params = [+archived];
-  if (category)  { sql += " AND category LIKE ?"; params.push(`${category}%`); }
-  if (country)   { sql += " AND country_origin = ?"; params.push(country); }
-  if (product)   { sql += " AND product_relation = ?"; params.push(product); }
-  if (search)    { sql += " AND (original_name LIKE ? OR tags_json LIKE ? OR subcategory LIKE ?)"; params.push(`%${search}%`,`%${search}%`,`%${search}%`); }
-  sql += " ORDER BY upload_date DESC LIMIT ? OFFSET ?";
-  params.push(+limit, +offset);
-  const rows = db.prepare(sql).all(...params).map(serializeAsset);
-  const total = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted' AND archived = ?").get(+archived).c;
+  let base = "SELECT * FROM media_assets WHERE status != 'deleted' AND archived = ?";
+  const filterParams = [+archived];
+  if (category)  { base += " AND category LIKE ?"; filterParams.push(`${category}%`); }
+  if (country)   { base += " AND country_origin = ?"; filterParams.push(country); }
+  if (product)   { base += " AND product_relation = ?"; filterParams.push(product); }
+  if (search)    { base += " AND (original_name LIKE ? OR tags_json LIKE ? OR subcategory LIKE ?)"; filterParams.push(`%${search}%`,`%${search}%`,`%${search}%`); }
+  const rows = db.prepare(base + " ORDER BY upload_date DESC LIMIT ? OFFSET ?").all(...filterParams, +limit, +offset).map(serializeAsset);
+  const total = db.prepare(base.replace("SELECT *", "SELECT COUNT(*) AS c")).get(...filterParams).c;
   res.json({ assets: rows, total });
 });
 
 // GET /media/categories — folder structure
 router.get("/categories", (_req, res) => res.json(MEDIA_CATEGORIES));
 
+// GET /media/debug-categories — returns distinct category values stored in DB (admin only)
+// Used to diagnose filter mismatches without querying SQLite directly.
+router.get("/debug-categories", requireAdmin, (_req, res) => {
+  const rows = db.prepare(
+    "SELECT category, COUNT(*) AS count FROM media_assets WHERE status != 'deleted' GROUP BY category ORDER BY count DESC"
+  ).all();
+  const sample = db.prepare(
+    "SELECT id, r2_key, category, original_name FROM media_assets WHERE status != 'deleted' ORDER BY id DESC LIMIT 10"
+  ).all();
+  res.json({ distinct_categories: rows, recent_sample: sample });
+});
+
 // NOTE: all static-path routes MUST be declared before /:id — Express matches in order
+
+// GET /media/health/media-center — admin health dashboard for the media centre
+router.get("/health/media-center", requireAdmin, async (_req, res) => {
+  const t0 = Date.now();
+  try {
+    // 1. DB asset stats
+    const total_assets   = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
+    const by_category    = db.prepare("SELECT category, COUNT(*) AS count FROM media_assets WHERE status != 'deleted' GROUP BY category ORDER BY count DESC").all();
+    const missing_thumbnails = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted' AND (thumbnail_url IS NULL OR thumbnail_url = '')").get().c;
+    const recent_uploads = db.prepare("SELECT id, original_name, category, upload_date, storage_provider FROM media_assets WHERE status != 'deleted' ORDER BY id DESC LIMIT 5").all();
+
+    // 2. DB file info
+    const DB_PATH_LOCAL = fs.existsSync("/data") ? "/data/glvconnect.sqlite" : (process.env.DB_PATH || path.join(__dirname, "../db/glvconnect.sqlite"));
+    let db_size_bytes = 0;
+    try { db_size_bytes = fs.statSync(DB_PATH_LOCAL).size; } catch { /* ignore */ }
+
+    // 3. R2 info
+    const r2Info = { configured: r2.isConfigured(), mode: r2.authMode() };
+
+    // 4. Backup stats (lazy import — backup service may not be loaded yet)
+    let backupStats = null;
+    try {
+      const backupSvc = require("../services/backup");
+      backupStats = await backupSvc.getBackupStats();
+      backupStats.last_backup = backupSvc.lastBackupResult;
+    } catch (e) {
+      backupStats = { error: e.message };
+    }
+
+    // 5. System info
+    const system = {
+      uptime_seconds: Math.floor(process.uptime()),
+      node_version:   process.version,
+      memory_rss:     process.memoryUsage().rss,
+    };
+
+    const response_ms = Date.now() - t0;
+    res.json({
+      ok: true,
+      timestamp:    new Date().toISOString(),
+      response_ms,
+      db: {
+        path:        DB_PATH_LOCAL,
+        size_bytes:  db_size_bytes,
+        persistent:  fs.existsSync("/data"),
+      },
+      r2: r2Info,
+      assets: {
+        total_assets,
+        by_category,
+        missing_thumbnails,
+        recent_uploads,
+      },
+      backups: backupStats,
+      system,
+    });
+  } catch (err) {
+    console.error("[health/media-center] Error:", err.message);
+    res.status(500).json({ ok: false, error: err.message, response_ms: Date.now() - t0 });
+  }
+});
+
 router.get("/r2-status", (_req, res) => {
   res.json({
     configured: r2.isConfigured(),
@@ -224,10 +342,22 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
   const uploaded = [];
 
   for (const file of req.files) {
+    // A) Magic bytes + SVG security validation
+    const secCheck = validateUploadSecurity(file.buffer, file.mimetype, file.originalname);
+    if (!secCheck.ok) {
+      uploaded.push({ error: `Security validation failed: ${secCheck.reason}`, originalname: file.originalname });
+      continue;
+    }
+
     try {
       const checksum = crypto.createHash("sha256").update(file.buffer).digest("hex");
-      const existing = db.prepare("SELECT id, public_url FROM media_assets WHERE checksum_hash = ? AND status != 'deleted'").get(checksum);
-      if (existing) { uploaded.push({ ...existing, public_url: fixUrl(existing.public_url), duplicate: true }); continue; }
+
+      // B) Duplicate detection — full record returned
+      const existing = db.prepare("SELECT id, r2_key, public_url FROM media_assets WHERE checksum_hash = ? AND status != 'deleted'").get(checksum);
+      if (existing) {
+        uploaded.push({ duplicate: true, existing_id: existing.id, existing_url: fixUrl(existing.public_url), originalname: file.originalname });
+        continue;
+      }
 
       // AI classification (runs in parallel with image processing — non-blocking)
       let aiResult = null;
@@ -303,6 +433,12 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
           JSON.stringify({ ai_classified: !!aiResult, ai_confidence: aiResult?.confidence }),
           "active", "r2");
 
+        // D) Audit log for image upload
+        try {
+          db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
+            .run(req.user.username, `media_upload:${r2Key}`, String(record.lastInsertRowid), req.ip);
+        } catch { /* audit failures must not break uploads */ }
+
         uploaded.push({
           id: record.lastInsertRowid,
           filename,
@@ -331,6 +467,12 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
         operation_relation||null, document_relation||null, req.user.username,
         file.size, publicUrl, checksum, r2Key,
         JSON.stringify(tagsArr), "{}", "active", "r2");
+
+      // D) Audit log for non-image upload
+      try {
+        db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
+          .run(req.user.username, `media_upload:${r2Key}`, String(record.lastInsertRowid), req.ip);
+      } catch { /* audit failures must not break uploads */ }
 
       uploaded.push({ id: record.lastInsertRowid, filename, public_url: fixUrl(publicUrl) });
     } catch (err) {
@@ -370,6 +512,11 @@ router.delete("/:id", async (req, res) => {
     if (row.thumbnail_key && r2.isConfigured()) await r2.deleteObject(row.thumbnail_key);
   } catch (e) { console.warn("R2 delete error:", e.message); }
   db.prepare("UPDATE media_assets SET status = 'deleted' WHERE id = ?").run(req.params.id);
+  // D) Audit log for delete
+  try {
+    db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
+      .run(req.user.username, `media_delete:${row.r2_key}`, String(req.params.id), req.ip);
+  } catch { /* audit failures must not break deletes */ }
   res.json({ ok: true });
 });
 
@@ -493,6 +640,11 @@ router.post("/reconcile", requireAdmin, async (_req, res) => {
 
     const totalInDb = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
     console.log(`[reconcile] Done. scanned=${mainAssets.length} restored=${toInsert.length} skipped=${skippedDuplicate} totalInDb=${totalInDb}`);
+    // D) Audit log for reconcile
+    try {
+      db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
+        .run(req.user.username, `media_reconcile:restored=${toInsert.length}`, null, req.ip);
+    } catch { /* audit failures must not break reconcile */ }
     res.json({
       ok: true,
       scanned: mainAssets.length,
