@@ -100,7 +100,7 @@ router.get("/", (req, res) => {
 // GET /media/categories — folder structure
 router.get("/categories", (_req, res) => res.json(MEDIA_CATEGORIES));
 
-// NOTE: /r2-status and /r2-ping MUST be declared before /:id — Express matches in order
+// GET /media/r2-status  — must be BEFORE /:id to avoid being swallowed by the param route
 router.get("/r2-status", (_req, res) => {
   res.json({
     configured: r2.isConfigured(),
@@ -110,6 +110,7 @@ router.get("/r2-status", (_req, res) => {
   });
 });
 
+// GET /media/r2-ping  — must be BEFORE /:id
 router.get("/r2-ping", requireAdmin, async (_req, res) => {
   if (!r2.isConfigured()) return res.status(503).json({ ok: false, error: "R2 not configured" });
   try {
@@ -308,6 +309,5 @@ router.get("/match/:category", (req, res) => {
   const rows = db.prepare(sql).all(...params).map(serializeAsset);
   res.json(rows);
 });
-
 
 module.exports = router;

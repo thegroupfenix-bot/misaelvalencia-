@@ -3,15 +3,17 @@ const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcryptjs");
 
-// /data must be a Railway Volume (persistent). Without it, DB resets on every redeploy.
+// Prefer /data volume (Railway persistent volume) over the container-local path.
+// /data must be mounted as a Railway Volume — otherwise every redeploy wipes the DB.
+// Fallback: local path for development.
 const VOLUME_PATH = "/data/glvconnect.sqlite";
 const LOCAL_PATH  = process.env.DB_PATH || path.join(__dirname, "glvconnect.sqlite");
 const DB_PATH = fs.existsSync("/data") ? VOLUME_PATH : LOCAL_PATH;
 
 console.log(`[DB] path: ${DB_PATH}`);
 if (!fs.existsSync("/data")) {
-  console.warn("[DB] WARNING: /data volume not found — DB is EPHEMERAL, will reset on redeploy.");
-  console.warn("[DB] FIX: Create a Railway Volume mounted at /data");
+  console.warn("[DB] WARNING: /data volume not found — database is EPHEMERAL and will be lost on redeploy.");
+  console.warn("[DB] ACTION REQUIRED: Create a Railway Volume mounted at /data to persist data.");
 }
 
 const db = new Database(DB_PATH);
