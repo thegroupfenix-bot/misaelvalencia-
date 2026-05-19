@@ -100,7 +100,7 @@ router.get("/", (req, res) => {
 // GET /media/categories — folder structure
 router.get("/categories", (_req, res) => res.json(MEDIA_CATEGORIES));
 
-// NOTE: /r2-status and /r2-ping MUST be declared before /:id — Express matches in order
+// NOTE: all static-path routes MUST be declared before /:id — Express matches in order
 router.get("/r2-status", (_req, res) => {
   res.json({
     configured: r2.isConfigured(),
@@ -117,6 +117,33 @@ router.get("/r2-ping", requireAdmin, async (_req, res) => {
     res.json({ ...result, ai_classification: classifier.isEnabled() });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+// GET /media/r2-raw-list — diagnostic: shows raw CF API response to confirm field names
+router.get("/r2-raw-list", requireAdmin, async (_req, res) => {
+  if (!r2.isConfigured()) return res.status(503).json({ error: "R2 not configured" });
+  const mode = r2.authMode();
+  if (mode !== "token") return res.json({ mode, note: "only available in token mode" });
+  try {
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const token = process.env.R2_API_TOKEN;
+    const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${r2.R2_BUCKET_NAME}/objects`;
+
+    // Flat listing — no delimiter
+    const flatRes = await fetch(`${base}?limit=10`, { headers: { Authorization: `Bearer ${token}` } });
+    const flatBody = await flatRes.json().catch(() => ({}));
+
+    // Delimiter listing — with /
+    const delimRes = await fetch(`${base}?limit=10&delimiter=%2F`, { headers: { Authorization: `Bearer ${token}` } });
+    const delimBody = await delimRes.json().catch(() => ({}));
+
+    res.json({
+      flat: { status: flatRes.status, result_keys: Object.keys(flatBody.result || {}), body: flatBody },
+      delimited: { status: delimRes.status, result_keys: Object.keys(delimBody.result || {}), body: delimBody },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

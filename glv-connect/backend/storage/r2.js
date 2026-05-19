@@ -204,20 +204,30 @@ async function listObjects(prefix = "", maxTotal = 20000) {
           throw new Error(`R2 list failed [${res.status}]: ${body?.errors?.[0]?.message || res.statusText}`);
         }
         const body = await res.json();
+        // Defensive: handle multiple possible Cloudflare API response shapes
+        const result = body.result || body;
+        const objects = result?.objects || (Array.isArray(result) ? result : []);
+        // CF API field may be delimitedPrefixes or (less common) commonPrefixes
+        const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
+
+        if (!pfx) {
+          // Log root-level shape once so Railway logs show us the actual API format
+          console.log(`[r2-list] root scan: objects=${objects.length} subPrefixes=${subPrefixes.length} keys=${JSON.stringify(Object.keys(result || {}))}`);
+        }
 
         // Leaf objects at this prefix level
-        for (const o of (body.result?.objects || [])) {
+        for (const o of objects) {
           all.push({ key: o.key, size: o.size, uploaded: o.uploaded });
           if (all.length >= maxTotal) return;
         }
 
         // Recurse into every sub-prefix (handles arbitrary depth)
-        for (const subPrefix of (body.result?.delimitedPrefixes || [])) {
+        for (const subPrefix of subPrefixes) {
           if (all.length >= maxTotal) return;
           await scanPrefix(subPrefix);
         }
 
-        cursor = body.result?.truncated ? body.result.cursor : null;
+        cursor = result?.truncated ? (result.cursor || null) : null;
       } while (cursor && all.length < maxTotal);
     }
 
