@@ -176,11 +176,12 @@ function rewriteToPublicUrl(url) {
 // listObjects() — full recursive listing of all objects under a prefix.
 // Returns array of { key, size, uploaded } including ALL nested depths.
 //
-// Token mode uses delimiter-based recursive traversal because the Cloudflare
-// Management API may return nested paths in `delimitedPrefixes` instead of
-// `objects` when no delimiter is specified.  Explicit delimiter + recursion
-// guarantees every object at every depth is discovered regardless of API
-// default behaviour.  Pagination uses "is_truncated" + "cursor" (CF field names).
+// Token mode: flat listing WITHOUT delimiter so the CF Management API returns
+// every object at every depth in a single paginated stream.  Using delimiter="/"
+// causes sub-prefix queries (e.g. prefix=branding/&delimiter=/) to return empty
+// results for paths that have no objects at that exact depth — confirmed issue.
+// Defensive fallback: if the API still returns delimitedPrefixes (some CF versions
+// group results even without delimiter) we recurse into those as well.
 //
 // S3 mode uses ListObjectsV2 without a Delimiter — the S3 spec guarantees
 // a flat recursive listing when no Delimiter is present.
@@ -191,10 +192,11 @@ async function listObjects(prefix = "", maxTotal = 20000) {
   const all = [];
 
   if (mode === "token") {
-    async function scanPrefix(pfx) {
+    async function fetchFlat(pfx) {
       let cursor = null;
       do {
-        const params = new URLSearchParams({ limit: "1000", delimiter: "/" });
+        // No delimiter — CF Management API returns all nested objects in a flat stream
+        const params = new URLSearchParams({ limit: "1000" });
         if (pfx) params.set("prefix", pfx);
         if (cursor) params.set("cursor", cursor);
         const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET_NAME}/objects?${params}`;
@@ -207,24 +209,22 @@ async function listObjects(prefix = "", maxTotal = 20000) {
         // Defensive: handle multiple possible Cloudflare API response shapes
         const result = body.result || body;
         const objects = result?.objects || (Array.isArray(result) ? result : []);
-        // CF API field may be delimitedPrefixes or (less common) commonPrefixes
+        // Defensive fallback: recurse into any grouped prefixes the API may still return
         const subPrefixes = result?.delimitedPrefixes || result?.commonPrefixes || result?.prefixes || [];
 
-        if (!pfx) {
-          console.log(`[r2-list] root scan: objects=${objects.length} subPrefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} keys=${JSON.stringify(Object.keys(result || {}))}`);
-        }
+        console.log(`[r2-list] pfx="${pfx||"(root)"}" objects=${objects.length} subPrefixes=${subPrefixes.length} is_truncated=${result?.is_truncated} total=${all.length} keys=${JSON.stringify(Object.keys(result || {}))}`);
 
-        // Leaf objects at this prefix level
         for (const o of objects) {
           all.push({ key: o.key, size: o.size, uploaded: o.uploaded });
           if (all.length >= maxTotal) return;
         }
 
-        // Recurse into every sub-prefix (handles arbitrary depth)
-        for (const subPrefix of subPrefixes) {
+        for (const sub of subPrefixes) {
           if (all.length >= maxTotal) return;
-          await scanPrefix(subPrefix);
+          await fetchFlat(sub);
         }
+
+        if (all.length >= maxTotal) return;
 
         // Cloudflare R2 API uses "is_truncated" (not "truncated") for pagination.
         // Cursor may appear on result directly or on result_info at the top level.
@@ -234,7 +234,7 @@ async function listObjects(prefix = "", maxTotal = 20000) {
       } while (cursor && all.length < maxTotal);
     }
 
-    await scanPrefix(prefix);
+    await fetchFlat(prefix);
     return all;
   }
 
