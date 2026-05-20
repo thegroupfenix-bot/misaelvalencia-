@@ -325,6 +325,38 @@ router.get("/r2-traverse-test", requireAdmin, async (_req, res) => {
   res.json({ bucket: r2.R2_BUCKET_NAME, tests: results });
 });
 
+// ─── Media Auto-Binding Engine ───────────────────────────────────────────────
+// NOTE: both /bind and /bind-preview are static-path routes and MUST appear
+// before the /:id wildcard route below.
+
+const { bindMedia } = require("../services/mediaBinding");
+
+// POST /media/bind — smart media binding for SCO/FCO document generation
+// Body: { category, origin, tags[], limit }  (all optional; limit defaults to 6)
+router.post("/bind", (req, res) => {
+  try {
+    const { category, origin, tags = [], limit = 6 } = req.body || {};
+    const result = bindMedia(db, { category, origin, tags: Array.isArray(tags) ? tags : [], limit: Number(limit) || 6 });
+    res.json(result);
+  } catch (err) {
+    console.error("[POST /media/bind] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /media/bind-preview — same as POST /bind but via query params (easy testing)
+// Query: ?category=LIVE_ANIMALS&origin=Brazil&limit=6
+router.get("/bind-preview", (req, res) => {
+  try {
+    const { category, origin, limit = 6 } = req.query;
+    const result = bindMedia(db, { category, origin, tags: [], limit: Number(limit) || 6 });
+    res.json(result);
+  } catch (err) {
+    console.error("[GET /media/bind-preview] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /media/:id
 router.get("/:id", (req, res) => {
   const row = db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id);

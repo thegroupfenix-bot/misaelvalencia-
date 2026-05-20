@@ -289,7 +289,7 @@ function BiInfoBox({ esLabel, secLabel, value, style, highlight }) {
   );
 }
 
-function DocPDF({ doc, agentProfile }) {
+function DocPDF({ doc, agentProfile, boundMedia }) {
   const docLang = detectDocLang(doc);
   const L = PDF_T[docLang] || PDF_T.en;
 
@@ -458,6 +458,22 @@ function DocPDF({ doc, agentProfile }) {
 
       {/* PAGE 2 — MAIN CONTENT */}
       <Page size="A4" style={s.page}>
+
+        {/* Bound media images */}
+        {boundMedia?.main && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={s.sectionTitle}>Producto / Product</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Image src={boundMedia.main} style={{ width: 200, height: 140, objectFit: "cover", borderRadius: 4 }} />
+              {boundMedia.secondary?.slice(0, 2).map((src, i) => src && (
+                <Image key={i} src={src} style={{ width: 120, height: 140, objectFit: "cover", borderRadius: 4 }} />
+              ))}
+            </View>
+            {boundMedia.branding && (
+              <Image src={boundMedia.branding} style={{ position: "absolute", top: 0, right: 0, width: 80, height: 40, objectFit: "contain" }} />
+            )}
+          </View>
+        )}
 
         {/* Section 1: Parties */}
         <SectionTitle esText={ES.parties} secText={L.parties} />
@@ -772,8 +788,8 @@ function DocPDF({ doc, agentProfile }) {
   );
 }
 
-export async function downloadPDF(doc, agentProfile) {
-  const blob = await pdf(<DocPDF doc={doc} agentProfile={agentProfile} />).toBlob();
+export async function downloadPDF(doc, agentProfile, boundMedia) {
+  const blob = await pdf(<DocPDF doc={doc} agentProfile={agentProfile} boundMedia={boundMedia} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
