@@ -654,6 +654,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
   const { agentProfile } = useAuth();
   const [allDocs, setAllDocs] = useState([]);
   const [commercialData, setCommercialData] = useState({});
+  const commercialDataRef = useRef({});
   const [form, setFormState] = useState({
     client: "", clientCountry: "", clientRepresentative: "", clientEmail: "", clientPhone: "",
     product: "", destination: "", origin: "Brazil", headcount: "", avgWeight: 45,
@@ -668,6 +669,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
   const [showPriceCenter, setShowPriceCenter] = useState(false);
   const clientIdRef = useRef();
 
+  useEffect(() => { commercialDataRef.current = commercialData; }, [commercialData]);
   useEffect(() => {
     api.getDocs().then(setAllDocs).catch(() => {});
   }, []);
@@ -734,15 +736,44 @@ function NewDocForm({ type, user, setView, showNotif }) {
 
   const handleSubmit = async () => {
     setValidationErrors([]);
-    // Build form data for validation
+
+    // Always read from ref to avoid stale closure — ref is kept in sync via useEffect
+    const cd = commercialDataRef.current;
+
+    // For LIVE_ANIMALS: agents may fill headCount/avgWeight in CommercialEngine DynamicFields
+    // but leave form.headcount empty. Read engine specs as fallback.
+    const engineRow0 = cd?.rows?.[0] || cd;
+    const engineHeadcount = parseFloat(form.headcount)
+      || parseFloat(engineRow0?.specs?.headCount)
+      || 0;
+    const engineAvgWeight = parseFloat(form.avgWeight)
+      || parseFloat(engineRow0?.specs?.avgWeight)
+      || 45;
+    const engineTotalKg = engineHeadcount * engineAvgWeight;
+
+    // effectiveTotalValue: tries engine contractValue → form-based → engine-headcount-based
+    const engineContractValue = cd?.summary?.contractValue
+      || (cd?.rows?.reduce((s, r) => s + (r?.summary?.contractValue || 0), 0) ?? 0);
+    const effectiveTotalValue = engineContractValue > 0
+      ? engineContractValue
+      : ((totalKg * pricePerKg) || (engineTotalKg * pricePerKg) || null);
+
+    console.log("[SCO-DEBUG] role:", user?.role);
+    console.log("[SCO-DEBUG] commercialData:", JSON.stringify(cd));
+    console.log("[SCO-DEBUG] engineContractValue:", engineContractValue);
+    console.log("[SCO-DEBUG] pricePerKg:", pricePerKg, "totalKg:", totalKg, "engineTotalKg:", engineTotalKg);
+    console.log("[SCO-DEBUG] effectiveTotalValue:", effectiveTotalValue);
+    console.log("[SCO-DEBUG] effectiveDestination:", effectiveDestination, "effectiveProduct:", effectiveProduct);
+    console.log("[SCO-DEBUG] paymentOption:", form.paymentOption, "validityDays:", form.validityDays);
+
     const fData = {
       client: form.client,
       clientRepresentative: form.clientRepresentative,
       clientEmail: form.clientEmail,
       product: effectiveProduct || form.product,
       pricePerKg,
-      totalValue,
-      headcount: form.headcount,
+      totalValue: effectiveTotalValue,
+      headcount: engineHeadcount || form.headcount,
       destination: effectiveDestination,
       payment_option: form.paymentOption,
       validityDays: form.validityDays,
@@ -751,8 +782,10 @@ function NewDocForm({ type, user, setView, showNotif }) {
       custom_product_desc: form.customProductDesc,
       fco_confirmed: form.fcoConfirmed ? 1 : 0,
       client_id_doc_b64: form.clientIdDocB64,
-      commercialData,
+      commercialData: cd,
     };
+
+    console.log("[SCO-DEBUG] fData for validation:", JSON.stringify({ ...fData, client_id_doc_b64: fData.client_id_doc_b64 ? "[base64]" : null }));
 
     const errors = validateDocForm(fData, agentProfile, type, user?.role);
     if (errors.length > 0) {
