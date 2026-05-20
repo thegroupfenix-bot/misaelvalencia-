@@ -133,4 +133,5 @@ export const api = {
   pingR2:               () => request("GET",  "/media/r2-ping"),
   reconcileMedia:       () => request("POST", "/media/reconcile"),
   reconcileMediaStatus: () => request("GET",  "/media/reconcile/status"),
+  bindMedia:            (params) => request("POST", "/media/bind", params),
 };

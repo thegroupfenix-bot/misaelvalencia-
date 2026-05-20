@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { api } from "./api.js";
 import { downloadPDF } from "./components/GlvPDF.jsx";
+import { bindMediaForDocument } from "./services/mediaAutoBinding.js";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { PaymentSelector } from "./components/PaymentSelector.jsx";
 import { ChangePasswordModal } from "./components/ChangePasswordModal.jsx";
@@ -1864,12 +1865,23 @@ function ImageAdmin({ showNotif }) {
 function DocPreviewModal({ doc, onClose }) {
   const { agentProfile } = useAuth();
   const [downloading, setDownloading] = useState(false);
+  const [downloadLabel, setDownloadLabel] = useState("PDF");
   const isChina = doc.destination === "China";
 
   const handleDownload = async () => {
     setDownloading(true);
-    try { await downloadPDF(doc, agentProfile); } catch (e) { console.error(e); }
-    finally { setDownloading(false); }
+    setDownloadLabel("Preparando imágenes...");
+    let boundMedia = null;
+    try {
+      const bindPromise = bindMediaForDocument(doc);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
+      boundMedia = await Promise.race([bindPromise, timeoutPromise]).catch(() => null);
+    } catch {
+      boundMedia = null;
+    }
+    setDownloadLabel("Generando...");
+    try { await downloadPDF(doc, agentProfile, boundMedia); } catch (e) { console.error(e); }
+    finally { setDownloading(false); setDownloadLabel("PDF"); }
   };
 
   return (
@@ -1947,7 +1959,7 @@ function DocPreviewModal({ doc, onClose }) {
               <button onClick={handleDownload} disabled={downloading}
                 style={{ padding: "8px 16px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, background: "none", cursor: downloading ? "not-allowed" : "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>
                 <i className="ti ti-download" style={{ fontSize: 15, marginRight: 5, verticalAlign: -2 }} />
-                {downloading ? "Generando..." : "PDF"}
+                {downloading ? downloadLabel : "PDF"}
               </button>
               <button onClick={onClose} style={{ padding: "8px 16px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cerrar</button>
             </div>
