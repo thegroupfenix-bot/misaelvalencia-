@@ -3,15 +3,15 @@ import { api } from "../api.js";
 
 const LANGUAGES = ["Español", "Inglés", "Árabe", "Chino", "Portugués", "Francés"];
 
-export function ProfileModal({ user, onComplete }) {
+export function ProfileModal({ user, onComplete, existingProfile = null, editMode = false }) {
   const [form, setForm] = useState({
-    cargo: "",
-    phone: "",
-    country: "",
-    languages: [],
-    signature_b64: null,
-    photo_b64: null,
-    reg_number: "",
+    cargo:         existingProfile?.cargo         || "",
+    phone:         existingProfile?.phone         || "",
+    country:       existingProfile?.country       || "",
+    languages:     existingProfile?.languages     || [],
+    signature_b64: existingProfile?.signature_b64 || null,
+    photo_b64:     existingProfile?.photo_b64     || null,
+    reg_number:    existingProfile?.reg_number    || "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -79,10 +79,10 @@ export function ProfileModal({ user, onComplete }) {
             <i className="ti ti-user-check" style={{ fontSize: 26, color: "#fff" }} />
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1B2A4A", margin: "0 0 4px" }}>
-            Completa tu perfil de agente
+            {editMode ? "Mi Perfil" : "Completa tu perfil de agente"}
           </h2>
           <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
-            Es necesario completar tu perfil antes de continuar. Este perfil aparecerá en todos los documentos que emitas.
+            {editMode ? "Actualiza tu información de perfil. Estos datos aparecen en todos los documentos que emitas." : "Es necesario completar tu perfil antes de continuar. Este perfil aparecerá en todos los documentos que emitas."}
           </p>
         </div>
 
@@ -190,7 +190,7 @@ export function ProfileModal({ user, onComplete }) {
 
         <button onClick={handleSave} disabled={saving}
           style={{ width: "100%", padding: "12px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
-          {saving ? "Guardando..." : "Guardar perfil y continuar"}
+          {saving ? "Guardando..." : editMode ? "Guardar cambios" : "Guardar perfil y continuar"}
         </button>
       </div>
     </div>

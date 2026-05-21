@@ -86,16 +86,16 @@ router.get("/", (req, res) => {
   let stmt;
   if (req.user.role === "AGENTE") {
     stmt = type
-      ? db.prepare("SELECT * FROM documents WHERE agent = ? AND type = ? ORDER BY date DESC")
-      : db.prepare("SELECT * FROM documents WHERE agent = ? ORDER BY date DESC");
+      ? db.prepare("SELECT * FROM documents WHERE agent = ? AND type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC")
+      : db.prepare("SELECT * FROM documents WHERE agent = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC");
     const rows = type
       ? stmt.all(req.user.username, type)
       : stmt.all(req.user.username);
     return res.json(rows.map(toRow));
   }
   stmt = type
-    ? db.prepare("SELECT * FROM documents WHERE type = ? ORDER BY date DESC")
-    : db.prepare("SELECT * FROM documents ORDER BY date DESC");
+    ? db.prepare("SELECT * FROM documents WHERE type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC")
+    : db.prepare("SELECT * FROM documents WHERE (deleted = 0 OR deleted IS NULL) ORDER BY date DESC");
   const rows = type ? stmt.all(type) : stmt.all();
   res.json(rows.map(toRow));
 });
@@ -229,6 +229,32 @@ router.patch("/:id/status", requireRole("DIRECTIVO"), (req, res) => {
   ).run(req.user.username, `status → ${status}`, req.params.id, req.ip);
 
   res.json(toRow(db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id)));
+});
+
+// DELETE /documents/:id — soft delete
+// AGENTE: can only delete own docs with status "Emitido" (not signed/active)
+// DIRECTIVO/ADMIN: can delete any doc
+router.delete("/:id", (req, res) => {
+  const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
+  if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
+  if (doc.deleted) return res.status(410).json({ error: "Documento ya eliminado" });
+
+  const isAdmin = ["DIRECTIVO", "SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTOR"].includes(req.user.role);
+  const isOwner = doc.agent === req.user.username;
+
+  if (!isAdmin && !isOwner) {
+    return res.status(403).json({ error: "Acceso denegado" });
+  }
+  if (!isAdmin && !["Emitido", "Pendiente"].includes(doc.status)) {
+    return res.status(403).json({ error: "Solo puede eliminar documentos en estado Emitido o Pendiente" });
+  }
+
+  db.prepare("UPDATE documents SET deleted = 1, deleted_at = datetime('now'), deleted_by = ? WHERE id = ?")
+    .run(req.user.username, req.params.id);
+  db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
+    .run(req.user.username, `eliminado (soft delete)`, req.params.id, req.ip);
+
+  res.json({ ok: true, id: req.params.id });
 });
 
 module.exports = router;
