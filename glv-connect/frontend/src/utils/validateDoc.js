@@ -23,13 +23,18 @@ export function validateDocForm(formData, agentProfile, docType, userRole) {
   if (!hasProduct) errors.push("Producto requerido");
 
   // ─── Valor / precio ─────────────────────────────────────────────────────────
-  // Accept: pricePerKg, totalValue, or a non-zero commercial contractValue
   const commercialValue = formData.commercialData?.summary?.contractValue ||
-    formData.commercialData?.rows?.reduce((s, r) => s + (r.summary?.contractValue || 0), 0) || 0;
+    formData.commercialData?.rows?.reduce((s, r) => s + (r?.summary?.contractValue || 0), 0) || 0;
+  // Also check raw price inputs — contractValue may lag state sync but raw inputs are always current
+  const hasRawPrice = formData.commercialData?.rows?.some(r =>
+    parseFloat(r?.unitPrice) > 0 ||
+    Object.values(r?.incotermPrices || {}).some(v => parseFloat(v) > 0)
+  );
   const hasValue =
     parseFloat(formData.pricePerKg) > 0 ||
     parseFloat(formData.totalValue) > 0 ||
-    commercialValue > 0;
+    commercialValue > 0 ||
+    !!hasRawPrice;
   if (!hasValue) errors.push("Precio o valor total debe ser mayor a 0 — ingrese precios en el Programa Comercial");
 
   // ─── Volumen ─────────────────────────────────────────────────────────────────
