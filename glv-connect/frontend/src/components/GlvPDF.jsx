@@ -159,12 +159,50 @@ const PDF_T = {
   },
 };
 
-// ─── Language detection by destination ───────────────────────────────────────
-function detectDocLang(doc) {
-  const dest = (doc.destination || "").toLowerCase();
-  if (dest.includes("saudi") || dest.includes("uae") || dest.includes("arab")) return "ar";
-  if (dest.includes("china")) return "zh";
-  return doc.lang || "en";
+PDF_T.es = {
+  seller:       "VENDEDOR / EXPORTADOR",
+  buyer:        "COMPRADOR / CLIENTE",
+  parties:      "1. IDENTIFICACIÓN DE PARTES",
+  product:      "2. DESCRIPCIÓN DEL PRODUCTO",
+  price:        "3. PRECIO, VOLUMEN Y VALOR",
+  certs:        "4. CERTIFICACIONES Y CALIDAD",
+  payment:      "5. TÉRMINOS DE PAGO",
+  timeline:     "6. CICLO OPERATIVO — TIMELINE ESTIMADO",
+  mandatory:    "7. INFORMACIÓN MANDATORIA",
+  observations: "8. OBSERVACIONES ESPECIALES",
+  tc:           "9. TÉRMINOS Y CONDICIONES GENERALES",
+  agent_sig:    "10. FIRMA DEL AGENTE",
+  buyer_sig:    "11. ACEPTACIÓN DEL COMPRADOR",
+  indicative:   "INDICATIVA — NO VINCULANTE",
+  firm:         "OFERTA FIRME — VINCULANTE",
+  origin_lbl:   "Origen",
+  port_lbl:     "Puerto destino CFR",
+  transit_lbl:  "Tránsito estimado",
+  heads_lbl:    "Número de Cabezas",
+  weight_lbl:   "Peso Promedio Referencia",
+  price_lbl:    "Precio CFR (USD/kg)",
+  total_kg_lbl: "Peso Total Estimado",
+  total_val_lbl:"Valor Total Referencial",
+  currency_lbl: "Moneda",
+  validity_lbl: "Validez de la Oferta",
+  sblc_lbl:     "Entidad SBLC / Garantía",
+  unit_lbl:     "Unidad de medida",
+  sco_note:     "Esta oferta es de carácter indicativo. Los precios y condiciones están sujetos a confirmación mediante Full Corporate Offer (FCO). No constituye compromiso contractual.",
+  fco_note:     "Esta oferta es firme y vinculante durante {days} días desde la fecha de emisión ({date}). La aceptación del comprador activa el proceso SPA.",
+  buyer_accept: "Al firmar este documento, el comprador confirma haber leído, comprendido y aceptado todas las condiciones de esta Full Corporate Offer.",
+  buyer_sign:   "Firma del comprador / representante",
+  company_stamp:"Sello de la empresa / fecha",
+  name_position:"Nombre y cargo",
+  footer_copy:  "Copia automática a: contabilidad@glvservicesexp.com • info@glvglobalfoodservices.com",
+};
+
+// ─── Language resolution ──────────────────────────────────────────────────────
+function resolveDocLang(lang, doc) {
+  // Only support "es", "en", "zh" (China only), "fr"
+  if (lang === "zh" || (doc?.destination || "").toLowerCase().includes("china")) return "zh";
+  if (lang === "fr") return "fr";
+  if (lang === "en") return "en";
+  return "es";
 }
 
 // ─── Build bilingual label: "ES / Secondary" ─────────────────────────────────
@@ -198,7 +236,7 @@ const s = StyleSheet.create({
                   backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 0.5, borderColor: "rgba(255,255,255,0.3)" },
   // Section headers — bilingual
   sectionTitle: { fontSize: 10, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2, paddingBottom: 4, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" },
-  sectionSub:   { fontSize: 7.5, color: "#64748b", marginBottom: 8 },
+  sectionSub:   { fontSize: 7.5, color: "#64748b", marginBottom: 8, lineHeight: 1.6 },
   grid:         { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
   infoBox:      { width: "48%", backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10" },
   infoLabel:    { fontSize: 7, color: "#64748b", fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 1 },
@@ -231,31 +269,20 @@ const PRICE_TABLE = {
   "China":               { port: "Port of Shanghai / Tianjin",       price: 5.65, transit: "32–38" },
 };
 
-// Spanish section labels (primary)
-const ES = {
-  seller:       "VENDEDOR / EXPORTADOR",
-  buyer:        "COMPRADOR / CLIENTE",
-  parties:      "1. IDENTIFICACIÓN DE PARTES",
-  product:      "2. DESCRIPCIÓN DEL PRODUCTO",
-  price:        "3. PRECIO, VOLUMEN Y VALOR",
-  certs:        "4. CERTIFICACIONES Y CALIDAD",
-  payment:      "5. TÉRMINOS DE PAGO",
-  timeline:     "6. CICLO OPERATIVO — TIMELINE ESTIMADO",
-  mandatory:    "7. INFORMACIÓN MANDATORIA",
-  observations: "8. OBSERVACIONES ESPECIALES",
-  tc:           "9. TÉRMINOS Y CONDICIONES GENERALES",
-  agent_sig:    "10. FIRMA DEL AGENTE",
-  buyer_sig:    "11. ACEPTACIÓN DEL COMPRADOR",
-  indicative:   "INDICATIVA — NO VINCULANTE",
-  firm:         "OFERTA FIRME — VINCULANTE",
-};
+// ─── Fuzzy PRICE_TABLE lookup ─────────────────────────────────────────────────
+function findPortInfo(dest) {
+  if (!dest) return null;
+  if (PRICE_TABLE[dest]) return PRICE_TABLE[dest];
+  const d = dest.toLowerCase();
+  if (d.includes("arab emirate") || d.includes("uae") || d.includes("dubai") || d.includes("abu dhabi")) return PRICE_TABLE["UAE"];
+  if (d.includes("saudi") && d.includes("east")) return PRICE_TABLE["Saudi Arabia (East)"];
+  if (d.includes("saudi") && d.includes("west")) return PRICE_TABLE["Saudi Arabia (West)"];
+  if (d.includes("saudi")) return PRICE_TABLE["Saudi Arabia (East)"];
+  if (d.includes("china")) return PRICE_TABLE["China"];
+  if (d.includes("turk")) return PRICE_TABLE["Türkiye (South)"];
+  return null;
+}
 
-const LANG_LABELS = {
-  en: "Bilingual Document: Spanish / English",
-  zh: "双语文件: 西班牙语 / 中文  |  Bilingual: Spanish / Chinese",
-  ar: "وثيقة ثنائية اللغة: الإسبانية / العربية  |  Bilingüe: Español / Árabe",
-  fr: "Document bilingue: Espagnol / Français",
-};
 
 function isLivestock(product) {
   if (!product) return false;
@@ -266,42 +293,59 @@ function isGrain(product) {
   return ["soya", "maíz", "maiz", "grano"].some(k => product.toLowerCase().includes(k));
 }
 
-// ─── Bilingual Section Header ─────────────────────────────────────────────────
-function SectionTitle({ esText, secText }) {
+// ─── Section Header ───────────────────────────────────────────────────────────
+function SectionTitle({ text }) {
   return (
     <View style={{ marginBottom: 10 }}>
-      <Text style={s.sectionTitle}>{esText}</Text>
-      {secText && secText !== esText && (
-        <Text style={s.sectionSub}>{secText}</Text>
-      )}
+      <Text style={s.sectionTitle}>{text}</Text>
     </View>
   );
 }
 
-// ─── Bilingual InfoBox ────────────────────────────────────────────────────────
+// ─── InfoBox ──────────────────────────────────────────────────────────────────
 function BiInfoBox({ esLabel, secLabel, value, style, highlight }) {
   return (
     <View style={[s.infoBox, style]}>
       <Text style={s.infoLabel}>{esLabel}</Text>
-      {secLabel && <Text style={s.infoLabelSec}>{secLabel}</Text>}
       <Text style={[s.infoValue, highlight ? s.highlight : {}]}>{value}</Text>
     </View>
   );
 }
 
-function DocPDF({ doc, agentProfile, boundMedia }) {
-  const docLang = detectDocLang(doc);
-  const L = PDF_T[docLang] || PDF_T.en;
+function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
+  const docLang = resolveDocLang(lang, doc);
+  const L = PDF_T[docLang] || PDF_T.es;
 
-  const isChina = doc.destination === "China";
+  const isChina = (doc.destination || "").toLowerCase().includes("china");
   const coverBg = COVER_COLORS[doc.type] || "#1B2A4A";
   const isSCO = doc.type === "SCO";
   const isFCO = doc.type === "FCO";
   const isSPA = doc.type === "SPA";
-  const portInfo = PRICE_TABLE[doc.destination];
-  const pricePerKg = doc.pricePerKg || portInfo?.price;
-  const totalKg = (doc.headcount || 0) * (doc.avgWeight || 0);
-  const totalValue = doc.totalValue || (totalKg && pricePerKg ? totalKg * pricePerKg : null);
+  const portInfo = findPortInfo(doc.destination);
+  // Read price from CommercialEngine row when doc.pricePerKg not saved
+  const cdRows = ((typeof (doc.commercialData || doc.commercial_data) === "string")
+    ? (() => { try { return JSON.parse(doc.commercialData || doc.commercial_data); } catch { return {}; } })()
+    : (doc.commercialData || doc.commercial_data || {}))?.rows || [];
+  const firstCdRow = cdRows[0] || {};
+  const cdInc = (firstCdRow.incoterms || ["CFR"])[0];
+  const engineUnitPrice = parseFloat(firstCdRow.incotermPrices?.[cdInc] || firstCdRow.unitPrice || 0);
+  const engineHeads = parseFloat(firstCdRow.specs?.headCount || firstCdRow.quantity || doc.headcount || 0);
+  const engineAvgW  = parseFloat(firstCdRow.specs?.avgWeight || doc.avgWeight || 45);
+
+  const pricePerKg = parseFloat(doc.pricePerKg) || engineUnitPrice || portInfo?.price;
+  const totalKg = (parseFloat(doc.headcount) || engineHeads) * (parseFloat(doc.avgWeight) || engineAvgW);
+
+  // Try saved total → CommercialEngine summary → recompute from raw
+  let engineContractValue = cdRows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
+  if (engineContractValue === 0 && engineHeads > 0 && engineUnitPrice > 0) {
+    const shipV = engineHeads * engineAvgW * engineUnitPrice;
+    const freq  = firstCdRow.deliveryFrequency || "ONE_SHIPMENT";
+    const spY   = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(firstCdRow.numShipments || 1);
+    const dur   = parseFloat(firstCdRow.contractDuration || 12);
+    const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
+    engineContractValue = mV * dur;
+  }
+  const totalValue = parseFloat(doc.totalValue) || engineContractValue || (totalKg && pricePerKg ? totalKg * pricePerKg : null);
   const validityDays = doc.validityDays || doc.validity_days || 15;
   const productCategory = doc.product || "";
 
@@ -357,9 +401,6 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
   const tcText = `TÉRMINOS Y CONDICIONES GENERALES:\n1. La presente oferta es emitida por ${exporter} en su calidad de exportador internacional certificado.\n2. Los precios son según el/los Incoterm(s) pactado(s) conforme a Incoterms 2020, en el puerto de destino indicado.\n3. La aceptación formal de esta oferta activa el proceso de elaboración del SPA (Sales Purchase Agreement).\n4. Todos los precios están denominados en la moneda indicada en la oferta.\n5. Cualquier controversia será resuelta mediante arbitraje internacional según las reglas de la CCI (París).\n6. La ley aplicable es la establecida en el contrato definitivo (SPA).\n7. GLV Global Food Services LLC se reserva el derecho de modificar precios por causas de fuerza mayor o cambios en normativas sanitarias internacionales.`;
 
   const fcoNote = (L.fco_note || "").replace("{days}", validityDays).replace("{date}", doc.date);
-  const scoNoteEs = "NOTA: Esta oferta es de carácter indicativo. Los precios y condiciones están sujetos a confirmación mediante Full Corporate Offer (FCO). No constituye compromiso contractual.";
-
-  const langLabel = LANG_LABELS[docLang] || "";
 
   return (
     <Document>
@@ -375,24 +416,20 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
               GLV Global Food Services LLC — {domain}
             </Text>
 
-            {/* Bilingual language indicator */}
-            {langLabel ? (
-              <View style={s.langBar}>
-                <Text style={s.langBarTxt}>{langLabel}</Text>
-                <Text style={s.langBarTxt}>BILINGUAL DOCUMENT</Text>
-              </View>
-            ) : <View style={{ height: 20 }} />}
+            {/* Language indicator */}
+            <View style={s.langBar}>
+              <Text style={s.langBarTxt}>{docLang === "es" ? "Documento en Español" : docLang === "zh" ? "中文 / Español" : docLang === "fr" ? "Document en Français" : "Document in English"}</Text>
+              <Text style={s.langBarTxt}>{doc.type}</Text>
+            </View>
 
-            {/* Status badge — bilingual */}
+            {/* Status badge */}
             {(isSCO || isFCO) && (
               <View style={[s.badge, {
                 backgroundColor: isSCO ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.2)",
                 borderWidth: 1, borderColor: "rgba(255,255,255,0.4)"
               }]}>
                 <Text style={{ color: "#fff", fontSize: 9, fontWeight: "bold" }}>
-                  {isSCO
-                    ? bi(ES.indicative, L.indicative)
-                    : bi(ES.firm, L.firm)}
+                  {isSCO ? L.indicative : L.firm}
                 </Text>
               </View>
             )}
@@ -401,26 +438,11 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
             <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "bold", marginBottom: 3 }}>
               {isSCO ? "Soft Corporate Offer" : isFCO ? "Full Corporate Offer" : "Sales Purchase Agreement"}
             </Text>
-            {docLang === "zh" && (
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 10, marginBottom: 8 }}>
-                {isSCO ? "软报价" : isFCO ? "正式公司报价" : "销售购买协议"}
-              </Text>
-            )}
-            {docLang === "ar" && (
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 10, marginBottom: 8 }}>
-                {isSCO ? "عرض شركة أولي" : isFCO ? "عرض شركة رسمي" : "اتفاقية بيع وشراء"}
-              </Text>
-            )}
-            {docLang === "fr" && (
-              <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 10, marginBottom: 8 }}>
-                {isSCO ? "Offre préliminaire" : isFCO ? "Offre commerciale complète" : "Contrat de vente"}
-              </Text>
-            )}
 
-            <Text style={s.coverSub}>Cliente / {L.buyer?.split("/")[0]?.trim() || "Client"}: {doc.client}</Text>
-            <Text style={s.coverSub}>Producto / {docLang === "zh" ? "产品" : docLang === "ar" ? "المنتج" : docLang === "fr" ? "Produit" : "Product"}: {doc.product}</Text>
-            <Text style={s.coverSub}>Destino / {L.port_lbl}: {doc.destination}{portInfo ? ` — ${portInfo.port}` : ""}</Text>
-            <Text style={s.coverSub}>Fecha / {docLang === "zh" ? "日期" : docLang === "ar" ? "التاريخ" : docLang === "fr" ? "Date" : "Date"}: {doc.date}</Text>
+            <Text style={s.coverSub}>Cliente / Client: {doc.client}</Text>
+            <Text style={s.coverSub}>Producto / Product: {doc.product}</Text>
+            <Text style={s.coverSub}>Destino / Destination: {doc.destination}{portInfo ? ` — ${portInfo.port}` : ""}</Text>
+            <Text style={s.coverSub}>Fecha / Date: {doc.date}</Text>
             {totalValue && (
               <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginTop: 12 }}>
                 {fmtCurrency(totalValue)} USD
@@ -431,22 +453,12 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
           <View>
             {isSCO && (
               <View style={[s.indicativaBox, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.3)" }]}>
-                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", marginBottom: 3 }}>
-                  Esta oferta es de carácter indicativo. Sujeta a confirmación mediante FCO.
-                </Text>
-                {docLang !== "es" && (
-                  <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.6)" }}>{L.sco_note}</Text>
-                )}
+                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{L.sco_note}</Text>
               </View>
             )}
             {isFCO && (
               <View style={[s.firmeBox, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.3)" }]}>
-                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", marginBottom: 3 }}>
-                  Esta oferta es firme y vinculante durante {validityDays} días desde la fecha de emisión.
-                </Text>
-                {docLang !== "es" && (
-                  <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.6)" }}>{fcoNote}</Text>
-                )}
+                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{fcoNote}</Text>
               </View>
             )}
             <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 8 }}>
@@ -478,19 +490,17 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         )}
 
         {/* Section 1: Parties */}
-        <SectionTitle esText={ES.parties} secText={L.parties} />
+        <SectionTitle text={L.parties} />
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
           <View style={[s.infoBox, { width: "48%", backgroundColor: "#f0f4ff" }]}>
-            <Text style={[s.infoLabel, { color: "#1e3a5f" }]}>{ES.seller}</Text>
-            {docLang !== "es" && <Text style={s.infoLabelSec}>{L.seller}</Text>}
+            <Text style={[s.infoLabel, { color: "#1e3a5f" }]}>{L.seller}</Text>
             <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{exporter}</Text>
             <Text style={{ fontSize: 8, color: "#374151" }}>19790 W Dixie Hwy, Unit 1115{"\n"}Miami, FL 33180, USA</Text>
             <Text style={{ fontSize: 8, color: "#374151", marginTop: 2 }}>{domain}</Text>
             {isChina && <Text style={{ fontSize: 8, color: "#d97706", fontWeight: "bold", marginTop: 3 }}>GACC No. YA11000PDY110K805</Text>}
           </View>
           <View style={[s.infoBox, { width: "48%", backgroundColor: "#f8fafc" }]}>
-            <Text style={s.infoLabel}>{ES.buyer}</Text>
-            {docLang !== "es" && <Text style={s.infoLabelSec}>{L.buyer}</Text>}
+            <Text style={s.infoLabel}>{L.buyer}</Text>
             <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{doc.client}</Text>
             {doc.clientCountry && <Text style={{ fontSize: 8, color: "#374151" }}>País: {doc.clientCountry}</Text>}
             {(doc.clientRepresentative || doc.client_representative) && (
@@ -506,7 +516,7 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         </View>
 
         {/* Section 2: Product */}
-        <SectionTitle esText={ES.product} secText={L.product} />
+        <SectionTitle text={L.product} />
         <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
           <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 4 }}>
             {doc.custom_product_name || doc.customProductName || doc.product}
@@ -514,27 +524,25 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
           <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.5 }}>{productDesc}</Text>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
             <View style={{ flex: 1 }}>
-              <Text style={s.infoLabel}>Origen</Text>
-              {docLang !== "es" && <Text style={s.infoLabelSec}>{L.origin_lbl}</Text>}
+              <Text style={s.infoLabel}>{L.origin_lbl}</Text>
               <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{doc.origin || "Brazil"}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.infoLabel}>Puerto destino CFR</Text>
-              {docLang !== "es" && <Text style={s.infoLabelSec}>{L.port_lbl}</Text>}
-              <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{portInfo?.port || doc.destination}</Text>
+              <Text style={s.infoLabel}>{L.port_lbl}</Text>
+              <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>
+                {doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port || doc.destination}
+              </Text>
             </View>
             {portInfo?.transit && (
               <View style={{ flex: 1 }}>
-                <Text style={s.infoLabel}>Tránsito estimado</Text>
-                {docLang !== "es" && <Text style={s.infoLabelSec}>{L.transit_lbl}</Text>}
+                <Text style={s.infoLabel}>{L.transit_lbl}</Text>
                 <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{portInfo.transit} días</Text>
               </View>
             )}
           </View>
           {(doc.custom_unit || doc.customUnit) && (
             <View style={{ marginTop: 6 }}>
-              <Text style={s.infoLabel}>Unidad de medida</Text>
-              {docLang !== "es" && <Text style={s.infoLabelSec}>{L.unit_lbl}</Text>}
+              <Text style={s.infoLabel}>{L.unit_lbl}</Text>
               <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{doc.custom_unit || doc.customUnit}</Text>
             </View>
           )}
@@ -557,9 +565,28 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
               {rows.map((row, i) => {
                 const catLabel = row.category || "—";
                 const inc = (row.incoterms || ["CFR"])[0];
-                const price = row.incotermPrices?.[inc] || row.unitPrice || "—";
-                const sv = row.summary?.shipmentValue;
-                const cv = row.summary?.contractValue;
+                const price = parseFloat(row.incotermPrices?.[inc] || row.unitPrice || 0);
+                let sv = row.summary?.shipmentValue || 0;
+                let cv = row.summary?.contractValue || 0;
+
+                // Recompute if summary is zero — happens when headCount wasn't synced at save time
+                if (sv === 0 && price > 0) {
+                  const heads = parseFloat(row.specs?.headCount || row.quantity || 0);
+                  const avgW  = parseFloat(row.specs?.avgWeight || 45);
+                  if (row.category === "LIVE_ANIMALS") {
+                    sv = heads * avgW * price;
+                  } else {
+                    sv = parseFloat(row.quantity || 0) * price;
+                  }
+                  if (sv > 0) {
+                    const freq = row.deliveryFrequency || "ONE_SHIPMENT";
+                    const spYear = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(row.numShipments || 1);
+                    const dur = parseFloat(row.contractDuration || 12);
+                    const monthV = freq === "ONE_SHIPMENT" ? sv : sv * spYear / 12;
+                    cv = monthV * dur;
+                  }
+                }
+
                 const currency = row.currency || "USD";
                 const fmtV = (v) => v ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v) : "—";
                 return (
@@ -591,52 +618,52 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         })()}
 
         {/* Section 3: Price */}
-        <SectionTitle esText={ES.price} secText={L.price} />
+        <SectionTitle text={L.price} />
         <View style={s.grid}>
           {isLivestock(productCategory) && doc.headcount && (
-            <BiInfoBox esLabel="Número de cabezas" secLabel={docLang !== "es" ? L.heads_lbl : null}
+            <BiInfoBox esLabel={L.heads_lbl}
               value={new Intl.NumberFormat().format(doc.headcount)} />
           )}
           {isLivestock(productCategory) && doc.avgWeight && (
-            <BiInfoBox esLabel="Peso promedio referencia" secLabel={docLang !== "es" ? L.weight_lbl : null}
+            <BiInfoBox esLabel={L.weight_lbl}
               value={`${doc.avgWeight} kg`} />
           )}
           {pricePerKg && (
-            <BiInfoBox esLabel="Precio CFR (USD/kg)" secLabel={docLang !== "es" ? L.price_lbl : null}
+            <BiInfoBox esLabel={L.price_lbl}
               value={`USD ${Number(pricePerKg).toFixed(2)}/kg`} />
           )}
           {totalKg > 0 && (
-            <BiInfoBox esLabel="Peso total estimado" secLabel={docLang !== "es" ? L.total_kg_lbl : null}
+            <BiInfoBox esLabel={L.total_kg_lbl}
               value={`${new Intl.NumberFormat().format(totalKg)} kg`} />
           )}
           {totalValue && (
-            <BiInfoBox esLabel="Valor total referencial" secLabel={docLang !== "es" ? L.total_val_lbl : null}
+            <BiInfoBox esLabel={L.total_val_lbl}
               value={fmtCurrency(totalValue)} style={{ backgroundColor: "#f0fdf4" }} highlight />
           )}
-          <BiInfoBox esLabel="Moneda" secLabel={docLang !== "es" ? L.currency_lbl : null}
+          <BiInfoBox esLabel={L.currency_lbl}
             value={doc.commercialData?.currency || doc.commercial_data?.currency || "USD — Dólares Americanos"} />
-          <BiInfoBox esLabel="Validez de la oferta" secLabel={docLang !== "es" ? L.validity_lbl : null}
+          <BiInfoBox esLabel={L.validity_lbl}
             value={`${validityDays} días / days`} />
           {(paymentOption.includes?.("SBLC") || paymentOption.includes?.("LC")) && (
-            <BiInfoBox esLabel="Entidad Garantía / Banco emisor" secLabel={docLang !== "es" ? L.sblc_lbl : null}
+            <BiInfoBox esLabel={L.sblc_lbl}
               value={doc.guaranteeBank || doc.guarantee_bank || "Por confirmar en contrato"} />
           )}
         </View>
 
         {/* Section 4: Certifications */}
-        <SectionTitle esText={ES.certs} secText={L.certs} />
+        <SectionTitle text={L.certs} />
         <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
           <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{certifications}</Text>
         </View>
 
         {/* Section 5: Payment */}
-        <SectionTitle esText={ES.payment} secText={L.payment} />
+        <SectionTitle text={L.payment} />
         <View style={s.paymentBox}>
           <Text style={s.paymentText}>{paymentText}</Text>
         </View>
 
         {/* Section 6: Timeline */}
-        <SectionTitle esText={ES.timeline} secText={L.timeline} />
+        <SectionTitle text={L.timeline} />
         <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
           <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{timeline}</Text>
         </View>
@@ -644,7 +671,7 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         {/* Section 7: Mandatory */}
         {mandatoryInfo && (
           <>
-            <SectionTitle esText={ES.mandatory} secText={L.mandatory} />
+            <SectionTitle text={L.mandatory} />
             <View style={[s.chinaBox, { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }]}>
               <Text style={{ fontSize: 8.5, color: "#7c2d12", lineHeight: 1.5 }}>{mandatoryInfo}</Text>
             </View>
@@ -679,7 +706,7 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         {/* Section 8: Observations */}
         {doc.observations && (
           <>
-            <SectionTitle esText={ES.observations} secText={L.observations} />
+            <SectionTitle text={L.observations} />
             <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
               <Text style={{ fontSize: 8.5, color: "#374151" }}>{doc.observations}</Text>
             </View>
@@ -687,14 +714,14 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         )}
 
         {/* Section 9: T&C */}
-        <SectionTitle esText={ES.tc} secText={L.tc} />
+        <SectionTitle text={L.tc} />
         <View style={s.tcBox}>
           <Text style={s.tcText}>{tcText}</Text>
         </View>
 
         {/* Section 10: Agent signature */}
         <View style={s.sigBlock}>
-          <SectionTitle esText={ES.agent_sig} secText={L.agent_sig} />
+          <SectionTitle text={L.agent_sig} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             <View style={{ flex: 1 }}>
               {agentProfile?.signature_b64 ? (
@@ -722,13 +749,6 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
               <Text style={{ fontSize: 8, color: "#6b7280" }}>Documento: {doc.id}</Text>
               <Text style={{ fontSize: 8, color: "#6b7280" }}>Emitido: {doc.date}</Text>
               <Text style={{ fontSize: 8, color: "#6b7280" }}>Agente: {doc.agent}</Text>
-              {docLang !== "es" && (
-                <Text style={{ fontSize: 7, color: "#94a3b8", marginTop: 4 }}>
-                  {docLang === "zh" ? "文件 / 签发 / 代理人" :
-                   docLang === "ar" ? "وثيقة / تاريخ الإصدار / وكيل" :
-                   "Document / Date / Agent"}
-                </Text>
-              )}
             </View>
           </View>
         </View>
@@ -736,53 +756,42 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         {/* Section 11: Buyer acceptance (FCO only) */}
         {isFCO && (
           <View style={{ marginTop: 20 }}>
-            <SectionTitle esText={ES.buyer_sig} secText={L.buyer_sig} />
+            <SectionTitle text={L.buyer_sig} />
             <View style={s.buyerSigBlock}>
               <Text style={{ fontSize: 8, color: "#6b7280", marginBottom: 3 }}>
-                Al firmar el presente documento, el comprador confirma haber leído, comprendido y aceptado todas las condiciones de la presente Full Corporate Offer.
+                {L.buyer_accept}
               </Text>
-              {docLang !== "es" && (
-                <Text style={{ fontSize: 7.5, color: "#94a3b8", marginBottom: 8 }}>{L.buyer_accept}</Text>
-              )}
               <View style={{ flexDirection: "row", gap: 24, marginTop: 12 }}>
                 <View style={{ flex: 1 }}>
                   <View style={{ height: 40, borderBottomWidth: 1, borderBottomColor: "#d1d5db", marginBottom: 4 }} />
-                  <Text style={{ fontSize: 8, color: "#6b7280" }}>
-                    Firma del comprador / representante{docLang !== "es" ? `\n${L.buyer_sign}` : ""}
-                  </Text>
+                  <Text style={{ fontSize: 8, color: "#6b7280" }}>{L.buyer_sign}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ height: 40, borderBottomWidth: 1, borderBottomColor: "#d1d5db", marginBottom: 4 }} />
-                  <Text style={{ fontSize: 8, color: "#6b7280" }}>
-                    Sello de la empresa / fecha{docLang !== "es" ? `\n${L.company_stamp}` : ""}
-                  </Text>
+                  <Text style={{ fontSize: 8, color: "#6b7280" }}>{L.company_stamp}</Text>
                 </View>
               </View>
               <View style={{ marginTop: 10 }}>
                 <Text style={{ fontSize: 8, fontWeight: "bold", color: "#374151" }}>
-                  Nombre y cargo / {L.name_position}: {doc.clientRepresentative || doc.client_representative || "_________________________"}
+                  {L.name_position}: {doc.clientRepresentative || doc.client_representative || "_________________________"}
                 </Text>
               </View>
             </View>
             <View style={s.firmeBox}>
-              <Text style={{ fontSize: 8, color: "#14532d", marginBottom: 2 }}>
-                Esta oferta es firme y vinculante durante {validityDays} días desde la fecha de emisión ({doc.date}). La aceptación del comprador activa el proceso de SPA.
-              </Text>
-              {docLang !== "es" && <Text style={{ fontSize: 7.5, color: "#166534" }}>{fcoNote}</Text>}
+              <Text style={{ fontSize: 8, color: "#14532d" }}>{fcoNote}</Text>
             </View>
           </View>
         )}
 
         {isSCO && (
           <View style={s.indicativaBox}>
-            <Text style={{ fontSize: 8, color: "#92400e", marginBottom: 2 }}>{scoNoteEs}</Text>
-            {docLang !== "es" && <Text style={{ fontSize: 7.5, color: "#b45309" }}>{L.sco_note}</Text>}
+            <Text style={{ fontSize: 8, color: "#92400e" }}>{L.sco_note}</Text>
           </View>
         )}
 
-        {/* Footer */}
+        {/* Footer — keep Latin text only to avoid bidirectional rendering issues */}
         <View style={s.footer}>
-          <Text>Agente: {doc.agent} | {L.footer_copy}</Text>
+          <Text>Agente: {doc.agent} | {PDF_T.en.footer_copy}</Text>
           <Text>GLV Holding Group © 2026</Text>
         </View>
       </Page>
@@ -790,8 +799,8 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
   );
 }
 
-export async function downloadPDF(doc, agentProfile, boundMedia) {
-  const blob = await pdf(<DocPDF doc={doc} agentProfile={agentProfile} boundMedia={boundMedia} />).toBlob();
+export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
+  const blob = await pdf(<DocPDF doc={doc} agentProfile={agentProfile} boundMedia={boundMedia} lang={lang} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

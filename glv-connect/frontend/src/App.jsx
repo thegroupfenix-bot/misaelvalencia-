@@ -172,10 +172,11 @@ export default function App() {
 
 // ─── Portal shell ─────────────────────────────────────────────────────────────
 function Portal() {
-  const { user, logout, lang, setLang, agentProfile } = useAuth();
+  const { user, logout, lang, setLang, agentProfile, refreshProfile } = useAuth();
   const [view, setView] = useState("dashboard");
   const [modal, setModal] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const showNotif = (msg, type = "success") => {
     setNotification({ msg, type });
@@ -187,7 +188,15 @@ function Portal() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-background-tertiary)", fontFamily: "var(--font-sans)" }}>
-      <Sidebar user={user} view={view} setView={setView} onLogout={logout} lang={lang} setLang={setLang} />
+      <Sidebar user={user} view={view} setView={setView} onLogout={logout} lang={lang} setLang={setLang} onOpenProfile={() => setShowProfileSettings(true)} />
+      {showProfileSettings && (
+        <ProfileModal
+          user={user}
+          existingProfile={agentProfile}
+          editMode={true}
+          onComplete={async () => { await refreshProfile(); setShowProfileSettings(false); }}
+        />
+      )}
       <main style={{ flex: 1, padding: "2rem", overflowY: "auto" }}>
         {notification && <Notification msg={notification.msg} type={notification.type} />}
         {view === "dashboard"    && <Dashboard user={user} setView={setView} setModal={setModal} />}
@@ -313,7 +322,7 @@ function OnboardingScreen({ user, onContinue }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ user, view, setView, onLogout, lang, setLang }) {
+function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }) {
   const isDirector = DIRECTORS.has(user?.role);
   const isAdmin    = ADMINS.has(user?.role);
 
@@ -388,8 +397,12 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang }) {
           <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: "0 0 4px" }}>{user.name.split(" ")[0]}</p>
           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: roleColor + "33", color: "#fff", border: `1px solid ${roleColor}55` }}>{user.role}</span>
         </div>
+        <button onClick={onOpenProfile}
+          style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: 13, marginBottom: 2 }}>
+          <i className="ti ti-user-edit" style={{ fontSize: 16 }} />Mi Perfil
+        </button>
         <button onClick={onLogout}
-          style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13 }}>
+          style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 13 }}>
           <i className="ti ti-logout" style={{ fontSize: 16 }} />Cerrar sesión
         </button>
       </div>
@@ -588,14 +601,62 @@ function QuickAction({ icon, label, sub, color, onClick }) {
 function DocList({ type, user, setModal, setView, showNotif }) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const newViewMap = { SCO: "new-sco", FCO: "new-fco", SPA: "new-spa" };
+  const isAdmin = ["DIRECTIVO","SUPER_ADMIN","CORPORATE_ADMIN","DIRECTOR"].includes(user?.role);
 
-  useEffect(() => {
-    api.getDocs(type).then(setDocs).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
-  }, [type]);
+  const loadDocs = () => api.getDocs(type).then(setDocs).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
+  useEffect(() => { loadDocs(); }, [type]);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.deleteDoc(deleteTarget.id);
+      showNotif(`${deleteTarget.id} eliminado`, "success");
+      setDeleteTarget(null);
+      loadDocs();
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const canDelete = (doc) => {
+    if (isAdmin) return true;
+    return doc.agent === user?.username && ["Emitido", "Pendiente"].includes(doc.status);
+  };
 
   return (
     <div>
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: "1.75rem", maxWidth: 420, width: "100%", margin: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <i className="ti ti-trash" style={{ fontSize: 18, color: "#dc2626" }} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1B2A4A", margin: 0 }}>Eliminar documento</h3>
+            </div>
+            <p style={{ fontSize: 14, color: "#374151", marginBottom: 6 }}>
+              ¿Confirma la eliminación de <strong>{deleteTarget.id}</strong>?
+            </p>
+            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 20 }}>
+              El documento será marcado como eliminado. Esta acción queda registrada en el log de auditoría.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: "9px", border: "0.5px solid #d1d5db", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 14 }}>Cancelar</button>
+              <button onClick={handleDelete} disabled={deleting}
+                style={{ flex: 1, padding: "9px", background: deleting ? "#6b7280" : "#dc2626", color: "#fff", border: "none", borderRadius: 8, cursor: deleting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600 }}>
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>
@@ -636,8 +697,16 @@ function DocList({ type, user, setModal, setView, showNotif }) {
                   <td style={{ padding: "12px 16px", color: "var(--color-text-secondary)" }}>{doc.date}</td>
                   <td style={{ padding: "12px 16px" }}><StatusBadge status={doc.status} /></td>
                   <td style={{ padding: "12px 16px" }}>
-                    <button onClick={() => setModal(doc)}
-                      style={{ background: "none", border: "0.5px solid var(--color-border-secondary)", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, color: "var(--color-text-primary)" }}>Ver</button>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => setModal(doc)}
+                        style={{ background: "none", border: "0.5px solid var(--color-border-secondary)", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 12, color: "var(--color-text-primary)" }}>Ver</button>
+                      {canDelete(doc) && (
+                        <button onClick={() => setDeleteTarget(doc)}
+                          style={{ background: "none", border: "0.5px solid #fca5a5", borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 12, color: "#dc2626" }}>
+                          <i className="ti ti-trash" style={{ fontSize: 13 }} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1899,7 +1968,8 @@ function DocPreviewModal({ doc, onClose }) {
   const { agentProfile } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [downloadLabel, setDownloadLabel] = useState("PDF");
-  const isChina = doc.destination === "China";
+  const [pdfLang, setPdfLang] = useState("es");
+  const isChina = (doc.destination || "").toLowerCase().includes("china");
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -1913,7 +1983,7 @@ function DocPreviewModal({ doc, onClose }) {
       boundMedia = null;
     }
     setDownloadLabel("Generando...");
-    try { await downloadPDF(doc, agentProfile, boundMedia); } catch (e) { console.error(e); }
+    try { await downloadPDF(doc, agentProfile, boundMedia, pdfLang); } catch (e) { console.error(e); }
     finally { setDownloading(false); setDownloadLabel("PDF"); }
   };
 
@@ -1988,7 +2058,18 @@ function DocPreviewModal({ doc, onClose }) {
             <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0 }}>
               Agente: {doc.agent} | Copia automática a: contabilidad@glvservicesexp.com • info@glvglobalfoodservices.com
             </p>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {/* Language selector for PDF */}
+              <div style={{ display: "flex", gap: 4, background: "#f3f4f6", borderRadius: 8, padding: 3 }}>
+                {[{ code: "es", label: "ES" }, { code: "en", label: "EN" }].map(l => (
+                  <button key={l.code} onClick={() => setPdfLang(l.code)}
+                    style={{ padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+                      background: pdfLang === l.code ? "#1B2A4A" : "transparent",
+                      color: pdfLang === l.code ? "#fff" : "#6b7280" }}>
+                    {l.label}
+                  </button>
+                ))}
+              </div>
               <button onClick={handleDownload} disabled={downloading}
                 style={{ padding: "8px 16px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, background: "none", cursor: downloading ? "not-allowed" : "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>
                 <i className="ti ti-download" style={{ fontSize: 15, marginRight: 5, verticalAlign: -2 }} />

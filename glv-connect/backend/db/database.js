@@ -225,6 +225,9 @@ safeAlter("ALTER TABLE documents ADD COLUMN product_specs TEXT");
 safeAlter("ALTER TABLE documents ADD COLUMN operation_id TEXT");
 safeAlter("ALTER TABLE documents ADD COLUMN lang TEXT DEFAULT 'es'");
 safeAlter("ALTER TABLE documents ADD COLUMN commercial_data TEXT");
+safeAlter("ALTER TABLE documents ADD COLUMN deleted INTEGER DEFAULT 0");
+safeAlter("ALTER TABLE documents ADD COLUMN deleted_at TEXT");
+safeAlter("ALTER TABLE documents ADD COLUMN deleted_by TEXT");
 
 // operations extras
 safeAlter("ALTER TABLE operations ADD COLUMN counterpart_name TEXT");

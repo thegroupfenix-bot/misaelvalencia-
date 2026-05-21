@@ -131,8 +131,23 @@ export function calcCommercialSummary({
 
   // Live animal breakdown
   let liveAnimalKg = null;
+  let lotWeightGross = null;
+  let totalShipments = null;
+  let totalContractHeadcount = null;
+  let totalContractWeight = null;
+  let annualValue = null;
+
   if (category === "LIVE_ANIMALS") {
-    liveAnimalKg = calcLiveAnimalKg({ headCount, avgWeight, mortalityMargin });
+    const hc = parseFloat(headCount) || 0;
+    const aw = parseFloat(avgWeight) || 0;
+    const mm = parseFloat(mortalityMargin) || 0;
+    liveAnimalKg     = calcLiveAnimalKg({ headCount, avgWeight, mortalityMargin });
+    lotWeightGross   = hc * aw;
+    totalShipments   = deliveryFrequency === "ONE_SHIPMENT" ? 1
+                     : Math.round(shipmentsPerYear * (durationMonths / 12));
+    totalContractHeadcount = hc * totalShipments;
+    totalContractWeight    = totalContractHeadcount * aw * (1 - mm / 100);
+    annualValue            = shipmentValue * shipmentsPerYear;
   }
 
   return {
@@ -143,6 +158,11 @@ export function calcCommercialSummary({
     durationMonths,
     containers,
     liveAnimalKg,
+    lotWeightGross,
+    totalShipments,
+    totalContractHeadcount,
+    totalContractWeight,
+    annualValue,
     currency,
   };
 }

@@ -40,6 +40,7 @@ export const api = {
   getDoc:       (id)   => request("GET", `/documents/${id}`),
   createDoc:    (data) => request("POST", "/documents", data),
   updateStatus: (id, status) => request("PATCH", `/documents/${id}/status`, { status }),
+  deleteDoc:    (id) => request("DELETE", `/documents/${id}`),
 
   // Audit
   getAudit: (limit = 200) => request("GET", `/audit?limit=${limit}`),
