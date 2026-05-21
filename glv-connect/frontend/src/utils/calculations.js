@@ -10,14 +10,14 @@ const FREQ_MULTIPLIERS = {
 };
 
 /**
- * Calculate total KG from live animal fields.
- * headCount × avgWeight × (1 - mortalityMargin/100)
+ * GLV policy: mortality is buyer responsibility, covered by buyer insurance.
+ * Seller invoices on certified loaded quantity. No mortality deduction from commercial totals.
+ * LOT WEIGHT = headCount × avgWeight (gross loaded weight)
  */
-export function calcLiveAnimalKg({ headCount, avgWeight, mortalityMargin = 0 }) {
+export function calcLiveAnimalKg({ headCount, avgWeight }) {
   const head = parseFloat(headCount) || 0;
   const wgt  = parseFloat(avgWeight) || 0;
-  const mort = parseFloat(mortalityMargin) || 0;
-  return head * wgt * (1 - mort / 100);
+  return head * wgt;
 }
 
 /**
@@ -140,13 +140,12 @@ export function calcCommercialSummary({
   if (category === "LIVE_ANIMALS") {
     const hc = parseFloat(headCount) || 0;
     const aw = parseFloat(avgWeight) || 0;
-    const mm = parseFloat(mortalityMargin) || 0;
-    liveAnimalKg     = calcLiveAnimalKg({ headCount, avgWeight, mortalityMargin });
+    liveAnimalKg     = calcLiveAnimalKg({ headCount, avgWeight });
     lotWeightGross   = hc * aw;
     totalShipments   = deliveryFrequency === "ONE_SHIPMENT" ? 1
                      : Math.round(shipmentsPerYear * (durationMonths / 12));
     totalContractHeadcount = hc * totalShipments;
-    totalContractWeight    = totalContractHeadcount * aw * (1 - mm / 100);
+    totalContractWeight    = totalContractHeadcount * aw; // loaded contractual weight, no mortality deduction
     annualValue            = shipmentValue * shipmentsPerYear;
   }
 

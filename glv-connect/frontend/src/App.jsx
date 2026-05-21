@@ -2040,7 +2040,7 @@ function DocPreviewModal({ doc, onClose }) {
           <InfoBlock label="Cliente / Comprador" value={doc.client} />
           <InfoBlock label="Producto" value={doc.product} />
           <InfoBlock label="Destino" value={doc.destination} />
-          <InfoBlock label="Puerto CFR" value={lookupPriceTable(doc.destination)?.port || doc.commercialData?.destinationPort || "—"} />
+          <InfoBlock label="Puerto CFR" value={doc.commercialData?.destinationPort || lookupPriceTable(doc.destination)?.port || "—"} />
           <InfoBlock label="Origen" value={doc.origin} />
           <InfoBlock label="Sistema de pago" value={doc.paymentOption || doc.payment_option || doc.paymentMethod || "SBLC"} />
           {doc.headcount && <InfoBlock label="Número de cabezas" value={new Intl.NumberFormat().format(doc.headcount)} />}

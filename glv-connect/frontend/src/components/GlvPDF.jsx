@@ -393,7 +393,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   let mandatoryInfo = null;
   if (isLivestock(productCategory)) {
-    mandatoryInfo = "INFORMACIÓN MANDATORIA — ANIMALES VIVOS:\n• Todos los embarques cumplen con el Código Sanitario para los Animales Terrestres de la OIE\n• Los buques utilizados son especializados en transporte de ganado vivo con sistema de ventilación certificado\n• La composición sexual del lote será certificada por veterinario oficial\n• El comprador es responsable de gestionar los permisos de importación en el país destino\n• Los animales son certificados libres de enfermedades de declaración obligatoria";
+    mandatoryInfo = "INFORMACIÓN MANDATORIA — ANIMALES VIVOS:\n• Todos los embarques cumplen con el Código Sanitario para los Animales Terrestres de la OIE\n• Los buques utilizados son especializados en transporte de ganado vivo con sistema de ventilación certificado\n• La composición sexual del lote será certificada por veterinario oficial\n• El comprador es responsable de gestionar los permisos de importación en el país destino\n• Los animales son certificados libres de enfermedades de declaración obligatoria\n• MORTALIDAD EN TRÁNSITO: La facturación se realiza sobre la cantidad cargada certificada en origen. Cualquier mortalidad durante el transporte es responsabilidad exclusiva del comprador y deberá estar cubierta por su póliza de seguro de carga viva. El vendedor no aplica deducción comercial por mortalidad en tránsito.";
   } else if (isGrain(productCategory)) {
     mandatoryInfo = "INFORMACIÓN MANDATORIA — GRANOS Y CEREALES:\n• Producto libre de organismos genéticamente modificados no autorizados en destino\n• Humedad máxima garantizada según contrato\n• Libre de plagas y contaminantes según normativa Codex Alimentarius\n• Fumigación y tratamiento fitosanitario incluidos en el precio CFR";
   }
@@ -441,7 +441,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
             <Text style={s.coverSub}>Cliente / Client: {doc.client}</Text>
             <Text style={s.coverSub}>Producto / Product: {doc.product}</Text>
-            <Text style={s.coverSub}>Destino / Destination: {doc.destination}{portInfo ? ` — ${portInfo.port}` : ""}</Text>
+            <Text style={s.coverSub}>Destino / Destination: {doc.destination}{(() => { const p = doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port; return p ? ` — ${p}` : ""; })()}</Text>
             <Text style={s.coverSub}>Fecha / Date: {doc.date}</Text>
             {totalValue && (
               <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginTop: 12 }}>
