@@ -154,6 +154,19 @@ const ORIGINS = {
 const fmt = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
+function lookupPriceTable(destination) {
+  if (!destination) return {};
+  if (PRICE_TABLE[destination]) return PRICE_TABLE[destination];
+  const d = destination.toLowerCase();
+  if (d.includes("arab emirate") || d.includes("uae") || d.includes("dubai") || d.includes("abu dhabi")) return PRICE_TABLE["UAE"];
+  if (d.includes("saudi") && (d.includes("east") || d.includes("dammam"))) return PRICE_TABLE["Saudi Arabia (East)"];
+  if (d.includes("saudi") && (d.includes("west") || d.includes("jeddah"))) return PRICE_TABLE["Saudi Arabia (West)"];
+  if (d.includes("saudi")) return PRICE_TABLE["Saudi Arabia (East)"];
+  if (d.includes("china")) return PRICE_TABLE["China"];
+  if (d.includes("turk") || d.includes("türk")) return PRICE_TABLE["Türkiye (South)"];
+  return {};
+}
+
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
@@ -177,6 +190,12 @@ function Portal() {
   const [modal, setModal] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [newDocKey, setNewDocKey] = useState(0);
+
+  // Force-remount NewDocForm whenever user navigates to a new-* view
+  useEffect(() => {
+    if (view?.startsWith("new-")) setNewDocKey(k => k + 1);
+  }, [view]);
 
   const showNotif = (msg, type = "success") => {
     setNotification({ msg, type });
@@ -214,9 +233,9 @@ function Portal() {
         {view === "usuarios"     && isDirector && <UsersPanel />}
         {view === "admin-users"  && isAdmin    && <AdminUsers showNotif={showNotif} />}
         {view === "admin-images" && isAdmin    && <ImageAdmin showNotif={showNotif} />}
-        {view === "new-sco"      && <NewDocForm type="SCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-fco"      && <NewDocForm type="FCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-spa"      && isDirector && <NewDocForm type="SPA" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-sco"      && <NewDocForm key={newDocKey} type="SCO" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-fco"      && <NewDocForm key={newDocKey} type="FCO" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-spa"      && isDirector && <NewDocForm key={newDocKey} type="SPA" user={user} setView={setView} showNotif={showNotif} />}
       </main>
       {modal && <DocPreviewModal doc={modal} onClose={() => setModal(null)} />}
     </div>
@@ -789,7 +808,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
 
   const effectiveDestination = commercialData?.destination || form.destination || "";
   const effectiveProduct = commercialData?.rows?.[0]?.category || commercialData?.category || form.product || "";
-  const destInfo = PRICE_TABLE[effectiveDestination] || {};
+  const destInfo = lookupPriceTable(effectiveDestination);
   const pricePerKg = destInfo.price || 0;
   const totalKg = (parseFloat(form.headcount) || 0) * (parseFloat(form.avgWeight) || 0);
   const totalValue = commercialData?.summary?.contractValue || (totalKg * pricePerKg) || null;
@@ -2021,7 +2040,7 @@ function DocPreviewModal({ doc, onClose }) {
           <InfoBlock label="Cliente / Comprador" value={doc.client} />
           <InfoBlock label="Producto" value={doc.product} />
           <InfoBlock label="Destino" value={doc.destination} />
-          <InfoBlock label="Puerto CFR" value={PRICE_TABLE[doc.destination]?.port || "—"} />
+          <InfoBlock label="Puerto CFR" value={lookupPriceTable(doc.destination)?.port || doc.commercialData?.destinationPort || "—"} />
           <InfoBlock label="Origen" value={doc.origin} />
           <InfoBlock label="Sistema de pago" value={doc.paymentOption || doc.payment_option || doc.paymentMethod || "SBLC"} />
           {doc.headcount && <InfoBlock label="Número de cabezas" value={new Intl.NumberFormat().format(doc.headcount)} />}

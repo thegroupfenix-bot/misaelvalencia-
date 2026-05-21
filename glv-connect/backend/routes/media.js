@@ -368,11 +368,18 @@ router.get("/proxy", async (req, res) => {
   } catch {
     return res.status(400).json({ error: "Invalid url encoding" });
   }
-  // Only allow proxying URLs from our configured R2 public domain
+  // Allow proxying URLs from our configured R2 domain OR any known Cloudflare R2 pattern
   const R2_PUB = (process.env.R2_PUBLIC_URL || "").replace(/\/$/, "");
-  if (R2_PUB && !decoded.startsWith(R2_PUB)) {
+  const isR2Domain = decoded.includes(".r2.dev") ||
+    decoded.includes(".r2.cloudflarestorage.com") ||
+    decoded.includes("cloudflare") ||
+    decoded.startsWith("https://pub-");
+  const isAllowedDomain = !R2_PUB || decoded.startsWith(R2_PUB) || isR2Domain;
+  if (!isAllowedDomain) {
+    console.warn("[proxy] Blocked URL — not from allowed domain:", decoded.substring(0, 80));
     return res.status(403).json({ error: "URL not from allowed domain" });
   }
+  console.log("[proxy] Fetching:", decoded.substring(0, 100));
   try {
     const https = require("https");
     const http = require("http");
