@@ -296,10 +296,15 @@ function DynamicFields({ category, specs, setSpecs }) {
 }
 
 // ─── Single Product Row ───────────────────────────────────────────────────────
+function defaultSpecsForCat(cat, existing) {
+  if (cat !== "LIVE_ANIMALS") return existing || {};
+  return { species: "SHEEP", avgWeight: 45, mortalityMargin: 2, ...(existing || {}) };
+}
+
 function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) {
   const [cat, setCat] = useState(initial?.category || "");
   const [product, setProduct] = useState(initial?.product || "");
-  const [specs, setSpecs] = useState(initial?.specs || {});
+  const [specs, setSpecs] = useState(() => defaultSpecsForCat(initial?.category || "", initial?.specs));
   const [qty, setQty] = useState(initial?.quantity || "");
   const [unitType, setUnitType] = useState(initial?.unitType || "");
   const [incoterms, setIncoterms] = useState(initial?.incoterms || ["CFR"]);
@@ -370,7 +375,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
           {/* Category + Product */}
           <div style={s.row2}>
             <Field label="Categoría *" required>
-              <Sel value={cat} onChange={v => { setCat(v); setProduct(""); setSpecs({}); }}>
+              <Sel value={cat} onChange={v => { setCat(v); setProduct(""); setSpecs(defaultSpecsForCat(v, {})); }}>
                 <option value="">Seleccionar categoría...</option>
                 {Object.keys(PRODUCT_CATEGORIES).map(k => (
                   <option key={k} value={k}>{PRODUCT_CATEGORIES[k].label?.es || k}</option>
