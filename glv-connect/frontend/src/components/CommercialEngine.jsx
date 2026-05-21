@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { PRODUCT_CATEGORIES, DELIVERY_FREQUENCIES, CURRENCIES, INCOTERMS } from "../config/productCategories.js";
-import { searchCountries } from "../config/worldCountries.js";
+import { searchCountries, WORLD_COUNTRIES } from "../config/worldCountries.js";
 import { calcCommercialSummary, fmtMoney, fmtNum } from "../utils/calculations.js";
 import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js";
+import { getPortsForCountry } from "../config/destinationPorts.js";
 
 const ORIGINS = ["Brazil", "Argentina", "Colombia", "Uruguay", "Chile", "Paraguay", "USA", "Canada", "Australia", "New Zealand", "South Africa", "Other"];
 const PRICED_INCOTERMS = ["FOB", "CFR", "CIF", "DDP"];
@@ -56,13 +57,13 @@ function CountrySearch({ value, onChange }) {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <input value={query}
-        onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(""); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange("", ""); }}
         onFocus={() => query && setOpen(true)}
         placeholder="Buscar país destino..." style={s.input} />
       {open && results.length > 0 && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", maxHeight: 220, overflowY: "auto" }}>
           {results.map(c => (
-            <button key={c.code} type="button" onMouseDown={() => { setQuery(c.name); onChange(c.name); setOpen(false); }}
+            <button key={c.code} type="button" onMouseDown={() => { setQuery(c.name); onChange(c.name, c.port || ""); setOpen(false); }}
               style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: "none", cursor: "pointer", fontSize: 13, display: "flex", justifyContent: "space-between", borderBottom: "0.5px solid var(--color-border-tertiary)", color: "var(--color-text-primary)" }}>
               <span>{c.name}</span>
               {c.port && <span style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>{c.port.split("/")[0].trim()}</span>}
@@ -268,6 +269,8 @@ function DynamicFields({ category, specs, setSpecs }) {
             </Field>
           );
         }
+        // headCount for LIVE_ANIMALS is entered via the "Cantidad por embarque" qty field — skip here
+        if (f.key === "headCount" && category === "LIVE_ANIMALS") return null;
         return (
           <Field key={f.key} label={f.label?.es || f.label} required={f.required}>
             {f.type === "select" ? (
@@ -316,6 +319,12 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   useEffect(() => {
     if (catDef) { setUnitType(catDef.defaultUnit || ""); setContainerCap(catDef.containerCapacity || ""); }
   }, [cat]);
+
+  // For LIVE_ANIMALS, qty IS the headcount — keep specs.headCount in sync
+  const handleQtyChange = (v) => {
+    setQty(v);
+    if (cat === "LIVE_ANIMALS") setSpecs(p => ({ ...p, headCount: v }));
+  };
 
   const handleIncotermPrice = (inc, price) => {
     setIncotermPrices(prev => ({ ...prev, [inc]: price }));
@@ -413,8 +422,8 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
           {cat && (
             <div>
               <div style={s.row3}>
-                <Field label="Cantidad por embarque *" required>
-                  <Inp type="number" value={qty} onChange={setQty} placeholder="Ej: 540" min="0" />
+                <Field label={cat === "LIVE_ANIMALS" ? "Cabezas por embarque *" : "Cantidad por embarque *"} required>
+                  <Inp type="number" value={qty} onChange={handleQtyChange} placeholder={cat === "LIVE_ANIMALS" ? "Ej: 25000" : "Ej: 540"} min="0" />
                 </Field>
                 <Field label="Unidad *" required>
                   <Sel value={unitType} onChange={setUnitType}>
@@ -469,7 +478,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 
           {/* Row commercial summary — always shown when category + price are set */}
           {cat && (
-            <CommercialSummaryPanel summary={summary} currency={currency} unitPrice={primaryPrice} qty={qty} unitType={unitType} specs={specs} frequency={frequency} duration={duration} />
+            <CommercialSummaryPanel summary={summary} currency={currency} unitPrice={primaryPrice} qty={qty} unitType={unitType} specs={specs} frequency={frequency} duration={duration} category={cat} />
           )}
         </div>
       )}
@@ -477,9 +486,10 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   );
 }
 
-function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration }) {
+function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration, category }) {
   const hasPrice = parseFloat(unitPrice) > 0;
   const hasQty   = parseFloat(qty) > 0;
+  const isLive   = category === "LIVE_ANIMALS";
 
   const panelStyle = {
     background: summary?.contractValue > 0
@@ -489,7 +499,7 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
   };
 
   const pendingItems = [];
-  if (!hasQty)   pendingItems.push("cantidad");
+  if (!hasQty)   pendingItems.push(isLive ? "cabezas por embarque" : "cantidad");
   if (!hasPrice) pendingItems.push("precio por unidad");
 
   if (!hasQty && !hasPrice) {
@@ -501,43 +511,63 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
     );
   }
 
-  const fmtFreq = { ONE_SHIPMENT: "Embarque único", MONTHLY: "Mensual", BIMONTHLY: "Bimestral", QUARTERLY: "Trimestral", CUSTOM: "Personalizado" };
-
   return (
     <div style={panelStyle}>
       <p style={{ fontSize: 11, opacity: 0.7, margin: "0 0 12px", letterSpacing: 1, textTransform: "uppercase" }}>
         Resumen Comercial del Programa
       </p>
+
+      {/* LIVE_ANIMALS — highlighted shipment value block */}
+      {isLive && summary?.shipmentValue > 0 && (
+        <div style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
+          <p style={{ fontSize: 10, opacity: 0.8, margin: "0 0 4px", letterSpacing: 0.8, textTransform: "uppercase" }}>Valor de Referencia por Embarque / Lot Value</p>
+          <p style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "#4ade80" }}>{fmtMoney(summary.shipmentValue, currency)}</p>
+          {summary.liveAnimalKg > 0 && (
+            <p style={{ fontSize: 11, opacity: 0.7, margin: "3px 0 0" }}>
+              {fmtNum(parseFloat(qty))} cabezas × {specs?.avgWeight || "?"}kg × {currency} {parseFloat(unitPrice).toFixed(2)}/kg
+            </p>
+          )}
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))", gap: 10 }}>
-        {hasPrice && <MiniBox label="Precio / Unidad" value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />}
-        {hasQty && <MiniBox label={`Cantidad (${unitType || "unid."})`} value={fmtNum(parseFloat(qty))} />}
-        {summary?.shipmentValue > 0 && <MiniBox label="Valor por Embarque" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
-        {summary?.shipmentValue > 0 && summary?.monthlyValue !== summary?.shipmentValue && (
-          <MiniBox label="Valor Mensual" value={fmtMoney(summary.monthlyValue, currency)} />
+        {hasPrice && <MiniBox label="Precio / kg" value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />}
+        {hasQty && !isLive && <MiniBox label={`Cantidad (${unitType || "unid."})`} value={fmtNum(parseFloat(qty))} />}
+
+        {/* LIVE_ANIMALS specific fields */}
+        {isLive && hasQty && <MiniBox label="Cabezas / Embarque" value={fmtNum(parseFloat(qty))} />}
+        {isLive && specs?.avgWeight > 0 && <MiniBox label="Peso Prom. / Cabeza" value={`${specs.avgWeight} kg`} />}
+        {isLive && summary?.lotWeightGross > 0 && <MiniBox label="Peso Lote Bruto" value={fmtNum(summary.lotWeightGross) + " kg"} />}
+        {isLive && summary?.liveAnimalKg > 0 && summary.liveAnimalKg !== summary.lotWeightGross && (
+          <MiniBox label="Peso Neto (c/mortalidad)" value={fmtNum(summary.liveAnimalKg) + " kg"} />
         )}
+
+        {/* Non-live: shipment value smaller highlight */}
+        {!isLive && summary?.shipmentValue > 0 && <MiniBox label="Valor por Embarque" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
+
         {summary?.shipmentsPerYear != null && (
           <MiniBox label="Embarques / Año" value={String(summary.shipmentsPerYear)} />
         )}
         {duration && <MiniBox label="Duración Contrato" value={`${duration} meses`} />}
+
+        {/* LIVE_ANIMALS contract-level totals */}
+        {isLive && summary?.totalContractHeadcount > 0 && (
+          <MiniBox label="Cabezas Totales Contrato" value={fmtNum(summary.totalContractHeadcount)} />
+        )}
+        {isLive && summary?.totalContractWeight > 0 && (
+          <MiniBox label="Peso Total Contrato" value={fmtNum(summary.totalContractWeight) + " kg"} />
+        )}
+        {isLive && summary?.annualValue > 0 && (
+          <MiniBox label="Valor Anual Estimado" value={fmtMoney(summary.annualValue, currency)} />
+        )}
+
         {summary?.contractValue > 0 && (
-          <MiniBox label="TOTAL PROGRAMA" value={fmtMoney(summary.contractValue, currency)} big />
+          <MiniBox label="TOTAL CONTRATO" value={fmtMoney(summary.contractValue, currency)} big />
         )}
-        {specs?.headCount > 0 && (
-          <MiniBox label="Total Cabezas" value={fmtNum(parseFloat(specs.headCount))} />
-        )}
-        {specs?.avgWeight > 0 && (
-          <MiniBox label="Peso Prom." value={`${specs.avgWeight} kg/cabeza`} />
-        )}
-        {summary?.liveAnimalKg > 0 && (
-          <MiniBox label="Peso Vivo Total" value={fmtNum(summary.liveAnimalKg) + " kg"} />
-        )}
-        {specs?.headCount > 0 && summary?.shipmentsPerYear > 0 && (
-          <MiniBox label="Cabezas / Año" value={fmtNum(parseFloat(specs.headCount) * summary.shipmentsPerYear)} />
-        )}
-        {summary?.containers && (
+        {!isLive && summary?.containers && (
           <MiniBox label="Contenedores est." value={`${summary.containers.containers} × 20'`} />
         )}
-        {summary?.contractValue > 0 && summary?.durationMonths > 0 && (
+        {!isLive && summary?.contractValue > 0 && summary?.durationMonths > 0 && (
           <MiniBox label="Valor Anual" value={fmtMoney(summary.contractValue / (summary.durationMonths / 12), currency)} />
         )}
       </div>
@@ -601,12 +631,22 @@ export function CommercialEngine({ value, onChange }) {
   });
   const [rowData, setRowData] = useState({});
   const [destination, setDestination] = useState(value?.destination || "");
+  const [destinationPort, setDestinationPort] = useState(value?.destinationPort || "");
+  const [destPortFallback, setDestPortFallback] = useState("");
+
+  const availablePorts = getPortsForCountry(destination, destPortFallback);
 
   const addRow = () => setRows(prev => [...prev, newRowData()]);
   const removeRow = (id) => setRows(prev => prev.filter(r => r.id !== id));
 
   const handleRowChange = (id, data) => {
     setRowData(prev => ({ ...prev, [id]: data }));
+  };
+
+  const handleDestinationChange = (name, portFallback) => {
+    setDestination(name);
+    setDestPortFallback(portFallback || "");
+    setDestinationPort(""); // reset port when country changes
   };
 
   const dataArray = rows.map(r => rowData[r.id] || r);
@@ -634,16 +674,27 @@ export function CommercialEngine({ value, onChange }) {
       // Multi-row
       rows: dataArray,
       destination,
+      destinationPort,
       origin: firstRow.origin || "Brazil",
     });
-  }, [rowData, destination, rows]);
+  }, [rowData, destination, destinationPort, rows]);
 
   return (
     <div>
       {/* Destination — document level */}
       <div style={s.section}>
         <p style={s.title}>País de Destino / Destination Country</p>
-        <CountrySearch value={destination} onChange={setDestination} />
+        <CountrySearch value={destination} onChange={handleDestinationChange} />
+        {/* Dynamic port selector — appears after country is selected */}
+        {destination && availablePorts.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <label style={s.label}>Puerto de destino / Destination Port</label>
+            <select value={destinationPort} onChange={e => setDestinationPort(e.target.value)} style={s.select}>
+              <option value="">Seleccionar puerto...</option>
+              {availablePorts.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Product rows */}

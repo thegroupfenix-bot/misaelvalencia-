@@ -198,7 +198,7 @@ const s = StyleSheet.create({
                   backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 0.5, borderColor: "rgba(255,255,255,0.3)" },
   // Section headers — bilingual
   sectionTitle: { fontSize: 10, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2, paddingBottom: 4, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" },
-  sectionSub:   { fontSize: 7.5, color: "#64748b", marginBottom: 8 },
+  sectionSub:   { fontSize: 7.5, color: "#64748b", marginBottom: 8, lineHeight: 1.6 },
   grid:         { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
   infoBox:      { width: "48%", backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10" },
   infoLabel:    { fontSize: 7, color: "#64748b", fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 1 },
@@ -383,17 +383,20 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
               </View>
             ) : <View style={{ height: 20 }} />}
 
-            {/* Status badge — bilingual */}
+            {/* Status badge — bilingual, split into two lines to avoid Arabic/Latin overlap */}
             {(isSCO || isFCO) && (
               <View style={[s.badge, {
                 backgroundColor: isSCO ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.2)",
                 borderWidth: 1, borderColor: "rgba(255,255,255,0.4)"
               }]}>
                 <Text style={{ color: "#fff", fontSize: 9, fontWeight: "bold" }}>
-                  {isSCO
-                    ? bi(ES.indicative, L.indicative)
-                    : bi(ES.firm, L.firm)}
+                  {isSCO ? ES.indicative : ES.firm}
                 </Text>
+                {docLang !== "es" && (
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 8, marginTop: 2 }}>
+                    {isSCO ? L.indicative : L.firm}
+                  </Text>
+                )}
               </View>
             )}
 
@@ -417,10 +420,10 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
               </Text>
             )}
 
-            <Text style={s.coverSub}>Cliente / {L.buyer?.split("/")[0]?.trim() || "Client"}: {doc.client}</Text>
-            <Text style={s.coverSub}>Producto / {docLang === "zh" ? "产品" : docLang === "ar" ? "المنتج" : docLang === "fr" ? "Produit" : "Product"}: {doc.product}</Text>
-            <Text style={s.coverSub}>Destino / {L.port_lbl}: {doc.destination}{portInfo ? ` — ${portInfo.port}` : ""}</Text>
-            <Text style={s.coverSub}>Fecha / {docLang === "zh" ? "日期" : docLang === "ar" ? "التاريخ" : docLang === "fr" ? "Date" : "Date"}: {doc.date}</Text>
+            <Text style={s.coverSub}>Cliente / Client: {doc.client}</Text>
+            <Text style={s.coverSub}>Producto / Product: {doc.product}</Text>
+            <Text style={s.coverSub}>Destino / Destination: {doc.destination}{portInfo ? ` — ${portInfo.port}` : ""}</Text>
+            <Text style={s.coverSub}>Fecha / Date: {doc.date}</Text>
             {totalValue && (
               <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginTop: 12 }}>
                 {fmtCurrency(totalValue)} USD
@@ -521,7 +524,9 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
             <View style={{ flex: 1 }}>
               <Text style={s.infoLabel}>Puerto destino CFR</Text>
               {docLang !== "es" && <Text style={s.infoLabelSec}>{L.port_lbl}</Text>}
-              <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{portInfo?.port || doc.destination}</Text>
+              <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>
+                {doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port || doc.destination}
+              </Text>
             </View>
             {portInfo?.transit && (
               <View style={{ flex: 1 }}>
@@ -780,9 +785,9 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
           </View>
         )}
 
-        {/* Footer */}
+        {/* Footer — keep Latin text only to avoid bidirectional rendering issues */}
         <View style={s.footer}>
-          <Text>Agente: {doc.agent} | {L.footer_copy}</Text>
+          <Text>Agente: {doc.agent} | {PDF_T.en.footer_copy}</Text>
           <Text>GLV Holding Group © 2026</Text>
         </View>
       </Page>

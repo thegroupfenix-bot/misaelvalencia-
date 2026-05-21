@@ -8,14 +8,17 @@
  */
 
 const CATEGORY_RULES = {
-  LIVE_ANIMALS:   { cats: ["livestock/sheep","livestock/cattle","livestock/goats","products/live-animals","Animales Vivos","animales"], tags: ["sheep","cattle","goat","livestock","cordero","vivo","ovino","bovino","merino","dorper"] },
-  FROZEN_MEAT:    { cats: ["products/meat","products/frozen","Carnes","meat"], tags: ["meat","carne","frozen","beef","lamb","cordero","congelado","corte"] },
-  FROZEN_POULTRY: { cats: ["products/poultry","poultry"], tags: ["chicken","pollo","poultry","ave"] },
-  COMMODITIES:    { cats: ["products/grains","products/oils","Granos","Aceites","grains","oils"], tags: ["grain","oil","soy","corn","maize","soja","aceite","grano"] },
-  BEANS:          { cats: ["products/grains","Granos"], tags: ["bean","frijol","lentil","garbanzo"] },
-  FRUIT_PRODUCTS: { cats: ["products/fruits","Frutas","fruits"], tags: ["fruit","fruta","mango","banana","citrus","citrico"] },
-  COLOMBIAN_EXOTIC_FRUITS: { cats: ["products/fruits/colombia","Frutas","Colombia"], tags: ["exotic","exotico","colombia","uchuva","gulupa","pitahaya"] },
-  CANNED_MEAT:    { cats: ["products/meat","Carnes"], tags: ["canned","enlatado","conserva","meat","carne"] },
+  LIVE_ANIMALS: {
+    cats: ["livestock","sheep","lamb","cattle","goat","animales","live","ovino","bovino","caprino","animal","vivo","ovejas","cordero","ganado"],
+    tags: ["sheep","lamb","cattle","goat","livestock","cordero","vivo","ovino","bovino","merino","dorper","santa","ines","boer","nelore","angus","brahman","hereford","corriedale","texel","suffolk","brangus"],
+  },
+  FROZEN_MEAT:    { cats: ["products/meat","products/frozen","Carnes","meat","carne","frozen"], tags: ["meat","carne","frozen","beef","lamb","cordero","congelado","corte"] },
+  FROZEN_POULTRY: { cats: ["products/poultry","poultry","pollo","ave"], tags: ["chicken","pollo","poultry","ave"] },
+  COMMODITIES:    { cats: ["products/grains","products/oils","Granos","Aceites","grains","oils","grano","aceite","soya","maiz"], tags: ["grain","oil","soy","corn","maize","soja","aceite","grano"] },
+  BEANS:          { cats: ["products/grains","Granos","legumes","frijol","lenteja","garbanzo"], tags: ["bean","frijol","lentil","garbanzo","legume"] },
+  FRUIT_PRODUCTS: { cats: ["products/fruits","Frutas","fruits","fruta"], tags: ["fruit","fruta","mango","banana","citrus","citrico"] },
+  COLOMBIAN_EXOTIC_FRUITS: { cats: ["products/fruits/colombia","Frutas","Colombia","exotic","exotico"], tags: ["exotic","exotico","colombia","uchuva","gulupa","pitahaya"] },
+  CANNED_MEAT:    { cats: ["products/meat","Carnes","canned","enlatado","conserva"], tags: ["canned","enlatado","conserva","meat","carne"] },
 };
 
 const BRANDING_CATS = ["branding","branding/logos","branding/templates","Branding","Corporativo","corporate"];
@@ -69,8 +72,9 @@ function containsAny(haystack, needles) {
 function scoreAsset(asset, rule, catKey, origin) {
   let score = 0;
 
-  // +10 category match
+  // +10 category match (substring in asset.category or subcategory)
   if (asset.category && containsAny(asset.category, rule.cats)) score += 10;
+  if (asset.subcategory && containsAny(asset.subcategory, rule.cats)) score += 8;
 
   // +5 country origin match
   if (origin && asset.country_origin &&
@@ -101,6 +105,14 @@ function scoreAsset(asset, rule, catKey, origin) {
         score += 3;
       }
     }
+  }
+
+  // +4 if original_name contains any rule tag (catches uploaded files named "sheep.jpg" etc.)
+  if (asset.original_name) {
+    const nameL = asset.original_name.toLowerCase();
+    if (rule.tags.some(t => nameL.includes(t.toLowerCase()))) score += 4;
+    // also check category cats against the filename
+    if (rule.cats.some(c => nameL.includes(c.toLowerCase()))) score += 3;
   }
 
   // +2 visibility public
