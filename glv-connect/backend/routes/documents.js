@@ -16,6 +16,20 @@ const PRICE_TABLE = {
   "China":                 { port: "Port of Shanghai / Tianjin",       price: 5.65, transit: "32–38" },
 };
 
+// Fuzzy lookup: handles "United Arab Emirates", "Saudi Arabia", full country names
+function lookupDestInfo(destination) {
+  if (!destination) return {};
+  if (PRICE_TABLE[destination]) return PRICE_TABLE[destination];
+  const d = destination.toLowerCase();
+  if (d.includes("arab emirate") || d.includes("uae") || d.includes("dubai") || d.includes("abu dhabi")) return PRICE_TABLE["UAE"];
+  if (d.includes("saudi") && (d.includes("east") || d.includes("dammam"))) return PRICE_TABLE["Saudi Arabia (East)"];
+  if (d.includes("saudi") && (d.includes("west") || d.includes("jeddah"))) return PRICE_TABLE["Saudi Arabia (West)"];
+  if (d.includes("saudi")) return PRICE_TABLE["Saudi Arabia (East)"]; // default
+  if (d.includes("china")) return PRICE_TABLE["China"];
+  if (d.includes("turk") || d.includes("türk")) return PRICE_TABLE["Türkiye (South)"];
+  return {};
+}
+
 function genId(type) {
   const count = db
     .prepare("SELECT COUNT(*) AS c FROM documents WHERE type = ?")
@@ -132,10 +146,33 @@ router.post("/", async (req, res) => {
   const gaccNote = isChina ? "GACC No. YA11000PDY110K805" : null;
   const effectiveOrigin = isChina ? "Colombia" : (origin || "Brazil");
 
-  const destInfo = PRICE_TABLE[effectiveDestination] || {};
-  const pricePerKg = destInfo.price || null;
-  const totalKg = (parseFloat(headcount) || 0) * (parseFloat(avgWeight) || 0);
-  const totalValue = totalKg && pricePerKg ? totalKg * pricePerKg : (commercial_data?.summary?.contractValue || commercial_data?.rows?.[0]?.summary?.contractValue || null);
+  const destInfo = lookupDestInfo(effectiveDestination);
+
+  // Read unit price from CommercialEngine data when not in PRICE_TABLE
+  const cdData = (typeof commercial_data === "string") ? (() => { try { return JSON.parse(commercial_data); } catch { return {}; } })() : (commercial_data || {});
+  const cdRow0 = cdData?.rows?.[0] || {};
+  const cdInc  = (cdRow0.incoterms || ["CFR"])[0];
+  const cdUnitPrice = parseFloat(cdRow0.incotermPrices?.[cdInc] || cdRow0.unitPrice || 0);
+  const cdAvgWeight = parseFloat(cdRow0.specs?.avgWeight || cdRow0.avgWeight || 0);
+  const cdHeadCount = parseFloat(cdRow0.specs?.headCount || cdRow0.quantity || headcount || 0);
+
+  const pricePerKg = destInfo.price || cdUnitPrice || null;
+  const effectiveAvgWeight = parseFloat(avgWeight) || cdAvgWeight || null;
+  const effectiveHeadcount = parseFloat(headcount) || cdHeadCount || null;
+  const totalKg = (effectiveHeadcount || 0) * (effectiveAvgWeight || 0);
+
+  // Contract value: try summary → recompute from raw
+  let cdContractValue = cdData?.summary?.contractValue || cdRow0?.summary?.contractValue || 0;
+  if (cdContractValue === 0 && cdHeadCount > 0 && cdUnitPrice > 0) {
+    const avW = cdAvgWeight || parseFloat(avgWeight) || 45;
+    const shipV = cdHeadCount * avW * cdUnitPrice;
+    const freq  = cdRow0.deliveryFrequency || "ONE_SHIPMENT";
+    const spY   = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(cdRow0.numShipments || 1);
+    const dur   = parseFloat(cdRow0.contractDuration || 12);
+    const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
+    cdContractValue = mV * dur;
+  }
+  const totalValue = (totalKg && pricePerKg ? totalKg * pricePerKg : null) || cdContractValue || null;
 
   const id = genId(type);
   const status = type === "SPA" ? "Activo" : "Emitido";
@@ -154,7 +191,7 @@ router.post("/", async (req, res) => {
     id, type, status, client, clientCountry || null, clientRepresentative || null,
     clientEmail || null, clientPhone || null,
     req.user.username, date, effectiveDestination, effectiveProduct,
-    parseFloat(headcount) || null, parseFloat(avgWeight) || null, pricePerKg,
+    effectiveHeadcount, effectiveAvgWeight, pricePerKg,
     effectiveOrigin, totalValue, paymentMethod || null,
     exporter, domain, gaccNote, parentId || null, observations || null,
     payment_option || null, doc_trigger || null, has_guarantee ? 1 : 0,

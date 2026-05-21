@@ -162,9 +162,10 @@ const PDF_T = {
 // ─── Language detection by destination ───────────────────────────────────────
 function detectDocLang(doc) {
   const dest = (doc.destination || "").toLowerCase();
-  if (dest.includes("saudi") || dest.includes("uae") || dest.includes("arab")) return "ar";
+  // Arabic cannot be rendered by Inter/Helvetica — all Middle East destinations use English
   if (dest.includes("china")) return "zh";
-  return doc.lang || "en";
+  if (doc.lang === "fr") return "fr";
+  return "en";
 }
 
 // ─── Build bilingual label: "ES / Secondary" ─────────────────────────────────
@@ -231,6 +232,20 @@ const PRICE_TABLE = {
   "China":               { port: "Port of Shanghai / Tianjin",       price: 5.65, transit: "32–38" },
 };
 
+// ─── Fuzzy PRICE_TABLE lookup ─────────────────────────────────────────────────
+function findPortInfo(dest) {
+  if (!dest) return null;
+  if (PRICE_TABLE[dest]) return PRICE_TABLE[dest];
+  const d = dest.toLowerCase();
+  if (d.includes("arab emirate") || d.includes("uae") || d.includes("dubai") || d.includes("abu dhabi")) return PRICE_TABLE["UAE"];
+  if (d.includes("saudi") && d.includes("east")) return PRICE_TABLE["Saudi Arabia (East)"];
+  if (d.includes("saudi") && d.includes("west")) return PRICE_TABLE["Saudi Arabia (West)"];
+  if (d.includes("saudi")) return PRICE_TABLE["Saudi Arabia (East)"];
+  if (d.includes("china")) return PRICE_TABLE["China"];
+  if (d.includes("turk")) return PRICE_TABLE["Türkiye (South)"];
+  return null;
+}
+
 // Spanish section labels (primary)
 const ES = {
   seller:       "VENDEDOR / EXPORTADOR",
@@ -293,15 +308,36 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
   const docLang = detectDocLang(doc);
   const L = PDF_T[docLang] || PDF_T.en;
 
-  const isChina = doc.destination === "China";
+  const isChina = (doc.destination || "").toLowerCase().includes("china");
   const coverBg = COVER_COLORS[doc.type] || "#1B2A4A";
   const isSCO = doc.type === "SCO";
   const isFCO = doc.type === "FCO";
   const isSPA = doc.type === "SPA";
-  const portInfo = PRICE_TABLE[doc.destination];
-  const pricePerKg = doc.pricePerKg || portInfo?.price;
-  const totalKg = (doc.headcount || 0) * (doc.avgWeight || 0);
-  const totalValue = doc.totalValue || (totalKg && pricePerKg ? totalKg * pricePerKg : null);
+  const portInfo = findPortInfo(doc.destination);
+  // Read price from CommercialEngine row when doc.pricePerKg not saved
+  const cdRows = ((typeof (doc.commercialData || doc.commercial_data) === "string")
+    ? (() => { try { return JSON.parse(doc.commercialData || doc.commercial_data); } catch { return {}; } })()
+    : (doc.commercialData || doc.commercial_data || {}))?.rows || [];
+  const firstCdRow = cdRows[0] || {};
+  const cdInc = (firstCdRow.incoterms || ["CFR"])[0];
+  const engineUnitPrice = parseFloat(firstCdRow.incotermPrices?.[cdInc] || firstCdRow.unitPrice || 0);
+  const engineHeads = parseFloat(firstCdRow.specs?.headCount || firstCdRow.quantity || doc.headcount || 0);
+  const engineAvgW  = parseFloat(firstCdRow.specs?.avgWeight || doc.avgWeight || 45);
+
+  const pricePerKg = parseFloat(doc.pricePerKg) || engineUnitPrice || portInfo?.price;
+  const totalKg = (parseFloat(doc.headcount) || engineHeads) * (parseFloat(doc.avgWeight) || engineAvgW);
+
+  // Try saved total → CommercialEngine summary → recompute from raw
+  let engineContractValue = cdRows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
+  if (engineContractValue === 0 && engineHeads > 0 && engineUnitPrice > 0) {
+    const shipV = engineHeads * engineAvgW * engineUnitPrice;
+    const freq  = firstCdRow.deliveryFrequency || "ONE_SHIPMENT";
+    const spY   = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(firstCdRow.numShipments || 1);
+    const dur   = parseFloat(firstCdRow.contractDuration || 12);
+    const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
+    engineContractValue = mV * dur;
+  }
+  const totalValue = parseFloat(doc.totalValue) || engineContractValue || (totalKg && pricePerKg ? totalKg * pricePerKg : null);
   const validityDays = doc.validityDays || doc.validity_days || 15;
   const productCategory = doc.product || "";
 
@@ -562,9 +598,28 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
               {rows.map((row, i) => {
                 const catLabel = row.category || "—";
                 const inc = (row.incoterms || ["CFR"])[0];
-                const price = row.incotermPrices?.[inc] || row.unitPrice || "—";
-                const sv = row.summary?.shipmentValue;
-                const cv = row.summary?.contractValue;
+                const price = parseFloat(row.incotermPrices?.[inc] || row.unitPrice || 0);
+                let sv = row.summary?.shipmentValue || 0;
+                let cv = row.summary?.contractValue || 0;
+
+                // Recompute if summary is zero — happens when headCount wasn't synced at save time
+                if (sv === 0 && price > 0) {
+                  const heads = parseFloat(row.specs?.headCount || row.quantity || 0);
+                  const avgW  = parseFloat(row.specs?.avgWeight || 45);
+                  if (row.category === "LIVE_ANIMALS") {
+                    sv = heads * avgW * price;
+                  } else {
+                    sv = parseFloat(row.quantity || 0) * price;
+                  }
+                  if (sv > 0) {
+                    const freq = row.deliveryFrequency || "ONE_SHIPMENT";
+                    const spYear = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(row.numShipments || 1);
+                    const dur = parseFloat(row.contractDuration || 12);
+                    const monthV = freq === "ONE_SHIPMENT" ? sv : sv * spYear / 12;
+                    cv = monthV * dur;
+                  }
+                }
+
                 const currency = row.currency || "USD";
                 const fmtV = (v) => v ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v) : "—";
                 return (
