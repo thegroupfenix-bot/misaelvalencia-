@@ -463,15 +463,17 @@ function DocPDF({ doc, agentProfile, boundMedia }) {
         {boundMedia?.main && (
           <View style={{ marginBottom: 16 }}>
             <Text style={s.sectionTitle}>Producto / Product</Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <Image src={boundMedia.main} style={{ width: 200, height: 140, objectFit: "cover", borderRadius: 4 }} />
-              {boundMedia.secondary?.slice(0, 2).map((src, i) => src && (
-                <Image key={i} src={src} style={{ width: 120, height: 140, objectFit: "cover", borderRadius: 4 }} />
-              ))}
+            <View style={{ flexDirection: "row", marginTop: 6 }}>
+              <Image src={boundMedia.main} style={{ width: 190, height: 130, objectFit: "cover", borderRadius: 4, marginRight: 8 }} />
+              {boundMedia.secondary?.[0] && (
+                <Image src={boundMedia.secondary[0]} style={{ width: 110, height: 130, objectFit: "cover", borderRadius: 4, marginRight: 8 }} />
+              )}
+              {boundMedia.branding && (
+                <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "flex-end" }}>
+                  <Image src={boundMedia.branding} style={{ width: 80, height: 45, objectFit: "contain" }} />
+                </View>
+              )}
             </View>
-            {boundMedia.branding && (
-              <Image src={boundMedia.branding} style={{ position: "absolute", top: 0, right: 0, width: 80, height: 40, objectFit: "contain" }} />
-            )}
           </View>
         )}
 

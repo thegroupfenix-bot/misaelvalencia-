@@ -121,27 +121,24 @@ function LivestockBreedSelector({ origin, specs, setSpecs }) {
 
   const setSpecField = (k, v) => setSpecs(p => ({ ...p, [k]: v }));
 
-  const toggleBreed = (breed) => {
-    if (hasBreed(breed.id)) {
-      setSpecField("breeds", selectedBreeds.filter(b => b.breedId !== breed.id));
-    } else {
-      setSpecField("breeds", [...selectedBreeds, { breedId: breed.id, name: breed.name, quantity: "", notes: "" }]);
-    }
+  const setBreeds = (newBreeds) => {
+    setSpecField("breeds", newBreeds);
+    setSpecField("breed", newBreeds.map(b => b.name).join(" / "));
   };
 
-  const updateBreedQty = (breedId, qty) => {
-    setSpecField("breeds", selectedBreeds.map(b => b.breedId === breedId ? { ...b, quantity: qty } : b));
+  const toggleBreed = (breed) => {
+    const newBreeds = hasBreed(breed.id)
+      ? selectedBreeds.filter(b => b.breedId !== breed.id)
+      : [...selectedBreeds, { breedId: breed.id, name: breed.name }];
+    setBreeds(newBreeds);
   };
 
   const addCustomBreed = () => {
     if (!customBreed.trim()) return;
-    setSpecField("breeds", [...selectedBreeds, { breedId: "CUSTOM_" + Date.now(), name: customBreed.trim(), quantity: "", notes: "", custom: true }]);
+    setBreeds([...selectedBreeds, { breedId: "CUSTOM_" + Date.now(), name: customBreed.trim(), custom: true }]);
     setCustomBreed("");
     setShowCustom(false);
   };
-
-  const totalAllocated = selectedBreeds.reduce((s, b) => s + (parseFloat(b.quantity) || 0), 0);
-  const totalHeads = parseFloat(specs.headCount) || 0;
 
   return (
     <div style={{ marginBottom: 12 }}>
@@ -174,25 +171,24 @@ function LivestockBreedSelector({ origin, specs, setSpecs }) {
         </div>
       )}
 
-      {/* Multi-breed quantity allocation */}
+      {/* Selected breeds summary — indicative preference, no per-breed quantity */}
       {selectedBreeds.length > 0 && (
-        <div style={{ background: "#f0f4ff", borderRadius: 10, padding: "12px 14px", marginBottom: 10, border: "1px solid #c7d2fe" }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#1e3a8a", margin: "0 0 10px" }}>
-            Distribución por Raza — Total asignado: {fmtNum(totalAllocated)} cabezas
-            {totalHeads > 0 && totalAllocated !== totalHeads && (
-              <span style={{ marginLeft: 8, color: "#dc2626" }}>⚠ Diferencia: {fmtNum(totalHeads - totalAllocated)} cab.</span>
-            )}
+        <div style={{ background: "#f0f4ff", borderRadius: 10, padding: "10px 14px", marginBottom: 10, border: "1px solid #c7d2fe" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "#1e3a8a", margin: "0 0 8px" }}>
+            Preferencia comercial: {selectedBreeds.length} raza(s) seleccionada(s)
           </p>
-          {selectedBreeds.map(b => (
-            <div key={b.breedId} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#1B2A4A", minWidth: 140 }}>{b.name}{b.custom && " (personalizada)"}</span>
-              <input type="number" value={b.quantity} onChange={e => updateBreedQty(b.breedId, e.target.value)}
-                placeholder="Cantidad" min="0" style={{ ...s.input, width: 110, flex: "none" }} />
-              <span style={{ fontSize: 11, color: "#6b7280" }}>cabezas</span>
-              <button type="button" onClick={() => setSpecField("breeds", selectedBreeds.filter(x => x.breedId !== b.breedId))}
-                style={{ border: "none", background: "#fee2e2", color: "#991b1b", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: 11 }}>✕</button>
-            </div>
-          ))}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {selectedBreeds.map(b => (
+              <span key={b.breedId} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 16, background: "#1B2A4A", color: "#fff", fontSize: 12 }}>
+                {b.name}{b.custom && " *"}
+                <button type="button" onClick={() => setBreeds(selectedBreeds.filter(x => x.breedId !== b.breedId))}
+                  style={{ border: "none", background: "none", color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1 }}>✕</button>
+              </span>
+            ))}
+          </div>
+          <p style={{ fontSize: 10, color: "#6b7280", margin: "6px 0 0", fontStyle: "italic" }}>
+            Razas indicativas. El total de cabezas se define en el campo de cantidad.
+          </p>
         </div>
       )}
 
@@ -260,25 +256,38 @@ function DynamicFields({ category, specs, setSpecs }) {
   const setSpec = (key, val) => setSpecs(prev => ({ ...prev, [key]: val }));
   return (
     <div style={s.row2}>
-      {catDef.fields.map(f => (
-        <Field key={f.key} label={f.label?.es || f.label} required={f.required}>
-          {f.type === "select" ? (
-            <Sel value={specs[f.key] ?? ""} onChange={v => setSpec(f.key, v)}>
-              <option value="">Seleccionar...</option>
-              {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
-            </Sel>
-          ) : f.type === "checkbox" ? (
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input type="checkbox" checked={!!specs[f.key]} onChange={e => setSpec(f.key, e.target.checked)} style={{ width: 15, height: 15 }} />
-              <span style={{ fontSize: 13, color: "var(--color-text-primary)" }}>Sí / Yes</span>
-            </label>
-          ) : f.type === "textarea" ? (
-            <textarea rows={2} value={specs[f.key] ?? ""} onChange={e => setSpec(f.key, e.target.value)} placeholder={f.placeholder || ""} style={{ ...s.input, resize: "vertical", height: 64 }} />
-          ) : (
-            <Inp type={f.type === "number" ? "number" : "text"} value={specs[f.key] ?? (f.default !== undefined ? f.default : "")} onChange={v => setSpec(f.key, v)} placeholder={f.placeholder} />
-          )}
-        </Field>
-      ))}
+      {catDef.fields.map(f => {
+        // breed field for LIVE_ANIMALS — auto-populated from selected breeds, read-only
+        if (f.key === "breed" && category === "LIVE_ANIMALS") {
+          const breedSummary = (specs.breeds || []).map(b => b.name).join(" / ") || "";
+          return (
+            <Field key={f.key} label={f.label?.es || f.label}>
+              <input type="text" value={breedSummary} readOnly
+                placeholder="Se completa automáticamente al seleccionar razas arriba"
+                style={{ ...s.input, background: "var(--color-background-secondary)", color: "var(--color-text-secondary)", cursor: "default" }} />
+            </Field>
+          );
+        }
+        return (
+          <Field key={f.key} label={f.label?.es || f.label} required={f.required}>
+            {f.type === "select" ? (
+              <Sel value={specs[f.key] ?? ""} onChange={v => setSpec(f.key, v)}>
+                <option value="">Seleccionar...</option>
+                {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
+              </Sel>
+            ) : f.type === "checkbox" ? (
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="checkbox" checked={!!specs[f.key]} onChange={e => setSpec(f.key, e.target.checked)} style={{ width: 15, height: 15 }} />
+                <span style={{ fontSize: 13, color: "var(--color-text-primary)" }}>Sí / Yes</span>
+              </label>
+            ) : f.type === "textarea" ? (
+              <textarea rows={2} value={specs[f.key] ?? ""} onChange={e => setSpec(f.key, e.target.value)} placeholder={f.placeholder || ""} style={{ ...s.input, resize: "vertical", height: 64 }} />
+            ) : (
+              <Inp type={f.type === "number" ? "number" : "text"} value={specs[f.key] ?? (f.default !== undefined ? f.default : "")} onChange={v => setSpec(f.key, v)} placeholder={f.placeholder} />
+            )}
+          </Field>
+        );
+      })}
     </div>
   );
 }
@@ -371,6 +380,15 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
             )}
           </div>
 
+          {/* Origin — shown first for LIVE_ANIMALS so breeds filter by country */}
+          {cat === "LIVE_ANIMALS" && (
+            <Field label="País de Origen del ganado *">
+              <Sel value={origin} onChange={v => { setOrigin(v); setSpecs(p => ({ ...p, breeds: [], breed: "" })); }}>
+                {ORIGINS.map(o => <option key={o} value={o}>{o}</option>)}
+              </Sel>
+            </Field>
+          )}
+
           {/* Livestock breed selector — special flow for LIVE_ANIMALS */}
           {cat === "LIVE_ANIMALS" && (
             <LivestockBreedSelector origin={origin} specs={specs} setSpecs={setSpecs} />
@@ -379,8 +397,8 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
           {cat && cat !== "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
           {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
 
-          {/* Origin */}
-          {cat && (
+          {/* Origin for non-LIVE_ANIMALS */}
+          {cat && cat !== "LIVE_ANIMALS" && (
             <Field label="Origen del producto">
               <Sel value={origin} onChange={setOrigin}>
                 {ORIGINS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -504,14 +522,17 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
         {summary?.contractValue > 0 && (
           <MiniBox label="TOTAL PROGRAMA" value={fmtMoney(summary.contractValue, currency)} big />
         )}
-        {summary?.liveAnimalKg > 0 && (
-          <MiniBox label="Peso Vivo Total" value={fmtNum(summary.liveAnimalKg) + " kg"} />
-        )}
         {specs?.headCount > 0 && (
-          <MiniBox label="Cabezas" value={fmtNum(parseFloat(specs.headCount))} />
+          <MiniBox label="Total Cabezas" value={fmtNum(parseFloat(specs.headCount))} />
         )}
         {specs?.avgWeight > 0 && (
           <MiniBox label="Peso Prom." value={`${specs.avgWeight} kg/cabeza`} />
+        )}
+        {summary?.liveAnimalKg > 0 && (
+          <MiniBox label="Peso Vivo Total" value={fmtNum(summary.liveAnimalKg) + " kg"} />
+        )}
+        {specs?.headCount > 0 && summary?.shipmentsPerYear > 0 && (
+          <MiniBox label="Cabezas / Año" value={fmtNum(parseFloat(specs.headCount) * summary.shipmentsPerYear)} />
         )}
         {summary?.containers && (
           <MiniBox label="Contenedores est." value={`${summary.containers.containers} × 20'`} />

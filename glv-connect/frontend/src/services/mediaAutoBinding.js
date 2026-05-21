@@ -1,8 +1,12 @@
 import { api } from "../api.js";
 
+const BASE = import.meta.env.VITE_API_URL || "https://misaelvalencia-production.up.railway.app";
+
 async function fetchAsBase64(url) {
   try {
-    const res = await fetch(url);
+    // Route through backend proxy to bypass browser CORS restrictions on R2 public URLs
+    const proxyUrl = `${BASE}/media/proxy?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
     if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise((resolve) => {
