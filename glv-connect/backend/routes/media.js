@@ -357,6 +357,46 @@ router.get("/bind-preview", (req, res) => {
   }
 });
 
+// GET /media/proxy — server-side proxy for R2 public URLs (bypasses browser CORS for PDF base64)
+// Query: ?url=<encoded_r2_url>
+router.get("/proxy", async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: "url query param required" });
+  let decoded;
+  try {
+    decoded = decodeURIComponent(url);
+  } catch {
+    return res.status(400).json({ error: "Invalid url encoding" });
+  }
+  // Only allow proxying URLs from our configured R2 public domain
+  const R2_PUB = (process.env.R2_PUBLIC_URL || "").replace(/\/$/, "");
+  if (R2_PUB && !decoded.startsWith(R2_PUB)) {
+    return res.status(403).json({ error: "URL not from allowed domain" });
+  }
+  try {
+    const https = require("https");
+    const http = require("http");
+    const urlObj = new URL(decoded);
+    const client = urlObj.protocol === "https:" ? https : http;
+    client.get(decoded, (upstream) => {
+      if (upstream.statusCode !== 200) {
+        res.status(upstream.statusCode || 502).json({ error: "Upstream error" });
+        return;
+      }
+      const ct = upstream.headers["content-type"] || "application/octet-stream";
+      res.setHeader("Content-Type", ct);
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      upstream.pipe(res);
+    }).on("error", (err) => {
+      console.error("[GET /media/proxy] fetch error:", err.message);
+      res.status(502).json({ error: "Failed to fetch upstream" });
+    });
+  } catch (err) {
+    console.error("[GET /media/proxy] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /media/:id
 router.get("/:id", (req, res) => {
   const row = db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id);
