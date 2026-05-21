@@ -542,10 +542,7 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
         {/* LIVE_ANIMALS specific fields */}
         {isLive && hasQty && <MiniBox label="Cabezas / Embarque" value={fmtNum(parseFloat(qty))} />}
         {isLive && specs?.avgWeight > 0 && <MiniBox label="Peso Prom. / Cabeza" value={`${specs.avgWeight} kg`} />}
-        {isLive && summary?.lotWeightGross > 0 && <MiniBox label="Peso Lote Bruto" value={fmtNum(summary.lotWeightGross) + " kg"} />}
-        {isLive && summary?.liveAnimalKg > 0 && summary.liveAnimalKg !== summary.lotWeightGross && (
-          <MiniBox label="Peso Neto (c/mortalidad)" value={fmtNum(summary.liveAnimalKg) + " kg"} />
-        )}
+        {isLive && summary?.lotWeightGross > 0 && <MiniBox label="Peso Lote Cargado" value={fmtNum(summary.lotWeightGross) + " kg"} />}
 
         {/* Non-live: shipment value smaller highlight */}
         {!isLive && summary?.shipmentValue > 0 && <MiniBox label="Valor por Embarque" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
@@ -579,6 +576,11 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
       {!summary?.contractValue && hasQty && hasPrice && (
         <p style={{ fontSize: 11, opacity: 0.7, margin: "10px 0 0", fontStyle: "italic" }}>
           Selecciona frecuencia y duración para ver el valor total del contrato.
+        </p>
+      )}
+      {isLive && specs?.mortalityMargin > 0 && (
+        <p style={{ fontSize: 10, opacity: 0.55, margin: "8px 0 0", fontStyle: "italic", borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 8 }}>
+          Nota logística: Mortalidad {specs.mortalityMargin}% — responsabilidad del comprador. No se deduce del valor comercial ni del peso contractual.
         </p>
       )}
     </div>
