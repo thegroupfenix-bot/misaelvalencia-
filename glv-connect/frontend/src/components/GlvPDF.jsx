@@ -333,10 +333,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const engineHeads = parseFloat(firstCdRow.specs?.headCount || firstCdRow.quantity || doc.headcount || 0);
   const engineAvgW  = parseFloat(firstCdRow.specs?.avgWeight || doc.avgWeight || 45);
 
-  const pricePerKg = parseFloat(doc.pricePerKg) || engineUnitPrice || null;
-  const totalKg = (parseFloat(doc.headcount) || engineHeads) * (parseFloat(doc.avgWeight) || engineAvgW);
+  // CommercialEngine row data is authoritative — doc.* fields may be stale from a prior save.
+  // Priority order: CommercialEngine first, doc.* only as last-resort fallback.
+  const pricePerKg = engineUnitPrice || parseFloat(doc.pricePerKg) || null;
+  const totalKg    = (engineHeads || parseFloat(doc.headcount) || 0) * (engineAvgW || parseFloat(doc.avgWeight) || 0);
 
-  // Try saved total → CommercialEngine summary → recompute from raw
+  // Contract value: CommercialEngine summary first, recompute from row if zero, doc.totalValue only if nothing else
   let engineContractValue = cdRows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
   if (engineContractValue === 0 && engineHeads > 0 && engineUnitPrice > 0) {
     const shipV = engineHeads * engineAvgW * engineUnitPrice;
@@ -346,7 +348,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
     engineContractValue = mV * dur;
   }
-  const totalValue = parseFloat(doc.totalValue) || engineContractValue || null;
+  const totalValue = engineContractValue || parseFloat(doc.totalValue) || null;
   const validityDays = doc.validityDays || doc.validity_days || 15;
   const productCategory = doc.product || "";
 
@@ -646,13 +648,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {/* Section 3: Price */}
         <SectionTitle text={L.price} />
         <View style={s.grid}>
-          {isLivestock(productCategory) && doc.headcount && (
+          {isLivestock(productCategory) && (engineHeads > 0 || doc.headcount) && (
             <BiInfoBox esLabel={L.heads_lbl}
-              value={new Intl.NumberFormat().format(doc.headcount)} />
+              value={new Intl.NumberFormat().format(engineHeads || doc.headcount)} />
           )}
-          {isLivestock(productCategory) && doc.avgWeight && (
+          {isLivestock(productCategory) && (engineAvgW > 0 || doc.avgWeight) && (
             <BiInfoBox esLabel={L.weight_lbl}
-              value={`${doc.avgWeight} kg`} />
+              value={`${engineAvgW || doc.avgWeight} kg`} />
           )}
           {pricePerKg && (
             <BiInfoBox esLabel={L.price_lbl}
@@ -828,6 +830,50 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 }
 
 export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
+  // ── Pre-render state validation ───────────────────────────────────────────────
+  try {
+    const cd = doc.commercialData || doc.commercial_data;
+    const parsedCd = typeof cd === "string" ? (() => { try { return JSON.parse(cd); } catch { return {}; } })() : (cd || {});
+    const rows = parsedCd?.rows || [];
+    const firstRow = rows[0] || {};
+    const cdInc = (firstRow.incoterms || ["CFR"])[0];
+    const ePrice = parseFloat(
+      firstRow.incotermPrices?.[cdInc] ||
+      Object.values(firstRow.incotermPrices || {}).find(v => parseFloat(v) > 0) ||
+      firstRow.unitPrice || 0
+    );
+    const eHeads = parseFloat(firstRow.specs?.headCount || firstRow.quantity || 0);
+    const eAvgW  = parseFloat(firstRow.specs?.avgWeight || 45);
+    const eShipV = firstRow.summary?.shipmentValue || (eHeads * eAvgW * ePrice) || 0;
+    const eTotalV = rows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
+    const legacyHeads = parseFloat(doc.headcount || 0);
+    const legacyPrice = parseFloat(doc.pricePerKg || 0);
+    const legacyTotal = parseFloat(doc.totalValue || 0);
+
+    console.log("[GLV-PDF] Pre-render validation —", doc.id, {
+      engine:  { heads: eHeads, avgW: eAvgW, price: ePrice, shipmentValue: eShipV, contractValue: eTotalV },
+      legacy:  { heads: legacyHeads, price: legacyPrice, totalValue: legacyTotal },
+      using:   "CommercialEngine (engine values take priority)",
+    });
+
+    const mismatch = {
+      heads: legacyHeads > 0 && eHeads > 0 && legacyHeads !== eHeads,
+      price: legacyPrice > 0 && ePrice > 0 && Math.abs(legacyPrice - ePrice) > 0.001,
+      total: legacyTotal > 0 && eTotalV > 0 && Math.abs(legacyTotal - eTotalV) / eTotalV > 0.01,
+    };
+    if (mismatch.heads || mismatch.price || mismatch.total) {
+      console.warn("[GLV-PDF] STALE DOC FIELDS DETECTED — PDF will render using CommercialEngine values. Stale fields:", {
+        ...(mismatch.heads  && { headCount:      `doc=${legacyHeads}  engine=${eHeads}` }),
+        ...(mismatch.price  && { pricePerKg:     `doc=${legacyPrice}  engine=${ePrice}` }),
+        ...(mismatch.total  && { contractValue:  `doc=${legacyTotal}  engine=${eTotalV}` }),
+      });
+    } else {
+      console.log("[GLV-PDF] All values consistent — no stale state detected.");
+    }
+  } catch (err) {
+    console.warn("[GLV-PDF] Pre-render validation error:", err.message);
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
   const blob = await pdf(<DocPDF doc={doc} agentProfile={agentProfile} boundMedia={boundMedia} lang={lang} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
