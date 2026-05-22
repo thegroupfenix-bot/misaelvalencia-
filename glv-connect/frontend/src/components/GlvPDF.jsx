@@ -198,9 +198,6 @@ PDF_T.es = {
 
 // ─── Language resolution ──────────────────────────────────────────────────────
 function resolveDocLang(lang, doc) {
-  // Only support "es", "en", "zh" (China only), "fr"
-  if (lang === "zh" || (doc?.destination || "").toLowerCase().includes("china")) return "zh";
-  if (lang === "fr") return "fr";
   if (lang === "en") return "en";
   return "es";
 }
@@ -328,11 +325,15 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     : (doc.commercialData || doc.commercial_data || {}))?.rows || [];
   const firstCdRow = cdRows[0] || {};
   const cdInc = (firstCdRow.incoterms || ["CFR"])[0];
-  const engineUnitPrice = parseFloat(firstCdRow.incotermPrices?.[cdInc] || firstCdRow.unitPrice || 0);
+  const engineUnitPrice = parseFloat(
+    firstCdRow.incotermPrices?.[cdInc] ||
+    Object.values(firstCdRow.incotermPrices || {}).find(v => parseFloat(v) > 0) ||
+    firstCdRow.unitPrice || 0
+  );
   const engineHeads = parseFloat(firstCdRow.specs?.headCount || firstCdRow.quantity || doc.headcount || 0);
   const engineAvgW  = parseFloat(firstCdRow.specs?.avgWeight || doc.avgWeight || 45);
 
-  const pricePerKg = parseFloat(doc.pricePerKg) || engineUnitPrice || portInfo?.price;
+  const pricePerKg = parseFloat(doc.pricePerKg) || engineUnitPrice || null;
   const totalKg = (parseFloat(doc.headcount) || engineHeads) * (parseFloat(doc.avgWeight) || engineAvgW);
 
   // Try saved total → CommercialEngine summary → recompute from raw
@@ -345,7 +346,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
     engineContractValue = mV * dur;
   }
-  const totalValue = parseFloat(doc.totalValue) || engineContractValue || (totalKg && pricePerKg ? totalKg * pricePerKg : null);
+  const totalValue = parseFloat(doc.totalValue) || engineContractValue || null;
   const validityDays = doc.validityDays || doc.validity_days || 15;
   const productCategory = doc.product || "";
 
@@ -369,36 +370,56 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   if (doc.product === "Otro" || doc.custom_product_name) {
     productDesc = doc.custom_product_desc || doc.customProductDesc || "";
   } else if (isLivestock(productCategory)) {
-    productDesc = `Animales vivos de la especie ${productCategory}, procedentes de establecimientos registrados y habilitados para exportación. Los animales cumplen con todos los requisitos sanitarios internacionales y son certificados por autoridades zoosanitarias competentes del país de origen.`;
+    productDesc = docLang === "en"
+      ? `Live animals sourced from registered, export-certified facilities. All animals meet international sanitary requirements and are certified by competent zoo-sanitary authorities in the country of origin.`
+      : `Animales vivos procedentes de establecimientos registrados y habilitados para exportación. Los animales cumplen con todos los requisitos sanitarios internacionales y son certificados por autoridades zoosanitarias competentes del país de origen.`;
   } else if (isGrain(productCategory)) {
-    productDesc = `Producto agrícola a granel de alta calidad, con análisis de humedad, proteína y aflatoxinas dentro de los estándares internacionales de exportación.`;
+    productDesc = docLang === "en"
+      ? `High-quality bulk agricultural commodity with moisture, protein and aflatoxin analysis within international export standards.`
+      : `Producto agrícola a granel de alta calidad, con análisis de humedad, proteína y aflatoxinas dentro de los estándares internacionales de exportación.`;
   } else {
-    productDesc = `Producto alimenticio de exportación que cumple con los estándares de calidad internacional establecidos por GLV Global Food Services LLC.`;
+    productDesc = docLang === "en"
+      ? `Export food product meeting international quality standards established by GLV Global Food Services LLC.`
+      : `Producto alimenticio de exportación que cumple con los estándares de calidad internacional establecidos por GLV Global Food Services LLC.`;
   }
 
   const exporter = doc.exporter || "GLV Global Food Services LLC (Miami, FL)";
   const domain = doc.domain || "glvglobalfoodservices.com";
 
-  let certifications = "• Certificado de origen oficial\n• Certificado sanitario/fitosanitario de exportación\n• Inspección SGS (o equivalente acordado)\n• Documentación de trazabilidad del lote";
+  let certifications = docLang === "en"
+    ? "• Official certificate of origin\n• Sanitary / phytosanitary export certificate\n• SGS inspection (or agreed equivalent)\n• Lot traceability documentation"
+    : "• Certificado de origen oficial\n• Certificado sanitario/fitosanitario de exportación\n• Inspección SGS (o equivalente acordado)\n• Documentación de trazabilidad del lote";
   if (isLivestock(productCategory)) {
-    certifications = "• Certificado zoosanitario oficial del país exportador\n• Certificado Halal (autoridad reconocida internacionalmente)\n• Certificado SGS de peso vivo y cantidad\n• Declaración de salud del lote por médico veterinario oficial\n• Aprobación del período de cuarentena\n• Certificado de vacunación del lote";
+    certifications = docLang === "en"
+      ? "• Official zoo-sanitary certificate from the exporting country\n• Halal certificate (internationally recognized authority)\n• SGS live weight and quantity certificate\n• Official veterinary health declaration for the lot\n• Quarantine period approval certificate\n• Lot vaccination certificate"
+      : "• Certificado zoosanitario oficial del país exportador\n• Certificado Halal (autoridad reconocida internacionalmente)\n• Certificado SGS de peso vivo y cantidad\n• Declaración de salud del lote por médico veterinario oficial\n• Aprobación del período de cuarentena\n• Certificado de vacunación del lote";
   }
 
   let timeline = "";
   if (isLivestock(productCategory)) {
-    timeline = "Semana 1–2: Firma de contrato (SPA) y pago del anticipo\nSemana 3–6: Selección y concentración del lote en origen\nSemana 7–10: Período de cuarentena oficial (mínimo 21 días)\nSemana 11: Inspección SGS, certificación y activación de SBLC\nSemana 12: Embarque en buque ganadero especializado\nSemana 13–16: Tránsito marítimo hacia destino CFR\nSemana 16+: Entrega en puerto y liquidación final";
+    timeline = docLang === "en"
+      ? "Week 1–2: Contract signing (SPA) and advance payment\nWeek 3–6: Lot selection and concentration at origin\nWeek 7–10: Official quarantine period (minimum 21 days)\nWeek 11: SGS inspection, certification and SBLC activation\nWeek 12: Loading on specialized livestock vessel\nWeek 13–16: Maritime transit to CFR destination\nWeek 16+: Port delivery and final settlement"
+      : "Semana 1–2: Firma de contrato (SPA) y pago del anticipo\nSemana 3–6: Selección y concentración del lote en origen\nSemana 7–10: Período de cuarentena oficial (mínimo 21 días)\nSemana 11: Inspección SGS, certificación y activación de SBLC\nSemana 12: Embarque en buque ganadero especializado\nSemana 13–16: Tránsito marítimo hacia destino CFR\nSemana 16+: Entrega en puerto y liquidación final";
   } else {
-    timeline = "Semana 1: Firma de contrato y pago del anticipo\nSemana 2–3: Preparación y consolidación del lote\nSemana 4: Inspección de calidad y certificaciones\nSemana 5: Carga y despacho en origen\nSemana 6+: Tránsito marítimo y entrega CFR en destino";
+    timeline = docLang === "en"
+      ? "Week 1: Contract signing and advance payment\nWeek 2–3: Lot preparation and consolidation\nWeek 4: Quality inspection and certifications\nWeek 5: Loading and dispatch at origin\nWeek 6+: Maritime transit and CFR delivery at destination"
+      : "Semana 1: Firma de contrato y pago del anticipo\nSemana 2–3: Preparación y consolidación del lote\nSemana 4: Inspección de calidad y certificaciones\nSemana 5: Carga y despacho en origen\nSemana 6+: Tránsito marítimo y entrega CFR en destino";
   }
 
   let mandatoryInfo = null;
   if (isLivestock(productCategory)) {
-    mandatoryInfo = "INFORMACIÓN MANDATORIA — ANIMALES VIVOS:\n• Todos los embarques cumplen con el Código Sanitario para los Animales Terrestres de la OIE\n• Los buques utilizados son especializados en transporte de ganado vivo con sistema de ventilación certificado\n• La composición sexual del lote será certificada por veterinario oficial\n• El comprador es responsable de gestionar los permisos de importación en el país destino\n• Los animales son certificados libres de enfermedades de declaración obligatoria\n• MORTALIDAD EN TRÁNSITO: La facturación se realiza sobre la cantidad cargada certificada en origen. Cualquier mortalidad durante el transporte es responsabilidad exclusiva del comprador y deberá estar cubierta por su póliza de seguro de carga viva. El vendedor no aplica deducción comercial por mortalidad en tránsito.";
+    mandatoryInfo = docLang === "en"
+      ? "MANDATORY INFORMATION — LIVE ANIMALS:\n• All shipments comply with the OIE Terrestrial Animal Health Code\n• Vessels used are specialized livestock carriers with certified ventilation systems\n• Sexual composition of the lot shall be certified by an official veterinarian\n• The buyer is responsible for obtaining import permits in the destination country\n• Animals are certified free of notifiable diseases\n• TRANSIT MORTALITY: Invoicing is based on the certified loaded quantity at origin. Any mortality during transport is the buyer's sole responsibility and must be covered by their live cargo insurance policy. The seller applies no commercial deduction for transit mortality."
+      : "INFORMACIÓN MANDATORIA — ANIMALES VIVOS:\n• Todos los embarques cumplen con el Código Sanitario para los Animales Terrestres de la OIE\n• Los buques utilizados son especializados en transporte de ganado vivo con sistema de ventilación certificado\n• La composición sexual del lote será certificada por veterinario oficial\n• El comprador es responsable de gestionar los permisos de importación en el país destino\n• Los animales son certificados libres de enfermedades de declaración obligatoria\n• MORTALIDAD EN TRÁNSITO: La facturación se realiza sobre la cantidad cargada certificada en origen. Cualquier mortalidad durante el transporte es responsabilidad exclusiva del comprador y deberá estar cubierta por su póliza de seguro de carga viva. El vendedor no aplica deducción comercial por mortalidad en tránsito.";
   } else if (isGrain(productCategory)) {
-    mandatoryInfo = "INFORMACIÓN MANDATORIA — GRANOS Y CEREALES:\n• Producto libre de organismos genéticamente modificados no autorizados en destino\n• Humedad máxima garantizada según contrato\n• Libre de plagas y contaminantes según normativa Codex Alimentarius\n• Fumigación y tratamiento fitosanitario incluidos en el precio CFR";
+    mandatoryInfo = docLang === "en"
+      ? "MANDATORY INFORMATION — GRAINS AND CEREALS:\n• Product free of GMOs not authorized at destination\n• Maximum moisture content guaranteed per contract\n• Free of pests and contaminants per Codex Alimentarius standards\n• Fumigation and phytosanitary treatment included in CFR price"
+      : "INFORMACIÓN MANDATORIA — GRANOS Y CEREALES:\n• Producto libre de organismos genéticamente modificados no autorizados en destino\n• Humedad máxima garantizada según contrato\n• Libre de plagas y contaminantes según normativa Codex Alimentarius\n• Fumigación y tratamiento fitosanitario incluidos en el precio CFR";
   }
 
-  const tcText = `TÉRMINOS Y CONDICIONES GENERALES:\n1. La presente oferta es emitida por ${exporter} en su calidad de exportador internacional certificado.\n2. Los precios son según el/los Incoterm(s) pactado(s) conforme a Incoterms 2020, en el puerto de destino indicado.\n3. La aceptación formal de esta oferta activa el proceso de elaboración del SPA (Sales Purchase Agreement).\n4. Todos los precios están denominados en la moneda indicada en la oferta.\n5. Cualquier controversia será resuelta mediante arbitraje internacional según las reglas de la CCI (París).\n6. La ley aplicable es la establecida en el contrato definitivo (SPA).\n7. GLV Global Food Services LLC se reserva el derecho de modificar precios por causas de fuerza mayor o cambios en normativas sanitarias internacionales.`;
+  const tcText = docLang === "en"
+    ? `GENERAL TERMS AND CONDITIONS:\n1. This offer is issued by ${exporter} in its capacity as a certified international exporter.\n2. Prices are per the agreed Incoterm(s) in accordance with Incoterms 2020, at the indicated destination port.\n3. Formal acceptance of this offer activates the SPA (Sales Purchase Agreement) process.\n4. All prices are denominated in the currency stated in the offer.\n5. Any dispute shall be resolved by international arbitration under ICC rules (Paris).\n6. The applicable law shall be as established in the definitive contract (SPA).\n7. GLV Global Food Services LLC reserves the right to modify prices due to force majeure or changes in international sanitary regulations.`
+    : `TÉRMINOS Y CONDICIONES GENERALES:\n1. La presente oferta es emitida por ${exporter} en su calidad de exportador internacional certificado.\n2. Los precios son según el/los Incoterm(s) pactado(s) conforme a Incoterms 2020, en el puerto de destino indicado.\n3. La aceptación formal de esta oferta activa el proceso de elaboración del SPA (Sales Purchase Agreement).\n4. Todos los precios están denominados en la moneda indicada en la oferta.\n5. Cualquier controversia será resuelta mediante arbitraje internacional según las reglas de la CCI (París).\n6. La ley aplicable es la establecida en el contrato definitivo (SPA).\n7. GLV Global Food Services LLC se reserva el derecho de modificar precios por causas de fuerza mayor o cambios en normativas sanitarias internacionales.`;
 
   const fcoNote = (L.fco_note || "").replace("{days}", validityDays).replace("{date}", doc.date);
 
@@ -418,7 +439,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
             {/* Language indicator */}
             <View style={s.langBar}>
-              <Text style={s.langBarTxt}>{docLang === "es" ? "Documento en Español" : docLang === "zh" ? "中文 / Español" : docLang === "fr" ? "Document en Français" : "Document in English"}</Text>
+              <Text style={s.langBarTxt}>{docLang === "en" ? "Document in English" : "Documento en Español"}</Text>
               <Text style={s.langBarTxt}>{doc.type}</Text>
             </View>
 
@@ -502,7 +523,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           <View style={[s.infoBox, { width: "48%", backgroundColor: "#f8fafc" }]}>
             <Text style={s.infoLabel}>{L.buyer}</Text>
             <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{doc.client}</Text>
-            {doc.clientCountry && <Text style={{ fontSize: 8, color: "#374151" }}>País: {doc.clientCountry}</Text>}
+            {doc.clientCountry && <Text style={{ fontSize: 8, color: "#374151" }}>{docLang === "en" ? "Country:" : "País:"} {doc.clientCountry}</Text>}
             {(doc.clientRepresentative || doc.client_representative) && (
               <Text style={{ fontSize: 8, color: "#374151" }}>Rep: {doc.clientRepresentative || doc.client_representative}</Text>
             )}
@@ -536,7 +557,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             {portInfo?.transit && (
               <View style={{ flex: 1 }}>
                 <Text style={s.infoLabel}>{L.transit_lbl}</Text>
-                <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{portInfo.transit} días</Text>
+                <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{portInfo.transit} {docLang === "en" ? "days" : "días"}</Text>
               </View>
             )}
           </View>
@@ -557,7 +578,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             <View style={{ marginBottom: 16 }}>
               <View style={{ backgroundColor: "#1B2A4A", borderRadius: 6, padding: "6 10", marginBottom: 4 }}>
                 <View style={{ flexDirection: "row" }}>
-                  {["Producto", "Origen", "Cantidad", "Unidad", "Incoterm", "Precio/U", "Valor Embarque", "Valor Contrato"].map(h => (
+                  {(docLang === "en"
+                    ? ["Product", "Origin", "Quantity", "Unit", "Incoterm", "Price/U", "Shipment Value", "Contract Value"]
+                    : ["Producto", "Origen", "Cantidad", "Unidad", "Incoterm", "Precio/U", "Valor Embarque", "Valor Contrato"]
+                  ).map(h => (
                     <Text key={h} style={{ flex: 1, fontSize: 7, color: "#fff", fontWeight: "bold", textAlign: "center" }}>{h}</Text>
                   ))}
                 </View>
@@ -608,7 +632,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 const fmtV = (v) => new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v);
                 return (
                   <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "6 10", borderRadius: 4, marginTop: 2 }}>
-                    <Text style={{ flex: 6, fontSize: 8, color: "#fff", fontWeight: "bold" }}>TOTAL PROGRAMA EXPORTACIÓN ({rows.length} productos)</Text>
+                    <Text style={{ flex: 6, fontSize: 8, color: "#fff", fontWeight: "bold" }}>
+                      {docLang === "en" ? `TOTAL EXPORT PROGRAM (${rows.length} products)` : `TOTAL PROGRAMA EXPORTACIÓN (${rows.length} productos)`}
+                    </Text>
                     <Text style={{ flex: 1, fontSize: 8.5, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
                   </View>
                 );
@@ -693,12 +719,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {/* SPA */}
         {isSPA && (
           <View style={s.spaBox}>
-            <Text style={[s.sectionTitle, { color: "#166534", marginBottom: 6 }]}>Estructura del Contrato — Modelo SPA2026-03-01</Text>
+            <Text style={[s.sectionTitle, { color: "#166534", marginBottom: 6 }]}>
+              {docLang === "en" ? "Contract Structure — SPA Model 2026-03-01" : "Estructura del Contrato — Modelo SPA2026-03-01"}
+            </Text>
             <Text style={{ fontSize: 8, color: "#14532d" }}>
-              43 cláusulas legales activas: Objeto, Entidades, Domicilios, Documentos constitutivos, Producto, Lote,
-              Composición sexual, Volumen, Base de facturación, Precio CFR, Moneda, Destinos, Pago/SBLC (Cláusulas 13–15),
-              Inspección SGS, Halal, Cuarentena, Transporte marítimo, Documentos de lote, Responsabilidades, Seguros,
-              Fuerza mayor, Incumplimiento, Penalidades, Arbitraje (CCI Paris), Ley aplicable.
+              {docLang === "en"
+                ? "43 active legal clauses: Subject matter, Entities, Addresses, Constitutive documents, Product, Lot, Sexual composition, Volume, Invoicing basis, CFR Price, Currency, Destinations, Payment/SBLC (Clauses 13–15), SGS inspection, Halal, Quarantine, Maritime transport, Lot documents, Responsibilities, Insurance, Force majeure, Default, Penalties, Arbitration (ICC Paris), Applicable law."
+                : "43 cláusulas legales activas: Objeto, Entidades, Domicilios, Documentos constitutivos, Producto, Lote, Composición sexual, Volumen, Base de facturación, Precio CFR, Moneda, Destinos, Pago/SBLC (Cláusulas 13–15), Inspección SGS, Halal, Cuarentena, Transporte marítimo, Documentos de lote, Responsabilidades, Seguros, Fuerza mayor, Incumplimiento, Penalidades, Arbitraje (CCI Paris), Ley aplicable."
+              }
             </Text>
           </View>
         )}
@@ -746,9 +774,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               <Text style={{ fontSize: 8, color: "#2563eb", marginTop: 1 }}>glvglobalfoodservices.com</Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={{ fontSize: 8, color: "#6b7280" }}>Documento: {doc.id}</Text>
-              <Text style={{ fontSize: 8, color: "#6b7280" }}>Emitido: {doc.date}</Text>
-              <Text style={{ fontSize: 8, color: "#6b7280" }}>Agente: {doc.agent}</Text>
+              <Text style={{ fontSize: 8, color: "#6b7280" }}>{docLang === "en" ? "Document:" : "Documento:"} {doc.id}</Text>
+              <Text style={{ fontSize: 8, color: "#6b7280" }}>{docLang === "en" ? "Issued:" : "Emitido:"} {doc.date}</Text>
+              <Text style={{ fontSize: 8, color: "#6b7280" }}>{docLang === "en" ? "Agent:" : "Agente:"} {doc.agent}</Text>
             </View>
           </View>
         </View>

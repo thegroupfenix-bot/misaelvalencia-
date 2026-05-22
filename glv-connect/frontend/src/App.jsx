@@ -1996,7 +1996,7 @@ function DocPreviewModal({ doc, onClose }) {
     let boundMedia = null;
     try {
       const bindPromise = bindMediaForDocument(doc);
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000));
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000));
       boundMedia = await Promise.race([bindPromise, timeoutPromise]).catch(() => null);
     } catch {
       boundMedia = null;
