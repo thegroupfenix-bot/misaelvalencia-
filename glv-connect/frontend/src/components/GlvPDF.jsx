@@ -327,38 +327,56 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     : (doc.commercialData || doc.commercial_data || {}))?.rows || [];
   const firstCdRow = cdRows[0] || {};
   const cdInc = (firstCdRow.incoterms || ["CFR"])[0];
+  const containerType = firstCdRow.containerType || null;
+  const CONTAINER_LABELS = { "20FT":"20FT Dry","40FT":"40FT Dry","40HC":"40HC High Cube","REEFER_20":"Reefer 20FT","REEFER_40":"Reefer 40FT","FLEXITANK":"Flexitank","ISO_TANK":"ISO Tank","BULK_VESSEL":"Bulk Vessel","LIVESTOCK_VESSEL":"Livestock Vessel","AIR_CARGO":"Air Cargo" };
   const engineUnitPrice = parseFloat(
     firstCdRow.incotermPrices?.[cdInc] ||
     Object.values(firstCdRow.incotermPrices || {}).find(v => parseFloat(v) > 0) ||
     firstCdRow.unitPrice || 0
   );
-  const engineHeads = parseFloat(firstCdRow.specs?.headCount || firstCdRow.quantity || doc.headcount || 0);
-  const engineAvgW  = parseFloat(firstCdRow.specs?.avgWeight || doc.avgWeight || 45);
+  // Category-aware extraction — LIVE_ANIMALS uses head×weight; all other categories use quantity directly.
+  const isLiveAnimalRow = firstCdRow.category === "LIVE_ANIMALS";
+  // engineHeads: ONLY for LIVE_ANIMALS; other categories must not inherit headCount into quantity
+  const engineHeads = isLiveAnimalRow
+    ? parseFloat(firstCdRow.specs?.headCount || firstCdRow.quantity || doc.headcount || 0)
+    : 0;
+  // engineAvgW: ONLY meaningful for LIVE_ANIMALS (default 45 kg/head); never inject into non-livestock
+  const engineAvgW = isLiveAnimalRow
+    ? parseFloat(firstCdRow.specs?.avgWeight || doc.avgWeight || 45)
+    : 0;
+  // Direct quantity for non-livestock categories (kg, MT, units — whatever was entered)
+  const engineQty = isLiveAnimalRow ? 0 : parseFloat(firstCdRow.quantity || 0);
 
-  // CommercialEngine row data is authoritative — doc.* fields may be stale from a prior save.
-  // Priority order: CommercialEngine first, doc.* only as last-resort fallback.
-  const pricePerKg = engineUnitPrice || parseFloat(doc.pricePerKg) || null;
-  const totalKg    = (engineHeads || parseFloat(doc.headcount) || 0) * (engineAvgW || parseFloat(doc.avgWeight) || 0);
+  // pricePerKg — CommercialEngine ONLY. doc.pricePerKg is PRICE_TABLE-contaminated at save time.
+  const pricePerKg = engineUnitPrice || null;
 
-  // Contract value: CommercialEngine summary first, recompute from row if zero, doc.totalValue only if nothing else
+  // totalKg — category-isolated: live animals use head×weight; all others use direct quantity
+  const totalKg = isLiveAnimalRow
+    ? (engineHeads * engineAvgW)
+    : engineQty;
+
+  // Contract value: CommercialEngine summary first, then category-aware recompute, then doc fallback
   let engineContractValue = cdRows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
-  if (engineContractValue === 0 && engineHeads > 0 && engineUnitPrice > 0) {
-    const shipV = engineHeads * engineAvgW * engineUnitPrice;
-    const freq  = firstCdRow.deliveryFrequency || "ONE_SHIPMENT";
-    const spY   = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(firstCdRow.numShipments || 1);
-    const dur   = parseFloat(firstCdRow.contractDuration || 12);
-    const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
-    engineContractValue = mV * dur;
+  if (engineContractValue === 0 && engineUnitPrice > 0) {
+    const baseQty = isLiveAnimalRow ? engineHeads * engineAvgW : engineQty;
+    if (baseQty > 0) {
+      const shipV = baseQty * engineUnitPrice;
+      const freq  = firstCdRow.deliveryFrequency || "ONE_SHIPMENT";
+      const spY   = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(firstCdRow.numShipments || 1);
+      const dur   = parseFloat(firstCdRow.contractDuration || 12);
+      const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
+      engineContractValue = mV * dur;
+    }
   }
   const totalValue = engineContractValue || parseFloat(doc.totalValue) || null;
 
-  // Shipment value = value for a single delivery/lot — the primary operational figure.
-  // Read from row summary first; recompute from head×weight×price if missing.
+  // Shipment value = value for a single delivery/lot — category-isolated recompute
   const engineShipmentValue =
     cdRows.reduce((s, r) => s + (r.summary?.shipmentValue || 0), 0) ||
-    (engineHeads > 0 && engineAvgW > 0 && engineUnitPrice > 0
-      ? engineHeads * engineAvgW * engineUnitPrice
-      : 0);
+    (() => {
+      const baseQty = isLiveAnimalRow ? engineHeads * engineAvgW : engineQty;
+      return (baseQty > 0 && engineUnitPrice > 0) ? baseQty * engineUnitPrice : 0;
+    })();
 
   const validityDays = doc.validityDays || doc.validity_days || 15;
   const productCategory = doc.product || "";
@@ -573,6 +591,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{portInfo.transit} {docLang === "en" ? "days" : "días"}</Text>
               </View>
             )}
+            {containerType && (
+              <View style={{ flex: 1 }}>
+                <Text style={s.infoLabel}>{docLang === "en" ? "Container / Vessel" : "Contenedor / Buque"}</Text>
+                <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{CONTAINER_LABELS[containerType] || containerType}</Text>
+              </View>
+            )}
           </View>
           {(doc.custom_unit || doc.customUnit) && (
             <View style={{ marginTop: 6 }}>
@@ -606,11 +630,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 let sv = row.summary?.shipmentValue || 0;
                 let cv = row.summary?.contractValue || 0;
 
-                // Recompute if summary is zero — happens when headCount wasn't synced at save time
+                // Recompute if summary is zero — category-isolated formula
                 if (sv === 0 && price > 0) {
-                  const heads = parseFloat(row.specs?.headCount || row.quantity || 0);
-                  const avgW  = parseFloat(row.specs?.avgWeight || 45);
-                  if (row.category === "LIVE_ANIMALS") {
+                  const isLiveRow = row.category === "LIVE_ANIMALS";
+                  if (isLiveRow) {
+                    const heads = parseFloat(row.specs?.headCount || row.quantity || 0);
+                    const avgW  = parseFloat(row.specs?.avgWeight || 45);
                     sv = heads * avgW * price;
                   } else {
                     sv = parseFloat(row.quantity || 0) * price;

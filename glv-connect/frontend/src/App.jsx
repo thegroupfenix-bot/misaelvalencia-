@@ -10,6 +10,7 @@ import { AdminUsers } from "./components/AdminUsers.jsx";
 import { CommercialEngine } from "./components/CommercialEngine.jsx";
 import { PriceCenterView, PriceCenterModal } from "./components/PriceCenterView.jsx";
 import MediaCenter from "./components/MediaCenter.jsx";
+import MediaPanel from "./components/MediaPanel.jsx";
 import { FinanceView } from "./components/FinanceView.jsx";
 import { TasksView } from "./components/TasksView.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
@@ -759,6 +760,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
   const [submitting, setSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState([]);
   const [showPriceCenter, setShowPriceCenter] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState({ selectedIds: [], layout: "grid-2" });
   const clientIdRef = useRef();
 
   useEffect(() => { commercialDataRef.current = commercialData; }, [commercialData]);
@@ -913,6 +915,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
         custom_unit: isCustomProduct ? form.customUnit : null,
         fco_confirmed: form.fcoConfirmed ? 1 : 0,
         commercial_data: Object.keys(commercialData).length > 0 ? commercialData : null,
+        selected_media: selectedMedia?.selectedIds?.length > 0 ? selectedMedia : null,
         client_id_doc_b64: form.clientIdDocB64,
       };
 
@@ -981,6 +984,7 @@ function NewDocForm({ type, user, setView, showNotif }) {
             </div>
             <CommercialEngine value={commercialData} onChange={setCommercialData} />
           </FormSection>
+          <MediaPanel category={effectiveProduct} onChange={setSelectedMedia} />
         </div>
         {showPriceCenter && <PriceCenterModal user={user} onClose={() => setShowPriceCenter(false)} />}
 
