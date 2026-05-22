@@ -1,11 +1,19 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
+# vips + pkg-config required for sharp@0.34.x native compilation in Nix environments
+nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake", "vips", "pkg-config"]
 
 [phases.install]
 cmds = ["npm install"]
 
 [phases.build]
-cmds = ["npm rebuild better-sqlite3"]
+cmds = [
+  # Rebuild native SQLite module against the current Node.js binary
+  "npm rebuild better-sqlite3",
+  # Build the React frontend (root dir = glv-connect/backend, so ../frontend is the frontend)
+  "cd ../frontend && npm ci && npm run build",
+  # Copy the Vite output into backend/public/ — where server.js expects it
+  "mkdir -p public && cp -r ../frontend/dist/. public/"
+]
 
 [start]
 cmd = "node server.js"
