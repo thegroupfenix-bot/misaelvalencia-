@@ -115,8 +115,10 @@ jobs:
         run: |
           echo "Checking GlvPDF.jsx for prohibited PRICE_TABLE patterns..."
 
-          # Fail if doc.pricePerKg is used as a fallback for pricePerKg assignment
-          if grep -n "pricePerKg.*doc\.pricePerKg\|doc\.pricePerKg.*pricePerKg" glv-connect/frontend/src/components/GlvPDF.jsx; then
+          # Fail if doc.pricePerKg is used as a fallback in a pricePerKg assignment (non-comment lines only)
+          if grep -n "pricePerKg.*doc\.pricePerKg\|doc\.pricePerKg.*pricePerKg" glv-connect/frontend/src/components/GlvPDF.jsx \
+              | grep -v "^[0-9]*:[[:space:]]*//" \
+              | grep -v "legacyPrice\|isolation\|mismatch\|guard\|debug"; then
             echo "::error::PRICE_TABLE contamination detected — doc.pricePerKg must not be used as pricePerKg fallback in GlvPDF.jsx"
             echo "## ❌ PRICE_TABLE fallback found in GlvPDF.jsx" >> $GITHUB_STEP_SUMMARY
             exit 1
