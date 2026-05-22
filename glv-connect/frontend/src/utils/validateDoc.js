@@ -6,9 +6,12 @@ export function validateDocForm(formData, agentProfile, docType, userRole) {
   // ─── Perfil del agente (solo para roles agentes, no admins/directores) ───────
   const requiresProfile = !userRole || AGENT_PROFILE_ROLES.has(userRole);
   if (requiresProfile) {
-    if (!agentProfile?.cargo) errors.push("Perfil: Cargo no completado");
-    if (!agentProfile?.phone) errors.push("Perfil: Teléfono no completado");
-    if (!agentProfile?.signature_b64) errors.push("Perfil: Firma digital no cargada");
+    // Short-circuit: server-side completion flag = never re-ask
+    if (agentProfile?.completed !== 1) {
+      // Minimum: phone + signature. Cargo is SUPER ADMIN managed — never block agents on cargo.
+      if (!agentProfile?.phone) errors.push("Perfil: Teléfono no completado — abre 'Mi Perfil' en el menú lateral");
+      if (!agentProfile?.signature_b64) errors.push("Perfil: Firma digital no cargada — abre 'Mi Perfil' en el menú lateral");
+    }
   }
 
   // ─── Cliente ─────────────────────────────────────────────────────────────────

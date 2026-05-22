@@ -742,10 +742,17 @@ function DocList({ type, user, setModal, setView, showNotif }) {
   );
 }
 
+const AGENT_PROFILE_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
+
 // ─── New Document Form ────────────────────────────────────────────────────────
 function NewDocForm({ type, user, setView, showNotif }) {
-  const { agentProfile } = useAuth();
+  const { agentProfile, refreshProfile } = useAuth();
   const [allDocs, setAllDocs] = useState([]);
+
+  // Always refresh profile on form mount — prevents stale agentProfile from blocking submission
+  useEffect(() => {
+    if (AGENT_PROFILE_ROLES.has(user?.role)) refreshProfile().catch(() => {});
+  }, []);
   const [commercialData, setCommercialData] = useState({});
   const commercialDataRef = useRef({});
   const [form, setFormState] = useState({
@@ -960,6 +967,21 @@ function NewDocForm({ type, user, setView, showNotif }) {
           <div>
             <p style={{ fontSize: 14, fontWeight: 600, color: "#92400e", margin: "0 0 4px" }}>Filtro CHINA activado</p>
             <p style={{ fontSize: 13, color: "#78350f", margin: 0 }}>Entidad exportadora bloqueada a <strong>GLV Services SAS (Colombia)</strong>. GACC No. YA11000PDY110K805 insertado automáticamente.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Profile status banner — only for agent roles, only when incomplete */}
+      {AGENT_PROFILE_ROLES.has(user?.role) && agentProfile !== null && agentProfile?.completed !== 1 && (
+        <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+          <i className="ti ti-user-exclamation" style={{ fontSize: 22, color: "#ea580c", flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#9a3412", margin: "0 0 2px" }}>Perfil incompleto — complétalo para emitir documentos</p>
+            <p style={{ fontSize: 12, color: "#7c2d12", margin: 0 }}>
+              {!agentProfile?.phone && "Falta teléfono. "}
+              {!agentProfile?.signature_b64 && "Falta firma digital. "}
+              Haz click en <strong>"Mi Perfil"</strong> en el menú lateral.
+            </p>
           </div>
         </div>
       )}

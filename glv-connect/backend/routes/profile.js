@@ -36,9 +36,10 @@ router.get("/me", (req, res) => {
 
 // PUT /profile/me
 router.put("/me", (req, res) => {
-  const { cargo, phone, country, languages, signature_b64, photo_b64, reg_number } = req.body;
+  const { cargo, phone, country, languages, signature_b64, photo_b64, reg_number, email, preferred_lang } = req.body;
 
-  const completed = (cargo && phone && country && signature_b64) ? 1 : 0;
+  // Completion requires phone + signature only — cargo is SUPER ADMIN managed
+  const completed = (phone && signature_b64) ? 1 : 0;
   const langsJson = Array.isArray(languages) ? JSON.stringify(languages) : (languages || "[]");
 
   const existing = db
@@ -62,12 +63,19 @@ router.put("/me", (req, res) => {
            signature_b64 || null, photo_b64 || null, reg_number || null, completed);
   }
 
+  // Update user-level fields: email, preferred_lang, profile_completed
+  const emailVal = email || null;
+  const langVal  = preferred_lang || null;
   if (completed) {
-    db.prepare("UPDATE users SET profile_completed = 1 WHERE id = ?").run(req.user.id);
+    db.prepare("UPDATE users SET profile_completed = 1, email = COALESCE(?, email), preferred_lang = COALESCE(?, preferred_lang) WHERE id = ?")
+      .run(emailVal, langVal, req.user.id);
+  } else {
+    db.prepare("UPDATE users SET email = COALESCE(?, email), preferred_lang = COALESCE(?, preferred_lang) WHERE id = ?")
+      .run(emailVal, langVal, req.user.id);
   }
 
   const updated = db.prepare("SELECT * FROM agent_profiles WHERE user_id = ?").get(req.user.id);
-  const user = db.prepare("SELECT id, username, name, email, role FROM users WHERE id = ?").get(req.user.id);
+  const user = db.prepare("SELECT id, username, name, email, role, preferred_lang FROM users WHERE id = ?").get(req.user.id);
 
   res.json({
     id: user.id,
@@ -75,6 +83,7 @@ router.put("/me", (req, res) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    preferred_lang: user.preferred_lang || "es",
     cargo: updated.cargo,
     phone: updated.phone,
     country: updated.country,

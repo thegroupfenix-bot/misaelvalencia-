@@ -23,6 +23,73 @@ const CATEGORY_RULES = {
 
 const BRANDING_CATS = ["branding","branding/logos","branding/templates","Branding","Corporativo","corporate"];
 
+// Hard exclusion keywords for PRODUCT (non-branding) assets per document category.
+// Prevents e.g. sheep images appearing in FRUIT_PRODUCTS SCOs.
+const PRODUCT_CATEGORY_EXCLUSIONS = {
+  FRUIT_PRODUCTS: [
+    "sheep","lamb","cattle","goat","livestock","ovino","bovino","caprino","ganado",
+    "cordero","animales","vivo","live","animal","ovejas","merino","dorper","santa",
+    "ines","boer","nelore","angus","brahman","hereford","corriedale","texel","suffolk",
+    "brangus","ganadero","poultry","chicken","pollo","ave","meat","carne","canned","enlatado",
+  ],
+  COLOMBIAN_EXOTIC_FRUITS: [
+    "sheep","lamb","cattle","livestock","ovino","bovino","ganado","cordero","live","animal",
+    "poultry","chicken","pollo","meat","carne","grain","grano","oil","aceite",
+  ],
+  LIVE_ANIMALS: [
+    "avocado","avoca","aguacate","avocaviva","fruta","fruit","mango","banana","citrus",
+    "citrico","uchuva","gulupa","pitahaya","exotic","exotico",
+    "grain","grano","oil","aceite","soy","soja","corn","maiz","bean","frijol",
+    "lentil","garbanzo","canned","enlatado","poultry","chicken","pollo",
+  ],
+  FROZEN_MEAT: [
+    "avocado","avoca","aguacate","avocaviva","fruta","fruit","mango","banana",
+    "grain","grano","oil","aceite","soy","soja","corn","maiz","sheep","lamb",
+    "ovino","ganado","live","vivo",
+  ],
+  FROZEN_POULTRY: [
+    "avocado","avoca","fruta","fruit","grain","grano","oil","aceite",
+    "sheep","lamb","ovino","ganado","live","vivo","cattle","bovino",
+  ],
+  COMMODITIES: [
+    "avocado","avoca","aguacate","fruta","fruit","mango","banana",
+    "sheep","lamb","cattle","livestock","ovino","bovino","ganado",
+    "poultry","chicken","pollo","canned","enlatado",
+  ],
+  BEANS: [
+    "avocado","avoca","fruta","fruit","sheep","lamb","cattle","livestock",
+    "poultry","chicken","canned","enlatado",
+  ],
+  CANNED_MEAT: [
+    "avocado","avoca","fruta","fruit","grain","grano","oil","aceite",
+    "sheep","lamb","ovino","ganado","live","vivo",
+  ],
+};
+
+/**
+ * Returns false if a PRODUCT (non-branding) asset contains keywords from a
+ * DIFFERENT category than the current document. Strict isolation:
+ * FRUIT_PRODUCTS can NEVER load LIVE_ANIMALS assets and vice-versa.
+ */
+function isProductCategoryCompatible(asset, category) {
+  if (!category || !PRODUCT_CATEGORY_EXCLUSIONS[category]) return true;
+  const exclusions = PRODUCT_CATEGORY_EXCLUSIONS[category];
+
+  const searchText = [
+    parseTags(asset.tags_json).join(" "),
+    asset.product_relation || "",
+    asset.original_name    || "",
+    asset.subcategory      || "",
+    asset.category         || "",
+  ].join(" ").toLowerCase();
+
+  const excluded = exclusions.some(kw => searchText.includes(kw.toLowerCase()));
+  if (excluded) {
+    console.log(`[media-bind] product asset #${asset.id} (${asset.original_name}) excluded — category mismatch for ${category}`);
+  }
+  return !excluded;
+}
+
 // Keywords that identify a branding asset as belonging to a SPECIFIC product category.
 // If a branding asset matches any of these for a category that is NOT the current document
 // category, it is excluded — preventing e.g. avocado brand logos from appearing in a
@@ -223,8 +290,15 @@ function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
     }
   }
 
+  // Hard-filter product assets by category compatibility before scoring
+  const compatibleProductAssets = category
+    ? productAssets.filter(a => isProductCategoryCompatible(a, category))
+    : productAssets;
+
+  console.log(`[media-bind] product pool — compatible: ${compatibleProductAssets.length}/${productAssets.length} for category ${category}`);
+
   // Score and sort product assets
-  let scoredProducts = productAssets.map(asset => ({
+  let scoredProducts = compatibleProductAssets.map(asset => ({
     asset,
     score: rule ? scoreAsset(asset, rule, category, origin) : 0,
   }));
