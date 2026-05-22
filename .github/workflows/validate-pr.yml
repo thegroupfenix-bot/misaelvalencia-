@@ -104,12 +104,64 @@ jobs:
             echo "## ✅ No critical files modified" >> $GITHUB_STEP_SUMMARY
           fi
 
-  # ── 2. Static analysis — formula isolation guard ───────────────────────────
+  # ── 2. Error Memory + Formula Isolation Guard ─────────────────────────────
   formula-isolation-check:
     name: Formula Isolation Guard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify ERROR_MEMORY.json exists and is valid JSON
+        run: |
+          if [ ! -f ERROR_MEMORY.json ]; then
+            echo "::error::ERROR_MEMORY.json not found — required for enterprise CI"
+            exit 1
+          fi
+          if ! python3 -c "import json,sys; json.load(open('ERROR_MEMORY.json'))" 2>&1; then
+            echo "::error::ERROR_MEMORY.json is not valid JSON"
+            exit 1
+          fi
+          COUNT=$(python3 -c "import json; d=json.load(open('ERROR_MEMORY.json')); print(len(d['errors']))")
+          echo "## ✅ ERROR_MEMORY.json valid — $COUNT error records" >> $GITHUB_STEP_SUMMARY
+
+      - name: Validate all prevention patterns from ERROR_MEMORY.json
+        run: |
+          echo "Running ERROR_MEMORY prevention manifest checks..."
+          FAILED=0
+
+          python3 << 'PYEOF'
+          import json, subprocess, sys
+
+          with open("ERROR_MEMORY.json") as f:
+            mem = json.load(f)
+
+          manifest = mem.get("prevention_ci_manifest", {}).get("patterns", [])
+          failed = []
+
+          for p in manifest:
+            fpath = p["file"]
+            pattern = p["must_contain"]
+            err_id = p["id"]
+            try:
+              with open(fpath) as fh:
+                content = fh.read()
+              if pattern not in content:
+                failed.append(f"{err_id}: '{pattern}' not found in {fpath}")
+                print(f"::error::{err_id} prevention pattern missing: '{pattern}' not in {fpath}")
+              else:
+                print(f"✅ {err_id}: '{pattern}' present in {fpath}")
+            except FileNotFoundError:
+              failed.append(f"{err_id}: file not found {fpath}")
+              print(f"::error::{err_id}: file not found {fpath}")
+
+          if failed:
+            print("\n::error::ERROR_MEMORY prevention patterns FAILED:")
+            for f in failed:
+              print(f"  - {f}")
+            sys.exit(1)
+          else:
+            print("\nAll ERROR_MEMORY prevention patterns verified.")
+          PYEOF
 
       - name: Check for PRICE_TABLE fallback contamination in GlvPDF.jsx
         run: |
@@ -135,33 +187,42 @@ jobs:
       - name: Check category-aware formula in GlvPDF.jsx
         run: |
           echo "Checking GlvPDF.jsx for category-isolated formula..."
-
-          # The fix: isLiveAnimalRow must gate head×weight formula
           if ! grep -n "isLiveAnimalRow" glv-connect/frontend/src/components/GlvPDF.jsx; then
             echo "::error::Category isolation variable 'isLiveAnimalRow' not found in GlvPDF.jsx — formula contamination risk"
             echo "## ❌ Missing category isolation in GlvPDF.jsx" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
           echo "## ✅ Category-aware formula guard present in GlvPDF.jsx" >> $GITHUB_STEP_SUMMARY
 
       - name: Check container type propagation
         run: |
-          echo "Checking container type implementation..."
-
-          if ! grep -n "containerType" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+          if ! grep -q "containerType" glv-connect/frontend/src/components/CommercialEngine.jsx; then
             echo "::error::containerType not found in CommercialEngine.jsx"
-            echo "## ❌ Container type system missing from CommercialEngine.jsx" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
-          if ! grep -n "containerType\|CONTAINER_LABELS" glv-connect/frontend/src/components/GlvPDF.jsx; then
+          if ! grep -q "containerType\|CONTAINER_LABELS" glv-connect/frontend/src/components/GlvPDF.jsx; then
             echo "::error::containerType display not found in GlvPDF.jsx"
-            echo "## ❌ Container type not rendered in PDF" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+          echo "## ✅ Container type system present" >> $GITHUB_STEP_SUMMARY
 
-          echo "## ✅ Container type system present in CommercialEngine.jsx and GlvPDF.jsx" >> $GITHUB_STEP_SUMMARY
+      - name: Check media category isolation (product assets)
+        run: |
+          if ! grep -q "isProductCategoryCompatible\|PRODUCT_CATEGORY_EXCLUSIONS" glv-connect/backend/services/mediaBinding.js; then
+            echo "::error::ERR-007: isProductCategoryCompatible not found — FRUIT_PRODUCTS can still show livestock images"
+            echo "## ❌ Product category isolation missing from mediaBinding.js" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "## ✅ Product category isolation present in mediaBinding.js" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check profile validation short-circuit
+        run: |
+          if ! grep -q "completed.*!== 1\|completed !== 1\|completed === 1" glv-connect/frontend/src/utils/validateDoc.js; then
+            echo "::error::ERR-008: Profile completed short-circuit not found in validateDoc.js — agents will be stuck in validation loop"
+            echo "## ❌ Profile completion short-circuit missing from validateDoc.js" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "## ✅ Profile completion short-circuit present in validateDoc.js" >> $GITHUB_STEP_SUMMARY
 
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
