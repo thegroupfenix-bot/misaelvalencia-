@@ -598,7 +598,10 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))", gap: 10 }}>
         {hasPrice && <MiniBox label="Precio / kg" value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />}
-        {hasQty && !isLive && <MiniBox label={`Cantidad (${unitType || "unid."})`} value={fmtNum(parseFloat(qty))} />}
+        {hasQty && !isLive && <MiniBox label={`Cantidad (${unitType?.split("/")[0].trim() || "unid."})`} value={fmtNum(parseFloat(qty))} />}
+        {hasQty && !isLive && (unitType?.includes("MT") || unitType?.includes("Tonelada")) && (
+          <MiniBox label="Peso Total (kg)" value={fmtNum(parseFloat(qty) * 1000) + " kg"} />
+        )}
 
         {/* LIVE_ANIMALS specific fields */}
         {isLive && hasQty && <MiniBox label="Cabezas / Embarque" value={fmtNum(parseFloat(qty))} />}

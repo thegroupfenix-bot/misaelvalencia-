@@ -185,3 +185,15 @@ export function fmtNum(value, decimals = 0) {
   if (!value && value !== 0) return "—";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: decimals }).format(value);
 }
+
+/**
+ * Convert a quantity to kg based on the unit type string.
+ * MT/Tonelada → qty × 1000; Container/Contenedor → qty × 27,000; else identity.
+ */
+export function normalizeToKg(qty, unitType) {
+  const q = parseFloat(qty) || 0;
+  if (!q) return 0;
+  if (unitType?.includes("Container") || unitType?.includes("Contenedor")) return q * 27 * 1000;
+  if (unitType?.includes("MT") || unitType?.includes("Tonelada")) return q * 1000;
+  return q;
+}

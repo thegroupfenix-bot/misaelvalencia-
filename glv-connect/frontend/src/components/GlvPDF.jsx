@@ -34,6 +34,7 @@ const PDF_T = {
     transit_lbl:    "Estimated Transit",
     heads_lbl:      "Number of Heads",
     weight_lbl:     "Average Weight Reference",
+    qty_lbl:        "Quantity",
     price_lbl:      "CFR Price (USD/kg)",
     total_kg_lbl:   "Estimated Total Weight",
     shipment_val_lbl: "Value per Shipment / Lot",
@@ -181,6 +182,7 @@ PDF_T.es = {
   transit_lbl:  "Tránsito estimado",
   heads_lbl:    "Número de Cabezas",
   weight_lbl:   "Peso Promedio Referencia",
+  qty_lbl:      "Cantidad",
   price_lbl:    "Precio CFR (USD/kg)",
   total_kg_lbl: "Peso Total Estimado",
   shipment_val_lbl: "Valor por Embarque / Lote",
@@ -346,14 +348,17 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     : 0;
   // Direct quantity for non-livestock categories (kg, MT, units — whatever was entered)
   const engineQty = isLiveAnimalRow ? 0 : parseFloat(firstCdRow.quantity || 0);
+  // Unit type string e.g. "MT / Toneladas Métricas", "KG / Kilogramos"
+  const engineUnitType = firstCdRow.unitType || "";
+  const isMT = engineUnitType.includes("MT") || engineUnitType.includes("Tonelada");
 
   // pricePerKg — CommercialEngine ONLY. doc.pricePerKg is PRICE_TABLE-contaminated at save time.
   const pricePerKg = engineUnitPrice || null;
 
-  // totalKg — category-isolated: live animals use head×weight; all others use direct quantity
-  const totalKg = isLiveAnimalRow
+  // totalKgDisplay — live animals: head×weight; food/commodity: MT→kg conversion applied
+  const totalKgDisplay = isLiveAnimalRow
     ? (engineHeads * engineAvgW)
-    : engineQty;
+    : (isMT ? engineQty * 1000 : engineQty);
 
   // Contract value: CommercialEngine summary first, then category-aware recompute, then doc fallback
   let engineContractValue = cdRows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
@@ -709,21 +714,25 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         )}
 
         <View style={s.grid}>
-          {isLivestock(productCategory) && (engineHeads > 0 || doc.headcount) && (
+          {isLiveAnimalRow && (engineHeads > 0 || doc.headcount) && (
             <BiInfoBox esLabel={L.heads_lbl}
               value={new Intl.NumberFormat().format(engineHeads || doc.headcount)} />
           )}
-          {isLivestock(productCategory) && (engineAvgW > 0 || doc.avgWeight) && (
+          {isLiveAnimalRow && (engineAvgW > 0 || doc.avgWeight) && (
             <BiInfoBox esLabel={L.weight_lbl}
               value={`${engineAvgW || doc.avgWeight} kg`} />
+          )}
+          {!isLiveAnimalRow && engineQty > 0 && (
+            <BiInfoBox esLabel={L.qty_lbl}
+              value={`${new Intl.NumberFormat().format(engineQty)} ${engineUnitType.split("/")[0].trim() || "unid."}`} />
           )}
           {pricePerKg && (
             <BiInfoBox esLabel={L.price_lbl}
               value={`USD ${Number(pricePerKg).toFixed(2)}/kg`} />
           )}
-          {totalKg > 0 && (
+          {totalKgDisplay > 0 && (
             <BiInfoBox esLabel={L.total_kg_lbl}
-              value={`${new Intl.NumberFormat().format(totalKg)} kg`} />
+              value={`${new Intl.NumberFormat().format(totalKgDisplay)} kg`} />
           )}
           <BiInfoBox esLabel={L.currency_lbl}
             value={doc.commercialData?.currency || doc.commercial_data?.currency || "USD — Dólares Americanos"} />
