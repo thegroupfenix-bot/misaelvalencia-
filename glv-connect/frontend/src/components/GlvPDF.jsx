@@ -830,6 +830,25 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 }
 
 export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
+  // ── Destination / port / media isolation log ──────────────────────────────────
+  console.log("[GLV-PDF] Pre-render isolation state —", doc.id, {
+    destination:    doc.destination,
+    cdDestination:  doc.commercialData?.destination || doc.commercial_data?.destination,
+    cdPort:         doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort,
+    portFallback:   findPortInfo(doc.destination)?.port || null,
+    category:       doc.commercialData?.category || doc.commercial_data?.category || doc.product,
+    media: {
+      main:      !!boundMedia?.main,
+      mainLen:   boundMedia?.main?.length || 0,
+      sec:       (boundMedia?.secondary || []).length,
+      branding:  !!boundMedia?.branding,
+      metaIds: {
+        main:    boundMedia?.meta?.main?.id,
+        sec:     (boundMedia?.meta?.secondary || []).map(a => a?.id),
+        brand:   boundMedia?.meta?.branding?.[0]?.id,
+      },
+    },
+  });
   // ── Pre-render state validation ───────────────────────────────────────────────
   try {
     const cd = doc.commercialData || doc.commercial_data;

@@ -192,10 +192,14 @@ function Portal() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [newDocKey, setNewDocKey] = useState(0);
 
-  // Force-remount NewDocForm whenever user navigates to a new-* view
-  useEffect(() => {
-    if (view?.startsWith("new-")) setNewDocKey(k => k + 1);
-  }, [view]);
+  // safeSetView guarantees NewDocForm remounts on EVERY new-* navigation,
+  // even when the current view is already that same new-* route (e.g. user
+  // clicks "Nueva SCO" while already on the new-sco form). The old useEffect
+  // approach silently skipped re-mount when view didn't change value.
+  const safeSetView = (newView) => {
+    if (newView?.startsWith("new-")) setNewDocKey(k => k + 1);
+    setView(newView);
+  };
 
   const showNotif = (msg, type = "success") => {
     setNotification({ msg, type });
@@ -207,7 +211,7 @@ function Portal() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-background-tertiary)", fontFamily: "var(--font-sans)" }}>
-      <Sidebar user={user} view={view} setView={setView} onLogout={logout} lang={lang} setLang={setLang} onOpenProfile={() => setShowProfileSettings(true)} />
+      <Sidebar user={user} view={view} setView={safeSetView} onLogout={logout} lang={lang} setLang={setLang} onOpenProfile={() => setShowProfileSettings(true)} />
       {showProfileSettings && (
         <ProfileModal
           user={user}
@@ -218,12 +222,12 @@ function Portal() {
       )}
       <main style={{ flex: 1, padding: "2rem", overflowY: "auto" }}>
         {notification && <Notification msg={notification.msg} type={notification.type} />}
-        {view === "dashboard"    && <Dashboard user={user} setView={setView} setModal={setModal} />}
-        {view === "sco"          && <DocList type="SCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "fco"          && <DocList type="FCO" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "spa"          && isDirector && <DocList type="SPA" user={user} setModal={setModal} setView={setView} showNotif={showNotif} />}
-        {view === "operations"         && <OperationsView user={user} setView={setView} showNotif={showNotif} />}
-        {view?.startsWith?.("op-detail:") && <OperationDetail opId={view.split(":")[1]} user={user} setView={setView} showNotif={showNotif} />}
+        {view === "dashboard"    && <Dashboard user={user} setView={safeSetView} setModal={setModal} />}
+        {view === "sco"          && <DocList type="SCO" user={user} setModal={setModal} setView={safeSetView} showNotif={showNotif} />}
+        {view === "fco"          && <DocList type="FCO" user={user} setModal={setModal} setView={safeSetView} showNotif={showNotif} />}
+        {view === "spa"          && isDirector && <DocList type="SPA" user={user} setModal={setModal} setView={safeSetView} showNotif={showNotif} />}
+        {view === "operations"         && <OperationsView user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view?.startsWith?.("op-detail:") && <OperationDetail opId={view.split(":")[1]} user={user} setView={safeSetView} showNotif={showNotif} />}
         {view === "clients"      && <ClientsView user={user} showNotif={showNotif} />}
         {view === "finance"      && isDirector && <FinanceView showNotif={showNotif} />}
         {view === "price-center"  && <PriceCenterView user={user} />}
@@ -233,9 +237,9 @@ function Portal() {
         {view === "usuarios"     && isDirector && <UsersPanel />}
         {view === "admin-users"  && isAdmin    && <AdminUsers showNotif={showNotif} />}
         {view === "admin-images" && isAdmin    && <ImageAdmin showNotif={showNotif} />}
-        {view === "new-sco"      && <NewDocForm key={newDocKey} type="SCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-fco"      && <NewDocForm key={newDocKey} type="FCO" user={user} setView={setView} showNotif={showNotif} />}
-        {view === "new-spa"      && isDirector && <NewDocForm key={newDocKey} type="SPA" user={user} setView={setView} showNotif={showNotif} />}
+        {view === "new-sco"      && <NewDocForm key={newDocKey} type="SCO" user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view === "new-fco"      && <NewDocForm key={newDocKey} type="FCO" user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view === "new-spa"      && isDirector && <NewDocForm key={newDocKey} type="SPA" user={user} setView={safeSetView} showNotif={showNotif} />}
       </main>
       {modal && <DocPreviewModal doc={modal} onClose={() => setModal(null)} />}
     </div>
@@ -1988,9 +1992,31 @@ function DocPreviewModal({ doc, onClose }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadLabel, setDownloadLabel] = useState("PDF");
   const [pdfLang, setPdfLang] = useState("es");
+  const [genError, setGenError] = useState(null);
   const isChina = (doc.destination || "").toLowerCase().includes("china");
 
   const handleDownload = async () => {
+    setGenError(null);
+    // ── Pre-generation isolation validation ──────────────────────────────────
+    const docDest    = doc.destination || "";
+    const cdDest     = doc.commercialData?.destination || doc.commercial_data?.destination || "";
+    const cdPort     = doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || "";
+    const cdCategory = doc.commercialData?.category || doc.commercial_data?.category || doc.productCategory || doc.product_category || "";
+    const cdProduct  = doc.commercialData?.product  || doc.commercial_data?.product  || doc.product || "";
+    console.log("[GLV-PDF] Generation guard —", doc.id, {
+      destination: docDest, cdDestination: cdDest, cdPort, cdCategory, cdProduct,
+    });
+    if (!docDest) {
+      console.error("[GLV-PDF] ABORT: document has no destination country");
+      setGenError("No hay destino seleccionado. No se puede generar el PDF.");
+      return;
+    }
+    if (cdDest && cdDest !== docDest) {
+      console.error("[GLV-PDF] ABORT: destination mismatch — doc.destination:", docDest, "vs commercialData.destination:", cdDest);
+      setGenError(`Error de estado: destino guardado "${docDest}" no coincide con datos comerciales "${cdDest}". Regenere el documento.`);
+      return;
+    }
+    // ────────────────────────────────────────────────────────────────────────
     setDownloading(true);
     setDownloadLabel("Preparando imágenes...");
     let boundMedia = null;
@@ -2072,6 +2098,11 @@ function DocPreviewModal({ doc, onClose }) {
           </div>
         )}
 
+        {genError && (
+          <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#991b1b" }}>
+            <i className="ti ti-alert-circle" style={{ marginRight: 6, verticalAlign: -2 }} />{genError}
+          </div>
+        )}
         <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14 }}>
           <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
             <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0 }}>
