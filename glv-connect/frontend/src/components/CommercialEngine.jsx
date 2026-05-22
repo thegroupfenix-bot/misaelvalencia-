@@ -21,7 +21,7 @@ const s = {
 
 let _rid = 1;
 function newRowData() {
-  return { id: _rid++, category: "", product: "", specs: {}, quantity: "", unitType: "", incoterms: ["CFR"], incotermPrices: {}, unitPrice: "", currency: "USD", deliveryFrequency: "ONE_SHIPMENT", numShipments: "1", contractDuration: "12", containerCapacity: "", origin: "Brazil" };
+  return { id: _rid++, category: "", product: "", specs: {}, quantity: "", unitType: "", incoterms: ["CFR"], incotermPrices: {}, unitPrice: "", currency: "USD", deliveryFrequency: "ONE_SHIPMENT", numShipments: "1", contractDuration: "12", containerCapacity: "", containerType: "", origin: "Brazil" };
 }
 
 // ─── Field helpers ────────────────────────────────────────────────────────────
@@ -211,6 +211,59 @@ function LivestockBreedSelector({ origin, specs, setSpecs }) {
   );
 }
 
+// ─── Container Type Selector ──────────────────────────────────────────────────
+const CONTAINER_TYPES = [
+  { id: "20FT",            label: "20FT Dry",        desc: "~26 MT" },
+  { id: "40FT",            label: "40FT Dry",        desc: "~28 MT" },
+  { id: "40HC",            label: "40HC Dry",        desc: "~28.5 MT (high cube)" },
+  { id: "REEFER_20",       label: "Reefer 20FT",     desc: "Refrigerado 20FT" },
+  { id: "REEFER_40",       label: "Reefer 40FT",     desc: "Refrigerado 40FT" },
+  { id: "FLEXITANK",       label: "Flexitank",       desc: "Granel líquido" },
+  { id: "ISO_TANK",        label: "ISO Tank",        desc: "Tanque líquidos/gases" },
+  { id: "BULK_VESSEL",     label: "Bulk Vessel",     desc: "Buque a granel" },
+  { id: "LIVESTOCK_VESSEL",label: "Livestock Vessel",desc: "Buque ganadero" },
+  { id: "AIR_CARGO",       label: "Air Cargo",       desc: "Carga aérea" },
+];
+
+// Suggest default container type based on cargo category
+function defaultContainerForCategory(cat) {
+  if (cat === "LIVE_ANIMALS")                              return "LIVESTOCK_VESSEL";
+  if (["FROZEN_MEAT","FROZEN_POULTRY"].includes(cat))      return "REEFER_40";
+  if (["FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS","CANNED_MEAT"].includes(cat)) return "REEFER_40";
+  if (["COMMODITIES","BEANS"].includes(cat))               return "BULK_VESSEL";
+  return "40FT";
+}
+
+function ContainerTypeSelector({ value, onChange, category }) {
+  useEffect(() => {
+    if (!value && category) onChange(defaultContainerForCategory(category));
+  }, [category]);
+
+  const selected = value || (category ? defaultContainerForCategory(category) : "");
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={s.label}>Tipo de Contenedor / Vessel</label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {CONTAINER_TYPES.map(ct => {
+          const active = selected === ct.id;
+          return (
+            <button key={ct.id} type="button" onClick={() => onChange(ct.id)}
+              title={ct.desc}
+              style={{ padding: "5px 12px", borderRadius: 20, border: active ? "2px solid #1B2A4A" : "1px solid #d1d5db", background: active ? "#1B2A4A" : "#f9fafb", color: active ? "#fff" : "#374151", fontSize: 11, cursor: "pointer", fontWeight: active ? 600 : 400 }}>
+              {ct.label}
+            </button>
+          );
+        })}
+      </div>
+      {selected && (() => {
+        const ct = CONTAINER_TYPES.find(c => c.id === selected);
+        return ct ? <p style={{ fontSize: 11, color: "#6b7280", margin: "4px 0 0" }}>{ct.label} — {ct.desc}</p> : null;
+      })()}
+    </div>
+  );
+}
+
 // ─── Cargo Type Selector ──────────────────────────────────────────────────────
 function CargoTypeSelector({ value, onChange, category }) {
   const defaultCargo = category === "LIVE_ANIMALS" ? "Live Animals"
@@ -315,6 +368,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   const [numShipments, setNumShipments] = useState(initial?.numShipments || "1");
   const [duration, setDuration] = useState(initial?.contractDuration || "12");
   const [containerCap, setContainerCap] = useState("");
+  const [containerType, setContainerType] = useState(initial?.containerType || "");
   const [origin, setOrigin] = useState(initial?.origin || "Brazil");
   const [cargoType, setCargoType] = useState(initial?.cargoType || "");
   const [collapsed, setCollapsed] = useState(false);
@@ -346,8 +400,8 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   }) : null;
 
   useEffect(() => {
-    onChange(rowId, { category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices, unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments, contractDuration: duration, containerCapacity: containerCap, origin, cargoType, summary });
-  }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency, frequency, numShipments, duration, containerCap, origin]);
+    onChange(rowId, { category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices, unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments, contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType, summary });
+  }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency, frequency, numShipments, duration, containerCap, containerType, origin]);
 
   return (
     <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
@@ -422,6 +476,9 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 
           {/* Cargo type selector */}
           {cat && <CargoTypeSelector value={cargoType} onChange={setCargoType} category={cat} />}
+
+          {/* Container / vessel type selector */}
+          {cat && <ContainerTypeSelector value={containerType} onChange={setContainerType} category={cat} />}
 
           {/* Quantity + Unit + Currency */}
           {cat && (
