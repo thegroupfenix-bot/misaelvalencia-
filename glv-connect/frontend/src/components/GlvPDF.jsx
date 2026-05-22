@@ -36,7 +36,8 @@ const PDF_T = {
     weight_lbl:     "Average Weight Reference",
     price_lbl:      "CFR Price (USD/kg)",
     total_kg_lbl:   "Estimated Total Weight",
-    total_val_lbl:  "Total Reference Value",
+    shipment_val_lbl: "Value per Shipment / Lot",
+    total_val_lbl:  "Total Contract Value",
     currency_lbl:   "Currency",
     validity_lbl:   "Offer Validity",
     sblc_lbl:       "SBLC / Guarantee Entity",
@@ -182,7 +183,8 @@ PDF_T.es = {
   weight_lbl:   "Peso Promedio Referencia",
   price_lbl:    "Precio CFR (USD/kg)",
   total_kg_lbl: "Peso Total Estimado",
-  total_val_lbl:"Valor Total Referencial",
+  shipment_val_lbl: "Valor por Embarque / Lote",
+  total_val_lbl:"Valor Total del Contrato",
   currency_lbl: "Moneda",
   validity_lbl: "Validez de la Oferta",
   sblc_lbl:     "Entidad SBLC / Garantía",
@@ -349,6 +351,15 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     engineContractValue = mV * dur;
   }
   const totalValue = engineContractValue || parseFloat(doc.totalValue) || null;
+
+  // Shipment value = value for a single delivery/lot — the primary operational figure.
+  // Read from row summary first; recompute from head×weight×price if missing.
+  const engineShipmentValue =
+    cdRows.reduce((s, r) => s + (r.summary?.shipmentValue || 0), 0) ||
+    (engineHeads > 0 && engineAvgW > 0 && engineUnitPrice > 0
+      ? engineHeads * engineAvgW * engineUnitPrice
+      : 0);
+
   const validityDays = doc.validityDays || doc.validity_days || 15;
   const productCategory = doc.product || "";
 
@@ -647,6 +658,31 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 3: Price */}
         <SectionTitle text={L.price} />
+
+        {/* Shipment value — primary operational figure, displayed prominently above the grid */}
+        {engineShipmentValue > 0 && (
+          <View style={{ backgroundColor: "#1e3a5f", borderRadius: 8, padding: "12 14", marginBottom: 10 }}>
+            <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.65)", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+              {L.shipment_val_lbl}
+            </Text>
+            <Text style={{ fontSize: 18, color: "#ffffff", fontWeight: "bold" }}>
+              {fmtCurrency(engineShipmentValue)}
+            </Text>
+          </View>
+        )}
+
+        {/* Total contract value — full-width secondary card when shipment value is also shown */}
+        {totalValue && totalValue > 0 && (engineShipmentValue <= 0 || Math.abs(totalValue - engineShipmentValue) > 1) && (
+          <View style={{ backgroundColor: "#f0fdf4", borderRadius: 8, padding: "10 12", marginBottom: 10, borderWidth: 0.5, borderColor: "#86efac" }}>
+            <Text style={{ fontSize: 7.5, color: "#166534", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+              {L.total_val_lbl}
+            </Text>
+            <Text style={{ fontSize: 14, color: "#059669", fontWeight: "bold" }}>
+              {fmtCurrency(totalValue)}
+            </Text>
+          </View>
+        )}
+
         <View style={s.grid}>
           {isLivestock(productCategory) && (engineHeads > 0 || doc.headcount) && (
             <BiInfoBox esLabel={L.heads_lbl}
@@ -663,10 +699,6 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           {totalKg > 0 && (
             <BiInfoBox esLabel={L.total_kg_lbl}
               value={`${new Intl.NumberFormat().format(totalKg)} kg`} />
-          )}
-          {totalValue && (
-            <BiInfoBox esLabel={L.total_val_lbl}
-              value={fmtCurrency(totalValue)} style={{ backgroundColor: "#f0fdf4" }} highlight />
           )}
           <BiInfoBox esLabel={L.currency_lbl}
             value={doc.commercialData?.currency || doc.commercial_data?.currency || "USD — Dólares Americanos"} />

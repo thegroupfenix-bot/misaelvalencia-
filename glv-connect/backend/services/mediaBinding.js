@@ -23,6 +23,23 @@ const CATEGORY_RULES = {
 
 const BRANDING_CATS = ["branding","branding/logos","branding/templates","Branding","Corporativo","corporate"];
 
+// Keywords that identify a branding asset as belonging to a SPECIFIC product category.
+// If a branding asset matches any of these for a category that is NOT the current document
+// category, it is excluded — preventing e.g. avocado brand logos from appearing in a
+// LIVE_ANIMALS SCO.
+const BRANDING_EXCLUSION_KEYWORDS = {
+  LIVE_ANIMALS:           ["avocado","avoca","aguacate","avocaviva","fruta","fruit","mango","banana","citrus","citrico",
+                           "grain","grano","oil","aceite","soy","soja","corn","maiz","canned","enlatado"],
+  FRUIT_PRODUCTS:         ["livestock","sheep","ganado","ovino","bovino","cattle","goat","cordero","animales","vivo",
+                           "grain","grano","oil","aceite","soy","soja"],
+  COLOMBIAN_EXOTIC_FRUITS:["livestock","sheep","ganado","ovino","cattle","grain","grano","oil","aceite"],
+  COMMODITIES:            ["avocado","avoca","aguacate","avocaviva","fruit","fruta","livestock","sheep","ganado","ovino","bovino"],
+  FROZEN_MEAT:            ["avocado","avoca","aguacate","avocaviva","fruit","fruta","grain","grano","oil","aceite"],
+  BEANS:                  ["avocado","avoca","fruit","fruta","livestock","sheep","ganado","grain","oil"],
+  CANNED_MEAT:            ["avocado","avoca","fruit","fruta","grain","grano","oil","aceite"],
+  FROZEN_POULTRY:         ["avocado","avoca","fruit","fruta","grain","grano","livestock","sheep","ovino"],
+};
+
 /**
  * Safely parse a JSON array stored as text. Returns [] on any failure.
  * @param {string|null} raw
@@ -140,6 +157,33 @@ function projectAsset(asset) {
 }
 
 /**
+ * Returns false if a branding asset contains product-specific keywords that belong to a
+ * DIFFERENT category than the current document. This prevents e.g. an avocado brand logo
+ * from appearing inside a LIVE_ANIMALS SCO.
+ *
+ * "Generic" branding (GLV corporate identity, no product keywords) always passes.
+ */
+function isBrandingCompatible(asset, category) {
+  if (!category || !BRANDING_EXCLUSION_KEYWORDS[category]) return true;
+  const exclusions = BRANDING_EXCLUSION_KEYWORDS[category];
+
+  // Build searchable text from asset metadata (NOT the asset.category field — that is
+  // already "branding/*" and is what put it in the branding pool in the first place).
+  const searchText = [
+    parseTags(asset.tags_json).join(" "),
+    asset.product_relation || "",
+    asset.original_name    || "",
+    asset.subcategory      || "",
+  ].join(" ").toLowerCase();
+
+  const excluded = exclusions.some(kw => searchText.includes(kw.toLowerCase()));
+  if (excluded) {
+    console.log(`[media-bind] branding asset #${asset.id} (${asset.original_name}) excluded — category mismatch for ${category}`);
+  }
+  return !excluded;
+}
+
+/**
  * Main binding function.
  *
  * @param {import('better-sqlite3').Database} db
@@ -193,23 +237,52 @@ function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
   const main      = topProducts.length > 0 ? projectAsset(topProducts[0].asset) : null;
   const secondary = topProducts.slice(1, 5).map(s => projectAsset(s.asset));
 
-  // Score and sort branding assets (same origin bonus applies)
-  let scoredBranding = brandingAssets.map(asset => {
+  // Filter branding to only assets compatible with the current document category,
+  // then score them with origin bonus and category-affinity bonus.
+  const compatibleBrandingAssets = category
+    ? brandingAssets.filter(a => isBrandingCompatible(a, category))
+    : brandingAssets;
+
+  let scoredBranding = compatibleBrandingAssets.map(asset => {
     let score = 0;
+    const assetText = [
+      parseTags(asset.tags_json).join(" "),
+      asset.product_relation || "",
+      asset.original_name    || "",
+      asset.subcategory      || "",
+    ].join(" ").toLowerCase();
+
+    // +5 origin match
     if (origin && asset.country_origin &&
         asset.country_origin.toLowerCase() === origin.toLowerCase()) score += 5;
-    const at = parseTags(asset.tags_json);
+
+    // +3 per tag matching origin
     if (origin) {
       const ol = origin.toLowerCase();
-      for (const t of at) {
+      for (const t of parseTags(asset.tags_json)) {
         if (t.toLowerCase().includes(ol) || ol.includes(t.toLowerCase())) score += 3;
       }
     }
+
+    // +10 / +8 category-affinity: branding that explicitly matches current category
+    if (rule) {
+      if (rule.tags.some(t => assetText.includes(t.toLowerCase()))) score += 10;
+      if (rule.cats.some(c => assetText.includes(c.toLowerCase()))) score += 8;
+    }
+
+    // +3 generic GLV corporate identity bonus
+    if (["glv","corporate","corporativo","oficial","general"].some(k => assetText.includes(k))) score += 3;
+
+    // +2 public visibility
     if (asset.visibility === 'public') score += 2;
+
     return { asset, score };
   });
 
   scoredBranding.sort((a, b) => b.score - a.score);
+
+  console.log(`[media-bind] branding pool — compatible: ${compatibleBrandingAssets.length}/${brandingAssets.length} | selected: ${JSON.stringify(scoredBranding.slice(0,2).map(s => ({ id: s.asset.id, name: s.asset.original_name, score: s.score })))}`);
+
   const branding = scoredBranding.slice(0, 2).map(s => projectAsset(s.asset));
 
   return {
