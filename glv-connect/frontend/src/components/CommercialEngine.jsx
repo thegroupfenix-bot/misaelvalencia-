@@ -47,6 +47,10 @@ function CountrySearch({ value, onChange }) {
   const [results, setResults] = useState([]);
   const ref = useRef();
 
+  // Sync the visible input text whenever the parent resets the value (e.g. on remount
+  // or when the parent clears the destination after a stale-state reset).
+  useEffect(() => { setQuery(value || ""); }, [value]);
+
   useEffect(() => { setResults(query.length > 0 ? searchCountries(query).slice(0, 8) : []); }, [query]);
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
