@@ -1,0 +1,146 @@
+name: GLV-Connect PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── 1. Detect critical file modifications ──────────────────────────────────
+  critical-file-check:
+    name: Critical File Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect critical file changes
+        id: critical
+        run: |
+          CHANGED=$(git diff --name-only origin/main...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          CRITICAL_FILES=(
+            "glv-connect/frontend/src/components/CommercialEngine.jsx"
+            "glv-connect/frontend/src/components/GlvPDF.jsx"
+            "glv-connect/frontend/src/utils/calculations.js"
+            "glv-connect/frontend/src/services/mediaAutoBinding.js"
+            "glv-connect/frontend/src/App.jsx"
+            "glv-connect/backend/server.js"
+            "glv-connect/backend/nixpacks.toml"
+            "glv-connect/backend/railway.toml"
+            "glv-connect/backend/db/database.js"
+            "glv-connect/backend/routes/documents.js"
+            "glv-connect/backend/routes/media.js"
+          )
+
+          HITS=""
+          for f in "${CRITICAL_FILES[@]}"; do
+            if echo "$CHANGED" | grep -qF "$f"; then
+              HITS="$HITS\n⚠️  $f"
+            fi
+          done
+
+          if [ -n "$HITS" ]; then
+            echo "critical_modified=true" >> $GITHUB_OUTPUT
+            {
+              echo "## ⚠️ CRITICAL FILES MODIFIED"
+              echo ""
+              echo "This PR modifies files that are part of the protected stable core:"
+              echo ""
+              echo -e "$HITS"
+              echo ""
+              echo "**Before merging, manually verify ALL of the following:**"
+              echo "- [ ] SCO generation produces correct PDF"
+              echo "- [ ] FCO generation produces correct PDF"
+              echo "- [ ] EN language renders entire document in English"
+              echo "- [ ] ES language renders entire document in Spanish"
+              echo "- [ ] Commercial totals: headCount × avgWeight × price is exact"
+              echo "- [ ] Destination country and port are correct in PDF"
+              echo "- [ ] No stale state between consecutive SCO/FCO forms"
+              echo "- [ ] Railway build succeeds (check Railway dashboard)"
+              echo "- [ ] /health endpoint returns ok:true after deploy"
+              echo "- [ ] Login and authentication work"
+              echo "- [ ] Profile update works"
+              echo "- [ ] Media/livestock images appear in PDF"
+            } >> $GITHUB_STEP_SUMMARY
+            echo "::warning::CRITICAL FILES modified in this PR — full manual validation required before merge"
+          else
+            echo "critical_modified=false" >> $GITHUB_OUTPUT
+            echo "## ✅ No critical files modified" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ── 2. Frontend build verification ────────────────────────────────────────
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: glv-connect/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: glv-connect/frontend
+        run: npm ci
+
+      - name: Build frontend (Vite)
+        working-directory: glv-connect/frontend
+        env:
+          VITE_API_URL: https://misaelvalencia-production.up.railway.app
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          if [ ! -f glv-connect/frontend/dist/index.html ]; then
+            echo "::error::Frontend build did not produce dist/index.html"
+            exit 1
+          fi
+          SIZE=$(du -sh glv-connect/frontend/dist | cut -f1)
+          echo "Frontend build size: $SIZE"
+          echo "## ✅ Frontend build succeeded — dist size: $SIZE" >> $GITHUB_STEP_SUMMARY
+
+  # ── 3. Backend dependency check ────────────────────────────────────────────
+  backend-deps:
+    name: Backend Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: glv-connect/backend/package-lock.json
+
+      - name: Install backend dependencies (scripts disabled for CI speed)
+        working-directory: glv-connect/backend
+        run: npm install --ignore-scripts
+
+      - name: Verify server.js entry point exists
+        run: |
+          if [ ! -f glv-connect/backend/server.js ]; then
+            echo "::error::server.js not found — deploy will fail"
+            exit 1
+          fi
+          echo "## ✅ Backend dependencies installed, server.js present" >> $GITHUB_STEP_SUMMARY
+
+  # ── 4. Branch naming enforcement ──────────────────────────────────────────
+  branch-policy:
+    name: Branch Policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce branch naming convention
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "PR branch: $BRANCH"
+          if echo "$BRANCH" | grep -qE '^(feature/|fix/|staging/|hotfix/)'; then
+            echo "## ✅ Branch name follows policy: $BRANCH" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "::warning::Branch '$BRANCH' does not follow naming convention (feature/*, fix/*, staging/*, hotfix/*)"
+            echo "## ⚠️ Branch naming: $BRANCH does not follow feature/*, fix/*, staging/* convention" >> $GITHUB_STEP_SUMMARY
+          fi
