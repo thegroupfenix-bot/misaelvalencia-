@@ -3,6 +3,7 @@ import { PRODUCT_CATEGORIES, DELIVERY_FREQUENCIES, CURRENCIES, INCOTERMS } from 
 import { searchCountries, WORLD_COUNTRIES } from "../config/worldCountries.js";
 import { calcCommercialSummary, fmtMoney, fmtNum } from "../utils/calculations.js";
 import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js";
+import { getDefaultContainer, getDefaultCargoType } from "../engines/categoryEngine.js";
 import { getPortsForCountry } from "../config/destinationPorts.js";
 
 const ORIGINS = ["Brazil", "Argentina", "Colombia", "Uruguay", "Chile", "Paraguay", "USA", "Canada", "Australia", "New Zealand", "South Africa", "Other"];
@@ -229,13 +230,9 @@ const CONTAINER_TYPES = [
   { id: "AIR_CARGO",       label: "Air Cargo",       desc: "Carga aérea" },
 ];
 
-// Suggest default container type based on cargo category
+// Default container per category — delegates to categoryEngine (single source of truth)
 function defaultContainerForCategory(cat) {
-  if (cat === "LIVE_ANIMALS")                              return "LIVESTOCK_VESSEL";
-  if (["FROZEN_MEAT","FROZEN_POULTRY"].includes(cat))      return "REEFER_40";
-  if (["FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS","CANNED_MEAT"].includes(cat)) return "REEFER_40";
-  if (["COMMODITIES","BEANS"].includes(cat))               return "BULK_VESSEL";
-  return "40FT";
+  return getDefaultContainer(cat);
 }
 
 function ContainerTypeSelector({ value, onChange, category }) {
@@ -270,10 +267,7 @@ function ContainerTypeSelector({ value, onChange, category }) {
 
 // ─── Cargo Type Selector ──────────────────────────────────────────────────────
 function CargoTypeSelector({ value, onChange, category }) {
-  const defaultCargo = category === "LIVE_ANIMALS" ? "Live Animals"
-    : ["FROZEN_MEAT","FROZEN_POULTRY","CANNED_MEAT"].includes(category) ? "Frozen Cargo"
-    : ["FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS"].includes(category) ? "Refrigerated Cargo"
-    : "Dry Cargo";
+  const defaultCargo = getDefaultCargoType(category);
 
   useEffect(() => {
     if (!value && category) onChange(defaultCargo);

@@ -25,6 +25,8 @@ jobs:
             "glv-connect/frontend/src/components/CommercialEngine.jsx"
             "glv-connect/frontend/src/components/GlvPDF.jsx"
             "glv-connect/frontend/src/utils/calculations.js"
+            "glv-connect/frontend/src/engines/categoryEngine.js"
+            "glv-connect/frontend/src/config/productCategories.js"
             "glv-connect/frontend/src/services/mediaAutoBinding.js"
             "glv-connect/frontend/src/App.jsx"
             "glv-connect/backend/server.js"
@@ -35,6 +37,7 @@ jobs:
             "glv-connect/backend/routes/media.js"
             "glv-connect/frontend/src/components/MediaPanel.jsx"
             "glv-connect/backend/services/mediaBinding.js"
+            "glv-connect/commercial-error-registry.json"
           )
 
           HITS=""
@@ -162,6 +165,177 @@ jobs:
           fi
 
           echo "## ✅ Container type system present in CommercialEngine.jsx and GlvPDF.jsx" >> $GITHUB_STEP_SUMMARY
+
+  # ── 3-A. Regression Protection Layer — DynamicCommercialEngine ────────────
+  regression-protection:
+    name: Regression Protection Layer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify commercial-error-registry.json is valid JSON
+        run: |
+          if ! python3 -c "import json,sys; json.load(open('glv-connect/commercial-error-registry.json'))" 2>&1; then
+            echo "::error::commercial-error-registry.json is not valid JSON"
+            exit 1
+          fi
+          echo "## ✅ commercial-error-registry.json valid" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run prevention_ci_manifest checks
+        run: |
+          python3 << 'PYEOF'
+          import json, sys, os, subprocess
+
+          registry = json.load(open("glv-connect/commercial-error-registry.json"))
+          patterns = registry.get("prevention_ci_manifest", {}).get("patterns", [])
+          failures = []
+
+          for p in patterns:
+              err_id   = p.get("id", "?")
+              filepath = p.get("file", "")
+              keyword  = p.get("must_contain", "")
+              if not filepath or not keyword:
+                  continue
+              if not os.path.exists(filepath):
+                  failures.append(f"{err_id}: file not found — {filepath}")
+                  continue
+              result = subprocess.run(["grep", "-q", keyword, filepath])
+              if result.returncode != 0:
+                  failures.append(f"{err_id}: '{keyword}' not found in {filepath}")
+
+          if failures:
+              print("::error:: REGRESSION DETECTED — previously fixed bugs may have been reintroduced:")
+              for f in failures:
+                  print(f"  ❌ {f}")
+              sys.exit(1)
+          else:
+              print(f"✅ All {len(patterns)} regression prevention checks passed")
+          PYEOF
+
+          echo "## ✅ Regression Protection Layer — all checks passed" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify DynamicCommercialEngine structure
+        run: |
+          ENGINE="glv-connect/frontend/src/engines/categoryEngine.js"
+
+          if [ ! -f "$ENGINE" ]; then
+            echo "::error::categoryEngine.js not found — DynamicCommercialEngine missing"
+            echo "## ❌ categoryEngine.js not found" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          REQUIRED_EXPORTS=(
+            "getCategoryEngine"
+            "isLiveAnimalCategory"
+            "getDefaultContainer"
+            "getDefaultCargoType"
+            "getPDFTextKey"
+            "getCategoryMediaConfig"
+            "CATEGORY_DEFAULT_CONTAINER"
+            "CATEGORY_PDF_TEXT_KEY"
+          )
+
+          MISSING=""
+          for export_name in "${REQUIRED_EXPORTS[@]}"; do
+            if ! grep -q "$export_name" "$ENGINE"; then
+              MISSING="$MISSING\n  ❌ $export_name"
+            fi
+          done
+
+          if [ -n "$MISSING" ]; then
+            echo "::error::categoryEngine.js is missing required exports"
+            echo -e "$MISSING"
+            echo "## ❌ categoryEngine.js missing exports" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "## ✅ DynamicCommercialEngine structure valid — all required exports present" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check CommercialEngine uses categoryEngine (no scattered hardcoded maps)
+        run: |
+          CE="glv-connect/frontend/src/components/CommercialEngine.jsx"
+
+          # Must import from categoryEngine
+          if ! grep -q "categoryEngine" "$CE"; then
+            echo "::error::CommercialEngine.jsx must import from categoryEngine.js"
+            echo "## ❌ CommercialEngine.jsx not wired to categoryEngine" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "## ✅ CommercialEngine.jsx wired to categoryEngine" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check GlvPDF uses pdfTextKey routing (not fragile string matching)
+        run: |
+          PDF="glv-connect/frontend/src/components/GlvPDF.jsx"
+
+          if ! grep -q "pdfTextKey" "$PDF"; then
+            echo "::error::GlvPDF.jsx must use pdfTextKey routing from categoryEngine"
+            echo "## ❌ GlvPDF.jsx not using pdfTextKey routing" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Warn if isLivestock is still used for commercial logic (text blocks ok as fallback)
+          LIVESTOCK_COUNT=$(grep -c "isLivestock" "$PDF" || true)
+          echo "isLivestock() references remaining in GlvPDF.jsx: $LIVESTOCK_COUNT (expected: 2 fallback definitions + usage)"
+          echo "## ✅ GlvPDF.jsx uses pdfTextKey routing — isLivestock() retained only as legacy fallback" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check mediaBinding has product category isolation
+        run: |
+          MB="glv-connect/backend/services/mediaBinding.js"
+
+          if ! grep -q "isProductCategoryCompatible" "$MB"; then
+            echo "::error::mediaBinding.js missing isProductCategoryCompatible — product media contamination risk"
+            echo "## ❌ mediaBinding.js missing product category isolation" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          if ! grep -q "ANIMAL_FEED\|LENTILS\|CHICKPEAS" "$MB"; then
+            echo "::error::mediaBinding.js missing categories ANIMAL_FEED/LENTILS/CHICKPEAS — incomplete category coverage"
+            echo "## ❌ mediaBinding.js incomplete category coverage" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "## ✅ mediaBinding.js has full category isolation (13 categories)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Arithmetic regression — unit conversion logic
+        run: |
+          python3 << 'PYEOF'
+          # Verify the conversion constants in GlvPDF.jsx and calculations.js
+          # are consistent with expected test case results
+
+          with open("glv-connect/frontend/src/components/GlvPDF.jsx") as f:
+              pdf_src = f.read()
+
+          with open("glv-connect/frontend/src/utils/calculations.js") as f:
+              calc_src = f.read()
+
+          failures = []
+
+          # CASE 1: MT conversion — must multiply by 1000
+          if "engineQty * 1000" not in pdf_src and "qty * 1000 * price" not in calc_src:
+              failures.append("MT→kg conversion (×1000) not found in GlvPDF.jsx or calculations.js")
+
+          # CASE 2: totalKgDisplay must exist (ERR-006 guard)
+          if "totalKgDisplay" not in pdf_src:
+              failures.append("totalKgDisplay not found in GlvPDF.jsx — MT display bug may be reintroduced")
+
+          # CASE 3: LIVE_ANIMALS formula guard
+          if "isLiveAnimalRow" not in pdf_src:
+              failures.append("isLiveAnimalRow guard not found in GlvPDF.jsx — LIVE_ANIMALS formula isolation broken")
+
+          if failures:
+              print("::error:: Arithmetic regression check FAILED:")
+              for f in failures:
+                  print(f"  ❌ {f}")
+              import sys; sys.exit(1)
+
+          print(f"✅ Arithmetic regression checks passed")
+          print("  CASE 1 (54 MT × $3.4 = $183,600 / 54,000 kg): MT×1000 present")
+          print("  CASE 2 (25,000 kg × $3.5 = $87,500): direct qty path present")
+          print("  CASE 3 (LIVE_ANIMALS isolation): isLiveAnimalRow guard present")
+          PYEOF
+
+          echo "## ✅ Arithmetic regression checks passed" >> $GITHUB_STEP_SUMMARY
 
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:

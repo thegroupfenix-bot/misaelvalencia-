@@ -12,13 +12,36 @@ const CATEGORY_RULES = {
     cats: ["livestock","sheep","lamb","cattle","goat","animales","live","ovino","bovino","caprino","animal","vivo","ovejas","cordero","ganado"],
     tags: ["sheep","lamb","cattle","goat","livestock","cordero","vivo","ovino","bovino","merino","dorper","santa","ines","boer","nelore","angus","brahman","hereford","corriedale","texel","suffolk","brangus"],
   },
-  FROZEN_MEAT:    { cats: ["products/meat","products/frozen","Carnes","meat","carne","frozen"], tags: ["meat","carne","frozen","beef","lamb","cordero","congelado","corte"] },
-  FROZEN_POULTRY: { cats: ["products/poultry","poultry","pollo","ave"], tags: ["chicken","pollo","poultry","ave"] },
-  COMMODITIES:    { cats: ["products/grains","products/oils","Granos","Aceites","grains","oils","grano","aceite","soya","maiz"], tags: ["grain","oil","soy","corn","maize","soja","aceite","grano"] },
-  BEANS:          { cats: ["products/grains","Granos","legumes","frijol","lenteja","garbanzo"], tags: ["bean","frijol","lentil","garbanzo","legume"] },
-  FRUIT_PRODUCTS: { cats: ["products/fruits","Frutas","fruits","fruta"], tags: ["fruit","fruta","mango","banana","citrus","citrico"] },
-  COLOMBIAN_EXOTIC_FRUITS: { cats: ["products/fruits/colombia","Frutas","Colombia","exotic","exotico"], tags: ["exotic","exotico","colombia","uchuva","gulupa","pitahaya"] },
-  CANNED_MEAT:    { cats: ["products/meat","Carnes","canned","enlatado","conserva"], tags: ["canned","enlatado","conserva","meat","carne"] },
+  FROZEN_MEAT:    { cats: ["products/meat","products/frozen","Carnes","meat","carne","frozen"], tags: ["meat","carne","frozen","beef","lamb","cordero","congelado","corte","reefer"] },
+  FROZEN_POULTRY: { cats: ["products/poultry","poultry","pollo","ave"], tags: ["chicken","pollo","poultry","ave","turkey","pato","reefer"] },
+  COMMODITIES:    { cats: ["products/grains","Granos","grains","grano","soya","maiz"], tags: ["grain","soy","corn","maize","soja","grano","wheat","trigo","rice","arroz","bulk"] },
+  BEANS:          { cats: ["products/grains","Granos","legumes","frijol","lenteja","garbanzo"], tags: ["bean","frijol","lentil","garbanzo","legume","pulse","bag"] },
+  LENTILS:        { cats: ["products/grains","Granos","legumes","lenteja","lentil"], tags: ["lentil","lenteja","legume","pulse","red lentil","green lentil"] },
+  CHICKPEAS:      { cats: ["products/grains","Granos","legumes","garbanzo","chickpea"], tags: ["chickpea","garbanzo","chana","legume","pulse","kabuli","desi"] },
+  ANIMAL_FEED:    { cats: ["products/feed","Alimento","feed","alimento","pienso"], tags: ["feed","alimento","soybean meal","harina","bran","salvado","alfalfa","pellet"] },
+  OILS:           { cats: ["products/oils","Aceites","oil","aceite","liquid"], tags: ["oil","aceite","palm","soy","sunflower","girasol","corn","canola","tank"] },
+  FRUIT_PRODUCTS: { cats: ["products/fruits","Frutas","fruits","fruta"], tags: ["fruit","fruta","mango","banana","citrus","citrico","avocado","aguacate","pineapple","piña"] },
+  COLOMBIAN_EXOTIC_FRUITS: { cats: ["products/fruits/colombia","Frutas","Colombia","exotic","exotico"], tags: ["exotic","exotico","colombia","uchuva","gulupa","pitahaya","lulo","maracuya","tropical"] },
+  CANNED_MEAT:    { cats: ["products/meat","Carnes","canned","enlatado","conserva"], tags: ["canned","enlatado","conserva","meat","carne","corned","lata"] },
+  EGGS:           { cats: ["products/poultry","Huevos","eggs","huevo","poultry"], tags: ["egg","huevo","fertile","fértil","incubation","poultry"] },
+};
+
+// Keywords that, if found in a NON-BRANDING product asset, indicate the asset belongs
+// to a DIFFERENT product category. Prevents e.g. sheep photos appearing in FROZEN_MEAT SCO.
+const PRODUCT_CATEGORY_EXCLUSIONS = {
+  LIVE_ANIMALS:            ["avocado","avoca","aguacate","fruit","fruta","mango","banana","grain","grano","oil","aceite","canned","enlatado","poultry","chicken","pollo","meat","carne","frozen","congelado"],
+  FROZEN_MEAT:             ["avocado","avoca","aguacate","fruit","fruta","livestock","sheep","ovino","bovino","ganado","cordero","grain","grano","oil","aceite","poultry","chicken","egg","huevo"],
+  FROZEN_POULTRY:          ["avocado","avoca","fruit","fruta","livestock","sheep","ovino","bovino","ganado","grain","grano","oil","aceite","beef","carne"],
+  FRUIT_PRODUCTS:          ["livestock","sheep","cattle","ovino","bovino","ganado","cordero","animales","vivo","grain","grano","oil","aceite","frozen","congelado","poultry","chicken","egg"],
+  COLOMBIAN_EXOTIC_FRUITS: ["livestock","sheep","cattle","ovino","ganado","grain","grano","oil","aceite","frozen","congelado","beef","poultry","chicken"],
+  COMMODITIES:             ["avocado","avoca","aguacate","fruit","fruta","livestock","sheep","ovino","bovino","poultry","chicken","egg","canned","reefer"],
+  BEANS:                   ["avocado","avoca","fruit","fruta","livestock","sheep","ovino","bovino","oil","aceite","poultry","chicken"],
+  LENTILS:                 ["avocado","fruit","fruta","livestock","sheep","ovino","bovino","oil","aceite","poultry"],
+  CHICKPEAS:               ["avocado","fruit","fruta","livestock","sheep","bovino","oil","aceite","poultry"],
+  ANIMAL_FEED:             ["avocado","fruit","fruta","poultry","chicken","canned","enlatado","reefer"],
+  OILS:                    ["livestock","sheep","ovino","bovino","fruit","fruta","canned","frozen","meat","carne","egg","poultry"],
+  CANNED_MEAT:             ["avocado","avoca","fruit","fruta","livestock","sheep","grain","grano","oil","aceite","egg"],
+  EGGS:                    ["avocado","fruit","fruta","livestock","sheep","bovino","grain","oil","aceite","meat","carne"],
 };
 
 const BRANDING_CATS = ["branding","branding/logos","branding/templates","Branding","Corporativo","corporate"];
@@ -157,6 +180,30 @@ function projectAsset(asset) {
 }
 
 /**
+ * Returns false if a NON-BRANDING product asset contains keywords that indicate it belongs
+ * to a different product category than the current document.
+ * Prevents e.g. sheep photos appearing in a FROZEN_MEAT SCO.
+ */
+function isProductCategoryCompatible(asset, category) {
+  if (!category || !PRODUCT_CATEGORY_EXCLUSIONS[category]) return true;
+  const exclusions = PRODUCT_CATEGORY_EXCLUSIONS[category];
+
+  const searchText = [
+    parseTags(asset.tags_json).join(" "),
+    asset.product_relation || "",
+    asset.original_name    || "",
+    asset.category         || "",
+    asset.subcategory      || "",
+  ].join(" ").toLowerCase();
+
+  const excluded = exclusions.some(kw => searchText.includes(kw.toLowerCase()));
+  if (excluded) {
+    console.log(`[media-bind] product asset #${asset.id} (${asset.original_name}) excluded — category mismatch for ${category}`);
+  }
+  return !excluded;
+}
+
+/**
  * Returns false if a branding asset contains product-specific keywords that belong to a
  * DIFFERENT category than the current document. This prevents e.g. an avocado brand logo
  * from appearing inside a LIVE_ANIMALS SCO.
@@ -223,8 +270,13 @@ function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
     }
   }
 
+  // Apply product category exclusions — remove assets that belong to a different category
+  const compatibleProductAssets = category
+    ? productAssets.filter(a => isProductCategoryCompatible(a, category))
+    : productAssets;
+
   // Score and sort product assets
-  let scoredProducts = productAssets.map(asset => ({
+  let scoredProducts = compatibleProductAssets.map(asset => ({
     asset,
     score: rule ? scoreAsset(asset, rule, category, origin) : 0,
   }));
