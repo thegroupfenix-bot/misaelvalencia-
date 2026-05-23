@@ -35,6 +35,8 @@ jobs:
             "glv-connect/backend/routes/media.js"
             "glv-connect/frontend/src/components/MediaPanel.jsx"
             "glv-connect/backend/services/mediaBinding.js"
+            "glv-connect/frontend/src/engines/categoryEngine.js"
+            "glv-connect/commercial-error-registry.json"
           )
 
           HITS=""
@@ -223,6 +225,95 @@ jobs:
             exit 1
           fi
           echo "## ✅ Profile completion short-circuit present in validateDoc.js" >> $GITHUB_STEP_SUMMARY
+
+  # ── 2b. DynamicCommercialEngine regression protection ─────────────────────
+  regression-protection:
+    name: DynamicCommercialEngine Regression Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify commercial-error-registry.json is valid JSON
+        run: |
+          if [ ! -f glv-connect/commercial-error-registry.json ]; then
+            echo "::error::commercial-error-registry.json not found"
+            exit 1
+          fi
+          if ! python3 -c "import json,sys; json.load(open('glv-connect/commercial-error-registry.json'))" 2>&1; then
+            echo "::error::commercial-error-registry.json is not valid JSON"
+            exit 1
+          fi
+          COUNT=$(python3 -c "import json; d=json.load(open('glv-connect/commercial-error-registry.json')); print(len(d.get('errors',[])))")
+          echo "## ✅ commercial-error-registry.json valid — $COUNT error records" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify categoryEngine.js required exports
+        run: |
+          REQUIRED=(
+            "getCategoryEngine"
+            "getDefaultContainer"
+            "getDefaultCargoType"
+            "getPDFTextKey"
+            "getCategoryMediaConfig"
+            "isLiveAnimalCategory"
+            "isFrozenCategory"
+            "isFruitCategory"
+          )
+          FAILED=0
+          for sym in "${REQUIRED[@]}"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/engines/categoryEngine.js; then
+              echo "::error::categoryEngine.js missing required export: $sym"
+              FAILED=1
+            else
+              echo "✅ $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ categoryEngine.js exports verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify CommercialEngine wired to categoryEngine
+        run: |
+          if ! grep -q "categoryEngine" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::CommercialEngine.jsx is not importing from categoryEngine.js"
+            exit 1
+          fi
+          echo "## ✅ CommercialEngine imports categoryEngine" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify GlvPDF uses pdfTextKey routing
+        run: |
+          if ! grep -q "pdfTextKey" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::GlvPDF.jsx does not use pdfTextKey routing — fragile string-match regression risk"
+            exit 1
+          fi
+          if ! grep -q "getPDFTextKey" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::GlvPDF.jsx does not import getPDFTextKey from categoryEngine"
+            exit 1
+          fi
+          echo "## ✅ GlvPDF uses pdfTextKey routing" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify mediaBinding has full 13-category isolation
+        run: |
+          CATEGORIES=(LIVE_ANIMALS FROZEN_MEAT FROZEN_POULTRY FRUIT_PRODUCTS COLOMBIAN_EXOTIC_FRUITS COMMODITIES BEANS CANNED_MEAT LENTILS CHICKPEAS ANIMAL_FEED OILS EGGS)
+          FAILED=0
+          for cat in "${CATEGORIES[@]}"; do
+            if ! grep -q "$cat" glv-connect/backend/services/mediaBinding.js; then
+              echo "::error::mediaBinding.js missing category: $cat"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ mediaBinding.js has all 13 categories" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify MT×1000 conversion and isLiveAnimalRow guard
+        run: |
+          if ! grep -q "isMT\|MT.*1000\|1000.*MT\|\* 1000" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::MT×1000 conversion not found in GlvPDF.jsx — 54 MT will display as 54 kg"
+            exit 1
+          fi
+          if ! grep -q "isLiveAnimalRow" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::isLiveAnimalRow not found in GlvPDF.jsx — category isolation broken"
+            exit 1
+          fi
+          echo "## ✅ MT conversion and isLiveAnimalRow guard present" >> $GITHUB_STEP_SUMMARY
 
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
