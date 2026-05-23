@@ -1,0 +1,156 @@
+{
+  "registry_version": "3.0.0",
+  "last_updated": "2026-05-23",
+  "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
+  "errors": [
+    {
+      "id": "ERR-001",
+      "title": "PRICE_TABLE fallback contaminating PDF price",
+      "status": "resolved",
+      "resolved_in": "PR #47",
+      "root_cause": "GlvPDF.jsx read doc.pricePerKg as fallback; doc.pricePerKg is written at save time from PRICE_TABLE lookup, not from CommercialEngine unit price",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "pricePerKg = engineUnitPrice only — CommercialEngine is sole source. doc.pricePerKg never used in PDF rendering.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_not_contain": "pricePerKg.*doc\\.pricePerKg|doc\\.pricePerKg.*pricePerKg"
+      }
+    },
+    {
+      "id": "ERR-002",
+      "title": "LIVE_ANIMALS formula (head×avgWeight) contaminating FROZEN_MEAT",
+      "status": "resolved",
+      "resolved_in": "PR #47",
+      "root_cause": "avgWeight default (45 kg) was injected into non-livestock quantity calculations when category was not isolated",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx", "glv-connect/frontend/src/utils/calculations.js"],
+      "fix": "isLiveAnimalRow guard isolates head×weight formula to LIVE_ANIMALS only. engineQty = 0 for live animals.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "isLiveAnimalRow"
+      }
+    },
+    {
+      "id": "ERR-003",
+      "title": "Container type hardcoded to Reefer 20FT",
+      "status": "resolved",
+      "resolved_in": "PR #47",
+      "root_cause": "Container type was hardcoded; no selector available to agents",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "ContainerTypeSelector added with 10 options. Default per category from CATEGORY_DEFAULT_CONTAINER.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_contain": "containerType"
+      }
+    },
+    {
+      "id": "ERR-004",
+      "title": "FRUIT_PRODUCTS media binding showing sheep/livestock images",
+      "status": "resolved",
+      "resolved_in": "PR #48 + PR #50",
+      "root_cause": "mediaBinding.js had no product-level exclusion layer; only branding exclusions existed",
+      "affected_files": ["glv-connect/backend/services/mediaBinding.js"],
+      "fix": "isProductCategoryCompatible() added with PRODUCT_CATEGORY_EXCLUSIONS per category",
+      "prevention_ci": {
+        "file": "glv-connect/backend/services/mediaBinding.js",
+        "must_contain": "isProductCategoryCompatible"
+      }
+    },
+    {
+      "id": "ERR-005",
+      "title": "Profile validation loop blocking agents (cargo required but SUPER_ADMIN controlled)",
+      "status": "resolved",
+      "resolved_in": "PR #48",
+      "root_cause": "completed flag required cargo+phone+country+signature, but cargo is set by SUPER_ADMIN — agents could never reach completed=1",
+      "affected_files": ["glv-connect/backend/routes/profile.js", "glv-connect/frontend/src/utils/validateDoc.js"],
+      "fix": "completed = (phone && signature_b64) only. validateDoc.js short-circuits all profile checks when completed===1.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/utils/validateDoc.js",
+        "must_contain": "completed"
+      }
+    },
+    {
+      "id": "ERR-006",
+      "title": "MT unit quantity showing raw value in PDF (54 MT displayed as 54 kg)",
+      "status": "resolved",
+      "resolved_in": "PR #49",
+      "root_cause": "totalKg in GlvPDF.jsx used engineQty directly without MT→kg conversion",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "totalKgDisplay = isMT ? engineQty * 1000 : engineQty. Added Cantidad box for raw unit display.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "totalKgDisplay"
+      }
+    },
+    {
+      "id": "ERR-007",
+      "title": "FROZEN_MEAT showing Número de Cabezas / Peso Promedio from LIVE_ANIMALS",
+      "status": "resolved",
+      "resolved_in": "PR #49",
+      "root_cause": "Grid guards used isLivestock(doc.product) string-match — matched legacy product names like 'Animales Bovinos Vivos' when category was actually FROZEN_MEAT",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "Grid guards replaced with isLiveAnimalRow (CommercialEngine category check). Never uses doc.product string.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_not_contain_grid": "isLivestock.*engineHeads|isLivestock.*engineAvgW"
+      }
+    },
+    {
+      "id": "ERR-008",
+      "title": "Scattered category conditionals causing repeated cross-category contamination",
+      "status": "resolved",
+      "resolved_in": "PR #50",
+      "root_cause": "Category-specific logic was hardcoded in multiple files (CommercialEngine, GlvPDF, mediaBinding) with no shared source of truth — each fix required touching multiple files",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/backend/services/mediaBinding.js"
+      ],
+      "fix": "DynamicCommercialEngine created at src/engines/categoryEngine.js. All category predicates, container defaults, cargo types, PDF text routing, and media config centralized there.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/categoryEngine.js",
+        "must_contain": "getCategoryEngine"
+      }
+    },
+    {
+      "id": "ERR-009",
+      "title": "isLivestock / isGrain string-match functions controlling PDF text blocks",
+      "status": "resolved",
+      "resolved_in": "PR #50",
+      "root_cause": "isLivestock() checked doc.product string for 'ovino','bovino','animal','vivo' — fragile against product name changes and missed new categories like FROZEN_POULTRY",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "PDF text routing replaced by pdfTextKey derived from getCategoryEngine(firstCdRow.category).pdfTextKey — category enum drives text selection, not product name strings.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "pdfTextKey"
+      }
+    },
+    {
+      "id": "ERR-010",
+      "title": "Missing categories in mediaBinding (LENTILS, CHICKPEAS, ANIMAL_FEED, OILS, EGGS)",
+      "status": "resolved",
+      "resolved_in": "PR #50",
+      "root_cause": "CATEGORY_RULES and PRODUCT_CATEGORY_EXCLUSIONS in mediaBinding.js only covered 8 of 13 product categories — new categories fell through to generic matching",
+      "affected_files": ["glv-connect/backend/services/mediaBinding.js"],
+      "fix": "Added CATEGORY_RULES and PRODUCT_CATEGORY_EXCLUSIONS for LENTILS, CHICKPEAS, ANIMAL_FEED, OILS, EGGS. All 13 categories now covered.",
+      "prevention_ci": {
+        "file": "glv-connect/backend/services/mediaBinding.js",
+        "must_contain": "ANIMAL_FEED"
+      }
+    }
+  ],
+  "prevention_ci_manifest": {
+    "description": "Patterns that CI checks on every PR. Failures block merge.",
+    "patterns": [
+      { "id": "ERR-001", "file": "glv-connect/frontend/src/components/GlvPDF.jsx", "must_contain": "engineUnitPrice" },
+      { "id": "ERR-002", "file": "glv-connect/frontend/src/components/GlvPDF.jsx", "must_contain": "isLiveAnimalRow" },
+      { "id": "ERR-003", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx", "must_contain": "containerType" },
+      { "id": "ERR-004", "file": "glv-connect/backend/services/mediaBinding.js", "must_contain": "isProductCategoryCompatible" },
+      { "id": "ERR-005", "file": "glv-connect/frontend/src/utils/validateDoc.js", "must_contain": "completed" },
+      { "id": "ERR-006", "file": "glv-connect/frontend/src/components/GlvPDF.jsx", "must_contain": "totalKgDisplay" },
+      { "id": "ERR-007", "file": "glv-connect/frontend/src/components/GlvPDF.jsx", "must_contain": "isLiveAnimalRow" },
+      { "id": "ERR-008", "file": "glv-connect/frontend/src/engines/categoryEngine.js", "must_contain": "getCategoryEngine" },
+      { "id": "ERR-009", "file": "glv-connect/frontend/src/components/GlvPDF.jsx", "must_contain": "pdfTextKey" },
+      { "id": "ERR-010", "file": "glv-connect/backend/services/mediaBinding.js", "must_contain": "ANIMAL_FEED" }
+    ]
+  }
+}

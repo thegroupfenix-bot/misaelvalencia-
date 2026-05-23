@@ -19,6 +19,11 @@ const CATEGORY_RULES = {
   FRUIT_PRODUCTS: { cats: ["products/fruits","Frutas","fruits","fruta"], tags: ["fruit","fruta","mango","banana","citrus","citrico"] },
   COLOMBIAN_EXOTIC_FRUITS: { cats: ["products/fruits/colombia","Frutas","Colombia","exotic","exotico"], tags: ["exotic","exotico","colombia","uchuva","gulupa","pitahaya"] },
   CANNED_MEAT:    { cats: ["products/meat","Carnes","canned","enlatado","conserva"], tags: ["canned","enlatado","conserva","meat","carne"] },
+  LENTILS:        { cats: ["products/grains","Granos","legumes","lenteja","lentil"], tags: ["lentil","lenteja","legume","pulse","bag"] },
+  CHICKPEAS:      { cats: ["products/grains","Granos","legumes","garbanzo","chickpea"], tags: ["chickpea","garbanzo","chana","legume","pulse","bag"] },
+  ANIMAL_FEED:    { cats: ["products/feed","Alimento","feed","alimento","harina"], tags: ["feed","alimento","soybean","meal","harina","bran","salvado","alfalfa","pellet"] },
+  OILS:           { cats: ["products/oils","Aceites","oil","aceite","liquid"], tags: ["oil","aceite","palm","soy","sunflower","girasol","corn","canola","liquid","tank"] },
+  EGGS:           { cats: ["products/poultry","poultry","eggs","huevos","huevo"], tags: ["egg","huevo","poultry","incubation","fertile","huevos","pollito"] },
 };
 
 const BRANDING_CATS = ["branding","branding/logos","branding/templates","Branding","Corporativo","corporate"];
@@ -64,6 +69,26 @@ const PRODUCT_CATEGORY_EXCLUSIONS = {
     "avocado","avoca","fruta","fruit","grain","grano","oil","aceite",
     "sheep","lamb","ovino","ganado","live","vivo",
   ],
+  LENTILS: [
+    "avocado","avoca","fruta","fruit","sheep","lamb","cattle","livestock",
+    "poultry","chicken","canned","enlatado","oil","aceite",
+  ],
+  CHICKPEAS: [
+    "avocado","avoca","fruta","fruit","sheep","lamb","cattle","livestock",
+    "poultry","chicken","canned","enlatado","oil","aceite",
+  ],
+  ANIMAL_FEED: [
+    "avocado","avoca","fruta","fruit","poultry","chicken","canned","enlatado","reefer",
+    "sheep","lamb","cattle","livestock","ovino","bovino",
+  ],
+  OILS: [
+    "livestock","sheep","ovino","bovino","fruta","fruit","canned","frozen","meat","carne",
+    "poultry","chicken","pollo","ganado",
+  ],
+  EGGS: [
+    "avocado","avoca","fruta","fruit","livestock","sheep","bovino",
+    "grain","grano","oil","aceite","meat","carne","beef",
+  ],
 };
 
 /**
@@ -105,6 +130,11 @@ const BRANDING_EXCLUSION_KEYWORDS = {
   BEANS:                  ["avocado","avoca","fruit","fruta","livestock","sheep","ganado","grain","oil"],
   CANNED_MEAT:            ["avocado","avoca","fruit","fruta","grain","grano","oil","aceite"],
   FROZEN_POULTRY:         ["avocado","avoca","fruit","fruta","grain","grano","livestock","sheep","ovino"],
+  LENTILS:                ["avocado","avoca","fruit","fruta","livestock","sheep","ovino","bovino","poultry","chicken","oil","aceite"],
+  CHICKPEAS:              ["avocado","avoca","fruit","fruta","livestock","sheep","ovino","bovino","poultry","chicken","oil","aceite"],
+  ANIMAL_FEED:            ["avocado","avoca","fruit","fruta","poultry","chicken","canned","enlatado","reefer"],
+  OILS:                   ["livestock","sheep","ovino","bovino","fruit","fruta","canned","frozen","meat","carne","poultry","chicken"],
+  EGGS:                   ["avocado","avoca","fruit","fruta","livestock","sheep","bovino","grain","grano","oil","aceite","meat","carne"],
 };
 
 /**

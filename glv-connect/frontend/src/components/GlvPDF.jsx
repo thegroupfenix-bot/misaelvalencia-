@@ -3,6 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Font, pdf, Image,
 } from "@react-pdf/renderer";
 import { generatePaymentText } from "../utils/paymentText.js";
+import { getPDFTextKey } from "../engines/categoryEngine.js";
 
 Font.register({
   family: "Helvetica",
@@ -385,6 +386,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   const validityDays = doc.validityDays || doc.validity_days || 15;
   const productCategory = doc.product || "";
+  const pdfTextKey = firstCdRow?.category
+    ? getPDFTextKey(firstCdRow.category)
+    : isLivestock(productCategory) ? "livestock"
+    : isGrain(productCategory) ? "grain"
+    : "food";
 
   const paymentOption = doc.paymentOption || doc.payment_option || doc.paymentMethod || "SBLC";
   const docTrigger = doc.docTrigger || doc.doc_trigger || "DOC-A";
@@ -405,11 +411,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   let productDesc = "";
   if (doc.product === "Otro" || doc.custom_product_name) {
     productDesc = doc.custom_product_desc || doc.customProductDesc || "";
-  } else if (isLivestock(productCategory)) {
+  } else if (pdfTextKey === "livestock") {
     productDesc = docLang === "en"
       ? `Live animals sourced from registered, export-certified facilities. All animals meet international sanitary requirements and are certified by competent zoo-sanitary authorities in the country of origin.`
       : `Animales vivos procedentes de establecimientos registrados y habilitados para exportación. Los animales cumplen con todos los requisitos sanitarios internacionales y son certificados por autoridades zoosanitarias competentes del país de origen.`;
-  } else if (isGrain(productCategory)) {
+  } else if (pdfTextKey === "grain") {
     productDesc = docLang === "en"
       ? `High-quality bulk agricultural commodity with moisture, protein and aflatoxin analysis within international export standards.`
       : `Producto agrícola a granel de alta calidad, con análisis de humedad, proteína y aflatoxinas dentro de los estándares internacionales de exportación.`;
@@ -425,14 +431,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   let certifications = docLang === "en"
     ? "• Official certificate of origin\n• Sanitary / phytosanitary export certificate\n• SGS inspection (or agreed equivalent)\n• Lot traceability documentation"
     : "• Certificado de origen oficial\n• Certificado sanitario/fitosanitario de exportación\n• Inspección SGS (o equivalente acordado)\n• Documentación de trazabilidad del lote";
-  if (isLivestock(productCategory)) {
+  if (pdfTextKey === "livestock") {
     certifications = docLang === "en"
       ? "• Official zoo-sanitary certificate from the exporting country\n• Halal certificate (internationally recognized authority)\n• SGS live weight and quantity certificate\n• Official veterinary health declaration for the lot\n• Quarantine period approval certificate\n• Lot vaccination certificate"
       : "• Certificado zoosanitario oficial del país exportador\n• Certificado Halal (autoridad reconocida internacionalmente)\n• Certificado SGS de peso vivo y cantidad\n• Declaración de salud del lote por médico veterinario oficial\n• Aprobación del período de cuarentena\n• Certificado de vacunación del lote";
   }
 
   let timeline = "";
-  if (isLivestock(productCategory)) {
+  if (pdfTextKey === "livestock") {
     timeline = docLang === "en"
       ? "Week 1–2: Contract signing (SPA) and advance payment\nWeek 3–6: Lot selection and concentration at origin\nWeek 7–10: Official quarantine period (minimum 21 days)\nWeek 11: SGS inspection, certification and SBLC activation\nWeek 12: Loading on specialized livestock vessel\nWeek 13–16: Maritime transit to CFR destination\nWeek 16+: Port delivery and final settlement"
       : "Semana 1–2: Firma de contrato (SPA) y pago del anticipo\nSemana 3–6: Selección y concentración del lote en origen\nSemana 7–10: Período de cuarentena oficial (mínimo 21 días)\nSemana 11: Inspección SGS, certificación y activación de SBLC\nSemana 12: Embarque en buque ganadero especializado\nSemana 13–16: Tránsito marítimo hacia destino CFR\nSemana 16+: Entrega en puerto y liquidación final";
@@ -443,11 +449,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   }
 
   let mandatoryInfo = null;
-  if (isLivestock(productCategory)) {
+  if (pdfTextKey === "livestock") {
     mandatoryInfo = docLang === "en"
       ? "MANDATORY INFORMATION — LIVE ANIMALS:\n• All shipments comply with the OIE Terrestrial Animal Health Code\n• Vessels used are specialized livestock carriers with certified ventilation systems\n• Sexual composition of the lot shall be certified by an official veterinarian\n• The buyer is responsible for obtaining import permits in the destination country\n• Animals are certified free of notifiable diseases\n• TRANSIT MORTALITY: Invoicing is based on the certified loaded quantity at origin. Any mortality during transport is the buyer's sole responsibility and must be covered by their live cargo insurance policy. The seller applies no commercial deduction for transit mortality."
       : "INFORMACIÓN MANDATORIA — ANIMALES VIVOS:\n• Todos los embarques cumplen con el Código Sanitario para los Animales Terrestres de la OIE\n• Los buques utilizados son especializados en transporte de ganado vivo con sistema de ventilación certificado\n• La composición sexual del lote será certificada por veterinario oficial\n• El comprador es responsable de gestionar los permisos de importación en el país destino\n• Los animales son certificados libres de enfermedades de declaración obligatoria\n• MORTALIDAD EN TRÁNSITO: La facturación se realiza sobre la cantidad cargada certificada en origen. Cualquier mortalidad durante el transporte es responsabilidad exclusiva del comprador y deberá estar cubierta por su póliza de seguro de carga viva. El vendedor no aplica deducción comercial por mortalidad en tránsito.";
-  } else if (isGrain(productCategory)) {
+  } else if (pdfTextKey === "grain") {
     mandatoryInfo = docLang === "en"
       ? "MANDATORY INFORMATION — GRAINS AND CEREALS:\n• Product free of GMOs not authorized at destination\n• Maximum moisture content guaranteed per contract\n• Free of pests and contaminants per Codex Alimentarius standards\n• Fumigation and phytosanitary treatment included in CFR price"
       : "INFORMACIÓN MANDATORIA — GRANOS Y CEREALES:\n• Producto libre de organismos genéticamente modificados no autorizados en destino\n• Humedad máxima garantizada según contrato\n• Libre de plagas y contaminantes según normativa Codex Alimentarius\n• Fumigación y tratamiento fitosanitario incluidos en el precio CFR";
