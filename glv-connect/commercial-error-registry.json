@@ -1,5 +1,5 @@
 {
-  "registry_version": "4.0.0",
+  "registry_version": "5.0.0",
   "last_updated": "2026-05-25",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
@@ -178,6 +178,37 @@
         "file": "glv-connect/frontend/src/engines/pdfContextResolver.js",
         "must_contain": "resolvePDFContext"
       }
+    },
+    {
+      "id": "ERR-014",
+      "title": "Container label hardcoded as '× 20'' in CommercialSummaryPanel and AggregateSummary",
+      "status": "resolved",
+      "resolved_in": "PR #53",
+      "root_cause": "CommercialSummaryPanel displayed '${containers} × 20'' regardless of selected container type. AggregateSummary also used hardcoded '× 20''. Users selecting Reefer 40FT, ISO Tank, etc. still saw '20'' in the commercial summary output.",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "getContainerLabel(containerType) from containerEngine used in CommercialSummaryPanel. AggregateSummary displays 'contenedores' (generic plural). Hardcoded '20'' string eliminated.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_not_contain": "× 20'"
+      }
+    },
+    {
+      "id": "ERR-015",
+      "title": "Liquid/packaged products forced into kg-only pricing with no sale unit selector",
+      "status": "resolved",
+      "resolved_in": "PR #53",
+      "root_cause": "OILS, FRUIT_PRODUCTS, COLOMBIAN_EXOTIC_FRUITS had no way to declare pricing per liter, per box, per jerrycan, or per container. All products defaulted to perKg formula with no UI path to change it. PDF always showed 'Price/kg' regardless of actual commercial agreement.",
+      "affected_files": [
+        "glv-connect/frontend/src/engines/packagingEngine.js",
+        "glv-connect/frontend/src/utils/calculations.js",
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "LiquidPackagingEngine V5: BULK_INDUSTRIAL_OPTIONS, RETAIL_CONSUMER_OPTIONS, COMMERCIAL_SALE_UNITS added. calcShipmentValue extended with commercialUnit switch (perKg/perMT/perLiter/perBox/perUnit/perDrum/perJerrycan/perBottle/perPallet/perContainer). Box Engine added (qty×unitsPerBox×netWeightPerUnit×price). PDF Section 2 shows packaging type, presentation size, units per box, commercial sale unit. LIVE_ANIMALS formula completely isolated and untouched.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/packagingEngine.js",
+        "must_contain": "COMMERCIAL_SALE_UNITS"
+      }
     }
   ],
   "prevention_ci_manifest": {
@@ -195,7 +226,9 @@
       { "id": "ERR-010", "file": "glv-connect/backend/services/mediaBinding.js",              "must_contain": "ANIMAL_FEED" },
       { "id": "ERR-011", "file": "glv-connect/frontend/src/engines/containerEngine.js",       "must_contain": "CONTAINER_SPECS" },
       { "id": "ERR-012", "file": "glv-connect/frontend/src/engines/categoryProfiles.js",      "must_contain": "getCategoryProfile" },
-      { "id": "ERR-013", "file": "glv-connect/frontend/src/engines/pdfContextResolver.js",    "must_contain": "resolvePDFContext" }
+      { "id": "ERR-013", "file": "glv-connect/frontend/src/engines/pdfContextResolver.js",    "must_contain": "resolvePDFContext" },
+      { "id": "ERR-014", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "getContainerLabel" },
+      { "id": "ERR-015", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "COMMERCIAL_SALE_UNITS" }
     ]
   }
 }

@@ -346,6 +346,68 @@ jobs:
           fi
           echo "## ✅ CommercialEngine imports containerEngine" >> $GITHUB_STEP_SUMMARY
 
+      - name: V5 — Verify getContainerLabel used (no hardcoded 20-foot label)
+        run: |
+          if ! grep -q "getContainerLabel" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::ERR-014: getContainerLabel not found in CommercialEngine.jsx — container label may be hardcoded to 20FT"
+            exit 1
+          fi
+          echo "## ✅ ERR-014: getContainerLabel used — no hardcoded 20FT label" >> $GITHUB_STEP_SUMMARY
+
+      - name: V5 — Verify packagingEngine has liquid engine symbols
+        run: |
+          SYMBOLS=(COMMERCIAL_SALE_UNITS BULK_INDUSTRIAL_OPTIONS RETAIL_CONSUMER_OPTIONS getSaleUnitsForProfile)
+          FAILED=0
+          for sym in "${SYMBOLS[@]}"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/engines/packagingEngine.js; then
+              echo "::error::V5 packagingEngine.js missing: $sym"
+              FAILED=1
+            else
+              echo "✅ packagingEngine.js — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V5 packagingEngine.js has all liquid engine symbols" >> $GITHUB_STEP_SUMMARY
+
+      - name: V5 — Verify calculations.js has commercialUnit multi-mode switch
+        run: |
+          if ! grep -q "commercialUnit" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V5 commercialUnit switch not found in calculations.js — liquid products forced to perKg"
+            exit 1
+          fi
+          if ! grep -q "perLiter\|perBox\|perDrum" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V5 liquid pricing modes (perLiter, perBox, perDrum) not found in calculations.js"
+            exit 1
+          fi
+          echo "## ✅ V5 commercialUnit multi-mode switch present in calculations.js" >> $GITHUB_STEP_SUMMARY
+
+      - name: V5 — Verify GlvPDF renders packaging fields
+        run: |
+          SYMBOLS=(packagingType presentationSize commercialUnit PACKAGING_TYPE_LABELS COMMERCIAL_UNIT_LABELS)
+          FAILED=0
+          for sym in "${SYMBOLS[@]}"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/components/GlvPDF.jsx; then
+              echo "::error::V5 GlvPDF.jsx missing packaging PDF field: $sym"
+              FAILED=1
+            else
+              echo "✅ GlvPDF.jsx — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V5 GlvPDF.jsx renders packaging fields (type, size, commercial unit)" >> $GITHUB_STEP_SUMMARY
+
+      - name: V5 — Verify validationSupervisor has VAL-011 and VAL-012
+        run: |
+          if ! grep -q "VAL-011" glv-connect/frontend/src/engines/validationSupervisor.js; then
+            echo "::error::V5 VAL-011 (commercial unit required) missing from validationSupervisor.js"
+            exit 1
+          fi
+          if ! grep -q "VAL-012" glv-connect/frontend/src/engines/validationSupervisor.js; then
+            echo "::error::V5 VAL-012 (packaging mode required) missing from validationSupervisor.js"
+            exit 1
+          fi
+          echo "## ✅ V5 validationSupervisor has VAL-011 and VAL-012" >> $GITHUB_STEP_SUMMARY
+
       - name: Verify MT×1000 conversion and isLiveAnimalRow guard
         run: |
           if ! grep -q "isMT\|MT.*1000\|1000.*MT\|\* 1000" glv-connect/frontend/src/components/GlvPDF.jsx; then

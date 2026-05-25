@@ -1,7 +1,7 @@
 /**
- * validationSupervisor.js — GLV Commercial Document Validation Supervisor V4.
+ * validationSupervisor.js — GLV Commercial Document Validation Supervisor V5.
  *
- * 10 mandatory validation checks before any PDF generation or document submission:
+ * 12 mandatory validation checks before any PDF generation or document submission:
  *
  *   VAL-001  Pricing consistency        — unit price must be > 0
  *   VAL-002  Unit consistency           — unit type compatible with category
@@ -13,6 +13,8 @@
  *   VAL-008  Container mismatch         — selected container compatible with category
  *   VAL-009  Stale cache detection      — multiple categories in one document
  *   VAL-010  Formula mismatch           — required fields present for category engine
+ *   VAL-011  Commercial unit required   — liquid/packaged categories must declare sale unit
+ *   VAL-012  Packaging mode required    — packaged categories must declare packaging mode
  */
 
 import { getCategoryEngine } from "./categoryEngine.js";
@@ -43,6 +45,8 @@ export function validateDocument(doc, cdRows = []) {
     checkContainerMismatch(firstRow, engine),
     checkStaleCache(cdRows),
     checkFormulaMismatch(firstRow, engine),
+    checkCommercialUnitRequired(firstRow, profile),
+    checkPackagingModeRequired(firstRow, profile),
   ];
 
   const errors   = checks.filter(c => !c.pass && c.severity === "error");
@@ -203,4 +207,39 @@ function checkFormulaMismatch(row, engine) {
     }
   }
   return { id: "VAL-010", name: "Formula Mismatch", pass: true, message: "Formula inputs consistent with category engine", severity: "warning" };
+}
+
+const LIQUID_PACKAGED_CATEGORIES = new Set(["OILS", "FRUIT_PRODUCTS", "COLOMBIAN_EXOTIC_FRUITS"]);
+
+function checkCommercialUnitRequired(row, profile) {
+  const category = row.category || "";
+  if (!LIQUID_PACKAGED_CATEGORIES.has(category)) {
+    return { id: "VAL-011", name: "Commercial Unit Required", pass: true, message: "Category does not require explicit commercial sale unit", severity: "warning" };
+  }
+  const unit = row.commercialUnit || "";
+  return {
+    id:       "VAL-011",
+    name:     "Commercial Unit Required",
+    pass:     !!unit,
+    message:  unit
+      ? `Commercial sale unit declared: ${unit}`
+      : `${category} requires a commercial sale unit (perKg, perLiter, perBox, etc.) — PDF pricing basis will be incomplete`,
+    severity: "warning",
+  };
+}
+
+function checkPackagingModeRequired(row, profile) {
+  if (!profile?.supportsLiquidPackaging && !profile?.supportsPackaging) {
+    return { id: "VAL-012", name: "Packaging Mode Required", pass: true, message: "Category does not require packaging mode", severity: "warning" };
+  }
+  const mode = row.packagingMode || "";
+  return {
+    id:       "VAL-012",
+    name:     "Packaging Mode Required",
+    pass:     !!mode,
+    message:  mode
+      ? `Packaging mode: ${mode}`
+      : "Packaging mode not declared — select BULK/INDUSTRIAL or RETAIL/CONSUMER to generate correct PDF output",
+    severity: "warning",
+  };
 }

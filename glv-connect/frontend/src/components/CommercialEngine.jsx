@@ -5,7 +5,12 @@ import { calcCommercialSummary, fmtMoney, fmtNum } from "../utils/calculations.j
 import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js";
 import { getPortsForCountry } from "../config/destinationPorts.js";
 import { getDefaultContainer, getDefaultCargoType } from "../engines/categoryEngine.js";
-import { CONTAINER_TYPES as CONTAINER_TYPES_ENGINE } from "../engines/containerEngine.js";
+import { CONTAINER_TYPES as CONTAINER_TYPES_ENGINE, getContainerLabel } from "../engines/containerEngine.js";
+import { getCategoryProfile } from "../engines/categoryProfiles.js";
+import {
+  BULK_INDUSTRIAL_OPTIONS, RETAIL_CONSUMER_OPTIONS, RETAIL_BOX_ENGINE_TYPES,
+  LIQUID_SIZE_RETAIL, LIQUID_SIZE_INDUSTRIAL, COMMERCIAL_SALE_UNITS, getSaleUnitsForProfile,
+} from "../engines/packagingEngine.js";
 
 const ORIGINS = ["Brazil", "Argentina", "Colombia", "Uruguay", "Chile", "Paraguay", "USA", "Canada", "Australia", "New Zealand", "South Africa", "Other"];
 const PRICED_INCOTERMS = ["FOB", "CFR", "CIF", "DDP"];
@@ -292,6 +297,118 @@ function CargoTypeSelector({ value, onChange, category }) {
   );
 }
 
+// ─── Liquid & Packaged Product Engine ────────────────────────────────────────
+// Shown ONLY for non-LIVE_ANIMALS categories that support packaging.
+// Guides the agent through: packagingMode → packagingType → presentationSize → commercialUnit → box engine.
+
+const PACKAGING_MODES = [
+  { id: "BULK",   label: "Bulk / Industrial", desc: "Flexi Tank, IBC, Drum, Jerrycan..." },
+  { id: "RETAIL", label: "Retail / Consumer",  desc: "PET, Glass, Tetra Pak, Doypack..." },
+  { id: "CUSTOM", label: "Custom Packaging",   desc: "Otro tipo de empaque" },
+];
+
+function LiquidPackagingEngine({ category, packagingMode, setPackagingMode, packagingType, setPackagingType, presentationSize, setPresentationSize, commercialUnit, setCommercialUnit, unitsPerBox, setUnitsPerBox, netWeightPerUnit, setNetWeightPerUnit }) {
+  const profile = getCategoryProfile(category);
+  if (!profile?.supportsPackaging && !profile?.supportsLiquidPackaging) return null;
+  if (category === "LIVE_ANIMALS") return null;
+
+  const isLiquid    = profile?.supportsLiquidPackaging;
+  const packOptions = packagingMode === "BULK"   ? BULK_INDUSTRIAL_OPTIONS
+                    : packagingMode === "RETAIL"  ? RETAIL_CONSUMER_OPTIONS
+                    : [];
+  const sizeOptions = packagingMode === "BULK"   ? LIQUID_SIZE_INDUSTRIAL
+                    : packagingMode === "RETAIL"  ? LIQUID_SIZE_RETAIL
+                    : [];
+  const showBoxEngine = packagingMode === "RETAIL" && packagingType && RETAIL_BOX_ENGINE_TYPES.has(packagingType);
+  const saleUnits = getSaleUnitsForProfile(profile);
+
+  const totalNetKgDisplay = (() => {
+    const qty = parseFloat(unitsPerBox) || 0;
+    const wt  = parseFloat(netWeightPerUnit) || 0;
+    if (!qty || !wt) return null;
+    return (qty * wt).toFixed(3);
+  })();
+
+  return (
+    <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, border: "0.5px solid #c7d2fe", background: "#f5f3ff" }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: "#4c1d95", margin: "0 0 10px", letterSpacing: 0.5, textTransform: "uppercase" }}>
+        {isLiquid ? "Liquid Packaging Engine" : "Packaged Product Engine"}
+      </p>
+
+      {/* Step A: Packaging Mode */}
+      <Field label="Tipo de Empaque / Packaging Mode">
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {PACKAGING_MODES.map(m => (
+            <button key={m.id} type="button"
+              onClick={() => { setPackagingMode(m.id); setPackagingType(""); setPresentationSize(""); }}
+              title={m.desc}
+              style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: packagingMode === m.id ? "2px solid #4c1d95" : "1px solid #c4b5fd", background: packagingMode === m.id ? "#4c1d95" : "#fff", color: packagingMode === m.id ? "#fff" : "#4c1d95" }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      {/* Step B: Packaging Type */}
+      {packagingMode && packagingMode !== "CUSTOM" && packOptions.length > 0 && (
+        <Field label={packagingMode === "BULK" ? "Tipo de Envase Industrial" : "Tipo de Envase Retail"}>
+          <Sel value={packagingType} onChange={setPackagingType}>
+            <option value="">Seleccionar tipo...</option>
+            {packOptions.map(o => <option key={o.id} value={o.id}>{o.label} — {o.desc}</option>)}
+          </Sel>
+        </Field>
+      )}
+      {packagingMode === "CUSTOM" && (
+        <Field label="Describe el empaque personalizado">
+          <Inp value={packagingType} onChange={setPackagingType} placeholder="Ej: Bolsa laminada 500g con válvula..." />
+        </Field>
+      )}
+
+      {/* Step B2: Presentation Size (optional) */}
+      {sizeOptions.length > 0 && packagingType && (
+        <Field label="Tamaño de Presentación / Presentation Size">
+          <Sel value={presentationSize} onChange={setPresentationSize}>
+            <option value="">Seleccionar tamaño...</option>
+            {sizeOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </Sel>
+        </Field>
+      )}
+
+      {/* Step C: Commercial Sale Unit */}
+      <Field label="Unidad Comercial de Venta / Commercial Sale Unit">
+        <Sel value={commercialUnit} onChange={setCommercialUnit}>
+          <option value="">Seleccionar modo de precio...</option>
+          {saleUnits.map(u => <option key={u.id} value={u.id}>{u.label.es} ({u.abbr})</option>)}
+        </Sel>
+      </Field>
+
+      {/* Box Engine — triggered by retail bottle/can/tetrapack types */}
+      {showBoxEngine && (
+        <div style={{ background: "#ede9fe", borderRadius: 8, padding: "10px 12px", marginTop: 4 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: "#5b21b6", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>Box / Carton Engine</p>
+          <div style={s.row2}>
+            <Field label="Unidades por Caja / Units per Box">
+              <Inp type="number" value={unitsPerBox} onChange={setUnitsPerBox} placeholder="Ej: 12, 24, 48" min="1" />
+            </Field>
+            <Field label="Peso Neto por Unidad (kg)">
+              <Inp type="number" value={netWeightPerUnit} onChange={setNetWeightPerUnit} placeholder="Ej: 1 (para 1L), 0.5 (para 500ml)" min="0.001" />
+            </Field>
+          </div>
+          {totalNetKgDisplay && (
+            <div style={{ background: "#4c1d95", borderRadius: 6, padding: "6px 10px", marginTop: 4 }}>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", margin: "0 0 2px", textTransform: "uppercase" }}>Peso Neto Total por Caja</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{totalNetKgDisplay} kg / caja</p>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", margin: "2px 0 0" }}>
+                {unitsPerBox} und × {netWeightPerUnit} kg = {totalNetKgDisplay} kg neto por cartón
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Dynamic Spec Fields ──────────────────────────────────────────────────────
 function DynamicFields({ category, specs, setSpecs }) {
   const catDef = PRODUCT_CATEGORIES[category];
@@ -361,6 +478,13 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   const [origin, setOrigin] = useState(initial?.origin || "Brazil");
   const [cargoType, setCargoType] = useState(initial?.cargoType || "");
   const [collapsed, setCollapsed] = useState(false);
+  // V5: liquid/packaged engine
+  const [packagingMode, setPackagingMode]         = useState(initial?.packagingMode       || "");
+  const [packagingType, setPackagingType]         = useState(initial?.packagingType       || "");
+  const [presentationSize, setPresentationSize]   = useState(initial?.presentationSize    || "");
+  const [commercialUnit, setCommercialUnit]       = useState(initial?.commercialUnit      || "");
+  const [unitsPerBox, setUnitsPerBox]             = useState(initial?.unitsPerBox         || "");
+  const [netWeightPerUnit, setNetWeightPerUnit]   = useState(initial?.netWeightPerUnit    || "");
 
   const catDef = cat ? PRODUCT_CATEGORIES[cat] : null;
 
@@ -386,11 +510,13 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
     deliveryFrequency: frequency, numShipments, contractDuration: duration,
     headCount: specs.headCount, avgWeight: specs.avgWeight, mortalityMargin: specs.mortalityMargin,
     containerCapacity: containerCap || catDef?.containerCapacity,
+    containerType,
+    commercialUnit, unitsPerBox, netWeightPerUnit,
   }) : null;
 
   useEffect(() => {
-    onChange(rowId, { category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices, unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments, contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType, summary });
-  }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency, frequency, numShipments, duration, containerCap, containerType, origin]);
+    onChange(rowId, { category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices, unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments, contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType, packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit, summary });
+  }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency, frequency, numShipments, duration, containerCap, containerType, origin, packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit]);
 
   return (
     <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
@@ -453,6 +579,19 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 
           {cat && cat !== "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
           {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
+
+          {/* V5: Liquid / Packaged Product Engine — never shown for LIVE_ANIMALS */}
+          {cat && cat !== "LIVE_ANIMALS" && (
+            <LiquidPackagingEngine
+              category={cat}
+              packagingMode={packagingMode} setPackagingMode={setPackagingMode}
+              packagingType={packagingType} setPackagingType={setPackagingType}
+              presentationSize={presentationSize} setPresentationSize={setPresentationSize}
+              commercialUnit={commercialUnit} setCommercialUnit={setCommercialUnit}
+              unitsPerBox={unitsPerBox} setUnitsPerBox={setUnitsPerBox}
+              netWeightPerUnit={netWeightPerUnit} setNetWeightPerUnit={setNetWeightPerUnit}
+            />
+          )}
 
           {/* Origin for non-LIVE_ANIMALS */}
           {cat && cat !== "LIVE_ANIMALS" && (
@@ -529,7 +668,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 
           {/* Row commercial summary — always shown when category + price are set */}
           {cat && (
-            <CommercialSummaryPanel summary={summary} currency={currency} unitPrice={primaryPrice} qty={qty} unitType={unitType} specs={specs} frequency={frequency} duration={duration} category={cat} />
+            <CommercialSummaryPanel summary={summary} currency={currency} unitPrice={primaryPrice} qty={qty} unitType={unitType} specs={specs} frequency={frequency} duration={duration} category={cat} containerType={containerType} commercialUnit={commercialUnit} />
           )}
         </div>
       )}
@@ -537,7 +676,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   );
 }
 
-function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration, category }) {
+function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration, category, containerType, commercialUnit }) {
   const hasPrice = parseFloat(unitPrice) > 0;
   const hasQty   = parseFloat(qty) > 0;
   const isLive   = category === "LIVE_ANIMALS";
@@ -582,7 +721,7 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))", gap: 10 }}>
-        {hasPrice && <MiniBox label="Precio / kg" value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />}
+        {hasPrice && <MiniBox label={`Precio ${commercialUnit ? `(${COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr || commercialUnit})` : "/ kg"}`} value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />}
         {hasQty && !isLive && <MiniBox label={`Cantidad (${unitType?.split("/")[0].trim() || "unid."})`} value={fmtNum(parseFloat(qty))} />}
         {hasQty && !isLive && (unitType?.includes("MT") || unitType?.includes("Tonelada")) && (
           <MiniBox label="Peso Total (kg)" value={fmtNum(parseFloat(qty) * 1000) + " kg"} />
@@ -616,7 +755,13 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
           <MiniBox label="TOTAL CONTRATO" value={fmtMoney(summary.contractValue, currency)} big />
         )}
         {!isLive && summary?.containers && (
-          <MiniBox label="Contenedores est." value={`${summary.containers.containers} × 20'`} />
+          <MiniBox label="Contenedores est." value={`${summary.containers.containers} × ${getContainerLabel(containerType) || "40FT"}`} />
+        )}
+        {!isLive && summary?.totalNetKg > 0 && (
+          <MiniBox label="Peso Neto Total" value={fmtNum(summary.totalNetKg) + " kg"} />
+        )}
+        {!isLive && summary?.totalUnits > 0 && (
+          <MiniBox label="Unidades Totales" value={fmtNum(summary.totalUnits)} />
         )}
         {!isLive && summary?.contractValue > 0 && summary?.durationMonths > 0 && (
           <MiniBox label="Valor Anual" value={fmtMoney(summary.contractValue / (summary.durationMonths / 12), currency)} />
@@ -672,7 +817,7 @@ function AggregateSummary({ rows, rowData }) {
         <MiniBox label="Valor Mensual Total" value={fmtMoney(totalMonthly, currency)} />
         <MiniBox label="Valor Anual Estimado" value={fmtMoney(annualValue, currency)} />
         <MiniBox label="TOTAL PROGRAMA" value={fmtMoney(totalContract, currency)} big />
-        {totalContainers > 0 && <MiniBox label="Contenedores Tot." value={`${totalContainers} × 20'`} />}
+        {totalContainers > 0 && <MiniBox label="Contenedores Tot." value={`${totalContainers} contenedores`} />}
         <MiniBox label="Líneas de Producto" value={String(activeRows.length)} />
       </div>
     </div>
