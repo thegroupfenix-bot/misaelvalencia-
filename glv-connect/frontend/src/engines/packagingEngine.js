@@ -235,6 +235,8 @@ export const COMMERCIAL_SALE_UNITS = [
   { id: "perJerrycan",  label: { es: "Precio por Jerrycan",   en: "Price per Jerrycan" },   abbr: "/jerrycan",  requiresWeight: false },
   { id: "perBottle",    label: { es: "Precio por Botella",    en: "Price per Bottle" },     abbr: "/bottle",    requiresWeight: false },
   { id: "perPallet",    label: { es: "Precio por Paleta",     en: "Price per Pallet" },     abbr: "/pallet",    requiresWeight: false },
+  { id: "perIBC",       label: { es: "Precio por IBC",        en: "Price per IBC" },        abbr: "/IBC",       requiresWeight: false },
+  { id: "perFlexitank", label: { es: "Precio por Flexitank",  en: "Price per Flexitank" },  abbr: "/flexitank", requiresWeight: false },
 ];
 
 /**
@@ -245,7 +247,7 @@ export function getSaleUnitsForProfile(categoryProfile) {
   if (!categoryProfile) return COMMERCIAL_SALE_UNITS;
   if (categoryProfile.supportsLiquidPackaging) {
     return COMMERCIAL_SALE_UNITS.filter(u =>
-      ["perKg","perMT","perLiter","perContainer","perDrum","perJerrycan","perBottle","perBox"].includes(u.id)
+      ["perKg","perMT","perLiter","perContainer","perDrum","perJerrycan","perBottle","perBox","perIBC","perFlexitank"].includes(u.id)
     );
   }
   if (categoryProfile.supportsLivestock) return []; // not used for livestock

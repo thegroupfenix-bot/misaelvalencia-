@@ -1,7 +1,7 @@
 /**
- * validationSupervisor.js — GLV Commercial Document Validation Supervisor V5.
+ * validationSupervisor.js — GLV Commercial Document Validation Supervisor V5.1.
  *
- * 12 mandatory validation checks before any PDF generation or document submission:
+ * 14 mandatory validation checks before any PDF generation or document submission:
  *
  *   VAL-001  Pricing consistency        — unit price must be > 0
  *   VAL-002  Unit consistency           — unit type compatible with category
@@ -15,6 +15,8 @@
  *   VAL-010  Formula mismatch           — required fields present for category engine
  *   VAL-011  Commercial unit required   — liquid/packaged categories must declare sale unit
  *   VAL-012  Packaging mode required    — packaged categories must declare packaging mode
+ *   VAL-013  Retail size required       — retail bottle/can packaging must declare presentation size
+ *   VAL-014  Box engine units required  — retail carton packaging with size must declare units/box
  */
 
 import { getCategoryEngine } from "./categoryEngine.js";
@@ -47,6 +49,8 @@ export function validateDocument(doc, cdRows = []) {
     checkFormulaMismatch(firstRow, engine),
     checkCommercialUnitRequired(firstRow, profile),
     checkPackagingModeRequired(firstRow, profile),
+    checkRetailSizeRequired(firstRow),
+    checkBoxEngineUnitsRequired(firstRow),
   ];
 
   const errors   = checks.filter(c => !c.pass && c.severity === "error");
@@ -240,6 +244,47 @@ function checkPackagingModeRequired(row, profile) {
     message:  mode
       ? `Packaging mode: ${mode}`
       : "Packaging mode not declared — select BULK/INDUSTRIAL or RETAIL/CONSUMER to generate correct PDF output",
+    severity: "warning",
+  };
+}
+
+const RETAIL_SIZE_REQUIRED_TYPES = new Set([
+  "PET_BOTTLE","GLASS_BOTTLE","TETRA_PAK","DOYPACK","SACHET","PREMIUM_BOTTLE","CAN_TIN","PLASTIC_GALLON",
+]);
+
+function checkRetailSizeRequired(row) {
+  const mode = row.packagingMode || "";
+  const type = row.packagingType || "";
+  if (mode !== "RETAIL" || !type || !RETAIL_SIZE_REQUIRED_TYPES.has(type)) {
+    return { id: "VAL-013", name: "Retail Size Required", pass: true, message: "Presentation size not required for this packaging type", severity: "warning" };
+  }
+  const size = row.presentationSize || "";
+  return {
+    id:       "VAL-013",
+    name:     "Retail Size Required",
+    pass:     !!size,
+    message:  size
+      ? `Presentation size: ${size}`
+      : `${type} packaging requires a presentation size (e.g. 900ml, 1L) — PDF carton calculation will be incomplete`,
+    severity: "warning",
+  };
+}
+
+function checkBoxEngineUnitsRequired(row) {
+  const mode = row.packagingMode || "";
+  const type = row.packagingType || "";
+  const size = row.presentationSize || "";
+  if (mode !== "RETAIL" || !type || !size || !RETAIL_SIZE_REQUIRED_TYPES.has(type)) {
+    return { id: "VAL-014", name: "Box Engine Units Required", pass: true, message: "Box engine not active for this configuration", severity: "warning" };
+  }
+  const upb = parseFloat(row.unitsPerBox || 0);
+  return {
+    id:       "VAL-014",
+    name:     "Box Engine Units Required",
+    pass:     upb > 0,
+    message:  upb > 0
+      ? `Units per box: ${upb}`
+      : `Retail carton packaging (${type} ${size}) requires units per box to calculate shipment value — e.g. 12, 24, 48`,
     severity: "warning",
   };
 }

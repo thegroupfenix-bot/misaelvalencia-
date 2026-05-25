@@ -87,11 +87,14 @@ function CountrySearch({ value, onChange }) {
 }
 
 // ─── Multi-Incoterm Selector ──────────────────────────────────────────────────
-function IncotermSelector({ selected, onChange, prices, onPriceChange }) {
+function IncotermSelector({ selected, onChange, prices, onPriceChange, commercialUnit }) {
   const toggle = (inc) => {
     if (selected.includes(inc)) { if (selected.length === 1) return; onChange(selected.filter(i => i !== inc)); }
     else onChange([...selected, inc]);
   };
+  // Dynamic label driven by commercialUnit — never hardcoded /kg
+  const priceUnitLabel = COMMERCIAL_SALE_UNITS.find(u => u.id === commercialUnit)?.abbr || "/kg";
+
   return (
     <div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
@@ -109,7 +112,9 @@ function IncotermSelector({ selected, onChange, prices, onPriceChange }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", gap: 10 }}>
           {PRICED_INCOTERMS.filter(i => selected.includes(i)).map(inc => (
             <div key={inc} style={{ background: "var(--color-background-secondary)", borderRadius: 8, padding: "10px 12px", border: "0.5px solid var(--color-border-tertiary)" }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: "#1B2A4A", display: "block", marginBottom: 5 }}>Precio {inc} / kg</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#1B2A4A", display: "block", marginBottom: 5 }}>
+                Precio {inc} <span style={{ color: "#2563eb", fontWeight: 700 }}>{priceUnitLabel}</span>
+              </label>
               <input type="number" value={prices[inc] ?? ""} onChange={e => onPriceChange(inc, e.target.value)} placeholder="0.00" min="0" step="0.01" style={s.input} />
             </div>
           ))}
@@ -299,7 +304,11 @@ function CargoTypeSelector({ value, onChange, category }) {
 
 // ─── Liquid & Packaged Product Engine ────────────────────────────────────────
 // Shown ONLY for non-LIVE_ANIMALS categories that support packaging.
-// Guides the agent through: packagingMode → packagingType → presentationSize → commercialUnit → box engine.
+// 4 visually separated layers:
+//   LAYER 1 — Presentation Type (packaging container / format)
+//   LAYER 2 — Presentation Size (conditional: retail bottles only)
+//   LAYER 3 — Box / Carton Engine (conditional: bottle types + size set)
+//   LAYER 4 — Commercial Sale Basis (always shown; drives price label)
 
 const PACKAGING_MODES = [
   { id: "BULK",   label: "Bulk / Industrial", desc: "Flexi Tank, IBC, Drum, Jerrycan..." },
@@ -307,7 +316,20 @@ const PACKAGING_MODES = [
   { id: "CUSTOM", label: "Custom Packaging",   desc: "Otro tipo de empaque" },
 ];
 
-function LiquidPackagingEngine({ category, packagingMode, setPackagingMode, packagingType, setPackagingType, presentationSize, setPresentationSize, commercialUnit, setCommercialUnit, unitsPerBox, setUnitsPerBox, netWeightPerUnit, setNetWeightPerUnit }) {
+// Retail container types that require a presentation size selection
+const REQUIRES_PRESENTATION_SIZE = new Set([
+  "PET_BOTTLE","GLASS_BOTTLE","TETRA_PAK","DOYPACK","SACHET","PREMIUM_BOTTLE","CAN_TIN","PLASTIC_GALLON",
+]);
+
+function LiquidPackagingEngine({
+  category,
+  packagingMode, setPackagingMode,
+  packagingType, setPackagingType,
+  presentationSize, setPresentationSize,
+  commercialUnit, setCommercialUnit,
+  unitsPerBox, setUnitsPerBox,
+  netWeightPerUnit, setNetWeightPerUnit,
+}) {
   const profile = getCategoryProfile(category);
   if (!profile?.supportsPackaging && !profile?.supportsLiquidPackaging) return null;
   if (category === "LIVE_ANIMALS") return null;
@@ -316,95 +338,213 @@ function LiquidPackagingEngine({ category, packagingMode, setPackagingMode, pack
   const packOptions = packagingMode === "BULK"   ? BULK_INDUSTRIAL_OPTIONS
                     : packagingMode === "RETAIL"  ? RETAIL_CONSUMER_OPTIONS
                     : [];
-  const sizeOptions = packagingMode === "BULK"   ? LIQUID_SIZE_INDUSTRIAL
-                    : packagingMode === "RETAIL"  ? LIQUID_SIZE_RETAIL
-                    : [];
-  const showBoxEngine = packagingMode === "RETAIL" && packagingType && RETAIL_BOX_ENGINE_TYPES.has(packagingType);
-  const saleUnits = getSaleUnitsForProfile(profile);
+  const showSizeSelector  = packagingMode === "RETAIL" && packagingType && REQUIRES_PRESENTATION_SIZE.has(packagingType);
+  const showBoxEngine     = showSizeSelector && RETAIL_BOX_ENGINE_TYPES.has(packagingType) && presentationSize;
+  const saleUnits         = getSaleUnitsForProfile(profile);
 
-  const totalNetKgDisplay = (() => {
-    const qty = parseFloat(unitsPerBox) || 0;
-    const wt  = parseFloat(netWeightPerUnit) || 0;
-    if (!qty || !wt) return null;
-    return (qty * wt).toFixed(3);
+  // Auto-calculate net weight per unit from presentation size (litValue → kg for liquids, ~1:1 density)
+  const selectedSizeEntry = LIQUID_SIZE_RETAIL.find(s => s.id === presentationSize);
+  const autoNetWeightKg   = selectedSizeEntry ? selectedSizeEntry.litValue : null; // 1L ≈ 1kg for food liquids
+  const effectiveNwu      = autoNetWeightKg ?? (parseFloat(netWeightPerUnit) || 0);
+
+  // Auto-push derived weight back to parent (only when auto-calculable)
+  // (parent still holds netWeightPerUnit state but it's derived, not manually entered)
+
+  const totalNetLitersDisplay = (() => {
+    const upb  = parseFloat(unitsPerBox) || 0;
+    const size = selectedSizeEntry?.litValue || 0;
+    if (!upb || !size) return null;
+    return (upb * size).toFixed(2);
   })();
 
+  const totalNetKgDisplay = (() => {
+    const upb = parseFloat(unitsPerBox) || 0;
+    if (!upb || !effectiveNwu) return null;
+    return (upb * effectiveNwu).toFixed(3);
+  })();
+
+  const layerStyle = {
+    borderRadius: 8, padding: "10px 12px", marginBottom: 10,
+    border: "0.5px solid #e9d5ff", background: "#fff",
+  };
+  const layerHeader = (num, title, color = "#4c1d95") => (
+    <p style={{ fontSize: 10, fontWeight: 700, color, margin: "0 0 8px", letterSpacing: 0.8, textTransform: "uppercase" }}>
+      <span style={{ display: "inline-block", width: 18, height: 18, borderRadius: "50%", background: color, color: "#fff", textAlign: "center", lineHeight: "18px", fontSize: 10, marginRight: 6, fontWeight: 700 }}>{num}</span>
+      {title}
+    </p>
+  );
+
   return (
-    <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, border: "0.5px solid #c7d2fe", background: "#f5f3ff" }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: "#4c1d95", margin: "0 0 10px", letterSpacing: 0.5, textTransform: "uppercase" }}>
-        {isLiquid ? "Liquid Packaging Engine" : "Packaged Product Engine"}
+    <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, border: "0.5px solid #c4b5fd", background: "#f5f3ff" }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: "#4c1d95", margin: "0 0 12px", letterSpacing: 0.5, textTransform: "uppercase" }}>
+        {isLiquid ? "⬡ Liquid / Packaged Product Engine" : "⬡ Packaged Product Engine"}
       </p>
 
-      {/* Step A: Packaging Mode */}
-      <Field label="Tipo de Empaque / Packaging Mode">
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {/* ── LAYER 1: PRESENTATION TYPE ──────────────────────────────────────── */}
+      <div style={layerStyle}>
+        {layerHeader(1, "Presentation / Packaging Type")}
+
+        {/* Mode selector — BULK / RETAIL / CUSTOM */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
           {PACKAGING_MODES.map(m => (
             <button key={m.id} type="button"
-              onClick={() => { setPackagingMode(m.id); setPackagingType(""); setPresentationSize(""); }}
+              onClick={() => { setPackagingMode(m.id); setPackagingType(""); setPresentationSize(""); setUnitsPerBox(""); setNetWeightPerUnit(""); }}
               title={m.desc}
-              style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: packagingMode === m.id ? "2px solid #4c1d95" : "1px solid #c4b5fd", background: packagingMode === m.id ? "#4c1d95" : "#fff", color: packagingMode === m.id ? "#fff" : "#4c1d95" }}>
+              style={{ padding: "5px 16px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                border: packagingMode === m.id ? "2px solid #4c1d95" : "1px solid #c4b5fd",
+                background: packagingMode === m.id ? "#4c1d95" : "#fff",
+                color: packagingMode === m.id ? "#fff" : "#4c1d95" }}>
               {m.label}
             </button>
           ))}
         </div>
-      </Field>
 
-      {/* Step B: Packaging Type */}
-      {packagingMode && packagingMode !== "CUSTOM" && packOptions.length > 0 && (
-        <Field label={packagingMode === "BULK" ? "Tipo de Envase Industrial" : "Tipo de Envase Retail"}>
-          <Sel value={packagingType} onChange={setPackagingType}>
-            <option value="">Seleccionar tipo...</option>
-            {packOptions.map(o => <option key={o.id} value={o.id}>{o.label} — {o.desc}</option>)}
-          </Sel>
-        </Field>
+        {/* Packaging type dropdown — changes per mode */}
+        {packagingMode === "BULK" && (
+          <div>
+            <label style={{ ...s.label, marginBottom: 4 }}>Tipo de Envase Industrial</label>
+            <Sel value={packagingType} onChange={v => { setPackagingType(v); setPresentationSize(""); setUnitsPerBox(""); }}>
+              <option value="">Seleccionar envase industrial...</option>
+              {BULK_INDUSTRIAL_OPTIONS.map(o => (
+                <option key={o.id} value={o.id}>{o.label} — {o.desc}</option>
+              ))}
+            </Sel>
+            {packagingType && (
+              <p style={{ fontSize: 11, color: "#6b7280", margin: "4px 0 0" }}>
+                {BULK_INDUSTRIAL_OPTIONS.find(o => o.id === packagingType)?.desc || ""}
+              </p>
+            )}
+          </div>
+        )}
+
+        {packagingMode === "RETAIL" && (
+          <div>
+            <label style={{ ...s.label, marginBottom: 4 }}>Tipo de Envase Retail / Consumer</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {RETAIL_CONSUMER_OPTIONS.map(o => {
+                const active = packagingType === o.id;
+                return (
+                  <button key={o.id} type="button"
+                    onClick={() => { setPackagingType(o.id); setPresentationSize(""); setUnitsPerBox(""); setNetWeightPerUnit(""); }}
+                    title={o.desc}
+                    style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                      border: active ? "2px solid #059669" : "1px solid #d1d5db",
+                      background: active ? "#059669" : "#f9fafb",
+                      color: active ? "#fff" : "#374151",
+                      fontWeight: active ? 600 : 400 }}>
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {packagingMode === "CUSTOM" && (
+          <div>
+            <label style={{ ...s.label, marginBottom: 4 }}>Describe el empaque personalizado</label>
+            <Inp value={packagingType} onChange={setPackagingType} placeholder="Ej: Bolsa laminada 500g con válvula de desgasificación..." />
+          </div>
+        )}
+      </div>
+
+      {/* ── LAYER 2: PRESENTATION SIZE (retail bottles/cans only) ─────────────── */}
+      {showSizeSelector && (
+        <div style={layerStyle}>
+          {layerHeader(2, "Presentation Size", "#0369a1")}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {LIQUID_SIZE_RETAIL.map(sz => {
+              const active = presentationSize === sz.id;
+              return (
+                <button key={sz.id} type="button"
+                  onClick={() => { setPresentationSize(sz.id); setNetWeightPerUnit(String(sz.litValue)); }}
+                  style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                    border: active ? "2px solid #0369a1" : "1px solid #bae6fd",
+                    background: active ? "#0369a1" : "#f0f9ff",
+                    color: active ? "#fff" : "#0369a1",
+                    fontWeight: active ? 600 : 400 }}>
+                  {sz.label}
+                </button>
+              );
+            })}
+          </div>
+          {presentationSize && (
+            <p style={{ fontSize: 11, color: "#0369a1", margin: "6px 0 0", fontWeight: 500 }}>
+              ✓ {LIQUID_SIZE_RETAIL.find(s => s.id === presentationSize)?.label} seleccionado
+              {autoNetWeightKg ? ` — peso neto referencia: ${autoNetWeightKg} kg/und` : ""}
+            </p>
+          )}
+        </div>
       )}
-      {packagingMode === "CUSTOM" && (
-        <Field label="Describe el empaque personalizado">
-          <Inp value={packagingType} onChange={setPackagingType} placeholder="Ej: Bolsa laminada 500g con válvula..." />
-        </Field>
-      )}
 
-      {/* Step B2: Presentation Size (optional) */}
-      {sizeOptions.length > 0 && packagingType && (
-        <Field label="Tamaño de Presentación / Presentation Size">
-          <Sel value={presentationSize} onChange={setPresentationSize}>
-            <option value="">Seleccionar tamaño...</option>
-            {sizeOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </Sel>
-        </Field>
-      )}
-
-      {/* Step C: Commercial Sale Unit */}
-      <Field label="Unidad Comercial de Venta / Commercial Sale Unit">
-        <Sel value={commercialUnit} onChange={setCommercialUnit}>
-          <option value="">Seleccionar modo de precio...</option>
-          {saleUnits.map(u => <option key={u.id} value={u.id}>{u.label.es} ({u.abbr})</option>)}
-        </Sel>
-      </Field>
-
-      {/* Box Engine — triggered by retail bottle/can/tetrapack types */}
+      {/* ── LAYER 3: BOX / CARTON ENGINE ─────────────────────────────────────── */}
       {showBoxEngine && (
-        <div style={{ background: "#ede9fe", borderRadius: 8, padding: "10px 12px", marginTop: 4 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: "#5b21b6", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>Box / Carton Engine</p>
+        <div style={{ ...layerStyle, background: "#ede9fe", border: "0.5px solid #c4b5fd" }}>
+          {layerHeader(3, "Box / Carton Engine", "#5b21b6")}
           <div style={s.row2}>
             <Field label="Unidades por Caja / Units per Box">
               <Inp type="number" value={unitsPerBox} onChange={setUnitsPerBox} placeholder="Ej: 12, 24, 48" min="1" />
             </Field>
             <Field label="Peso Neto por Unidad (kg)">
-              <Inp type="number" value={netWeightPerUnit} onChange={setNetWeightPerUnit} placeholder="Ej: 1 (para 1L), 0.5 (para 500ml)" min="0.001" />
+              <input type="number" value={effectiveNwu || netWeightPerUnit || ""}
+                onChange={e => setNetWeightPerUnit(e.target.value)}
+                placeholder={autoNetWeightKg ? String(autoNetWeightKg) : "Ej: 0.9 (para 900ml)"}
+                min="0.001" step="0.001"
+                style={{ ...s.input, background: autoNetWeightKg ? "#f0fdf4" : undefined }}
+                readOnly={!!autoNetWeightKg} />
+              {autoNetWeightKg && <p style={{ fontSize: 10, color: "#059669", margin: "3px 0 0" }}>Auto-calculado desde tamaño seleccionado</p>}
             </Field>
           </div>
           {totalNetKgDisplay && (
-            <div style={{ background: "#4c1d95", borderRadius: 6, padding: "6px 10px", marginTop: 4 }}>
-              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", margin: "0 0 2px", textTransform: "uppercase" }}>Peso Neto Total por Caja</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: 0 }}>{totalNetKgDisplay} kg / caja</p>
-              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", margin: "2px 0 0" }}>
-                {unitsPerBox} und × {netWeightPerUnit} kg = {totalNetKgDisplay} kg neto por cartón
+            <div style={{ background: "#4c1d95", borderRadius: 6, padding: "8px 12px", marginTop: 6 }}>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: 0.5 }}>Peso Neto / Litros por Caja de Exportación</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>
+                {totalNetKgDisplay} kg
+                {totalNetLitersDisplay && ` (${totalNetLitersDisplay} L)`}
+                {" / caja"}
+              </p>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", margin: "3px 0 0" }}>
+                {unitsPerBox} {packagingType ? (RETAIL_CONSUMER_OPTIONS.find(o=>o.id===packagingType)?.label || "unidades") : "und"}
+                {" × "}
+                {LIQUID_SIZE_RETAIL.find(s=>s.id===presentationSize)?.label || `${effectiveNwu} kg`}
+                {" = "}{totalNetKgDisplay} kg neto por cartón
               </p>
             </div>
           )}
         </div>
       )}
+
+      {/* ── LAYER 4: COMMERCIAL SALE BASIS ───────────────────────────────────── */}
+      <div style={{ ...layerStyle, background: "#fefce8", border: "0.5px solid #fde68a" }}>
+        {layerHeader(4, "Commercial Sale Basis — How the product is sold", "#92400e")}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: saleUnits.length > 0 ? 8 : 0 }}>
+          {saleUnits.map(u => {
+            const active = commercialUnit === u.id;
+            return (
+              <button key={u.id} type="button" onClick={() => setCommercialUnit(u.id)}
+                style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                  border: active ? "2px solid #b45309" : "1px solid #fbbf24",
+                  background: active ? "#b45309" : "#fffbeb",
+                  color: active ? "#fff" : "#78350f",
+                  fontWeight: active ? 700 : 400 }}>
+                {u.label.es}
+                <span style={{ opacity: 0.7, fontSize: 10, marginLeft: 4 }}>({u.abbr})</span>
+              </button>
+            );
+          })}
+        </div>
+        {commercialUnit && (
+          <p style={{ fontSize: 11, color: "#92400e", margin: 0, fontWeight: 600 }}>
+            Base de venta seleccionada: <strong>{COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.label.es}</strong>
+            {" — "}precio se ingresará como USD {COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr}
+          </p>
+        )}
+        {!commercialUnit && (
+          <p style={{ fontSize: 11, color: "#d97706", margin: 0, fontStyle: "italic" }}>
+            ⚠ Selecciona la base comercial de venta para activar el cálculo correcto
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -630,7 +770,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 
               {/* Incoterms */}
               <Field label="Incoterm(s) — selecciona uno o varios">
-                <IncotermSelector selected={incoterms} onChange={setIncoterms} prices={incotermPrices} onPriceChange={handleIncotermPrice} />
+                <IncotermSelector selected={incoterms} onChange={setIncoterms} prices={incotermPrices} onPriceChange={handleIncotermPrice} commercialUnit={commercialUnit} />
               </Field>
 
               {PRICED_INCOTERMS.filter(i => incoterms.includes(i)).length === 0 && (

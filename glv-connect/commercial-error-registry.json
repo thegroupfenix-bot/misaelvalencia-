@@ -1,5 +1,5 @@
 {
-  "registry_version": "5.0.0",
+  "registry_version": "5.1.0",
   "last_updated": "2026-05-25",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
@@ -209,6 +209,32 @@
         "file": "glv-connect/frontend/src/engines/packagingEngine.js",
         "must_contain": "COMMERCIAL_SALE_UNITS"
       }
+    },
+    {
+      "id": "ERR-016",
+      "title": "IncotermSelector price label hardcoded '/kg' regardless of commercial sale unit",
+      "status": "resolved",
+      "resolved_in": "PR #54",
+      "root_cause": "IncotermSelector showed 'Precio CFR / kg' hardcoded. When commercialUnit was perBox or perLiter, the price label was still '/kg', confusing agents about which unit the entered price corresponds to.",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "IncotermSelector accepts commercialUnit prop. Price label dynamically shows COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr. Defaults to '/kg' only when no commercialUnit is selected.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_contain": "commercialUnit"
+      }
+    },
+    {
+      "id": "ERR-017",
+      "title": "LiquidPackagingEngine layers mixed — presentation, size and sale basis shown without visual separation",
+      "status": "resolved",
+      "resolved_in": "PR #54",
+      "root_cause": "LiquidPackagingEngine V5 displayed packaging mode, type, size, and commercial sale unit in a flat sequential layout with no visual separation. Agents could not distinguish which layer they were configuring: 'Litro/Liter' appeared in the wrong layer context, creating commercial logic confusion.",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "LiquidPackagingEngine restructured into 4 numbered visual layers with distinct backgrounds: Layer 1 (Presentation/Packaging Type), Layer 2 (Presentation Size — retail only), Layer 3 (Box/Carton Engine — conditional), Layer 4 (Commercial Sale Basis). Added perIBC and perFlexitank to COMMERCIAL_SALE_UNITS. Retail bottle types use button grid instead of dropdown. Auto-calculates netWeightPerUnit from presentation size selection.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/validationSupervisor.js",
+        "must_contain": "VAL-013"
+      }
     }
   ],
   "prevention_ci_manifest": {
@@ -228,7 +254,9 @@
       { "id": "ERR-012", "file": "glv-connect/frontend/src/engines/categoryProfiles.js",      "must_contain": "getCategoryProfile" },
       { "id": "ERR-013", "file": "glv-connect/frontend/src/engines/pdfContextResolver.js",    "must_contain": "resolvePDFContext" },
       { "id": "ERR-014", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "getContainerLabel" },
-      { "id": "ERR-015", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "COMMERCIAL_SALE_UNITS" }
+      { "id": "ERR-015", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "COMMERCIAL_SALE_UNITS" },
+      { "id": "ERR-016", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "commercialUnit" },
+      { "id": "ERR-017", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-013" }
     ]
   }
 }

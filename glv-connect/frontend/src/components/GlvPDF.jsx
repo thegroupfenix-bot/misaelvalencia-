@@ -619,52 +619,65 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             )}
           </View>
 
-          {/* V5: Liquid/Packaged packaging details */}
-          {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (
-            <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0" }}>
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                {packagingType && (
-                  <View style={{ minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Type" : "Tipo de Empaque"}</Text>
-                    <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{PACKAGING_TYPE_LABELS[packagingType] || packagingType}</Text>
+          {/* V5: Liquid/Packaged packaging details — 4-layer display */}
+          {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (() => {
+            // Resolve human-readable labels for PDF display
+            const LIQUID_RETAIL_SIZE_LABELS = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
+            const COMMERCIAL_UNIT_FULL_EN   = { perKg:"per KG",perMT:"per MT",perLiter:"per Liter",perBox:"per Box",perUnit:"per Unit",perContainer:"per Container",perDrum:"per Drum",perJerrycan:"per Jerrycan",perBottle:"per Bottle",perPallet:"per Pallet",perIBC:"per IBC",perFlexitank:"per Flexitank" };
+            const COMMERCIAL_UNIT_FULL_ES   = { perKg:"por KG",perMT:"por MT",perLiter:"por Litro",perBox:"por Caja",perUnit:"por Unidad",perContainer:"por Contenedor",perDrum:"por Bidón",perJerrycan:"por Jerrycan",perBottle:"por Botella",perPallet:"por Paleta",perIBC:"por IBC",perFlexitank:"por Flexitank" };
+            const ptLabel    = PACKAGING_TYPE_LABELS[packagingType] || packagingType || "";
+            const sizeLabel  = LIQUID_RETAIL_SIZE_LABELS[presentationSize] || presentationSize || "";
+            const cuLabelEn  = COMMERCIAL_UNIT_FULL_EN[commercialUnit] || commercialUnit || "";
+            const cuLabelEs  = COMMERCIAL_UNIT_FULL_ES[commercialUnit] || commercialUnit || "";
+            const cuAbbr     = COMMERCIAL_UNIT_LABELS[commercialUnit] || commercialUnit || "";
+            const hasBoxEngine = unitsPerBox > 0 && presentationSize;
+            const netKgPerCarton = unitsPerBox > 0 && netWeightPerUnit > 0 ? (unitsPerBox * netWeightPerUnit).toFixed(2) : null;
+            return (
+              <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0" }}>
+                {/* Layer 1+2: Packaging type + presentation size inline */}
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 4 }}>
+                  {packagingType && (
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Packaging / Presentation" : "Empaque / Presentación"}</Text>
+                      <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>
+                        {ptLabel}{sizeLabel ? ` ${sizeLabel}` : ""}
+                      </Text>
+                    </View>
+                  )}
+                  {commercialUnit && (
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Commercial Sale Basis" : "Base Comercial de Venta"}</Text>
+                      <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>
+                        {docLang === "en" ? cuLabelEn : cuLabelEs}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {/* Layer 3: Box engine carton summary — e.g. "20 PET Bottles × 900 ml per export carton" */}
+                {hasBoxEngine && (
+                  <View style={{ marginTop: 4, backgroundColor: "#eff6ff", borderRadius: 4, padding: "5 8" }}>
+                    <Text style={{ fontSize: 8.5, color: "#1e40af", fontWeight: "bold" }}>
+                      {`${unitsPerBox} ${ptLabel}${presentationSize ? ` × ${sizeLabel}` : ""} ${docLang === "en" ? "per export carton" : "por caja de exportación"}`}
+                    </Text>
+                    {netKgPerCarton && (
+                      <Text style={{ fontSize: 7.5, color: "#374151", marginTop: 2 }}>
+                        {docLang === "en" ? `Net weight per carton: ${netKgPerCarton} kg` : `Peso neto por caja: ${netKgPerCarton} kg`}
+                      </Text>
+                    )}
                   </View>
                 )}
-                {presentationSize && (
-                  <View style={{ minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño de Presentación"}</Text>
-                    <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{presentationSize}</Text>
-                  </View>
-                )}
+                {/* Layer 4: Commercial basis line */}
                 {commercialUnit && (
-                  <View style={{ minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Sale Unit" : "Unidad de Venta"}</Text>
-                    <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{COMMERCIAL_UNIT_LABELS[commercialUnit] || commercialUnit}</Text>
+                  <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
+                    <Text style={{ fontSize: 8, color: "#78350f", fontWeight: "bold" }}>
+                      {docLang === "en" ? "Commercial basis:" : "Base comercial:"} {currency} {docLang === "en" ? cuLabelEn : cuLabelEs}
+                      {containerType ? ` — ${CONTAINER_LABELS[containerType] || containerType}` : ""}
+                    </Text>
                   </View>
                 )}
               </View>
-              {/* Box Engine summary line */}
-              {unitsPerBox > 0 && netWeightPerUnit > 0 && presentationSize && (
-                <View style={{ marginTop: 5, backgroundColor: "#eff6ff", borderRadius: 4, padding: "4 8" }}>
-                  <Text style={{ fontSize: 8, color: "#1e40af", fontWeight: "bold" }}>
-                    {unitsPerBox} {packagingType ? (PACKAGING_TYPE_LABELS[packagingType] || packagingType) : (docLang === "en" ? "units" : "unidades")} × {presentationSize} {docLang === "en" ? "per export carton" : "por caja de exportación"}
-                  </Text>
-                  <Text style={{ fontSize: 7.5, color: "#374151", marginTop: 1 }}>
-                    {docLang === "en"
-                      ? `Net weight per carton: ${(unitsPerBox * netWeightPerUnit).toFixed(2)} kg`
-                      : `Peso neto por caja: ${(unitsPerBox * netWeightPerUnit).toFixed(2)} kg`}
-                  </Text>
-                </View>
-              )}
-              {/* Box engine without netWeight — unit-only summary */}
-              {unitsPerBox > 0 && netWeightPerUnit === 0 && presentationSize && (
-                <View style={{ marginTop: 5, backgroundColor: "#eff6ff", borderRadius: 4, padding: "4 8" }}>
-                  <Text style={{ fontSize: 8, color: "#1e40af", fontWeight: "bold" }}>
-                    {unitsPerBox} {packagingType ? (PACKAGING_TYPE_LABELS[packagingType] || packagingType) : (docLang === "en" ? "units" : "unidades")} × {presentationSize} {docLang === "en" ? "per export carton" : "por caja de exportación"}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
+            );
+          })()}
 
           {(doc.custom_unit || doc.customUnit) && (
             <View style={{ marginTop: 6 }}>
@@ -791,7 +804,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           )}
           {pricePerKg && (
             <BiInfoBox esLabel={L.price_lbl}
-              value={`USD ${Number(pricePerKg).toFixed(2)}/kg`} />
+              value={`USD ${Number(pricePerKg).toFixed(2)}${COMMERCIAL_UNIT_LABELS[commercialUnit] || "/kg"}`} />
           )}
           {totalKgDisplay > 0 && (
             <BiInfoBox esLabel={L.total_kg_lbl}
