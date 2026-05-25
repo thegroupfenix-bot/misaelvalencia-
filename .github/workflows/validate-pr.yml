@@ -469,13 +469,18 @@ jobs:
 
       - name: V6 — Verify LIVE_ANIMALS isolation still intact after V6 changes
         run: |
-          # isLiveAnimalRow must gate every V6 sku/exportFormat block
+          # GlvPDF uses isLiveAnimalRow variable; calculations.js guards directly on category === "LIVE_ANIMALS"
           if ! grep -q "isLiveAnimalRow" glv-connect/frontend/src/components/GlvPDF.jsx; then
             echo "::error::V6: isLiveAnimalRow guard missing from GlvPDF.jsx — LIVE_ANIMALS isolation may be broken"
             exit 1
           fi
-          if ! grep -q "isLiveAnimalRow" glv-connect/frontend/src/utils/calculations.js; then
-            echo "::error::V6: LIVE_ANIMALS guard missing from calculations.js"
+          if ! grep -q "LIVE_ANIMALS" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V6: LIVE_ANIMALS category guard missing from calculations.js — livestock formula isolation broken"
+            exit 1
+          fi
+          # ExportFormatEngine must short-circuit for LIVE_ANIMALS
+          if ! grep -q "LIVE_ANIMALS.*return null\|return null.*LIVE_ANIMALS" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V6: ExportFormatEngine LIVE_ANIMALS null-guard missing from CommercialEngine.jsx"
             exit 1
           fi
           echo "## ✅ V6: LIVE_ANIMALS isolation confirmed intact after Multi-SKU changes" >> $GITHUB_STEP_SUMMARY
