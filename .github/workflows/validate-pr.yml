@@ -497,6 +497,46 @@ jobs:
           fi
           echo "## ✅ MT conversion and isLiveAnimalRow guard present" >> $GITHUB_STEP_SUMMARY
 
+      - name: V6.1 — Verify frequency engine fixes (WEEKLY/BIWEEKLY + resolveShipmentCount)
+        run: |
+          FAILED=0
+          if ! grep -q "WEEKLY.*52\|52.*WEEKLY" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V6.1: WEEKLY (52/year) missing from FREQ_MULTIPLIERS in calculations.js"
+            FAILED=1
+          fi
+          if ! grep -q "BIWEEKLY.*24\|24.*BIWEEKLY" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V6.1: BIWEEKLY (24/year) missing from FREQ_MULTIPLIERS in calculations.js"
+            FAILED=1
+          fi
+          if ! grep -q "resolveShipmentCount" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V6.1: resolveShipmentCount not exported from calculations.js"
+            FAILED=1
+          fi
+          if ! grep -q "WEEKLY" glv-connect/frontend/src/config/productCategories.js; then
+            echo "::error::V6.1: WEEKLY missing from DELIVERY_FREQUENCIES in productCategories.js"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V6.1 frequency engine: WEEKLY/BIWEEKLY + resolveShipmentCount verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: V6.1 — Verify ONE_SHIPMENT contract value fix and dynamic price label
+        run: |
+          FAILED=0
+          if ! grep -q "ONE_SHIPMENT.*shipmentValue\|shipmentValue.*ONE_SHIPMENT" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V6.1: ONE_SHIPMENT contractValue fix missing — contract value may still multiply by duration"
+            FAILED=1
+          fi
+          if ! grep -q "dynamicPriceLbl" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V6.1: dynamicPriceLbl missing from GlvPDF.jsx — PDF still shows hardcoded USD/kg for all products"
+            FAILED=1
+          fi
+          if ! grep -q "hiddenKeys" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V6.1: hiddenKeys not in CommercialEngine.jsx — legacy Presentación field still mandatory for OILS"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V6.1 ONE_SHIPMENT fix + dynamic price label + legacy field suppression verified" >> $GITHUB_STEP_SUMMARY
+
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
     name: Frontend Build

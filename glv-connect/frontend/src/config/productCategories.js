@@ -239,7 +239,7 @@ export const PRODUCT_CATEGORIES = {
     containerCapacity: 20,
     fields: [
       { key: "oilType",     label: { es: "Tipo de Aceite",  en: "Oil Type" },       type: "text",   required: true },
-      { key: "packaging",   label: { es: "Presentación",    en: "Packaging" },     type: "select", options: ["IBC 1000L","Flexi Tank","Bidón 200L","Granel Cisterna"], required: true },
+      { key: "packaging",   label: { es: "Empaque (referencia)",    en: "Packaging (ref.)" },     type: "select", options: ["IBC 1000L","Flexi Tank","Bidón 200L","Granel Cisterna"], required: false },
       { key: "ffa",         label: { es: "Acidez FFA (%)", en: "FFA Acidity (%)" },type: "number", required: false },
       { key: "gmo",         label: { es: "GMO Status",      en: "GMO Status" },     type: "select", options: ["Non-GMO","GMO","IP Non-GMO"], required: false },
     ],
@@ -349,6 +349,8 @@ export const PRODUCT_CATEGORIES = {
 // Delivery frequency options
 export const DELIVERY_FREQUENCIES = [
   { id: "ONE_SHIPMENT", label: { es: "Embarque único",    en: "Single Shipment" } },
+  { id: "WEEKLY",       label: { es: "Semanal",           en: "Weekly" } },
+  { id: "BIWEEKLY",     label: { es: "Quincenal",         en: "Biweekly" } },
   { id: "MONTHLY",      label: { es: "Mensual",           en: "Monthly" } },
   { id: "BIMONTHLY",    label: { es: "Bimestral",         en: "Bimonthly" } },
   { id: "QUARTERLY",    label: { es: "Trimestral",        en: "Quarterly" } },

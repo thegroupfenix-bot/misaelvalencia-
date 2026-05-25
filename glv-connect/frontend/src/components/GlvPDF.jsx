@@ -342,7 +342,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   // V6: Multi-SKU export engine fields
   const exportFormat     = firstCdRow.exportFormat     || null;
   const rowSkus          = Array.isArray(firstCdRow.skus) ? firstCdRow.skus : [];
-  const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet" };
+  const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
+  // Dynamic price label: "Precio CFR /box" instead of always "Precio CFR (USD/kg)"
+  const cuAbbr = COMMERCIAL_UNIT_LABELS[commercialUnit] || null;
+  const dynamicPriceLbl = cuAbbr && cuAbbr !== "/kg"
+    ? (docLang === "en" ? `${cdInc} Price (USD${cuAbbr})` : `Precio ${cdInc} (USD${cuAbbr})`)
+    : (L.price_lbl || (docLang === "en" ? `${cdInc} Price (USD/kg)` : `Precio ${cdInc} (USD/kg)`));
+  // Export format display label (V6) — e.g. "RETAIL_PET" → "Retail PET"
+  const exportFormatLabel = exportFormat ? exportFormat.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null;
   const PACKAGING_TYPE_LABELS  = { FLEXITANK:"Flexi Tank",ISO_TANK:"ISO Tank",IBC_1000L:"IBC 1000L",DRUM_200L:"Drum 200L",JERRYCAN_20L:"Jerrycan 20L",JERRYCAN_10L:"Jerrycan 10L",JERRYCAN_5L:"Jerrycan 5L",BIG_BAG_1MT:"Big Bag 1MT",SACK_50KG:"Saco 50kg",BULK_VESSEL:"Granel Cisterna",PET_BOTTLE:"PET Bottle",GLASS_BOTTLE:"Glass Bottle",TETRA_PAK:"Tetra Pak",DOYPACK:"Doypack",SACHET:"Sachet",PLASTIC_GALLON:"Plastic Gallon",PREMIUM_BOTTLE:"Premium Bottle",CAN_TIN:"Can / Tin",RETAIL_BOX:"Retail Box" };
   const engineUnitPrice = parseFloat(
     firstCdRow.incotermPrices?.[cdInc] ||
@@ -622,6 +629,30 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             )}
           </View>
 
+          {/* V6: Export Logistics line — shown when exportFormat or containerType is set */}
+          {(exportFormat || containerType) && !isLiveAnimalRow && (
+            <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0", flexDirection: "row", gap: 8 }}>
+              {exportFormat && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.infoLabel}>{docLang === "en" ? "Export Format" : "Formato de exportación"}</Text>
+                  <Text style={{ fontSize: 9, color: "#1e40af", fontWeight: "bold" }}>{exportFormatLabel}</Text>
+                </View>
+              )}
+              {containerType && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.infoLabel}>{docLang === "en" ? "Export Logistics" : "Logística de exportación"}</Text>
+                  <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{CONTAINER_LABELS[containerType] || containerType}</Text>
+                </View>
+              )}
+              {commercialUnit && (
+                <View style={{ flex: 1 }}>
+                  <Text style={s.infoLabel}>{docLang === "en" ? "Commercial Basis" : "Base comercial"}</Text>
+                  <Text style={{ fontSize: 9, color: "#059669", fontWeight: "bold" }}>USD {cuAbbr || "/unit"}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* V5: Liquid/Packaged packaging details — 4-layer display */}
           {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (() => {
             // Resolve human-readable labels for PDF display
@@ -632,7 +663,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             const sizeLabel  = LIQUID_RETAIL_SIZE_LABELS[presentationSize] || presentationSize || "";
             const cuLabelEn  = COMMERCIAL_UNIT_FULL_EN[commercialUnit] || commercialUnit || "";
             const cuLabelEs  = COMMERCIAL_UNIT_FULL_ES[commercialUnit] || commercialUnit || "";
-            const cuAbbr     = COMMERCIAL_UNIT_LABELS[commercialUnit] || commercialUnit || "";
+            const cuAbbrLocal = COMMERCIAL_UNIT_LABELS[commercialUnit] || commercialUnit || "";
             const hasBoxEngine = unitsPerBox > 0 && presentationSize;
             const netKgPerCarton = unitsPerBox > 0 && netWeightPerUnit > 0 ? (unitsPerBox * netWeightPerUnit).toFixed(2) : null;
             return (
@@ -868,8 +899,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               value={`${new Intl.NumberFormat().format(engineQty)} ${engineUnitType.split("/")[0].trim() || "unid."}`} />
           )}
           {pricePerKg && (
-            <BiInfoBox esLabel={L.price_lbl}
-              value={`USD ${Number(pricePerKg).toFixed(2)}${COMMERCIAL_UNIT_LABELS[commercialUnit] || "/kg"}`} />
+            <BiInfoBox esLabel={dynamicPriceLbl}
+              value={`USD ${Number(pricePerKg).toFixed(2)}${cuAbbr || "/kg"}`} />
           )}
           {totalKgDisplay > 0 && (
             <BiInfoBox esLabel={L.total_kg_lbl}

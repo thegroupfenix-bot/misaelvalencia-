@@ -862,13 +862,16 @@ function LiquidPackagingEngine({
 }
 
 // ─── Dynamic Spec Fields ──────────────────────────────────────────────────────
-function DynamicFields({ category, specs, setSpecs }) {
+// hiddenKeys: Set of field keys to suppress (used to hide legacy fields superseded by V6 engines)
+function DynamicFields({ category, specs, setSpecs, hiddenKeys = null }) {
   const catDef = PRODUCT_CATEGORIES[category];
   if (!catDef?.fields?.length) return null;
   const setSpec = (key, val) => setSpecs(prev => ({ ...prev, [key]: val }));
   return (
     <div style={s.row2}>
       {catDef.fields.map(f => {
+        // suppress fields superseded by V6 ExportFormatEngine (e.g. legacy "Presentación" for OILS)
+        if (hiddenKeys && hiddenKeys.has(f.key)) return null;
         // breed field for LIVE_ANIMALS — auto-populated from selected breeds, read-only
         if (f.key === "breed" && category === "LIVE_ANIMALS") {
           const breedSummary = (specs.breeds || []).map(b => b.name).join(" / ") || "";
@@ -1048,7 +1051,9 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
             <LivestockBreedSelector origin={origin} specs={specs} setSpecs={setSpecs} />
           )}
 
-          {cat && cat !== "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
+          {cat && cat !== "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs}
+            hiddenKeys={exportFormat && ["OILS","FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS"].includes(cat)
+              ? new Set(["packaging"]) : null} />}
           {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
 
           {/* V6: Export Format Engine — replaces V5 LiquidPackagingEngine for supported categories */}
@@ -1154,7 +1159,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 
           {/* Row commercial summary — always shown when category + price are set */}
           {cat && (
-            <CommercialSummaryPanel summary={summary} currency={currency} unitPrice={primaryPrice} qty={qty} unitType={unitType} specs={specs} frequency={frequency} duration={duration} category={cat} containerType={containerType} commercialUnit={commercialUnit} />
+            <CommercialSummaryPanel summary={summary} currency={currency} unitPrice={primaryPrice} qty={qty} unitType={unitType} specs={specs} frequency={frequency} duration={duration} category={cat} containerType={containerType} commercialUnit={commercialUnit} exportFormat={exportFormat} />
           )}
         </div>
       )}
@@ -1162,11 +1167,12 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   );
 }
 
-function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration, category, containerType, commercialUnit }) {
+function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration, category, containerType, commercialUnit, exportFormat }) {
   const hasPrice   = parseFloat(unitPrice) > 0;
   const hasQty     = parseFloat(qty) > 0;
   const isLive     = category === "LIVE_ANIMALS";
   const isMultiSku = !!summary?.isMultiSku;
+  const isSingleShipment = frequency === "ONE_SHIPMENT";
 
   const panelStyle = {
     background: summary?.contractValue > 0
@@ -1198,10 +1204,11 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
           {summary.totalBoxes  > 0 && <MiniBox label="CAJAS / BOXES"        value={fmtNum(summary.totalBoxes) + " BOXES"} />}
           {summary.totalUnits  > 0 && <MiniBox label="UNIDADES / UNITS"     value={fmtNum(summary.totalUnits) + " UNITS"} />}
           {summary.totalNetKg  > 0 && <MiniBox label="PESO NETO / NET KG"   value={fmtNum(summary.totalNetKg) + " KG NET"} />}
-          {summary.shipmentsPerYear != null && <MiniBox label="EMBARQUES / AÑO"  value={String(summary.shipmentsPerYear)} />}
-          {duration              && <MiniBox label="DURACIÓN"                value={`${duration} meses`} />}
+          {summary.shipmentsPerYear != null && !isSingleShipment && <MiniBox label="EMBARQUES / AÑO"  value={String(summary.shipmentsPerYear)} />}
+          {isSingleShipment      && <MiniBox label="TIPO"                    value="Embarque único" />}
+          {duration              && !isSingleShipment && <MiniBox label="DURACIÓN"    value={`${duration} meses`} />}
           {summary.contractValue > 0 && <MiniBox label="TOTAL CONTRATO"     value={fmtMoney(summary.contractValue, currency)} big />}
-          {summary.contractValue > 0 && summary.durationMonths > 0 && (
+          {summary.contractValue > 0 && !isSingleShipment && summary.durationMonths > 0 && (
             <MiniBox label="VALOR ANUAL" value={fmtMoney(summary.contractValue / (summary.durationMonths / 12), currency)} />
           )}
         </div>
@@ -1267,10 +1274,11 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
         {/* Non-live: shipment value smaller highlight */}
         {!isLive && summary?.shipmentValue > 0 && <MiniBox label="VALOR / EMBARQUE" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
 
-        {summary?.shipmentsPerYear != null && (
+        {summary?.shipmentsPerYear != null && !isSingleShipment && (
           <MiniBox label="EMBARQUES / AÑO" value={String(summary.shipmentsPerYear)} />
         )}
-        {duration && <MiniBox label="DURACIÓN CONTRATO" value={`${duration} MESES`} />}
+        {isSingleShipment && <MiniBox label="TIPO" value="Embarque único" />}
+        {duration && !isSingleShipment && <MiniBox label="DURACIÓN CONTRATO" value={`${duration} MESES`} />}
 
         {/* LIVE_ANIMALS contract-level totals */}
         {isLive && summary?.totalContractHeadcount > 0 && (
@@ -1295,8 +1303,13 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
         {!isLive && summary?.totalUnits > 0 && (
           <MiniBox label="Unidades Totales" value={fmtNum(summary.totalUnits)} />
         )}
-        {!isLive && summary?.contractValue > 0 && summary?.durationMonths > 0 && (
+        {!isLive && summary?.contractValue > 0 && !isSingleShipment && summary?.durationMonths > 0 && (
           <MiniBox label="Valor Anual" value={fmtMoney(summary.contractValue / (summary.durationMonths / 12), currency)} />
+        )}
+        {/* Export-format context — industrial modes: show logistics basis */}
+        {!isLive && exportFormat && !isRetailExportFormat(exportFormat) && commercialUnit && (
+          <MiniBox label="BASE LOGÍSTICA"
+            value={`${getExportFormatLabel(exportFormat)} — ${COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr || commercialUnit}`} />
         )}
       </div>
       {!summary?.contractValue && hasQty && hasPrice && (
