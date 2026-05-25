@@ -157,3 +157,99 @@ export function getWeightPresentationsForCategory(categoryProfile) {
   if (categoryProfile?.supportsLiquidPackaging) return LIQUID_PRESENTATIONS;
   return WEIGHT_PRESENTATIONS;
 }
+
+// ─── Bulk / Industrial packaging options ─────────────────────────────────────
+
+export const BULK_INDUSTRIAL_OPTIONS = [
+  { id: "FLEXITANK",    label: "Flexi Tank",      desc: "24,000 L / contenedor 40FT" },
+  { id: "ISO_TANK",     label: "ISO Tank",         desc: "26,000 L / cisterna" },
+  { id: "IBC_1000L",    label: "IBC 1000L",        desc: "Contenedor intermedio a granel" },
+  { id: "DRUM_200L",    label: "Drum 200L",        desc: "Bidón industrial 200 litros" },
+  { id: "JERRYCAN_20L", label: "Jerrycan 20L",     desc: "Bidón plástico 20 litros" },
+  { id: "JERRYCAN_10L", label: "Jerrycan 10L",     desc: "Bidón plástico 10 litros" },
+  { id: "JERRYCAN_5L",  label: "Jerrycan 5L",      desc: "Bidón plástico 5 litros" },
+  { id: "BIG_BAG_1MT",  label: "Big Bag 1MT",      desc: "Bolsón a granel 1 tonelada" },
+  { id: "SACK_50KG",    label: "Saco 50kg",        desc: "Saco estándar exportación" },
+  { id: "BULK_VESSEL",  label: "Granel Cisterna",  desc: "Tanque/barco cisterna a granel" },
+];
+
+// ─── Retail / Consumer packaging options ──────────────────────────────────────
+
+export const RETAIL_CONSUMER_OPTIONS = [
+  { id: "PET_BOTTLE",      label: "PET Bottle",          desc: "Botella plástica PET", isBottle: true },
+  { id: "GLASS_BOTTLE",    label: "Glass Bottle",        desc: "Botella de vidrio", isBottle: true },
+  { id: "TETRA_PAK",       label: "Tetra Pak",           desc: "Envase aséptico multicapa", isBottle: true },
+  { id: "DOYPACK",         label: "Doypack / Pouch",     desc: "Bolsa flexible con base", isBottle: true },
+  { id: "SACHET",          label: "Sachet",              desc: "Sobre monodosis", isBottle: true },
+  { id: "PLASTIC_GALLON",  label: "Plastic Gallon",      desc: "Galón plástico (3.78L)", isBottle: false },
+  { id: "PREMIUM_BOTTLE",  label: "Premium Export Bottle",desc: "Botella premium exportación", isBottle: true },
+  { id: "CAN_TIN",         label: "Can / Tin",           desc: "Lata metálica", isBottle: false },
+  { id: "RETAIL_BOX",      label: "Retail Box / Carton", desc: "Caja cartón retail", isBottle: false },
+];
+
+// Identifies packaging types that trigger the "units per box" box engine
+export const RETAIL_BOX_ENGINE_TYPES = new Set([
+  "PET_BOTTLE", "GLASS_BOTTLE", "TETRA_PAK", "DOYPACK", "SACHET", "PREMIUM_BOTTLE", "CAN_TIN",
+]);
+
+// ─── Liquid presentation sizes ────────────────────────────────────────────────
+
+export const LIQUID_SIZE_RETAIL = [
+  { id: "100ml",  label: "100 ml",  litValue: 0.1   },
+  { id: "125ml",  label: "125 ml",  litValue: 0.125 },
+  { id: "200ml",  label: "200 ml",  litValue: 0.2   },
+  { id: "250ml",  label: "250 ml",  litValue: 0.25  },
+  { id: "330ml",  label: "330 ml",  litValue: 0.33  },
+  { id: "350ml",  label: "350 ml",  litValue: 0.35  },
+  { id: "500ml",  label: "500 ml",  litValue: 0.5   },
+  { id: "750ml",  label: "750 ml",  litValue: 0.75  },
+  { id: "900ml",  label: "900 ml",  litValue: 0.9   },
+  { id: "1000ml", label: "1 L",     litValue: 1.0   },
+  { id: "1L",     label: "1 L",     litValue: 1.0   },
+  { id: "2L",     label: "2 L",     litValue: 2.0   },
+  { id: "3L",     label: "3 L",     litValue: 3.0   },
+  { id: "5L",     label: "5 L",     litValue: 5.0   },
+  { id: "10L",    label: "10 L",    litValue: 10.0  },
+  { id: "20L",    label: "20 L",    litValue: 20.0  },
+];
+
+export const LIQUID_SIZE_INDUSTRIAL = [
+  { id: "20L",       label: "20 L",        litValue: 20    },
+  { id: "200L",      label: "200 L (Drum)", litValue: 200  },
+  { id: "1000L",     label: "1000 L (IBC)", litValue: 1000 },
+  { id: "5000L",     label: "5000 L",       litValue: 5000 },
+  { id: "FLEXITANK", label: "Flexi Tank (~24,000L)", litValue: 24000 },
+  { id: "ISO_TANK",  label: "ISO Tank (~26,000L)",   litValue: 26000 },
+];
+
+// ─── Commercial sale unit options ─────────────────────────────────────────────
+
+export const COMMERCIAL_SALE_UNITS = [
+  { id: "perKg",        label: { es: "Precio por KG",         en: "Price per KG" },         abbr: "/kg",        requiresWeight: true  },
+  { id: "perMT",        label: { es: "Precio por MT",         en: "Price per MT" },         abbr: "/MT",        requiresWeight: true  },
+  { id: "perLiter",     label: { es: "Precio por Litro",      en: "Price per Liter" },      abbr: "/L",         requiresWeight: false },
+  { id: "perBox",       label: { es: "Precio por Caja",       en: "Price per Box" },        abbr: "/box",       requiresWeight: false },
+  { id: "perUnit",      label: { es: "Precio por Unidad",     en: "Price per Unit" },       abbr: "/unit",      requiresWeight: false },
+  { id: "perContainer", label: { es: "Precio por Contenedor", en: "Price per Container" },  abbr: "/container", requiresWeight: false },
+  { id: "perDrum",      label: { es: "Precio por Bidón",      en: "Price per Drum" },       abbr: "/drum",      requiresWeight: false },
+  { id: "perJerrycan",  label: { es: "Precio por Jerrycan",   en: "Price per Jerrycan" },   abbr: "/jerrycan",  requiresWeight: false },
+  { id: "perBottle",    label: { es: "Precio por Botella",    en: "Price per Bottle" },     abbr: "/bottle",    requiresWeight: false },
+  { id: "perPallet",    label: { es: "Precio por Paleta",     en: "Price per Pallet" },     abbr: "/pallet",    requiresWeight: false },
+];
+
+/**
+ * Returns the appropriate commercial sale units for a category profile.
+ * Liquid categories get liquid-specific options. Others get weight-based + box options.
+ */
+export function getSaleUnitsForProfile(categoryProfile) {
+  if (!categoryProfile) return COMMERCIAL_SALE_UNITS;
+  if (categoryProfile.supportsLiquidPackaging) {
+    return COMMERCIAL_SALE_UNITS.filter(u =>
+      ["perKg","perMT","perLiter","perContainer","perDrum","perJerrycan","perBottle","perBox"].includes(u.id)
+    );
+  }
+  if (categoryProfile.supportsLivestock) return []; // not used for livestock
+  return COMMERCIAL_SALE_UNITS.filter(u =>
+    ["perKg","perMT","perBox","perUnit","perPallet","perContainer"].includes(u.id)
+  );
+}

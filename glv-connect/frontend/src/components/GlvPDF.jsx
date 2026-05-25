@@ -332,6 +332,15 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const cdInc = (firstCdRow.incoterms || ["CFR"])[0];
   const containerType = firstCdRow.containerType || null;
   const CONTAINER_LABELS = { "20FT":"20FT Dry","40FT":"40FT Dry","40HC":"40HC High Cube","REEFER_20":"Reefer 20FT","REEFER_40":"Reefer 40FT","FLEXITANK":"Flexitank","ISO_TANK":"ISO Tank","BULK_VESSEL":"Bulk Vessel","LIVESTOCK_VESSEL":"Livestock Vessel","AIR_CARGO":"Air Cargo" };
+  // V5: liquid/packaged engine fields
+  const packagingMode    = firstCdRow.packagingMode    || null;
+  const packagingType    = firstCdRow.packagingType    || null;
+  const presentationSize = firstCdRow.presentationSize || null;
+  const commercialUnit   = firstCdRow.commercialUnit   || null;
+  const unitsPerBox      = parseFloat(firstCdRow.unitsPerBox || 0);
+  const netWeightPerUnit = parseFloat(firstCdRow.netWeightPerUnit || 0);
+  const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet" };
+  const PACKAGING_TYPE_LABELS  = { FLEXITANK:"Flexi Tank",ISO_TANK:"ISO Tank",IBC_1000L:"IBC 1000L",DRUM_200L:"Drum 200L",JERRYCAN_20L:"Jerrycan 20L",JERRYCAN_10L:"Jerrycan 10L",JERRYCAN_5L:"Jerrycan 5L",BIG_BAG_1MT:"Big Bag 1MT",SACK_50KG:"Saco 50kg",BULK_VESSEL:"Granel Cisterna",PET_BOTTLE:"PET Bottle",GLASS_BOTTLE:"Glass Bottle",TETRA_PAK:"Tetra Pak",DOYPACK:"Doypack",SACHET:"Sachet",PLASTIC_GALLON:"Plastic Gallon",PREMIUM_BOTTLE:"Premium Bottle",CAN_TIN:"Can / Tin",RETAIL_BOX:"Retail Box" };
   const engineUnitPrice = parseFloat(
     firstCdRow.incotermPrices?.[cdInc] ||
     Object.values(firstCdRow.incotermPrices || {}).find(v => parseFloat(v) > 0) ||
@@ -609,6 +618,54 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               </View>
             )}
           </View>
+
+          {/* V5: Liquid/Packaged packaging details */}
+          {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (
+            <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0" }}>
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                {packagingType && (
+                  <View style={{ minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Type" : "Tipo de Empaque"}</Text>
+                    <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{PACKAGING_TYPE_LABELS[packagingType] || packagingType}</Text>
+                  </View>
+                )}
+                {presentationSize && (
+                  <View style={{ minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño de Presentación"}</Text>
+                    <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{presentationSize}</Text>
+                  </View>
+                )}
+                {commercialUnit && (
+                  <View style={{ minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Sale Unit" : "Unidad de Venta"}</Text>
+                    <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{COMMERCIAL_UNIT_LABELS[commercialUnit] || commercialUnit}</Text>
+                  </View>
+                )}
+              </View>
+              {/* Box Engine summary line */}
+              {unitsPerBox > 0 && netWeightPerUnit > 0 && presentationSize && (
+                <View style={{ marginTop: 5, backgroundColor: "#eff6ff", borderRadius: 4, padding: "4 8" }}>
+                  <Text style={{ fontSize: 8, color: "#1e40af", fontWeight: "bold" }}>
+                    {unitsPerBox} {packagingType ? (PACKAGING_TYPE_LABELS[packagingType] || packagingType) : (docLang === "en" ? "units" : "unidades")} × {presentationSize} {docLang === "en" ? "per export carton" : "por caja de exportación"}
+                  </Text>
+                  <Text style={{ fontSize: 7.5, color: "#374151", marginTop: 1 }}>
+                    {docLang === "en"
+                      ? `Net weight per carton: ${(unitsPerBox * netWeightPerUnit).toFixed(2)} kg`
+                      : `Peso neto por caja: ${(unitsPerBox * netWeightPerUnit).toFixed(2)} kg`}
+                  </Text>
+                </View>
+              )}
+              {/* Box engine without netWeight — unit-only summary */}
+              {unitsPerBox > 0 && netWeightPerUnit === 0 && presentationSize && (
+                <View style={{ marginTop: 5, backgroundColor: "#eff6ff", borderRadius: 4, padding: "4 8" }}>
+                  <Text style={{ fontSize: 8, color: "#1e40af", fontWeight: "bold" }}>
+                    {unitsPerBox} {packagingType ? (PACKAGING_TYPE_LABELS[packagingType] || packagingType) : (docLang === "en" ? "units" : "unidades")} × {presentationSize} {docLang === "en" ? "per export carton" : "por caja de exportación"}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {(doc.custom_unit || doc.customUnit) && (
             <View style={{ marginTop: 6 }}>
               <Text style={s.infoLabel}>{L.unit_lbl}</Text>

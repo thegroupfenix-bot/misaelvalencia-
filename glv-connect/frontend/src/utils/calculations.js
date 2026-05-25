@@ -22,6 +22,13 @@ export function calcLiveAnimalKg({ headCount, avgWeight }) {
 
 /**
  * Per-shipment value based on category and form data.
+ *
+ * Extended for V5 liquid/packaged engine:
+ *   commercialUnit — pricing mode (perKg|perMT|perLiter|perBox|perUnit|perContainer|perDrum|perJerrycan|perBottle|perPallet)
+ *   unitsPerBox    — number of bottles/units per export carton (box engine)
+ *   netWeightPerUnit — net weight in kg per individual unit (box engine, weight-priced products)
+ *
+ * LIVE_ANIMALS path is completely isolated — not affected by any V5 params.
  */
 export function calcShipmentValue({
   category,
@@ -29,23 +36,76 @@ export function calcShipmentValue({
   unitType,
   unitPrice,
   currency = "USD",
-  // Live animal extra
+  // Live animal extra — untouched
   headCount,
   avgWeight,
   mortalityMargin,
   // Container
   containerCapacity,
+  // V5 liquid/packaged engine
+  commercialUnit,
+  unitsPerBox,
+  netWeightPerUnit,
 }) {
-  const qty = parseFloat(quantity) || 0;
+  const qty   = parseFloat(quantity)  || 0;
   const price = parseFloat(unitPrice) || 0;
 
   if (!price) return 0;
 
-  switch (category) {
-    case "LIVE_ANIMALS": {
-      const kg = calcLiveAnimalKg({ headCount, avgWeight, mortalityMargin });
-      return kg * price;
+  // ── LIVE_ANIMALS: isolated, zero changes ──────────────────────────────────
+  if (category === "LIVE_ANIMALS") {
+    const kg = calcLiveAnimalKg({ headCount, avgWeight, mortalityMargin });
+    return kg * price;
+  }
+
+  // ── V5: explicit commercial unit pricing ──────────────────────────────────
+  if (commercialUnit && commercialUnit !== "perKg") {
+    const upb = parseFloat(unitsPerBox)      || 0;
+    const nwu = parseFloat(netWeightPerUnit) || 0;
+
+    switch (commercialUnit) {
+      case "perMT":
+        // qty in MT, price per MT
+        return qty * price;
+      case "perLiter":
+        // qty in liters, price per liter
+        return qty * price;
+      case "perBox":
+        // qty = number of export cartons/boxes, price per box
+        return qty * price;
+      case "perUnit":
+      case "perBottle":
+        // qty = total units/bottles (or qty × unitsPerBox if box engine)
+        if (upb > 0) return qty * upb * price;
+        return qty * price;
+      case "perDrum":
+      case "perJerrycan":
+        // qty = number of drums/jerrycans, price per drum/jerrycan
+        return qty * price;
+      case "perPallet":
+        // qty = pallets, price per pallet
+        return qty * price;
+      case "perContainer":
+        // qty = containers, price per container
+        return qty * price;
+      default:
+        break;
     }
+  }
+
+  // ── V5: perKg with box engine (cartons × units × weight × price/kg) ───────
+  if ((!commercialUnit || commercialUnit === "perKg")) {
+    const upb = parseFloat(unitsPerBox)      || 0;
+    const nwu = parseFloat(netWeightPerUnit) || 0;
+    if (upb > 0 && nwu > 0) {
+      // Box engine: qty = number of boxes → total kg = qty × upb × nwu
+      const totalKg = qty * upb * nwu;
+      return totalKg * price;
+    }
+  }
+
+  // ── Standard weight/container logic (backward compatible) ─────────────────
+  switch (category) {
     case "COMMODITIES":
     case "OILS":
     case "FROZEN_MEAT":
@@ -59,16 +119,15 @@ export function calcShipmentValue({
     case "FRUIT_PRODUCTS": {
       if (unitType?.includes("Container") || unitType?.includes("Contenedor")) {
         const cap = parseFloat(containerCapacity) || 27;
-        return qty * cap * 1000 * price; // containers × MT × 1000kg × price/kg
+        return qty * cap * 1000 * price;
       }
       if (unitType?.includes("MT") || unitType?.includes("Tonelada")) {
-        return qty * 1000 * price; // MT → kg × price/kg
+        return qty * 1000 * price;
       }
-      return qty * price; // KG or unit
+      return qty * price;
     }
-    case "EGGS": {
-      return qty * price; // price per unit
-    }
+    case "EGGS":
+      return qty * price;
     default:
       return qty * price;
   }
@@ -94,16 +153,22 @@ export function calcCommercialSummary({
   unitPrice,
   currency = "USD",
   deliveryFrequency = "MONTHLY",
-  numShipments,     // for CUSTOM frequency
-  contractDuration, // in months
+  numShipments,
+  contractDuration,
   headCount,
   avgWeight,
   mortalityMargin,
   containerCapacity,
+  // V5 liquid/packaged engine
+  commercialUnit,
+  unitsPerBox,
+  netWeightPerUnit,
+  containerType,
 }) {
   const shipmentValue = calcShipmentValue({
     category, quantity, unitType, unitPrice, currency,
     headCount, avgWeight, mortalityMargin, containerCapacity,
+    commercialUnit, unitsPerBox, netWeightPerUnit,
   });
 
   let shipmentsPerYear;
@@ -149,6 +214,13 @@ export function calcCommercialSummary({
     annualValue            = shipmentValue * shipmentsPerYear;
   }
 
+  // V5: resolve total liters/kg for liquid display
+  const upb = parseFloat(unitsPerBox) || 0;
+  const nwu = parseFloat(netWeightPerUnit) || 0;
+  const qty = parseFloat(quantity) || 0;
+  const totalUnits = upb > 0 ? qty * upb : null;
+  const totalNetKg = upb > 0 && nwu > 0 ? qty * upb * nwu : null;
+
   return {
     shipmentValue,
     monthlyValue,
@@ -156,6 +228,7 @@ export function calcCommercialSummary({
     shipmentsPerYear,
     durationMonths,
     containers,
+    containerType: containerType || null,
     liveAnimalKg,
     lotWeightGross,
     totalShipments,
@@ -163,6 +236,10 @@ export function calcCommercialSummary({
     totalContractWeight,
     annualValue,
     currency,
+    // V5 packaged engine extras
+    commercialUnit: commercialUnit || null,
+    totalUnits,
+    totalNetKg,
   };
 }
 
