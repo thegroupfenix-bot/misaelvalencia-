@@ -408,6 +408,78 @@ jobs:
           fi
           echo "## ✅ V5 validationSupervisor has VAL-011 and VAL-012" >> $GITHUB_STEP_SUMMARY
 
+      - name: V6 — Verify packagingEngine has Export Format + Multi-SKU symbols
+        run: |
+          SYMBOLS=(EXPORT_FORMAT_OPTIONS INDUSTRIAL_SALE_UNITS SKU_SALE_UNITS SKU_PACKAGING_TYPES isRetailExportFormat getExportFormatLabel getUnitContext)
+          FAILED=0
+          for sym in "${SYMBOLS[@]}"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/engines/packagingEngine.js; then
+              echo "::error::V6 packagingEngine.js missing symbol: $sym"
+              FAILED=1
+            else
+              echo "✅ packagingEngine.js — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V6 packagingEngine.js has all Multi-SKU export symbols" >> $GITHUB_STEP_SUMMARY
+
+      - name: V6 — Verify calculations.js has Multi-SKU summary engine
+        run: |
+          SYMBOLS=(calcSkuShipmentValue calcMultiSkuSummary)
+          FAILED=0
+          for sym in "${SYMBOLS[@]}"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/utils/calculations.js; then
+              echo "::error::V6 calculations.js missing: $sym"
+              FAILED=1
+            else
+              echo "✅ calculations.js — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V6 calculations.js has Multi-SKU engine functions" >> $GITHUB_STEP_SUMMARY
+
+      - name: V6 — Verify validationSupervisor has V6 SKU checks (VAL-015 through VAL-018)
+        run: |
+          FAILED=0
+          for code in VAL-015 VAL-016 VAL-017 VAL-018; do
+            if ! grep -q "$code" glv-connect/frontend/src/engines/validationSupervisor.js; then
+              echo "::error::V6 $code missing from validationSupervisor.js"
+              FAILED=1
+            else
+              echo "✅ validationSupervisor.js — $code present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V6 validationSupervisor has SKU checks VAL-015 to VAL-018" >> $GITHUB_STEP_SUMMARY
+
+      - name: V6 — Verify GlvPDF renders SKU table
+        run: |
+          SYMBOLS=(rowSkus exportFormat "SKU Breakdown" skus.length)
+          FAILED=0
+          for sym in "${SYMBOLS[@]}"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/components/GlvPDF.jsx; then
+              echo "::error::V6 GlvPDF.jsx missing Multi-SKU symbol: $sym"
+              FAILED=1
+            else
+              echo "✅ GlvPDF.jsx — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V6 GlvPDF.jsx has Multi-SKU breakdown table" >> $GITHUB_STEP_SUMMARY
+
+      - name: V6 — Verify LIVE_ANIMALS isolation still intact after V6 changes
+        run: |
+          # isLiveAnimalRow must gate every V6 sku/exportFormat block
+          if ! grep -q "isLiveAnimalRow" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V6: isLiveAnimalRow guard missing from GlvPDF.jsx — LIVE_ANIMALS isolation may be broken"
+            exit 1
+          fi
+          if ! grep -q "isLiveAnimalRow" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V6: LIVE_ANIMALS guard missing from calculations.js"
+            exit 1
+          fi
+          echo "## ✅ V6: LIVE_ANIMALS isolation confirmed intact after Multi-SKU changes" >> $GITHUB_STEP_SUMMARY
+
       - name: Verify MT×1000 conversion and isLiveAnimalRow guard
         run: |
           if ! grep -q "isMT\|MT.*1000\|1000.*MT\|\* 1000" glv-connect/frontend/src/components/GlvPDF.jsx; then

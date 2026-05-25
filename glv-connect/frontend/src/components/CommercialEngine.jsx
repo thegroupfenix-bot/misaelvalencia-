@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { PRODUCT_CATEGORIES, DELIVERY_FREQUENCIES, CURRENCIES, INCOTERMS } from "../config/productCategories.js";
 import { searchCountries, WORLD_COUNTRIES } from "../config/worldCountries.js";
-import { calcCommercialSummary, fmtMoney, fmtNum } from "../utils/calculations.js";
+import { calcCommercialSummary, calcSkuShipmentValue, calcMultiSkuSummary, fmtMoney, fmtNum } from "../utils/calculations.js";
 import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js";
 import { getPortsForCountry } from "../config/destinationPorts.js";
 import { getDefaultContainer, getDefaultCargoType } from "../engines/categoryEngine.js";
@@ -10,6 +10,9 @@ import { getCategoryProfile } from "../engines/categoryProfiles.js";
 import {
   BULK_INDUSTRIAL_OPTIONS, RETAIL_CONSUMER_OPTIONS, RETAIL_BOX_ENGINE_TYPES,
   LIQUID_SIZE_RETAIL, LIQUID_SIZE_INDUSTRIAL, COMMERCIAL_SALE_UNITS, getSaleUnitsForProfile,
+  // V6 Multi-SKU engine
+  EXPORT_FORMAT_OPTIONS, INDUSTRIAL_SALE_UNITS, SKU_SALE_UNITS, SKU_PACKAGING_TYPES,
+  isRetailExportFormat, getExportFormatLabel, getUnitContext,
 } from "../engines/packagingEngine.js";
 
 const ORIGINS = ["Brazil", "Argentina", "Colombia", "Uruguay", "Chile", "Paraguay", "USA", "Canada", "Australia", "New Zealand", "South Africa", "Other"];
@@ -297,6 +300,315 @@ function CargoTypeSelector({ value, onChange, category }) {
       )}
       {(value || defaultCargo) === "Refrigerated Cargo" && (
         <p style={{ fontSize: 11, color: "#0369a1", margin: "5px 0 0" }}>❄ Contenedor refrigerado 40FT Reefer recomendado.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── V6: SKU Card ─────────────────────────────────────────────────────────────
+// One retail product variant (size + packaging + sale basis + price + qty).
+
+let _skuId = 1;
+function newSku(packagingHint = "") {
+  return { _id: _skuId++, presentationSize: "", packagingType: packagingHint || "PET_BOTTLE", unitsPerCarton: "", cartonNetWeightKg: "", litValuePerUnit: 0, commercialUnit: "perBox", price: "", quantity: "", shipmentValue: 0 };
+}
+
+function SkuCard({ sku, onChange, onRemove, canRemove, index, currency }) {
+  const selectedSize = LIQUID_SIZE_RETAIL.find(s => s.id === sku.presentationSize);
+  const autoCartonKg = selectedSize && parseFloat(sku.unitsPerCarton) > 0
+    ? (parseFloat(sku.unitsPerCarton) * selectedSize.litValue).toFixed(2)
+    : null;
+
+  // Keep cartonNetWeightKg + litValuePerUnit in sync with size selection
+  useEffect(() => {
+    if (selectedSize) {
+      const nwk = autoCartonKg || sku.cartonNetWeightKg;
+      const sv  = calcSkuShipmentValue({ ...sku, cartonNetWeightKg: nwk, litValuePerUnit: selectedSize.litValue });
+      onChange({ ...sku, cartonNetWeightKg: nwk, litValuePerUnit: selectedSize.litValue, shipmentValue: sv });
+    }
+  }, [sku.presentationSize, sku.unitsPerCarton]);
+
+  // Recalc shipment value when price/quantity/basis change
+  useEffect(() => {
+    const sv = calcSkuShipmentValue(sku);
+    if (sv !== sku.shipmentValue) onChange({ ...sku, shipmentValue: sv });
+  }, [sku.price, sku.quantity, sku.commercialUnit]);
+
+  const priceAbbr  = COMMERCIAL_SALE_UNITS.find(u => u.id === sku.commercialUnit)?.abbr || "/box";
+  const qtyContext = getUnitContext(sku.commercialUnit, "en");
+
+  return (
+    <div style={{ border: "1px solid #c4b5fd", borderRadius: 10, padding: "12px 14px", background: "#fff", position: "relative" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#4c1d95", background: "#f5f3ff", padding: "2px 10px", borderRadius: 20 }}>
+          SKU {index + 1}
+        </span>
+        {canRemove && (
+          <button type="button" onClick={onRemove}
+            style={{ fontSize: 11, color: "#dc2626", background: "#fee2e2", border: "none", borderRadius: 6, padding: "2px 10px", cursor: "pointer" }}>
+            ✕ Quitar SKU
+          </button>
+        )}
+      </div>
+
+      {/* Row 1: Size + Packaging Type */}
+      <div style={s.row2}>
+        <Field label="Presentation Size *">
+          <Sel value={sku.presentationSize} onChange={v => onChange({ ...sku, presentationSize: v })}>
+            <option value="">Select size...</option>
+            {LIQUID_SIZE_RETAIL.map(sz => <option key={sz.id} value={sz.id}>{sz.label}</option>)}
+          </Sel>
+        </Field>
+        <Field label="Packaging Type">
+          <Sel value={sku.packagingType} onChange={v => onChange({ ...sku, packagingType: v })}>
+            {SKU_PACKAGING_TYPES.map(pt => <option key={pt.id} value={pt.id}>{pt.label}</option>)}
+          </Sel>
+        </Field>
+      </div>
+
+      {/* Row 2: Units/Carton + Carton Net Weight + Sale Basis */}
+      <div style={s.row3}>
+        <Field label="Units / Carton *">
+          <Inp type="number" value={sku.unitsPerCarton} onChange={v => onChange({ ...sku, unitsPerCarton: v })} placeholder="12, 20, 24..." min="1" />
+        </Field>
+        <Field label="Carton Net Weight (kg)">
+          <input
+            type="text"
+            value={autoCartonKg ? `${autoCartonKg} kg` : (sku.cartonNetWeightKg ? `${sku.cartonNetWeightKg} kg` : "")}
+            readOnly
+            style={{ ...s.input, background: "#f0fdf4", color: "#166534", fontWeight: 600, cursor: "default" }}
+            placeholder="Auto-calculated" />
+          {selectedSize && sku.unitsPerCarton && (
+            <p style={{ fontSize: 10, color: "#059669", margin: "2px 0 0" }}>
+              {sku.unitsPerCarton} × {selectedSize.label} = {autoCartonKg} kg
+            </p>
+          )}
+        </Field>
+        <Field label="Sale Basis *">
+          <Sel value={sku.commercialUnit} onChange={v => onChange({ ...sku, commercialUnit: v })}>
+            {SKU_SALE_UNITS.map(u => <option key={u.id} value={u.id}>{u.label.en} ({u.abbr})</option>)}
+          </Sel>
+        </Field>
+      </div>
+
+      {/* Row 3: Price + Quantity */}
+      <div style={s.row2}>
+        <Field label={`Price ${priceAbbr} *`}>
+          <Inp type="number" value={sku.price} onChange={v => onChange({ ...sku, price: v })} placeholder="0.00" min="0" step="0.01" />
+        </Field>
+        <Field label={`Quantity (${qtyContext}) *`}>
+          <Inp type="number" value={sku.quantity} onChange={v => onChange({ ...sku, quantity: v })} placeholder="How many?" min="0" />
+        </Field>
+      </div>
+
+      {/* SKU Shipment Value */}
+      {sku.shipmentValue > 0 && (
+        <div style={{ background: "#f5f3ff", borderRadius: 6, padding: "6px 10px", marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <p style={{ fontSize: 10, color: "#6b7280", margin: 0, textTransform: "uppercase" }}>SKU Value</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#4c1d95", margin: 0 }}>{fmtMoney(sku.shipmentValue, currency || "USD")}</p>
+          </div>
+          <p style={{ fontSize: 10, color: "#6b7280", margin: 0 }}>
+            {fmtNum(parseFloat(sku.quantity))} {qtyContext} × {currency || "USD"} {parseFloat(sku.price).toFixed(2)}{priceAbbr}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── V6: Multi-SKU Retail Engine ──────────────────────────────────────────────
+// Replaces single presentation size/packaging fields for RETAIL export formats.
+// Allows 1–5 SKU cards per product (different sizes, prices, quantities).
+
+function MultiSkuEngine({ skus, setSkus, currency, exportFormat }) {
+  const packagingHint = exportFormat === "RETAIL_PET"    ? "PET_BOTTLE"
+                      : exportFormat === "RETAIL_TETRA"  ? "TETRA_PAK"
+                      : exportFormat === "RETAIL_DOYPACK" ? "DOYPACK"
+                      : "";
+
+  const addSku = () => {
+    if (skus.length >= 5) return;
+    setSkus(prev => [...prev, newSku(packagingHint)]);
+  };
+
+  const removeSku = (idx) => setSkus(prev => prev.filter((_, i) => i !== idx));
+
+  const updateSku = (idx, updated) => setSkus(prev => prev.map((s, i) => i === idx ? updated : s));
+
+  // Aggregate display
+  const totalShipV  = skus.reduce((s, sk) => s + (sk.shipmentValue || 0), 0);
+  const totalBoxes  = skus.reduce((s, sk) => s + (sk.commercialUnit === "perBox" ? parseFloat(sk.quantity)||0 : 0), 0);
+  const totalUnits  = skus.reduce((s, sk) => {
+    const q = parseFloat(sk.quantity)||0;
+    const upb = parseFloat(sk.unitsPerCarton)||0;
+    return s + (sk.commercialUnit === "perBox" ? q * upb : (["perUnit","perBottle"].includes(sk.commercialUnit) ? q : 0));
+  }, 0);
+  const totalNetKg  = skus.reduce((s, sk) => {
+    const q = parseFloat(sk.quantity)||0;
+    const nwk = parseFloat(sk.cartonNetWeightKg)||0;
+    return s + (sk.commercialUnit === "perBox" ? q * nwk : 0);
+  }, 0);
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#4c1d95", margin: 0, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          ▤ Multi-SKU Retail Engine — {skus.length} SKU{skus.length !== 1 ? "s" : ""}
+        </p>
+        {skus.length < 5 && (
+          <button type="button" onClick={addSku}
+            style={{ fontSize: 12, fontWeight: 600, color: "#4c1d95", background: "#f5f3ff", border: "1px solid #c4b5fd", borderRadius: 8, padding: "5px 14px", cursor: "pointer" }}>
+            + Add SKU
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {skus.map((sku, idx) => (
+          <SkuCard
+            key={sku._id}
+            sku={sku}
+            index={idx}
+            currency={currency}
+            canRemove={skus.length > 1}
+            onChange={updated => updateSku(idx, updated)}
+            onRemove={() => removeSku(idx)}
+          />
+        ))}
+      </div>
+
+      {/* Aggregate summary across SKUs */}
+      {totalShipV > 0 && (
+        <div style={{ background: "#1e1b4b", borderRadius: 8, padding: "10px 14px", marginTop: 10 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.6)", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 1 }}>
+            Resumen del Embarque — {skus.length} SKU(s)
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px,1fr))", gap: 8 }}>
+            <MiniBox label="TOTAL SHIPMENT" value={fmtMoney(totalShipV, currency || "USD")} highlight />
+            {totalBoxes > 0 && <MiniBox label="CAJAS / BOXES" value={fmtNum(totalBoxes)} />}
+            {totalUnits > 0 && <MiniBox label="UNIDADES / UNITS" value={fmtNum(totalUnits)} />}
+            {totalNetKg > 0 && <MiniBox label="KG NETO / CARTONS" value={fmtNum(totalNetKg) + " kg"} />}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── V6: Export Format Engine ─────────────────────────────────────────────────
+// Top-level selector: defines HOW the product is exported (not what size the bottles are).
+// INDUSTRIAL → single commercial unit selector.
+// RETAIL     → opens MultiSkuEngine (per-SKU pricing).
+// CUSTOM     → free text + commercial unit.
+
+function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, setSkus, currency,
+  commercialUnit, setCommercialUnit }) {
+  const profile = getCategoryProfile(category);
+  if (!profile?.supportsPackaging && !profile?.supportsLiquidPackaging) return null;
+  if (category === "LIVE_ANIMALS") return null;
+
+  const isRetail = isRetailExportFormat(exportFormat);
+  const byGroup  = (grp) => EXPORT_FORMAT_OPTIONS.filter(f => f.group === grp);
+
+  const btnStyle = (active) => ({
+    padding: "5px 13px", borderRadius: 16, fontSize: 12, cursor: "pointer", fontWeight: active ? 700 : 400,
+    border: active ? "2px solid #1B2A4A" : "1px solid #d1d5db",
+    background: active ? "#1B2A4A" : "#f9fafb", color: active ? "#fff" : "#374151",
+  });
+  const retailBtnStyle = (active) => ({
+    ...btnStyle(active),
+    border: active ? "2px solid #059669" : "1px solid #d1d5db",
+    background: active ? "#059669" : "#f0fdf4", color: active ? "#fff" : "#166534",
+  });
+
+  return (
+    <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, border: "0.5px solid #c4b5fd", background: "#fafafa" }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: "#374151", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        Export Format — Formato de Exportación
+      </p>
+
+      {/* Industrial options */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ ...s.label, marginBottom: 6 }}>Industrial / Bulk</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {byGroup("INDUSTRIAL").map(f => (
+            <button key={f.id} type="button" title={f.desc}
+              onClick={() => { setExportFormat(f.id); if (skus.length === 0) setSkus([newSku()]); }}
+              style={btnStyle(exportFormat === f.id)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Retail options */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ ...s.label, marginBottom: 6 }}>Retail Distribution</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {byGroup("RETAIL").map(f => (
+            <button key={f.id} type="button" title={f.desc}
+              onClick={() => { setExportFormat(f.id); if (skus.length === 0) setSkus([newSku()]); }}
+              style={retailBtnStyle(exportFormat === f.id)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom */}
+      <div>
+        {byGroup("CUSTOM").map(f => (
+          <button key={f.id} type="button"
+            onClick={() => setExportFormat(f.id)}
+            style={{ ...btnStyle(exportFormat === f.id), fontSize: 11, color: exportFormat === f.id ? "#fff" : "#6b7280" }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Selected format description */}
+      {exportFormat && (
+        <p style={{ fontSize: 11, color: "#6b7280", margin: "8px 0 0", borderTop: "0.5px solid #e5e7eb", paddingTop: 8 }}>
+          ✓ <strong>{getExportFormatLabel(exportFormat)}</strong>
+          {" — "}
+          {EXPORT_FORMAT_OPTIONS.find(f => f.id === exportFormat)?.desc || ""}
+        </p>
+      )}
+
+      {/* INDUSTRIAL: show commercial unit selector */}
+      {exportFormat && !isRetail && exportFormat !== "CUSTOM" && (
+        <div style={{ marginTop: 10 }}>
+          <label style={{ ...s.label, marginBottom: 6 }}>Commercial Sale Basis</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {INDUSTRIAL_SALE_UNITS.map(u => {
+              const active = commercialUnit === u.id;
+              return (
+                <button key={u.id} type="button" onClick={() => setCommercialUnit(u.id)}
+                  style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                    border: active ? "2px solid #b45309" : "1px solid #fbbf24",
+                    background: active ? "#b45309" : "#fffbeb",
+                    color: active ? "#fff" : "#78350f", fontWeight: active ? 700 : 400 }}>
+                  {u.label.es} <span style={{ opacity: 0.7, fontSize: 10 }}>({u.abbr})</span>
+                </button>
+              );
+            })}
+          </div>
+          {commercialUnit && (
+            <p style={{ fontSize: 11, color: "#92400e", margin: "5px 0 0", fontWeight: 600 }}>
+              Precio base: <strong>{COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.label.es}</strong>
+              {" — el label del precio mostrará "}
+              <strong>{COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr}</strong>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* RETAIL: show Multi-SKU engine */}
+      {exportFormat && isRetail && (
+        <div style={{ marginTop: 10 }}>
+          <MultiSkuEngine skus={skus} setSkus={setSkus} currency={currency} exportFormat={exportFormat} />
+        </div>
       )}
     </div>
   );
@@ -618,15 +930,19 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   const [origin, setOrigin] = useState(initial?.origin || "Brazil");
   const [cargoType, setCargoType] = useState(initial?.cargoType || "");
   const [collapsed, setCollapsed] = useState(false);
-  // V5: liquid/packaged engine
+  // V5: liquid/packaged engine (kept for backward compat)
   const [packagingMode, setPackagingMode]         = useState(initial?.packagingMode       || "");
   const [packagingType, setPackagingType]         = useState(initial?.packagingType       || "");
   const [presentationSize, setPresentationSize]   = useState(initial?.presentationSize    || "");
   const [commercialUnit, setCommercialUnit]       = useState(initial?.commercialUnit      || "");
   const [unitsPerBox, setUnitsPerBox]             = useState(initial?.unitsPerBox         || "");
   const [netWeightPerUnit, setNetWeightPerUnit]   = useState(initial?.netWeightPerUnit    || "");
+  // V6: export format + multi-SKU engine
+  const [exportFormat, setExportFormat]           = useState(initial?.exportFormat        || "");
+  const [skus, setSkus]                           = useState(initial?.skus || []);
 
-  const catDef = cat ? PRODUCT_CATEGORIES[cat] : null;
+  const catDef      = cat ? PRODUCT_CATEGORIES[cat] : null;
+  const isRetailMode = isRetailExportFormat(exportFormat);
 
   useEffect(() => {
     if (catDef) { setUnitType(catDef.defaultUnit || ""); setContainerCap(catDef.containerCapacity || ""); }
@@ -645,18 +961,33 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 
   const primaryPrice = incotermPrices[incoterms[0]] || unitPrice;
 
-  const summary = cat ? calcCommercialSummary({
-    category: cat, quantity: qty, unitType, unitPrice: primaryPrice, currency,
-    deliveryFrequency: frequency, numShipments, contractDuration: duration,
-    headCount: specs.headCount, avgWeight: specs.avgWeight, mortalityMargin: specs.mortalityMargin,
-    containerCapacity: containerCap || catDef?.containerCapacity,
-    containerType,
-    commercialUnit, unitsPerBox, netWeightPerUnit,
-  }) : null;
+  // V6: compute summary — retail multi-SKU overrides standard calc
+  const summary = cat ? (
+    isRetailMode && skus.length > 0
+      ? calcMultiSkuSummary(skus, { currency, deliveryFrequency: frequency, numShipments, contractDuration: duration })
+      : calcCommercialSummary({
+          category: cat, quantity: qty, unitType, unitPrice: primaryPrice, currency,
+          deliveryFrequency: frequency, numShipments, contractDuration: duration,
+          headCount: specs.headCount, avgWeight: specs.avgWeight, mortalityMargin: specs.mortalityMargin,
+          containerCapacity: containerCap || catDef?.containerCapacity,
+          containerType,
+          commercialUnit, unitsPerBox, netWeightPerUnit,
+        })
+  ) : null;
 
   useEffect(() => {
-    onChange(rowId, { category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices, unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments, contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType, packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit, summary });
-  }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency, frequency, numShipments, duration, containerCap, containerType, origin, packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit]);
+    onChange(rowId, {
+      category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices,
+      unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments,
+      contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType,
+      packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
+      exportFormat, skus,
+      summary,
+    });
+  }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency,
+      frequency, numShipments, duration, containerCap, containerType, origin,
+      packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
+      exportFormat, skus]);
 
   return (
     <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
@@ -720,8 +1051,18 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
           {cat && cat !== "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
           {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
 
-          {/* V5: Liquid / Packaged Product Engine — never shown for LIVE_ANIMALS */}
+          {/* V6: Export Format Engine — replaces V5 LiquidPackagingEngine for supported categories */}
           {cat && cat !== "LIVE_ANIMALS" && (
+            <ExportFormatEngine
+              category={cat}
+              exportFormat={exportFormat} setExportFormat={setExportFormat}
+              skus={skus} setSkus={setSkus}
+              currency={currency}
+              commercialUnit={commercialUnit} setCommercialUnit={setCommercialUnit}
+            />
+          )}
+          {/* V5: fallback for docs without exportFormat set (backward compat) */}
+          {cat && cat !== "LIVE_ANIMALS" && !exportFormat && (
             <LiquidPackagingEngine
               category={cat}
               packagingMode={packagingMode} setPackagingMode={setPackagingMode}
@@ -748,32 +1089,37 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
           {/* Container / vessel type selector */}
           {cat && <ContainerTypeSelector value={containerType} onChange={setContainerType} category={cat} />}
 
-          {/* Quantity + Unit + Currency */}
+          {/* Quantity + Unit + Currency — hidden in retail multi-SKU mode (each SKU carries its own qty) */}
           {cat && (
             <div>
-              <div style={s.row3}>
-                <Field label={cat === "LIVE_ANIMALS" ? "Cabezas por embarque *" : "Cantidad por embarque *"} required>
-                  <Inp type="number" value={qty} onChange={handleQtyChange} placeholder={cat === "LIVE_ANIMALS" ? "Ej: 25000" : "Ej: 540"} min="0" />
-                </Field>
-                <Field label="Unidad *" required>
-                  <Sel value={unitType} onChange={setUnitType}>
-                    <option value="">Seleccionar...</option>
-                    {catDef?.units?.map(u => <option key={u} value={u}>{u}</option>)}
-                  </Sel>
-                </Field>
-                <Field label="Moneda">
-                  <Sel value={currency} onChange={setCurrency}>
-                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
-                  </Sel>
-                </Field>
-              </div>
+              {/* Currency always visible */}
+              <Field label="Moneda / Currency">
+                <Sel value={currency} onChange={setCurrency}>
+                  {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+                </Sel>
+              </Field>
 
-              {/* Incoterms */}
+              {!isRetailMode && (
+                <div style={s.row2}>
+                  <Field label={cat === "LIVE_ANIMALS" ? "Cabezas por embarque *" : "Cantidad por embarque *"} required>
+                    <Inp type="number" value={qty} onChange={handleQtyChange} placeholder={cat === "LIVE_ANIMALS" ? "Ej: 25000" : "Ej: 540"} min="0" />
+                  </Field>
+                  <Field label="Unidad *" required>
+                    <Sel value={unitType} onChange={setUnitType}>
+                      <option value="">Seleccionar...</option>
+                      {catDef?.units?.map(u => <option key={u} value={u}>{u}</option>)}
+                    </Sel>
+                  </Field>
+                </div>
+              )}
+
+              {/* Incoterms — shown in all modes; price label is dynamic */}
               <Field label="Incoterm(s) — selecciona uno o varios">
                 <IncotermSelector selected={incoterms} onChange={setIncoterms} prices={incotermPrices} onPriceChange={handleIncotermPrice} commercialUnit={commercialUnit} />
               </Field>
 
-              {PRICED_INCOTERMS.filter(i => incoterms.includes(i)).length === 0 && (
+              {/* Manual price only when no priced incoterm is selected AND not in retail mode */}
+              {!isRetailMode && PRICED_INCOTERMS.filter(i => incoterms.includes(i)).length === 0 && (
                 <Field label="Precio por unidad" required>
                   <Inp type="number" value={unitPrice} onChange={setUnitPrice} placeholder="0.00" min="0" />
                 </Field>
@@ -817,9 +1163,10 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
 }
 
 function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, specs, frequency, duration, category, containerType, commercialUnit }) {
-  const hasPrice = parseFloat(unitPrice) > 0;
-  const hasQty   = parseFloat(qty) > 0;
-  const isLive   = category === "LIVE_ANIMALS";
+  const hasPrice   = parseFloat(unitPrice) > 0;
+  const hasQty     = parseFloat(qty) > 0;
+  const isLive     = category === "LIVE_ANIMALS";
+  const isMultiSku = !!summary?.isMultiSku;
 
   const panelStyle = {
     background: summary?.contractValue > 0
@@ -827,6 +1174,40 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
       : "linear-gradient(135deg,#374151 0%,#4b5563 100%)",
     borderRadius: 10, padding: "14px 16px", color: "#fff", marginTop: 10,
   };
+
+  // Multi-SKU retail mode — show aggregate immediately
+  if (isMultiSku) {
+    const hasSummary = summary.contractValue > 0;
+    if (!hasSummary) {
+      return (
+        <div style={{ ...panelStyle, opacity: 0.7 }}>
+          <p style={{ fontSize: 11, opacity: 0.7, margin: "0 0 6px", letterSpacing: 1, textTransform: "uppercase" }}>Resumen Multi-SKU</p>
+          <p style={{ fontSize: 12, margin: 0, opacity: 0.8 }}>
+            Complete los SKUs con precio y cantidad para ver los totales del contrato.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <div style={panelStyle}>
+        <p style={{ fontSize: 11, opacity: 0.7, margin: "0 0 12px", letterSpacing: 1, textTransform: "uppercase" }}>
+          Resumen Comercial — {summary.skuCount} SKU{summary.skuCount !== 1 ? "s" : ""}
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))", gap: 10 }}>
+          {summary.shipmentValue > 0 && <MiniBox label="VALOR / EMBARQUE" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
+          {summary.totalBoxes  > 0 && <MiniBox label="CAJAS / BOXES"        value={fmtNum(summary.totalBoxes) + " BOXES"} />}
+          {summary.totalUnits  > 0 && <MiniBox label="UNIDADES / UNITS"     value={fmtNum(summary.totalUnits) + " UNITS"} />}
+          {summary.totalNetKg  > 0 && <MiniBox label="PESO NETO / NET KG"   value={fmtNum(summary.totalNetKg) + " KG NET"} />}
+          {summary.shipmentsPerYear != null && <MiniBox label="EMBARQUES / AÑO"  value={String(summary.shipmentsPerYear)} />}
+          {duration              && <MiniBox label="DURACIÓN"                value={`${duration} meses`} />}
+          {summary.contractValue > 0 && <MiniBox label="TOTAL CONTRATO"     value={fmtMoney(summary.contractValue, currency)} big />}
+          {summary.contractValue > 0 && summary.durationMonths > 0 && (
+            <MiniBox label="VALOR ANUAL" value={fmtMoney(summary.contractValue / (summary.durationMonths / 12), currency)} />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const pendingItems = [];
   if (!hasQty)   pendingItems.push(isLive ? "cabezas por embarque" : "cantidad");
@@ -840,6 +1221,9 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
       </div>
     );
   }
+
+  // Unit context label for quantity display — "1,400 BOXES", "24 MT", "20,000 LITERS"
+  const unitCtx = commercialUnit ? getUnitContext(commercialUnit, "en") : (unitType?.split("/")[0].trim() || "units");
 
   return (
     <div style={panelStyle}>
@@ -861,41 +1245,49 @@ function CommercialSummaryPanel({ summary, currency, unitPrice, qty, unitType, s
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(145px, 1fr))", gap: 10 }}>
-        {hasPrice && <MiniBox label={`Precio ${commercialUnit ? `(${COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr || commercialUnit})` : "/ kg"}`} value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />}
-        {hasQty && !isLive && <MiniBox label={`Cantidad (${unitType?.split("/")[0].trim() || "unid."})`} value={fmtNum(parseFloat(qty))} />}
+        {/* Price with dynamic unit context */}
+        {hasPrice && (
+          <MiniBox
+            label={`PRECIO ${commercialUnit ? `(${COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr || commercialUnit})` : "/ KG"}`}
+            value={`${currency} ${parseFloat(unitPrice).toFixed(2)}`} />
+        )}
+        {/* Quantity with unit context — "1,400 BOXES" not just "1,400" */}
+        {hasQty && !isLive && (
+          <MiniBox label={`CANTIDAD — ${unitCtx}`} value={`${fmtNum(parseFloat(qty))} ${unitCtx}`} />
+        )}
         {hasQty && !isLive && (unitType?.includes("MT") || unitType?.includes("Tonelada")) && (
-          <MiniBox label="Peso Total (kg)" value={fmtNum(parseFloat(qty) * 1000) + " kg"} />
+          <MiniBox label="PESO TOTAL" value={fmtNum(parseFloat(qty) * 1000) + " KG"} />
         )}
 
         {/* LIVE_ANIMALS specific fields */}
-        {isLive && hasQty && <MiniBox label="Cabezas / Embarque" value={fmtNum(parseFloat(qty))} />}
-        {isLive && specs?.avgWeight > 0 && <MiniBox label="Peso Prom. / Cabeza" value={`${specs.avgWeight} kg`} />}
-        {isLive && summary?.lotWeightGross > 0 && <MiniBox label="Peso Lote Cargado" value={fmtNum(summary.lotWeightGross) + " kg"} />}
+        {isLive && hasQty && <MiniBox label="CABEZAS / EMBARQUE" value={fmtNum(parseFloat(qty))} />}
+        {isLive && specs?.avgWeight > 0 && <MiniBox label="PESO PROM. / CABEZA" value={`${specs.avgWeight} KG`} />}
+        {isLive && summary?.lotWeightGross > 0 && <MiniBox label="PESO LOTE CARGADO" value={fmtNum(summary.lotWeightGross) + " KG"} />}
 
         {/* Non-live: shipment value smaller highlight */}
-        {!isLive && summary?.shipmentValue > 0 && <MiniBox label="Valor por Embarque" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
+        {!isLive && summary?.shipmentValue > 0 && <MiniBox label="VALOR / EMBARQUE" value={fmtMoney(summary.shipmentValue, currency)} highlight />}
 
         {summary?.shipmentsPerYear != null && (
-          <MiniBox label="Embarques / Año" value={String(summary.shipmentsPerYear)} />
+          <MiniBox label="EMBARQUES / AÑO" value={String(summary.shipmentsPerYear)} />
         )}
-        {duration && <MiniBox label="Duración Contrato" value={`${duration} meses`} />}
+        {duration && <MiniBox label="DURACIÓN CONTRATO" value={`${duration} MESES`} />}
 
         {/* LIVE_ANIMALS contract-level totals */}
         {isLive && summary?.totalContractHeadcount > 0 && (
-          <MiniBox label="Cabezas Totales Contrato" value={fmtNum(summary.totalContractHeadcount)} />
+          <MiniBox label="CABEZAS TOTALES" value={fmtNum(summary.totalContractHeadcount)} />
         )}
         {isLive && summary?.totalContractWeight > 0 && (
-          <MiniBox label="Peso Total Contrato" value={fmtNum(summary.totalContractWeight) + " kg"} />
+          <MiniBox label="PESO TOTAL CONTRATO" value={fmtNum(summary.totalContractWeight) + " KG"} />
         )}
         {isLive && summary?.annualValue > 0 && (
-          <MiniBox label="Valor Anual Estimado" value={fmtMoney(summary.annualValue, currency)} />
+          <MiniBox label="VALOR ANUAL EST." value={fmtMoney(summary.annualValue, currency)} />
         )}
 
         {summary?.contractValue > 0 && (
           <MiniBox label="TOTAL CONTRATO" value={fmtMoney(summary.contractValue, currency)} big />
         )}
         {!isLive && summary?.containers && (
-          <MiniBox label="Contenedores est." value={`${summary.containers.containers} × ${getContainerLabel(containerType) || "40FT"}`} />
+          <MiniBox label="CONTENEDORES EST." value={`${summary.containers.containers} × ${getContainerLabel(containerType) || "40FT"}`} />
         )}
         {!isLive && summary?.totalNetKg > 0 && (
           <MiniBox label="Peso Neto Total" value={fmtNum(summary.totalNetKg) + " kg"} />

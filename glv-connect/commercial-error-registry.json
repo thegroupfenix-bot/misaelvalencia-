@@ -1,5 +1,5 @@
 {
-  "registry_version": "5.1.0",
+  "registry_version": "6.0.0",
   "last_updated": "2026-05-25",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
@@ -256,7 +256,45 @@
       { "id": "ERR-014", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "getContainerLabel" },
       { "id": "ERR-015", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "COMMERCIAL_SALE_UNITS" },
       { "id": "ERR-016", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "commercialUnit" },
-      { "id": "ERR-017", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-013" }
+      { "id": "ERR-017", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-013" },
+      { "id": "ERR-018", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "EXPORT_FORMAT_OPTIONS" },
+      { "id": "ERR-019", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "calcMultiSkuSummary" }
     ]
-  }
+  },
+  "errors_v6": [
+    {
+      "id": "ERR-018",
+      "title": "Single-SKU limitation — no way to quote multiple presentation sizes in one product row",
+      "status": "resolved",
+      "resolved_in": "PR #55",
+      "root_cause": "Each product row had one presentation size, one packaging type, one price field. Exporters offering 900ml + 1L + 2L in the same shipment had to create multiple documents or use incorrect quantities.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/utils/calculations.js",
+        "glv-connect/frontend/src/engines/packagingEngine.js",
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "Multi-SKU engine V6: 1–5 SKU cards per product row, each with independent packaging type, presentation size, units/carton, carton weight, sale basis, price, qty. calcMultiSkuSummary aggregates all SKUs. PDF Section 2 shows professional SKU breakdown table. CommercialSummaryPanel shows unit context (BOXES, UNITS, KG NET).",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/packagingEngine.js",
+        "must_contain": "EXPORT_FORMAT_OPTIONS"
+      }
+    },
+    {
+      "id": "ERR-019",
+      "title": "Export Format field absent — presentation was conflated with loading format",
+      "status": "resolved",
+      "resolved_in": "PR #55",
+      "root_cause": "Presentación field described both the bottle/carton size AND the loading format (Flexitank, Retail PET, etc.) in the same field. Industrial routes (Flexitank, ISO Tank) had no explicit export format selector — agents had to infer from packaging type.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/engines/packagingEngine.js"
+      ],
+      "fix": "Export Format field introduced. EXPORT_FORMAT_OPTIONS: FLEXITANK, ISO_TANK, IBC_1000L, DRUM_200L, JERRYCAN_20L, RETAIL_MIXED, RETAIL_PET, RETAIL_TETRA, RETAIL_DOYPACK, CUSTOM. isRetailExportFormat() gates MultiSkuEngine vs industrial fields. INDUSTRIAL_SALE_UNITS + SKU_SALE_UNITS separate the two pricing paths.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/utils/calculations.js",
+        "must_contain": "calcMultiSkuSummary"
+      }
+    }
+  ]
 }
