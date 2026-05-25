@@ -11,6 +11,7 @@
  */
 
 import { getCategoryMediaConfig } from "./categoryEngine.js";
+import { POUCH_MEDIA_TAGS, POUCH_MEDIA_EXCLUSIONS, POUCH_EXPORT_FORMAT_IDS } from "./PouchPackagingEngine.js";
 
 /**
  * Resolve media query context for a given document category.
@@ -22,24 +23,30 @@ import { getCategoryMediaConfig } from "./categoryEngine.js";
  * @param {string[]} [opts.extraTags] — additional caller-supplied tags
  * @returns {MediaContext}
  */
-export function resolveMediaContext(category, { origin = "", extraTags = [] } = {}) {
+export function resolveMediaContext(category, { origin = "", extraTags = [], exportFormat = "" } = {}) {
   const config = getCategoryMediaConfig(category);
+  const isPouchFmt = POUCH_EXPORT_FORMAT_IDS.has(exportFormat);
 
   if (!config) {
     return {
       category:   null,
       origin,
-      tags:       extraTags,
-      exclusions: [],
+      tags:       isPouchFmt ? [...extraTags, ...POUCH_MEDIA_TAGS] : extraTags,
+      exclusions: isPouchFmt ? POUCH_MEDIA_EXCLUSIONS : [],
       isIsolated: false,
     };
   }
 
+  // V7: When a pouch export format is active, augment tags with pouch media context
+  // but preserve category isolation (no cross-contamination with livestock/grain).
+  const mergedTags       = isPouchFmt ? [...config.tags, ...POUCH_MEDIA_TAGS, ...extraTags] : [...config.tags, ...extraTags];
+  const mergedExclusions = isPouchFmt ? [...new Set([...config.exclusions, ...POUCH_MEDIA_EXCLUSIONS])] : config.exclusions;
+
   return Object.freeze({
     category,
     origin,
-    tags:       [...config.tags, ...extraTags],
-    exclusions: config.exclusions,
+    tags:       mergedTags,
+    exclusions: mergedExclusions,
     isIsolated: true,
   });
 }

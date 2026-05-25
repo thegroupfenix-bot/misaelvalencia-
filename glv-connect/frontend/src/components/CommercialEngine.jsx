@@ -12,8 +12,15 @@ import {
   LIQUID_SIZE_RETAIL, LIQUID_SIZE_INDUSTRIAL, COMMERCIAL_SALE_UNITS, getSaleUnitsForProfile,
   // V6 Multi-SKU engine
   EXPORT_FORMAT_OPTIONS, INDUSTRIAL_SALE_UNITS, SKU_SALE_UNITS, SKU_PACKAGING_TYPES,
-  isRetailExportFormat, getExportFormatLabel, getUnitContext,
+  isRetailExportFormat, isPouchExportFormat, getExportFormatLabel, getUnitContext,
 } from "../engines/packagingEngine.js";
+import {
+  POUCH_TYPES, FILM_STRUCTURES, POUCH_SIZES, SEAL_TYPES, PRINT_TYPES, FINISH_TYPES,
+  VALVE_OPTIONS, FOOD_GRADE_CERTS, MASTER_CARTON_CONFIG, PALLET_CONFIG, OEM_CAPABILITIES,
+  getCartonConfig, getDefaultUnitsPerCarton, getContainerUtilization, calcPouchLogistics,
+  POUCH_EXPORT_DESCRIPTION, isPouchExportFormat as isPouchFmt, SKU_POUCH_PACKAGING_TYPES,
+  POUCH_MEDIA_TAGS,
+} from "../engines/PouchPackagingEngine.js";
 
 const ORIGINS = ["Brazil", "Argentina", "Colombia", "Uruguay", "Chile", "Paraguay", "USA", "Canada", "Australia", "New Zealand", "South Africa", "Other"];
 const PRICED_INCOTERMS = ["FOB", "CFR", "CIF", "DDP"];
@@ -422,9 +429,16 @@ function SkuCard({ sku, onChange, onRemove, canRemove, index, currency }) {
 // Allows 1–5 SKU cards per product (different sizes, prices, quantities).
 
 function MultiSkuEngine({ skus, setSkus, currency, exportFormat }) {
-  const packagingHint = exportFormat === "RETAIL_PET"    ? "PET_BOTTLE"
-                      : exportFormat === "RETAIL_TETRA"  ? "TETRA_PAK"
-                      : exportFormat === "RETAIL_DOYPACK" ? "DOYPACK"
+  const packagingHint = exportFormat === "RETAIL_PET"      ? "PET_BOTTLE"
+                      : exportFormat === "RETAIL_TETRA"    ? "TETRA_PAK"
+                      : exportFormat === "RETAIL_DOYPACK"  ? "DOYPACK"
+                      : exportFormat === "STAND_UP_POUCH"  ? "STAND_UP_POUCH"
+                      : exportFormat === "PILLOW_POUCH"    ? "PILLOW_POUCH"
+                      : exportFormat === "SPOUT_POUCH"     ? "SPOUT_POUCH"
+                      : exportFormat === "GUSSET_POUCH"    ? "GUSSET_POUCH"
+                      : exportFormat === "SIDE_SEAL_POUCH" ? "SIDE_SEAL_POUCH"
+                      : exportFormat === "BAG_IN_BOX"      ? "BAG_IN_BOX"
+                      : exportFormat === "RETAIL_POUCH"    ? "STAND_UP_POUCH"
                       : "";
 
   const addSku = () => {
@@ -502,13 +516,210 @@ function MultiSkuEngine({ skus, setSkus, currency, exportFormat }) {
 // RETAIL     → opens MultiSkuEngine (per-SKU pricing).
 // CUSTOM     → free text + commercial unit.
 
+// ─── V7: Pouch Configuration Panel ───────────────────────────────────────────
+// Shown inline inside ExportFormatEngine when a POUCH group format is selected.
+// Completely isolated — never shown for LIVE_ANIMALS or industrial formats.
+
+function PouchConfigPanel({ pouchConfig, setPouchConfig }) {
+  const set = (k, v) => setPouchConfig(p => ({ ...p, [k]: v }));
+  const toggleArr = (k, v) => {
+    const arr = pouchConfig[k] || [];
+    set(k, arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
+  };
+
+  const chipBtn = (active, onClick, label, color = "#6d28d9") => ({
+    style: {
+      padding: "4px 11px", borderRadius: 16, fontSize: 11, cursor: "pointer", fontWeight: active ? 700 : 400,
+      border: active ? `2px solid ${color}` : "1px solid #ddd6fe",
+      background: active ? color : "#faf5ff", color: active ? "#fff" : "#5b21b6",
+    },
+    onClick,
+    children: label,
+  });
+
+  return (
+    <div style={{ marginTop: 10, padding: "12px 14px", borderRadius: 10, border: "1px solid #ddd6fe", background: "#faf5ff" }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: "#5b21b6", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        ⬡ Pouch Packaging Configuration
+      </p>
+
+      {/* Pouch Type */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ ...s.label, color: "#5b21b6", marginBottom: 5 }}>Pouch Type</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {POUCH_TYPES.map(pt => {
+            const active = pouchConfig.pouchType === pt.id;
+            return (
+              <button key={pt.id} type="button" title={pt.desc}
+                onClick={() => set("pouchType", pt.id)}
+                style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                  border: active ? "2px solid #5b21b6" : "1px solid #ddd6fe",
+                  background: active ? "#5b21b6" : "#faf5ff",
+                  color: active ? "#fff" : "#5b21b6", fontWeight: active ? 700 : 400 }}>
+                {pt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Film Structure */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ ...s.label, color: "#1e40af", marginBottom: 5 }}>Film Structure</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {FILM_STRUCTURES.map(fs => {
+            const active = pouchConfig.filmStructure === fs.id;
+            const color = fs.tier === "EXPORT_HEAVY_DUTY" ? "#b45309" : fs.tier === "PREMIUM" ? "#1e40af" : "#374151";
+            return (
+              <button key={fs.id} type="button" title={fs.desc}
+                onClick={() => set("filmStructure", fs.id)}
+                style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                  border: active ? `2px solid ${color}` : "1px solid #e5e7eb",
+                  background: active ? color : "#f9fafb",
+                  color: active ? "#fff" : color, fontWeight: active ? 700 : 400 }}>
+                {fs.label}
+                <span style={{ fontSize: 9, opacity: 0.7, marginLeft: 5 }}>({fs.tier.replace("_"," ")})</span>
+              </button>
+            );
+          })}
+        </div>
+        {pouchConfig.filmStructure && (
+          <p style={{ fontSize: 10, color: "#6b7280", margin: "3px 0 0" }}>
+            {FILM_STRUCTURES.find(f => f.id === pouchConfig.filmStructure)?.desc}
+          </p>
+        )}
+      </div>
+
+      {/* Presentation Size */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ ...s.label, color: "#0369a1", marginBottom: 5 }}>Presentation Size</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {POUCH_SIZES.map(sz => {
+            const active = pouchConfig.presentationSize === sz.id;
+            return (
+              <button key={sz.id} type="button"
+                onClick={() => set("presentationSize", sz.id)}
+                style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                  border: active ? "2px solid #0369a1" : "1px solid #bae6fd",
+                  background: active ? "#0369a1" : "#f0f9ff",
+                  color: active ? "#fff" : "#0369a1", fontWeight: active ? 600 : 400 }}>
+                {sz.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Units per Carton — shows suggested configs for selected size */}
+      {pouchConfig.presentationSize && (
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ ...s.label, marginBottom: 5 }}>Units / Carton</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {getCartonConfig(pouchConfig.presentationSize).map(cfg => {
+              const active = String(pouchConfig.unitsPerCarton) === String(cfg.units);
+              return (
+                <button key={cfg.units} type="button"
+                  onClick={() => set("unitsPerCarton", cfg.units)}
+                  style={{ padding: "5px 12px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                    border: active ? "2px solid #059669" : "1px solid #d1d5db",
+                    background: active ? "#059669" : "#f9fafb",
+                    color: active ? "#fff" : "#374151", fontWeight: active ? 600 : 400 }}>
+                  {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+          {pouchConfig.unitsPerCarton && pouchConfig.presentationSize && (() => {
+            const sz = POUCH_SIZES.find(s => s.id === pouchConfig.presentationSize);
+            const netKg = (parseFloat(pouchConfig.unitsPerCarton) * (sz?.litValue || 0)).toFixed(2);
+            const palCfg = PALLET_CONFIG[pouchConfig.presentationSize] || { cartonsPerPallet: 40 };
+            return (
+              <p style={{ fontSize: 10, color: "#059669", margin: "3px 0 0", fontWeight: 500 }}>
+                {pouchConfig.unitsPerCarton} × {sz?.label} = {netKg} kg/carton
+                {" · "}{palCfg.cartonsPerPallet} cartons/pallet
+              </p>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Optional fields: Seal / Print / Finish / Valve — 2-col grid */}
+      <div style={s.row2}>
+        <Field label="Seal Type">
+          <Sel value={pouchConfig.sealType || ""} onChange={v => set("sealType", v)}>
+            <option value="">Select...</option>
+            {SEAL_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </Sel>
+        </Field>
+        <Field label="Valve / Spout">
+          <Sel value={pouchConfig.valveOption || ""} onChange={v => set("valveOption", v)}>
+            <option value="">None / Select...</option>
+            {VALVE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </Sel>
+        </Field>
+        <Field label="Print Type">
+          <Sel value={pouchConfig.printType || ""} onChange={v => set("printType", v)}>
+            <option value="">Select...</option>
+            {PRINT_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </Sel>
+        </Field>
+        <Field label="Finish">
+          <Sel value={pouchConfig.finishType || ""} onChange={v => set("finishType", v)}>
+            <option value="">Select...</option>
+            {FINISH_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </Sel>
+        </Field>
+      </div>
+
+      {/* Food Grade Certifications (multi-select chips) */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ ...s.label, marginBottom: 5 }}>Food Grade Certifications</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {FOOD_GRADE_CERTS.map(c => {
+            const active = (pouchConfig.certifications || []).includes(c.id);
+            return (
+              <button key={c.id} type="button" onClick={() => toggleArr("certifications", c.id)}
+                style={{ padding: "4px 11px", borderRadius: 16, fontSize: 11, cursor: "pointer",
+                  border: active ? "2px solid #059669" : "1px solid #d1d5db",
+                  background: active ? "#059669" : "#f9fafb",
+                  color: active ? "#fff" : "#374151", fontWeight: active ? 600 : 400 }}>
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* OEM / Private Label */}
+      <div style={{ marginBottom: 6 }}>
+        <label style={{ ...s.label, marginBottom: 5 }}>OEM / Private Label Capability</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {OEM_CAPABILITIES.map(o => {
+            const active = (pouchConfig.oemCapabilities || []).includes(o.id);
+            return (
+              <button key={o.id} type="button" title={o.desc} onClick={() => toggleArr("oemCapabilities", o.id)}
+                style={{ padding: "4px 11px", borderRadius: 16, fontSize: 11, cursor: "pointer",
+                  border: active ? "2px solid #1B2A4A" : "1px solid #d1d5db",
+                  background: active ? "#1B2A4A" : "#f9fafb",
+                  color: active ? "#fff" : "#374151", fontWeight: active ? 600 : 400 }}>
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, setSkus, currency,
-  commercialUnit, setCommercialUnit }) {
+  commercialUnit, setCommercialUnit, pouchConfig, setPouchConfig }) {
   const profile = getCategoryProfile(category);
   if (!profile?.supportsPackaging && !profile?.supportsLiquidPackaging) return null;
   if (category === "LIVE_ANIMALS") return null;
 
   const isRetail = isRetailExportFormat(exportFormat);
+  const isPouch  = isPouchExportFormat(exportFormat);
   const byGroup  = (grp) => EXPORT_FORMAT_OPTIONS.filter(f => f.group === grp);
 
   const btnStyle = (active) => ({
@@ -520,6 +731,11 @@ function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, set
     ...btnStyle(active),
     border: active ? "2px solid #059669" : "1px solid #d1d5db",
     background: active ? "#059669" : "#f0fdf4", color: active ? "#fff" : "#166534",
+  });
+  const pouchBtnStyle = (active) => ({
+    padding: "5px 13px", borderRadius: 16, fontSize: 12, cursor: "pointer", fontWeight: active ? 700 : 400,
+    border: active ? "2px solid #6d28d9" : "1px solid #ddd6fe",
+    background: active ? "#6d28d9" : "#faf5ff", color: active ? "#fff" : "#5b21b6",
   });
 
   return (
@@ -556,6 +772,20 @@ function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, set
         </div>
       </div>
 
+      {/* V7: Pouch / Flexible Packaging */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ ...s.label, marginBottom: 6, color: "#5b21b6" }}>Pouch / Flexible Packaging (V7)</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {byGroup("POUCH").map(f => (
+            <button key={f.id} type="button" title={f.desc}
+              onClick={() => { setExportFormat(f.id); if (skus.length === 0) setSkus([newSku("STAND_UP_POUCH")]); }}
+              style={pouchBtnStyle(exportFormat === f.id)}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Custom */}
       <div>
         {byGroup("CUSTOM").map(f => (
@@ -577,7 +807,7 @@ function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, set
       )}
 
       {/* INDUSTRIAL: show commercial unit selector */}
-      {exportFormat && !isRetail && exportFormat !== "CUSTOM" && (
+      {exportFormat && !isRetail && !isPouch && exportFormat !== "CUSTOM" && (
         <div style={{ marginTop: 10 }}>
           <label style={{ ...s.label, marginBottom: 6 }}>Commercial Sale Basis</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -604,8 +834,13 @@ function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, set
         </div>
       )}
 
-      {/* RETAIL: show Multi-SKU engine */}
-      {exportFormat && isRetail && (
+      {/* V7: POUCH — show PouchConfigPanel + Multi-SKU engine */}
+      {exportFormat && isPouch && (
+        <PouchConfigPanel pouchConfig={pouchConfig} setPouchConfig={setPouchConfig} />
+      )}
+
+      {/* RETAIL (non-pouch) or POUCH: show Multi-SKU engine */}
+      {exportFormat && (isRetail || isPouch) && (
         <div style={{ marginTop: 10 }}>
           <MultiSkuEngine skus={skus} setSkus={setSkus} currency={currency} exportFormat={exportFormat} />
         </div>
@@ -943,6 +1178,8 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   // V6: export format + multi-SKU engine
   const [exportFormat, setExportFormat]           = useState(initial?.exportFormat        || "");
   const [skus, setSkus]                           = useState(initial?.skus || []);
+  // V7: pouch packaging configuration
+  const [pouchConfig, setPouchConfig]             = useState(initial?.pouchConfig || {});
 
   const catDef      = cat ? PRODUCT_CATEGORIES[cat] : null;
   const isRetailMode = isRetailExportFormat(exportFormat);
@@ -984,13 +1221,13 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
       unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments,
       contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType,
       packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
-      exportFormat, skus,
+      exportFormat, skus, pouchConfig,
       summary,
     });
   }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency,
       frequency, numShipments, duration, containerCap, containerType, origin,
       packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
-      exportFormat, skus]);
+      exportFormat, skus, pouchConfig]);
 
   return (
     <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
@@ -1056,7 +1293,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
               ? new Set(["packaging"]) : null} />}
           {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
 
-          {/* V6: Export Format Engine — replaces V5 LiquidPackagingEngine for supported categories */}
+          {/* V6/V7: Export Format Engine — replaces V5 LiquidPackagingEngine for supported categories */}
           {cat && cat !== "LIVE_ANIMALS" && (
             <ExportFormatEngine
               category={cat}
@@ -1064,6 +1301,7 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
               skus={skus} setSkus={setSkus}
               currency={currency}
               commercialUnit={commercialUnit} setCommercialUnit={setCommercialUnit}
+              pouchConfig={pouchConfig} setPouchConfig={setPouchConfig}
             />
           )}
           {/* V5: fallback for docs without exportFormat set (backward compat) */}

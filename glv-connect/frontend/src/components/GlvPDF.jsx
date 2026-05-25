@@ -342,15 +342,20 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   // V6: Multi-SKU export engine fields
   const exportFormat     = firstCdRow.exportFormat     || null;
   const rowSkus          = Array.isArray(firstCdRow.skus) ? firstCdRow.skus : [];
-  const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
-  // Dynamic price label: "Precio CFR /box" instead of always "Precio CFR (USD/kg)"
+  // V7: Pouch packaging configuration
+  const pouchConfig      = firstCdRow.pouchConfig      || {};
+  const POUCH_FORMAT_IDS = new Set(["RETAIL_POUCH","PILLOW_POUCH","STAND_UP_POUCH","SPOUT_POUCH","GUSSET_POUCH","SIDE_SEAL_POUCH","BAG_IN_BOX","RETAIL_DOYPACK"]);
+  const isPouchFormat    = POUCH_FORMAT_IDS.has(exportFormat);
+  const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perCarton:"/carton", perPouch:"/pouch", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
+  // Dynamic price label: "Precio CFR /pouch" instead of always "Precio CFR (USD/kg)"
   const cuAbbr = COMMERCIAL_UNIT_LABELS[commercialUnit] || null;
   const dynamicPriceLbl = cuAbbr && cuAbbr !== "/kg"
     ? (docLang === "en" ? `${cdInc} Price (USD${cuAbbr})` : `Precio ${cdInc} (USD${cuAbbr})`)
     : (L.price_lbl || (docLang === "en" ? `${cdInc} Price (USD/kg)` : `Precio ${cdInc} (USD/kg)`));
-  // Export format display label (V6) — e.g. "RETAIL_PET" → "Retail PET"
+  // Export format display label (V6/V7)
   const exportFormatLabel = exportFormat ? exportFormat.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null;
-  const PACKAGING_TYPE_LABELS  = { FLEXITANK:"Flexi Tank",ISO_TANK:"ISO Tank",IBC_1000L:"IBC 1000L",DRUM_200L:"Drum 200L",JERRYCAN_20L:"Jerrycan 20L",JERRYCAN_10L:"Jerrycan 10L",JERRYCAN_5L:"Jerrycan 5L",BIG_BAG_1MT:"Big Bag 1MT",SACK_50KG:"Saco 50kg",BULK_VESSEL:"Granel Cisterna",PET_BOTTLE:"PET Bottle",GLASS_BOTTLE:"Glass Bottle",TETRA_PAK:"Tetra Pak",DOYPACK:"Doypack",SACHET:"Sachet",PLASTIC_GALLON:"Plastic Gallon",PREMIUM_BOTTLE:"Premium Bottle",CAN_TIN:"Can / Tin",RETAIL_BOX:"Retail Box" };
+  const PACKAGING_TYPE_LABELS  = { FLEXITANK:"Flexi Tank",ISO_TANK:"ISO Tank",IBC_1000L:"IBC 1000L",DRUM_200L:"Drum 200L",JERRYCAN_20L:"Jerrycan 20L",JERRYCAN_10L:"Jerrycan 10L",JERRYCAN_5L:"Jerrycan 5L",BIG_BAG_1MT:"Big Bag 1MT",SACK_50KG:"Saco 50kg",BULK_VESSEL:"Granel Cisterna",PET_BOTTLE:"PET Bottle",GLASS_BOTTLE:"Glass Bottle",TETRA_PAK:"Tetra Pak",DOYPACK:"Doypack",SACHET:"Sachet",PLASTIC_GALLON:"Plastic Gallon",PREMIUM_BOTTLE:"Premium Bottle",CAN_TIN:"Can / Tin",RETAIL_BOX:"Retail Box",PILLOW_POUCH:"Pillow Pouch",STAND_UP_POUCH:"Stand Up Pouch",SPOUT_POUCH:"Spout Pouch",GUSSET_POUCH:"Gusset Pouch",SIDE_SEAL_POUCH:"Side Seal Pouch",BAG_IN_BOX:"Bag In Box" };
+  const FILM_STRUCTURE_LABELS  = { PET_PE:"PET + PE (Standard)",PET_NYLON_PE:"PET + NYLON + PE (Premium)",BOPP_METPET_PE:"BOPP + MET PET + PE (Export Heavy Duty)" };
   const engineUnitPrice = parseFloat(
     firstCdRow.incotermPrices?.[cdInc] ||
     Object.values(firstCdRow.incotermPrices || {}).find(v => parseFloat(v) > 0) ||
@@ -629,13 +634,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             )}
           </View>
 
-          {/* V6: Export Logistics line — shown when exportFormat or containerType is set */}
+          {/* V6/V7: Export Logistics line — shown when exportFormat or containerType is set */}
           {(exportFormat || containerType) && !isLiveAnimalRow && (
             <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0", flexDirection: "row", gap: 8 }}>
               {exportFormat && (
                 <View style={{ flex: 1 }}>
                   <Text style={s.infoLabel}>{docLang === "en" ? "Export Format" : "Formato de exportación"}</Text>
-                  <Text style={{ fontSize: 9, color: "#1e40af", fontWeight: "bold" }}>{exportFormatLabel}</Text>
+                  <Text style={{ fontSize: 9, color: isPouchFormat ? "#6d28d9" : "#1e40af", fontWeight: "bold" }}>{exportFormatLabel}</Text>
                 </View>
               )}
               {containerType && (
@@ -650,6 +655,86 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   <Text style={{ fontSize: 9, color: "#059669", fontWeight: "bold" }}>USD {cuAbbr || "/unit"}</Text>
                 </View>
               )}
+            </View>
+          )}
+
+          {/* V7: Pouch Packaging Details — shown when a POUCH export format is active */}
+          {isPouchFormat && !isLiveAnimalRow && (
+            <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#ddd6fe", background: "#faf5ff" }}>
+              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#5b21b6", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {docLang === "en" ? "Pouch Packaging Specification" : "Especificación de Empaque Flexible"}
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+                {pouchConfig.filmStructure && (
+                  <View style={{ flex: 1, minWidth: "45%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Film Structure" : "Estructura de Film"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#1e40af", fontWeight: "bold" }}>
+                      {FILM_STRUCTURE_LABELS[pouchConfig.filmStructure] || pouchConfig.filmStructure}
+                    </Text>
+                  </View>
+                )}
+                {pouchConfig.pouchType && (
+                  <View style={{ flex: 1, minWidth: "45%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Pouch Type" : "Tipo de Pouch"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#5b21b6", fontWeight: "bold" }}>
+                      {PACKAGING_TYPE_LABELS[pouchConfig.pouchType] || pouchConfig.pouchType}
+                    </Text>
+                  </View>
+                )}
+                {pouchConfig.presentationSize && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#0f172a", fontWeight: "bold" }}>{pouchConfig.presentationSize}</Text>
+                  </View>
+                )}
+                {pouchConfig.unitsPerCarton && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Units / Carton" : "Unidades / Cartón"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#0f172a", fontWeight: "bold" }}>{pouchConfig.unitsPerCarton}</Text>
+                  </View>
+                )}
+                {pouchConfig.sealType && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Seal Type" : "Tipo de Sello"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#374151", fontWeight: "bold" }}>{pouchConfig.sealType?.replace(/_/g," ")}</Text>
+                  </View>
+                )}
+                {pouchConfig.valveOption && pouchConfig.valveOption !== "NONE" && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Valve / Spout" : "Válvula / Espita"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#374151", fontWeight: "bold" }}>{pouchConfig.valveOption?.replace(/_/g," ")}</Text>
+                  </View>
+                )}
+                {pouchConfig.printType && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Print" : "Impresión"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#374151", fontWeight: "bold" }}>{pouchConfig.printType?.replace(/_/g," ")}</Text>
+                  </View>
+                )}
+                {pouchConfig.oemCapabilities?.length > 0 && (
+                  <View style={{ flex: 1, minWidth: "45%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "OEM / Label" : "OEM / Etiqueta"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>
+                      {pouchConfig.oemCapabilities.map(c => c.replace(/_/g," ")).join(" · ")}
+                    </Text>
+                  </View>
+                )}
+                {pouchConfig.certifications?.length > 0 && (
+                  <View style={{ flex: 2, minWidth: "90%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Food Grade Certifications" : "Certificaciones"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#059669", fontWeight: "bold" }}>
+                      {pouchConfig.certifications.join(" · ")}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {/* Pouch commercial description */}
+              <Text style={{ fontSize: 7.5, color: "#374151", lineHeight: 1.4, marginTop: 4, fontStyle: "italic" }}>
+                {docLang === "en"
+                  ? "Flexible multilayer food-grade pouch packaging designed for high-volume export distribution, optimized for freight efficiency, cost reduction, and large-scale retail and wholesale markets."
+                  : "Empaque flexible multicapa de grado alimenticio diseñado para distribución de exportación de alto volumen, optimizado para eficiencia de flete, reducción de costos y mercados minoristas y mayoristas a gran escala."
+                }
+              </Text>
             </View>
           )}
 

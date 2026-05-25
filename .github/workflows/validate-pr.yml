@@ -537,6 +537,100 @@ jobs:
           if [ "$FAILED" -eq 1 ]; then exit 1; fi
           echo "## ✅ V6.1 ONE_SHIPMENT fix + dynamic price label + legacy field suppression verified" >> $GITHUB_STEP_SUMMARY
 
+      - name: V7 — Verify PouchPackagingEngine.js exists with all required exports
+        run: |
+          POUCH_FILE="glv-connect/frontend/src/engines/PouchPackagingEngine.js"
+          if [ ! -f "$POUCH_FILE" ]; then
+            echo "::error::V7: PouchPackagingEngine.js not found — pouch engine missing"
+            exit 1
+          fi
+          SYMBOLS=(POUCH_TYPES FILM_STRUCTURES POUCH_SIZES MASTER_CARTON_CONFIG PALLET_CONFIG CONTAINER_UTILIZATION OEM_CAPABILITIES isPouchExportFormat calcPouchLogistics POUCH_EXPORT_FORMAT_IDS)
+          FAILED=0
+          for sym in "${SYMBOLS[@]}"; do
+            if ! grep -q "$sym" "$POUCH_FILE"; then
+              echo "::error::V7: PouchPackagingEngine.js missing required export: $sym"
+              FAILED=1
+            else
+              echo "✅ PouchPackagingEngine.js — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7 PouchPackagingEngine.js present with all required exports" >> $GITHUB_STEP_SUMMARY
+
+      - name: V7 — Verify packagingEngine.js has pouch export formats and new sale units
+        run: |
+          FAILED=0
+          for sym in isPouchExportFormat STAND_UP_POUCH SPOUT_POUCH PILLOW_POUCH GUSSET_POUCH BAG_IN_BOX perPouch perCarton; do
+            if ! grep -q "$sym" glv-connect/frontend/src/engines/packagingEngine.js; then
+              echo "::error::V7: packagingEngine.js missing: $sym"
+              FAILED=1
+            else
+              echo "✅ packagingEngine.js — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7 packagingEngine.js has all pouch formats and perPouch/perCarton units" >> $GITHUB_STEP_SUMMARY
+
+      - name: V7 — Verify validationSupervisor has VAL-019 through VAL-024
+        run: |
+          FAILED=0
+          for code in VAL-019 VAL-020 VAL-021 VAL-022 VAL-023 VAL-024; do
+            if ! grep -q "$code" glv-connect/frontend/src/engines/validationSupervisor.js; then
+              echo "::error::V7: $code missing from validationSupervisor.js"
+              FAILED=1
+            else
+              echo "✅ validationSupervisor.js — $code present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7 validationSupervisor has pouch guards VAL-019 to VAL-024" >> $GITHUB_STEP_SUMMARY
+
+      - name: V7 — Verify calculations.js handles perPouch and perCarton
+        run: |
+          FAILED=0
+          if ! grep -q "perPouch" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V7: perPouch not handled in calculations.js — pouch pricing will default to zero"
+            FAILED=1
+          fi
+          if ! grep -q "perCarton" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V7: perCarton not handled in calculations.js — carton pricing will default to zero"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7 calculations.js handles perPouch and perCarton" >> $GITHUB_STEP_SUMMARY
+
+      - name: V7 — Verify LIVE_ANIMALS isolation unbroken after V7 pouch changes
+        run: |
+          FAILED=0
+          if ! grep -q "LIVE_ANIMALS.*return null\|return null.*LIVE_ANIMALS" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V7: LIVE_ANIMALS null-guard missing from ExportFormatEngine — pouch selector may appear for livestock"
+            FAILED=1
+          fi
+          if ! grep -q "isLiveAnimalRow" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V7: isLiveAnimalRow missing from GlvPDF.jsx — pouch PDF block may render for livestock"
+            FAILED=1
+          fi
+          if ! grep -q "isPouchFormat.*isLiveAnimalRow\|isLiveAnimalRow.*isPouchFormat" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V7: Pouch PDF block in GlvPDF.jsx does not guard against isLiveAnimalRow — livestock PDF may show pouch spec"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7: LIVE_ANIMALS isolation confirmed intact after pouch engine addition" >> $GITHUB_STEP_SUMMARY
+
+      - name: V7 — Verify GlvPDF renders pouch spec block with film structure
+        run: |
+          FAILED=0
+          for sym in isPouchFormat FILM_STRUCTURE_LABELS pouchConfig "Pouch Packaging"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/components/GlvPDF.jsx; then
+              echo "::error::V7: GlvPDF.jsx missing pouch PDF symbol: $sym"
+              FAILED=1
+            else
+              echo "✅ GlvPDF.jsx — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7 GlvPDF.jsx renders pouch packaging spec block" >> $GITHUB_STEP_SUMMARY
+
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
     name: Frontend Build

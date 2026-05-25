@@ -1,5 +1,5 @@
 {
-  "registry_version": "6.0.0",
+  "registry_version": "7.0.0",
   "last_updated": "2026-05-25",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
@@ -258,9 +258,44 @@
       { "id": "ERR-016", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "commercialUnit" },
       { "id": "ERR-017", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-013" },
       { "id": "ERR-018", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "EXPORT_FORMAT_OPTIONS" },
-      { "id": "ERR-019", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "calcMultiSkuSummary" }
+      { "id": "ERR-019", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "calcMultiSkuSummary" },
+      { "id": "ERR-020", "file": "glv-connect/frontend/src/engines/PouchPackagingEngine.js",  "must_contain": "POUCH_TYPES" },
+      { "id": "ERR-021", "file": "glv-connect/frontend/src/engines/PouchPackagingEngine.js",  "must_contain": "FILM_STRUCTURES" },
+      { "id": "ERR-022", "file": "glv-connect/frontend/src/engines/PouchPackagingEngine.js",  "must_contain": "MASTER_CARTON_CONFIG" },
+      { "id": "ERR-023", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "isPouchExportFormat" },
+      { "id": "ERR-024", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-019" },
+      { "id": "ERR-025", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "perPouch" }
     ]
   },
+  "errors_v7": [
+    {
+      "id": "ERR-020",
+      "title": "No flexible pouch export format — Doypack/Stand Up Pouch not addressable as export route",
+      "status": "resolved",
+      "resolved_in": "PR V7",
+      "root_cause": "EXPORT_FORMAT_OPTIONS had RETAIL_DOYPACK but no granular pouch types (Pillow, Stand Up, Spout, Gusset, Side Seal, Bag In Box). Film structure, seal type, certifications, and carton config had no dedicated engine.",
+      "affected_files": ["glv-connect/frontend/src/engines/PouchPackagingEngine.js","glv-connect/frontend/src/engines/packagingEngine.js","glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "PouchPackagingEngine.js created with POUCH_TYPES, FILM_STRUCTURES, POUCH_SIZES, MASTER_CARTON_CONFIG, PALLET_CONFIG, CONTAINER_UTILIZATION, OEM_CAPABILITIES. 7 new POUCH group entries in EXPORT_FORMAT_OPTIONS. PouchConfigPanel added to ExportFormatEngine. perPouch/perCarton added to COMMERCIAL_SALE_UNITS."
+    },
+    {
+      "id": "ERR-021",
+      "title": "No freight efficiency comparison between pouch and PET — agents could not quantify logistics advantage",
+      "status": "resolved",
+      "resolved_in": "PR V7",
+      "root_cause": "No container utilization data per format/size combination existed. Agents had no data to present CIF competitiveness or pouch density advantages to buyers.",
+      "affected_files": ["glv-connect/frontend/src/engines/PouchPackagingEngine.js"],
+      "fix": "CONTAINER_UTILIZATION table and calcFreightEfficiencyRatio() added. Pouch density ~30k–60k units/40HQ vs ~22k PET. calcPouchLogistics() computes totalUnits, totalLiters, pallets, estimatedContainers per SKU."
+    },
+    {
+      "id": "ERR-022",
+      "title": "Media engine had no pouch/flexible packaging category tags — liquid categories showed generic oil images for pouch documents",
+      "status": "resolved",
+      "resolved_in": "PR V7",
+      "root_cause": "resolveMediaContext() had no awareness of export format. OILS category showed generic oil barrel/drum imagery even when the product was a flexible stand-up pouch for retail.",
+      "affected_files": ["glv-connect/frontend/src/engines/mediaContextResolver.js"],
+      "fix": "resolveMediaContext() accepts exportFormat opt. POUCH_MEDIA_TAGS merged into context when isPouchFmt. POUCH_MEDIA_EXCLUSIONS prevent livestock/grain/frozen contamination."
+    }
+  ],
   "errors_v6": [
     {
       "id": "ERR-018",
