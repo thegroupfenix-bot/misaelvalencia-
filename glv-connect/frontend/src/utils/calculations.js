@@ -3,11 +3,27 @@
 
 const FREQ_MULTIPLIERS = {
   ONE_SHIPMENT: 1,
+  WEEKLY:       52,
+  BIWEEKLY:     24,
   MONTHLY:      12,
   BIMONTHLY:    6,
   QUARTERLY:    4,
   CUSTOM:       1, // user provides num_shipments directly
 };
+
+/**
+ * Resolve total shipment count over a contract period.
+ * ONE_SHIPMENT is always 1 regardless of duration.
+ */
+export function resolveShipmentCount({ deliveryFrequency, numShipments, contractDuration }) {
+  const freq = deliveryFrequency || "ONE_SHIPMENT";
+  if (freq === "ONE_SHIPMENT") return 1;
+  const annual = freq === "CUSTOM"
+    ? (parseFloat(numShipments) || 1)
+    : (FREQ_MULTIPLIERS[freq] ?? 1);
+  const months = parseFloat(contractDuration) || 12;
+  return Math.round(annual * (months / 12));
+}
 
 /**
  * GLV policy: mortality is buyer responsibility, covered by buyer insurance.
@@ -154,7 +170,7 @@ export function calcCommercialSummary({
   unitType,
   unitPrice,
   currency = "USD",
-  deliveryFrequency = "MONTHLY",
+  deliveryFrequency = "ONE_SHIPMENT",
   numShipments,
   contractDuration,
   headCount,
@@ -180,12 +196,16 @@ export function calcCommercialSummary({
     shipmentsPerYear = FREQ_MULTIPLIERS[deliveryFrequency] || 1;
   }
 
+  const durationMonths = parseFloat(contractDuration) || 12;
+
+  // ONE_SHIPMENT: contract value = shipment value (single event, duration irrelevant)
+  // Recurring: annualize then scale by duration
   const monthlyValue = deliveryFrequency === "ONE_SHIPMENT"
     ? shipmentValue
     : shipmentValue * (shipmentsPerYear / 12);
-
-  const durationMonths = parseFloat(contractDuration) || 12;
-  const contractValue  = monthlyValue * durationMonths;
+  const contractValue = deliveryFrequency === "ONE_SHIPMENT"
+    ? shipmentValue
+    : monthlyValue * durationMonths;
 
   // Container conversion
   let containers = null;
@@ -302,13 +322,13 @@ export function calcSkuShipmentValue(sku) {
  */
 export function calcMultiSkuSummary(skus = [], opts = {}) {
   const { currency = "USD", deliveryFrequency = "ONE_SHIPMENT", numShipments = 1, contractDuration = 12 } = opts;
-  const FREQ = { ONE_SHIPMENT:1, MONTHLY:12, BIMONTHLY:6, QUARTERLY:4, CUSTOM:1 };
+  const FREQ = { ONE_SHIPMENT:1, WEEKLY:52, BIWEEKLY:24, MONTHLY:12, BIMONTHLY:6, QUARTERLY:4, CUSTOM:1 };
 
-  const shipmentValue   = skus.reduce((s, sku) => s + calcSkuShipmentValue(sku), 0);
+  const shipmentValue    = skus.reduce((s, sku) => s + calcSkuShipmentValue(sku), 0);
   const shipmentsPerYear = deliveryFrequency === "CUSTOM" ? parseFloat(numShipments)||1 : FREQ[deliveryFrequency]||1;
-  const durationMonths  = parseFloat(contractDuration) || 12;
-  const monthlyValue    = deliveryFrequency === "ONE_SHIPMENT" ? shipmentValue : shipmentValue * (shipmentsPerYear / 12);
-  const contractValue   = monthlyValue * durationMonths;
+  const durationMonths   = parseFloat(contractDuration) || 12;
+  const monthlyValue     = deliveryFrequency === "ONE_SHIPMENT" ? shipmentValue : shipmentValue * (shipmentsPerYear / 12);
+  const contractValue    = deliveryFrequency === "ONE_SHIPMENT" ? shipmentValue : monthlyValue * durationMonths;
 
   // Aggregate quantity context across SKUs for summary display
   let totalBoxes = 0, totalUnits = 0, totalLiters = 0, totalNetKg = 0;
