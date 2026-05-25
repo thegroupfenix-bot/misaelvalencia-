@@ -276,3 +276,64 @@ export function normalizeToKg(qty, unitType) {
   if (unitType?.includes("MT") || unitType?.includes("Tonelada")) return q * 1000;
   return q;
 }
+
+/**
+ * Calculate shipment value for a single retail SKU (V6 Multi-SKU engine).
+ *
+ * @param {object} sku
+ * @param {string} sku.commercialUnit  — perBox | perUnit | perBottle | perLiter | perKg
+ * @param {number|string} sku.quantity — number of boxes, units, liters, or kg depending on basis
+ * @param {number|string} sku.price    — price per commercial unit
+ * @param {number|string} sku.unitsPerCarton — for deriving unit totals from box count
+ */
+export function calcSkuShipmentValue(sku) {
+  const qty   = parseFloat(sku?.quantity)  || 0;
+  const price = parseFloat(sku?.price)     || 0;
+  if (!qty || !price) return 0;
+  // All retail sale bases are qty × price — the unit context is carried in commercialUnit label
+  return qty * price;
+}
+
+/**
+ * Aggregate multi-SKU summary for a product row (V6 retail engine).
+ *
+ * @param {object[]} skus
+ * @param {object}   opts  — { currency, deliveryFrequency, numShipments, contractDuration }
+ */
+export function calcMultiSkuSummary(skus = [], opts = {}) {
+  const { currency = "USD", deliveryFrequency = "ONE_SHIPMENT", numShipments = 1, contractDuration = 12 } = opts;
+  const FREQ = { ONE_SHIPMENT:1, MONTHLY:12, BIMONTHLY:6, QUARTERLY:4, CUSTOM:1 };
+
+  const shipmentValue   = skus.reduce((s, sku) => s + calcSkuShipmentValue(sku), 0);
+  const shipmentsPerYear = deliveryFrequency === "CUSTOM" ? parseFloat(numShipments)||1 : FREQ[deliveryFrequency]||1;
+  const durationMonths  = parseFloat(contractDuration) || 12;
+  const monthlyValue    = deliveryFrequency === "ONE_SHIPMENT" ? shipmentValue : shipmentValue * (shipmentsPerYear / 12);
+  const contractValue   = monthlyValue * durationMonths;
+
+  // Aggregate quantity context across SKUs for summary display
+  let totalBoxes = 0, totalUnits = 0, totalLiters = 0, totalNetKg = 0;
+  skus.forEach(sku => {
+    const qty  = parseFloat(sku.quantity)       || 0;
+    const upb  = parseFloat(sku.unitsPerCarton) || 0;
+    const nwk  = parseFloat(sku.cartonNetWeightKg) || 0;
+    const litU = parseFloat(sku.litValuePerUnit) || 0;
+
+    if (sku.commercialUnit === "perBox" || sku.commercialUnit === "perCarton") {
+      totalBoxes  += qty;
+      totalUnits  += qty * upb;
+      totalNetKg  += qty * nwk;
+      totalLiters += litU > 0 ? qty * upb * litU : qty * nwk;
+    } else if (sku.commercialUnit === "perUnit" || sku.commercialUnit === "perBottle") {
+      totalUnits  += qty;
+      totalBoxes  += upb > 0 ? Math.ceil(qty / upb) : 0;
+      totalNetKg  += litU > 0 ? qty * litU : 0;
+    } else if (sku.commercialUnit === "perLiter") {
+      totalLiters += qty;
+      totalNetKg  += qty; // 1 L ≈ 1 kg for food oils/juices
+    } else if (sku.commercialUnit === "perKg") {
+      totalNetKg  += qty;
+    }
+  });
+
+  return { shipmentValue, monthlyValue, contractValue, shipmentsPerYear, durationMonths, currency, isMultiSku: true, skuCount: skus.length, totalBoxes, totalUnits, totalLiters, totalNetKg };
+}

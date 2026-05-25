@@ -255,3 +255,73 @@ export function getSaleUnitsForProfile(categoryProfile) {
     ["perKg","perMT","perBox","perUnit","perPallet","perContainer"].includes(u.id)
   );
 }
+
+// ─── V6: Export Format Options ────────────────────────────────────────────────
+// Defines HOW the product is loaded for export — NOT bottle size, NOT carton size.
+// This replaces the ambiguous "Presentación" field.
+
+export const EXPORT_FORMAT_OPTIONS = [
+  // INDUSTRIAL
+  { id: "FLEXITANK",     label: "Flexitank",           desc: "~24,000 L / 40FT container",   group: "INDUSTRIAL", isRetail: false },
+  { id: "ISO_TANK",      label: "ISO Tank",             desc: "~26,000 L / tank container",   group: "INDUSTRIAL", isRetail: false },
+  { id: "IBC_1000L",     label: "IBC 1000L",            desc: "Intermediate bulk container",  group: "INDUSTRIAL", isRetail: false },
+  { id: "DRUM_200L",     label: "Drum 200L",            desc: "Industrial 200L steel drum",   group: "INDUSTRIAL", isRetail: false },
+  { id: "JERRYCAN_20L",  label: "Jerrycan 20L",         desc: "Plastic jerrycan 20 liters",   group: "INDUSTRIAL", isRetail: false },
+  // RETAIL DISTRIBUTION
+  { id: "RETAIL_MIXED",  label: "Retail Mixed SKU",     desc: "Multiple retail sizes / SKUs", group: "RETAIL",     isRetail: true  },
+  { id: "RETAIL_PET",    label: "Retail PET",           desc: "PET bottles, retail cartons",  group: "RETAIL",     isRetail: true  },
+  { id: "RETAIL_TETRA",  label: "Retail Tetra Pak",     desc: "Tetra Pak aseptic retail",     group: "RETAIL",     isRetail: true  },
+  { id: "RETAIL_DOYPACK",label: "Retail Doypack",       desc: "Flexible pouch retail",        group: "RETAIL",     isRetail: true  },
+  // CUSTOM
+  { id: "CUSTOM",        label: "Other / Custom",       desc: "Custom export format",         group: "CUSTOM",     isRetail: false },
+];
+
+export const INDUSTRIAL_SALE_UNITS = COMMERCIAL_SALE_UNITS.filter(u =>
+  ["perKg","perMT","perLiter","perContainer","perDrum","perJerrycan","perIBC","perFlexitank"].includes(u.id)
+);
+
+export const SKU_SALE_UNITS = COMMERCIAL_SALE_UNITS.filter(u =>
+  ["perBox","perUnit","perBottle","perLiter","perKg"].includes(u.id)
+);
+
+// ─── V6: SKU Packaging Types (retail carton engine) ──────────────────────────
+export const SKU_PACKAGING_TYPES = [
+  { id: "PET_BOTTLE",     label: "PET Bottle"        },
+  { id: "GLASS_BOTTLE",   label: "Glass Bottle"      },
+  { id: "TETRA_PAK",      label: "Tetra Pak"         },
+  { id: "DOYPACK",        label: "Doypack / Pouch"   },
+  { id: "SACHET",         label: "Sachet"            },
+  { id: "CAN_TIN",        label: "Can / Tin"         },
+  { id: "PREMIUM_BOTTLE", label: "Premium Bottle"    },
+];
+
+export function isRetailExportFormat(formatId) {
+  return EXPORT_FORMAT_OPTIONS.find(f => f.id === formatId)?.isRetail || false;
+}
+
+export function getExportFormatLabel(formatId) {
+  return EXPORT_FORMAT_OPTIONS.find(f => f.id === formatId)?.label || formatId || "";
+}
+
+/**
+ * Returns a short unit context label for summary display.
+ * e.g. perBox → "BOXES", perLiter → "LITERS", perMT → "MT"
+ */
+export function getUnitContext(commercialUnit, lang = "es") {
+  const MAP = {
+    perBox:       { es: "CAJAS",      en: "BOXES"     },
+    perUnit:      { es: "UNIDADES",   en: "UNITS"     },
+    perBottle:    { es: "BOTELLAS",   en: "BOTTLES"   },
+    perLiter:     { es: "LITROS",     en: "LITERS"    },
+    perKg:        { es: "KG",         en: "KG"        },
+    perMT:        { es: "MT",         en: "MT"        },
+    perDrum:      { es: "BIDONES",    en: "DRUMS"     },
+    perJerrycan:  { es: "JERRYCANS",  en: "JERRYCANS" },
+    perIBC:       { es: "IBC",        en: "IBCs"      },
+    perFlexitank: { es: "FLEXITANKS", en: "FLEXITANKS"},
+    perContainer: { es: "CONTENEDORES",en:"CONTAINERS"},
+    perPallet:    { es: "PALETAS",    en: "PALLETS"   },
+  };
+  return MAP[commercialUnit]?.[lang] || commercialUnit?.replace("per","").toUpperCase() || "UNITS";
+}
+

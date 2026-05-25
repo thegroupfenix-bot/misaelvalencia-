@@ -339,6 +339,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const commercialUnit   = firstCdRow.commercialUnit   || null;
   const unitsPerBox      = parseFloat(firstCdRow.unitsPerBox || 0);
   const netWeightPerUnit = parseFloat(firstCdRow.netWeightPerUnit || 0);
+  // V6: Multi-SKU export engine fields
+  const exportFormat     = firstCdRow.exportFormat     || null;
+  const rowSkus          = Array.isArray(firstCdRow.skus) ? firstCdRow.skus : [];
   const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet" };
   const PACKAGING_TYPE_LABELS  = { FLEXITANK:"Flexi Tank",ISO_TANK:"ISO Tank",IBC_1000L:"IBC 1000L",DRUM_200L:"Drum 200L",JERRYCAN_20L:"Jerrycan 20L",JERRYCAN_10L:"Jerrycan 10L",JERRYCAN_5L:"Jerrycan 5L",BIG_BAG_1MT:"Big Bag 1MT",SACK_50KG:"Saco 50kg",BULK_VESSEL:"Granel Cisterna",PET_BOTTLE:"PET Bottle",GLASS_BOTTLE:"Glass Bottle",TETRA_PAK:"Tetra Pak",DOYPACK:"Doypack",SACHET:"Sachet",PLASTIC_GALLON:"Plastic Gallon",PREMIUM_BOTTLE:"Premium Bottle",CAN_TIN:"Can / Tin",RETAIL_BOX:"Retail Box" };
   const engineUnitPrice = parseFloat(
@@ -679,6 +682,67 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             );
           })()}
 
+          {/* V6: Multi-SKU retail breakdown table */}
+          {rowSkus.length > 0 && !isLiveAnimalRow && (() => {
+            const SKU_PKG_LABELS = { PET_BOTTLE:"PET Bottle", GLASS_BOTTLE:"Glass Bottle", TETRA_PAK:"Tetra Pak", DOYPACK:"Doypack", SACHET:"Sachet", CAN_TIN:"Can / Tin", PREMIUM_BOTTLE:"Premium Bottle" };
+            const SIZE_LABELS    = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
+            const CU_ABBR        = { perBox:"/box", perUnit:"/unit", perBottle:"/bottle", perLiter:"/L", perKg:"/kg" };
+            const fmtV = (v, cur = "USD") => v ? new Intl.NumberFormat("en-US", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(v) : "—";
+            const totalShipV = rowSkus.reduce((s, sk) => s + (parseFloat(sk.quantity) || 0) * (parseFloat(sk.price) || 0), 0);
+            const currency = firstCdRow.currency || "USD";
+            return (
+              <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0" }}>
+                <Text style={{ fontSize: 7.5, color: "#64748b", fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
+                  {docLang === "en" ? `SKU Breakdown — ${rowSkus.length} Presentation${rowSkus.length > 1 ? "s" : ""}` : `Desglose SKU — ${rowSkus.length} Presentación${rowSkus.length > 1 ? "es" : ""}`}
+                </Text>
+                {/* Column headers */}
+                <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", borderRadius: 4, padding: "4 6", marginBottom: 2 }}>
+                  {["SKU", docLang === "en" ? "Packaging" : "Empaque", docLang === "en" ? "Size" : "Tamaño", docLang === "en" ? "Units/Carton" : "Unid/Caja", docLang === "en" ? "Qty" : "Cant.", docLang === "en" ? "Price" : "Precio", docLang === "en" ? "Shipment Value" : "Valor Embarque"].map((h, i) => (
+                    <Text key={i} style={{ flex: i === 0 ? 0.4 : i >= 4 ? 1 : 1.2, fontSize: 6.5, color: "#fff", fontWeight: "bold", textAlign: i >= 4 ? "right" : "left" }}>{h}</Text>
+                  ))}
+                </View>
+                {rowSkus.map((sk, i) => {
+                  const pkgLabel  = SKU_PKG_LABELS[sk.packagingType] || sk.packagingType || "—";
+                  const sizeLabel = SIZE_LABELS[sk.presentationSize] || sk.presentationSize || "—";
+                  const qty       = parseFloat(sk.quantity) || 0;
+                  const price     = parseFloat(sk.price) || 0;
+                  const sv        = qty * price;
+                  const cuAbbr    = CU_ABBR[sk.commercialUnit] || sk.commercialUnit || "";
+                  const upb       = parseFloat(sk.unitsPerCarton) || 0;
+                  return (
+                    <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "4 6", borderRadius: 3 }}>
+                      <Text style={{ flex: 0.4, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{i + 1}</Text>
+                      <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{pkgLabel}</Text>
+                      <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{sizeLabel}</Text>
+                      <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{upb > 0 ? upb : "—"}</Text>
+                      <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{qty > 0 ? new Intl.NumberFormat("en-US").format(qty) : "—"}</Text>
+                      <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{price > 0 ? `${currency} ${price}${cuAbbr}` : "—"}</Text>
+                      <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv, currency)}</Text>
+                    </View>
+                  );
+                })}
+                {/* Total shipment value row */}
+                {totalShipV > 0 && (
+                  <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "5 6", borderRadius: 4, marginTop: 2 }}>
+                    <Text style={{ flex: 5, fontSize: 7.5, color: "#fff", fontWeight: "bold" }}>
+                      {docLang === "en" ? "TOTAL SHIPMENT VALUE" : "VALOR TOTAL POR EMBARQUE"}
+                    </Text>
+                    <Text style={{ flex: 1, fontSize: 8, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtV(totalShipV, currency)}</Text>
+                  </View>
+                )}
+                {/* Export format indicator */}
+                {exportFormat && (
+                  <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
+                    <Text style={{ fontSize: 7.5, color: "#78350f" }}>
+                      {docLang === "en" ? "Export Format:" : "Formato de exportación:"} {exportFormat.replace(/_/g, " ")}
+                      {containerType ? ` — ${CONTAINER_LABELS[containerType] || containerType}` : ""}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
           {(doc.custom_unit || doc.customUnit) && (
             <View style={{ marginTop: 6 }}>
               <Text style={s.infoLabel}>{L.unit_lbl}</Text>
@@ -690,7 +754,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {/* Commercial data table — multi-product rows from CommercialEngine */}
         {(() => {
           const cd = doc.commercialData || doc.commercial_data;
-          const rows = cd?.rows?.filter(r => r.category && r.quantity) || [];
+          const rows = cd?.rows?.filter(r => r.category && (r.quantity || (Array.isArray(r.skus) && r.skus.length > 0))) || [];
           if (rows.length === 0) return null;
           return (
             <View style={{ marginBottom: 16 }}>
@@ -708,6 +772,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 const catLabel = row.category || "—";
                 const inc = (row.incoterms || ["CFR"])[0];
                 const price = parseFloat(row.incotermPrices?.[inc] || row.unitPrice || 0);
+                const isSkuRow = Array.isArray(row.skus) && row.skus.length > 0;
                 let sv = row.summary?.shipmentValue || 0;
                 let cv = row.summary?.contractValue || 0;
 
@@ -736,10 +801,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "5 10", borderRadius: 4 }}>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{catLabel}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151" }}>{row.origin || "—"}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{row.quantity || "—"}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{(row.unitType || "").split("/")[0].trim()}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? `${row.skus.length} SKU` : (row.quantity || "—")}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? "Multi-SKU" : (row.unitType || "").split("/")[0].trim()}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{inc}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{price ? `${currency} ${price}` : "—"}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{isSkuRow ? "—" : (price ? `${currency} ${price}` : "—")}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv)}</Text>
                     <Text style={{ flex: 1, fontSize: 8, color: "#1B2A4A", fontWeight: "bold", textAlign: "right" }}>{fmtV(cv)}</Text>
                   </View>

@@ -1,7 +1,7 @@
 /**
- * validationSupervisor.js — GLV Commercial Document Validation Supervisor V5.1.
+ * validationSupervisor.js — GLV Commercial Document Validation Supervisor V6.0.
  *
- * 14 mandatory validation checks before any PDF generation or document submission:
+ * 18 mandatory validation checks before any PDF generation or document submission:
  *
  *   VAL-001  Pricing consistency        — unit price must be > 0
  *   VAL-002  Unit consistency           — unit type compatible with category
@@ -17,6 +17,10 @@
  *   VAL-012  Packaging mode required    — packaged categories must declare packaging mode
  *   VAL-013  Retail size required       — retail bottle/can packaging must declare presentation size
  *   VAL-014  Box engine units required  — retail carton packaging with size must declare units/box
+ *   VAL-015  SKU packaging required     — each retail SKU must declare packaging type
+ *   VAL-016  SKU size required          — each retail SKU must declare presentation size
+ *   VAL-017  SKU sale basis required    — each retail SKU must declare commercial sale unit
+ *   VAL-018  SKU price required         — each retail SKU must have a price > 0
  */
 
 import { getCategoryEngine } from "./categoryEngine.js";
@@ -51,6 +55,10 @@ export function validateDocument(doc, cdRows = []) {
     checkPackagingModeRequired(firstRow, profile),
     checkRetailSizeRequired(firstRow),
     checkBoxEngineUnitsRequired(firstRow),
+    ...checkSkuPackagingRequired(firstRow),
+    ...checkSkuSizeRequired(firstRow),
+    ...checkSkuSaleBasisRequired(firstRow),
+    ...checkSkuPriceRequired(firstRow),
   ];
 
   const errors   = checks.filter(c => !c.pass && c.severity === "error");
@@ -287,4 +295,73 @@ function checkBoxEngineUnitsRequired(row) {
       : `Retail carton packaging (${type} ${size}) requires units per box to calculate shipment value — e.g. 12, 24, 48`,
     severity: "warning",
   };
+}
+
+// ─── V6: Multi-SKU checks (return arrays — one check per SKU or single pass) ──
+
+function checkSkuPackagingRequired(row) {
+  const skus = Array.isArray(row.skus) ? row.skus : [];
+  if (skus.length === 0) {
+    return [{ id: "VAL-015", name: "SKU Packaging Required", pass: true, message: "No SKU engine active", severity: "warning" }];
+  }
+  return skus.map((sk, i) => ({
+    id:       `VAL-015.${i + 1}`,
+    name:     `SKU ${i + 1} Packaging Required`,
+    pass:     !!sk.packagingType,
+    message:  sk.packagingType
+      ? `SKU ${i + 1} packaging: ${sk.packagingType}`
+      : `SKU ${i + 1} is missing packaging type (PET Bottle, Glass Bottle, etc.) — PDF SKU table will be incomplete`,
+    severity: "warning",
+  }));
+}
+
+function checkSkuSizeRequired(row) {
+  const skus = Array.isArray(row.skus) ? row.skus : [];
+  if (skus.length === 0) {
+    return [{ id: "VAL-016", name: "SKU Size Required", pass: true, message: "No SKU engine active", severity: "warning" }];
+  }
+  return skus.map((sk, i) => ({
+    id:       `VAL-016.${i + 1}`,
+    name:     `SKU ${i + 1} Size Required`,
+    pass:     !!sk.presentationSize,
+    message:  sk.presentationSize
+      ? `SKU ${i + 1} size: ${sk.presentationSize}`
+      : `SKU ${i + 1} is missing presentation size (e.g. 900ml, 1L) — carton weight calculation will be zero`,
+    severity: "warning",
+  }));
+}
+
+function checkSkuSaleBasisRequired(row) {
+  const skus = Array.isArray(row.skus) ? row.skus : [];
+  if (skus.length === 0) {
+    return [{ id: "VAL-017", name: "SKU Sale Basis Required", pass: true, message: "No SKU engine active", severity: "warning" }];
+  }
+  return skus.map((sk, i) => ({
+    id:       `VAL-017.${i + 1}`,
+    name:     `SKU ${i + 1} Sale Basis Required`,
+    pass:     !!sk.commercialUnit,
+    message:  sk.commercialUnit
+      ? `SKU ${i + 1} sale basis: ${sk.commercialUnit}`
+      : `SKU ${i + 1} has no commercial sale basis selected (perBox, perUnit, etc.) — shipment value will be zero`,
+    severity: "error",
+  }));
+}
+
+function checkSkuPriceRequired(row) {
+  const skus = Array.isArray(row.skus) ? row.skus : [];
+  if (skus.length === 0) {
+    return [{ id: "VAL-018", name: "SKU Price Required", pass: true, message: "No SKU engine active", severity: "warning" }];
+  }
+  return skus.map((sk, i) => {
+    const price = parseFloat(sk.price || 0);
+    return {
+      id:       `VAL-018.${i + 1}`,
+      name:     `SKU ${i + 1} Price Required`,
+      pass:     price > 0,
+      message:  price > 0
+        ? `SKU ${i + 1} price: ${price}`
+        : `SKU ${i + 1} has no price — shipment value will be zero`,
+      severity: "error",
+    };
+  });
 }
