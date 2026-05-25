@@ -80,7 +80,9 @@ export function calcShipmentValue({
         return qty * price;
       case "perDrum":
       case "perJerrycan":
-        // qty = number of drums/jerrycans, price per drum/jerrycan
+      case "perIBC":
+      case "perFlexitank":
+        // qty = number of drums/jerrycans/IBCs/flexitanks, price per unit
         return qty * price;
       case "perPallet":
         // qty = pallets, price per pallet
