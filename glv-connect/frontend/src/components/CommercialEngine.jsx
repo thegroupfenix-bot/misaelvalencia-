@@ -5,6 +5,7 @@ import { calcCommercialSummary, fmtMoney, fmtNum } from "../utils/calculations.j
 import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js";
 import { getPortsForCountry } from "../config/destinationPorts.js";
 import { getDefaultContainer, getDefaultCargoType } from "../engines/categoryEngine.js";
+import { CONTAINER_TYPES as CONTAINER_TYPES_ENGINE } from "../engines/containerEngine.js";
 
 const ORIGINS = ["Brazil", "Argentina", "Colombia", "Uruguay", "Chile", "Paraguay", "USA", "Canada", "Australia", "New Zealand", "South Africa", "Other"];
 const PRICED_INCOTERMS = ["FOB", "CFR", "CIF", "DDP"];
@@ -217,18 +218,8 @@ function LivestockBreedSelector({ origin, specs, setSpecs }) {
 }
 
 // ─── Container Type Selector ──────────────────────────────────────────────────
-const CONTAINER_TYPES = [
-  { id: "20FT",            label: "20FT Dry",        desc: "~26 MT" },
-  { id: "40FT",            label: "40FT Dry",        desc: "~28 MT" },
-  { id: "40HC",            label: "40HC Dry",        desc: "~28.5 MT (high cube)" },
-  { id: "REEFER_20",       label: "Reefer 20FT",     desc: "Refrigerado 20FT" },
-  { id: "REEFER_40",       label: "Reefer 40FT",     desc: "Refrigerado 40FT" },
-  { id: "FLEXITANK",       label: "Flexitank",       desc: "Granel líquido" },
-  { id: "ISO_TANK",        label: "ISO Tank",        desc: "Tanque líquidos/gases" },
-  { id: "BULK_VESSEL",     label: "Bulk Vessel",     desc: "Buque a granel" },
-  { id: "LIVESTOCK_VESSEL",label: "Livestock Vessel",desc: "Buque ganadero" },
-  { id: "AIR_CARGO",       label: "Air Cargo",       desc: "Carga aérea" },
-];
+// Source of truth is containerEngine.js — imported above as CONTAINER_TYPES_ENGINE
+const CONTAINER_TYPES = CONTAINER_TYPES_ENGINE;
 
 // Default container per category — delegates to categoryEngine (single source of truth)
 function defaultContainerForCategory(cat) {

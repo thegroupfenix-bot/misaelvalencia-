@@ -5,6 +5,15 @@
  * Replaces scattered hardcoded if/switch chains across CommercialEngine,
  * GlvPDF, mediaBinding, and validators.
  *
+ * V4 extension modules (import directly when needed):
+ *   containerEngine.js   — container specs, types, classification
+ *   categoryProfiles.js  — full V4 behavioral profiles per category
+ *   packagingEngine.js   — presentation/packaging/commercial/export unit layers
+ *   commercialFormulaEngine.js — formula resolution (4 canonical cases)
+ *   pdfContextResolver.js — isolated PDF context builder
+ *   mediaContextResolver.js — strict media category isolation
+ *   validationSupervisor.js — 10-check document validation
+ *
  * Import pattern:
  *   import { getCategoryEngine, isLiveAnimalCategory, getDefaultContainer } from "../engines/categoryEngine.js";
  */
