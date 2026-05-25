@@ -36,6 +36,13 @@ jobs:
             "glv-connect/frontend/src/components/MediaPanel.jsx"
             "glv-connect/backend/services/mediaBinding.js"
             "glv-connect/frontend/src/engines/categoryEngine.js"
+            "glv-connect/frontend/src/engines/containerEngine.js"
+            "glv-connect/frontend/src/engines/categoryProfiles.js"
+            "glv-connect/frontend/src/engines/packagingEngine.js"
+            "glv-connect/frontend/src/engines/commercialFormulaEngine.js"
+            "glv-connect/frontend/src/engines/pdfContextResolver.js"
+            "glv-connect/frontend/src/engines/mediaContextResolver.js"
+            "glv-connect/frontend/src/engines/validationSupervisor.js"
             "glv-connect/commercial-error-registry.json"
           )
 
@@ -302,6 +309,42 @@ jobs:
           done
           if [ "$FAILED" -eq 1 ]; then exit 1; fi
           echo "## ✅ mediaBinding.js has all 13 categories" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify V4 engine files exist and have required exports
+        run: |
+          ENGINES=(
+            "glv-connect/frontend/src/engines/containerEngine.js:CONTAINER_SPECS"
+            "glv-connect/frontend/src/engines/categoryProfiles.js:getCategoryProfile"
+            "glv-connect/frontend/src/engines/packagingEngine.js:normalizeToKg"
+            "glv-connect/frontend/src/engines/commercialFormulaEngine.js:resolveFormula"
+            "glv-connect/frontend/src/engines/pdfContextResolver.js:resolvePDFContext"
+            "glv-connect/frontend/src/engines/mediaContextResolver.js:resolveMediaContext"
+            "glv-connect/frontend/src/engines/validationSupervisor.js:validateDocument"
+          )
+          FAILED=0
+          for entry in "${ENGINES[@]}"; do
+            FILE="${entry%%:*}"
+            SYMBOL="${entry##*:}"
+            if [ ! -f "$FILE" ]; then
+              echo "::error::V4 engine file missing: $FILE"
+              FAILED=1
+            elif ! grep -q "$SYMBOL" "$FILE"; then
+              echo "::error::V4 engine $FILE missing required export: $SYMBOL"
+              FAILED=1
+            else
+              echo "✅ $FILE — $SYMBOL present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ All V4 engine files present with required exports" >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify containerEngine imported in CommercialEngine
+        run: |
+          if ! grep -q "containerEngine" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::CommercialEngine.jsx is not importing from containerEngine.js — CONTAINER_TYPES may be stale"
+            exit 1
+          fi
+          echo "## ✅ CommercialEngine imports containerEngine" >> $GITHUB_STEP_SUMMARY
 
       - name: Verify MT×1000 conversion and isLiveAnimalRow guard
         run: |
