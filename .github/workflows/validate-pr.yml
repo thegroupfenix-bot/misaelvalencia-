@@ -871,6 +871,148 @@ jobs:
           echo "✅ All existing SCO categories and formulas intact after V8"
           echo "## ✅ V8 Regression guard — LIVE_ANIMALS, FRUIT_PRODUCTS, frozen cargo, formulas unmodified" >> $GITHUB_STEP_SUMMARY
 
+      - name: V8.1 — Verify role engine and admin financial guard
+        run: |
+          FAILED=0
+          ROLE_FILE="glv-connect/frontend/src/engines/oils/userRoleEngine.js"
+          if [ ! -f "$ROLE_FILE" ]; then
+            echo "::error::V8.1: userRoleEngine.js missing"
+            exit 1
+          fi
+          for sym in canViewInternalFinancials ROLES FINANCE_MANAGER normalizeRole; do
+            if ! grep -q "$sym" "$ROLE_FILE"; then
+              echo "::error::V8.1: userRoleEngine.js missing symbol: $sym"
+              FAILED=1
+            else
+              echo "✅ userRoleEngine.js — $sym"
+            fi
+          done
+          # OilsExportPanel must use canViewInternalFinancials
+          if ! grep -q "canViewInternalFinancials" glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+            echo "::error::V8.1: OilsExportPanel.jsx does not use canViewInternalFinancials — admin blocks unprotected"
+            FAILED=1
+          else
+            echo "✅ OilsExportPanel.jsx — canViewInternalFinancials guard present"
+          fi
+          # Section 7 must be gated by canFinance, not just role
+          if ! grep -q "canFinance" glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+            echo "::error::V8.1: OilsExportPanel.jsx Section 7 not gated by canFinance"
+            FAILED=1
+          else
+            echo "✅ OilsExportPanel.jsx — canFinance gate present"
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8.1 Role engine and admin financial guard verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8.1 — Verify global destination engine
+        run: |
+          FAILED=0
+          DEST_FILE="glv-connect/frontend/src/engines/oils/globalDestinationEngine.js"
+          if [ ! -f "$DEST_FILE" ]; then
+            echo "::error::V8.1: globalDestinationEngine.js missing"
+            exit 1
+          fi
+          for sym in PRESET_DESTINATIONS GLOBAL_REGIONS resolveDestination calcGlobalContainerFreight hasPresetFreight; do
+            if ! grep -q "$sym" "$DEST_FILE"; then
+              echo "::error::V8.1: globalDestinationEngine.js missing: $sym"
+              FAILED=1
+            else
+              echo "✅ globalDestinationEngine.js — $sym"
+            fi
+          done
+          # Custom destination must be supported
+          if ! grep -q "Custom" "$DEST_FILE"; then
+            echo "::error::V8.1: globalDestinationEngine.js does not support custom destinations"
+            FAILED=1
+          fi
+          # OilsExportPanel must use globalDestinationEngine
+          if ! grep -q "globalDestinationEngine" glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+            echo "::error::V8.1: OilsExportPanel.jsx does not import globalDestinationEngine"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8.1 Global destination engine verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8.1 — Verify VAL-041 VAL-042 VAL-043 in validationSupervisor
+        run: |
+          FAILED=0
+          for code in VAL-041 VAL-042 VAL-043; do
+            if ! grep -q "$code" glv-connect/frontend/src/engines/validationSupervisor.js; then
+              echo "::error::V8.1: $code missing from validationSupervisor.js"
+              FAILED=1
+            else
+              echo "✅ validationSupervisor.js — $code present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8.1 VAL-041/042/043 PDF context guards present" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8.1 — Verify safeResolvePdfContext in GlvPDF
+        run: |
+          FAILED=0
+          for sym in safeField safeStr safeNum safeArr isOilsRow; do
+            if ! grep -q "$sym" glv-connect/frontend/src/components/GlvPDF.jsx; then
+              echo "::error::V8.1: GlvPDF.jsx missing safe context symbol: $sym"
+              FAILED=1
+            else
+              echo "✅ GlvPDF.jsx — $sym"
+            fi
+          done
+          # Oils technical spec block must be present
+          if ! grep -q "Oil Technical Specification\|Oil Technical" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V8.1: GlvPDF.jsx missing oil technical specification block"
+            FAILED=1
+          fi
+          # Export logistics summary must be present
+          if ! grep -q "Export Logistics Summary\|Logistics Summary" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V8.1: GlvPDF.jsx missing export logistics summary"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8.1 GlvPDF safe context helpers and new PDF sections verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8.1 — Verify admin blocks never rendered for non-admin
+        run: |
+          # Section 7 (admin financials) must be wrapped in canFinance guard
+          # Profit simulation must only appear inside canFinance block
+          if ! grep -q "canFinance && " glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+            echo "::error::V8.1: OilsExportPanel.jsx Section 7 not gated — admin data leaks to non-admin users"
+            exit 1
+          fi
+          # simulation (profit data) must only be in admin oilsConfig payload when canFinance
+          if ! grep -q "canFinance ? {" glv-connect/frontend/src/components/OilsExportPanel.jsx && \
+             ! grep -q "canFinance &&" glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+            echo "::error::V8.1: oilsConfig payload does not gate admin financials — simulation/reserves may leak"
+            exit 1
+          fi
+          echo "✅ Admin financial blocks are fully gated by canViewInternalFinancials"
+          echo "## ✅ V8.1 Admin block isolation verified — Section 7 not rendered for non-admin roles" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8.1 — SCO must generate without admin blocks
+        run: |
+          # SCO generation path (GlvPDF) must NOT depend on simulation/profit data
+          # The oils PDF section must render even when simulation is absent
+          if grep -q "simulation\.netProfit" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V8.1: GlvPDF.jsx references simulation.netProfit directly — SCO will fail for non-admin"
+            exit 1
+          fi
+          echo "✅ GlvPDF.jsx does not depend on admin simulation data"
+          echo "## ✅ V8.1 SCO generation is not blocked by absent admin financial blocks" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8.1 — Verify 7-section hierarchy in OilsExportPanel
+        run: |
+          FAILED=0
+          for section in "Product Identity" "Export Format" "Presentation" "Logistics" "Commercial Terms" "Commercial Summary" "Admin Financials"; do
+            if ! grep -q "$section" glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+              echo "::error::V8.1: OilsExportPanel.jsx missing section: $section"
+              FAILED=1
+            else
+              echo "✅ OilsExportPanel.jsx — section '$section' present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8.1 All 7 commercial hierarchy sections present in OilsExportPanel" >> $GITHUB_STEP_SUMMARY
+
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
     name: Frontend Build

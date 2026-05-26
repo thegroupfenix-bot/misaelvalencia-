@@ -83,6 +83,10 @@ export function validateDocument(doc, cdRows = []) {
     checkPresentationSizeMismatch(firstRow),
     // V8: Oils Export Engine guards — only activate when category === "OILS"
     ...checkOilsValidation(firstRow),
+    // V8.1: PDF context guards — apply to all categories, fail gracefully
+    checkPDFContextFailure(firstRow, doc),
+    checkInvalidExportConfiguration(firstRow),
+    checkMissingPriceMatrix(firstRow),
   ];
 
   const errors   = checks.filter(c => !c.pass && c.severity === "error");
@@ -704,4 +708,84 @@ function checkOilsValidation(row) {
   })();
 
   return [val030, val031, val032, val033, val034, val035, val036, val037, val038, val039, val040];
+}
+
+// ─── V8.1: PDF Context + Configuration Guards ─────────────────────────────────
+
+// VAL-041: PDF context failure — detects states that would crash PDF rendering
+function checkPDFContextFailure(row, doc) {
+  const issues = [];
+  try {
+    // Check for circular JSON / unserializable state in cdRows
+    JSON.stringify(row);
+  } catch {
+    issues.push("Commercial row contains circular or non-serializable state");
+  }
+  // Detect stale null presentation size in pouch context
+  const { exportFormat, skus, pouchConfig } = row;
+  if (exportFormat && typeof exportFormat !== "string") issues.push("exportFormat is not a string");
+  if (skus && !Array.isArray(skus)) issues.push("skus is not an array");
+  if (pouchConfig && typeof pouchConfig !== "object") issues.push("pouchConfig is not an object");
+
+  return {
+    id: "VAL-041", name: "PDF Context Failure",
+    pass: issues.length === 0,
+    message: issues.length === 0
+      ? "PDF context is serializable and well-formed"
+      : `PDF context issues detected: ${issues.join("; ")} — PDF generation may fail`,
+    severity: "error",
+  };
+}
+
+// VAL-042: Invalid export configuration — blocks only truly mandatory fields
+// Issue 6 rule: SCO must always generate unless mandatory fields are missing.
+function checkInvalidExportConfiguration(row) {
+  const issues = [];
+  const category = row.category || "";
+
+  // Mandatory for all documents
+  if (!category) issues.push("category not set");
+
+  // Oils-specific mandatory check
+  if (category === "OILS") {
+    const cfg = row.oilsConfig || {};
+    if (!cfg.incoterm) issues.push("incoterm not set for oils document");
+    if (cfg.incoterm && !["FOB","CFR","CIF"].includes(cfg.incoterm)) {
+      issues.push(`invalid incoterm "${cfg.incoterm}" — must be FOB, CFR, or CIF`);
+    }
+  }
+
+  // Pouch export: exportFormat must be a string if set
+  if (row.exportFormat && POUCH_EXPORT_FORMAT_IDS.has(row.exportFormat)) {
+    if (!row.pouchConfig) issues.push("pouchConfig missing for pouch export format");
+  }
+
+  return {
+    id: "VAL-042", name: "Invalid Export Configuration",
+    pass: issues.length === 0,
+    message: issues.length === 0
+      ? "Export configuration is valid — SCO generation allowed"
+      : `Export configuration issues (SCO blocked): ${issues.join("; ")}`,
+    severity: "error",
+  };
+}
+
+// VAL-043: Missing price matrix — warning only (SCO still generates with manual price)
+function checkMissingPriceMatrix(row) {
+  if (row.category !== "OILS") {
+    return { id: "VAL-043", name: "Missing Price Matrix", pass: true, message: "No oils engine active", severity: "warning" };
+  }
+  const cfg = row.oilsConfig || {};
+  if (!cfg.productId || !cfg.packagingType || !cfg.sizeId || !cfg.incoterm) {
+    return { id: "VAL-043", name: "Missing Price Matrix", pass: true, message: "Oils configuration incomplete — price check deferred", severity: "warning" };
+  }
+  const price = getOilPrice(cfg.productId, cfg.packagingType, cfg.sizeId, cfg.incoterm);
+  return {
+    id: "VAL-043", name: "Missing Price Matrix",
+    pass: price !== null,
+    message: price !== null
+      ? `Price matrix found: ${cfg.productId} ${cfg.incoterm} = $${price}`
+      : `No price matrix entry for ${cfg.productId} / ${cfg.packagingType} / ${cfg.sizeId} — verify pricing manually before SCO generation`,
+    severity: "warning",
+  };
 }

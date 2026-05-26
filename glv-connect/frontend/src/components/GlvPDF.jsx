@@ -5,6 +5,22 @@ import {
 import { generatePaymentText } from "../utils/paymentText.js";
 import { getPDFTextKey } from "../engines/categoryEngine.js";
 
+// ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
+// Wraps any field extraction in a try/catch with a typed fallback.
+// Prevents undefined/null/circular-JSON from crashing @react-pdf/renderer.
+function safeField(fn, fallback = "") {
+  try {
+    const v = fn();
+    if (v === null || v === undefined || (typeof v === "number" && isNaN(v))) return fallback;
+    return v;
+  } catch {
+    return fallback;
+  }
+}
+function safeStr(v, fallback = "")  { return (v != null && String(v).trim()) ? String(v) : fallback; }
+function safeNum(v, fallback = 0)   { const n = parseFloat(v); return isNaN(n) ? fallback : n; }
+function safeArr(v)                 { return Array.isArray(v) ? v : []; }
+
 Font.register({
   family: "Helvetica",
   fonts: [
@@ -743,85 +759,174 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </View>
           )}
 
-          {/* V8: Oils Export Engine Summary — only for OILS category */}
-          {isOilsRow && (oilsConfig.productId || oilsConfig.packagingType) && (
-            <View style={{ marginBottom: 10, padding: 10, backgroundColor: "#f5f3ff", borderRadius: 6, borderLeft: "3px solid #7c3aed" }}>
-              <Text style={{ fontSize: 10, fontWeight: "bold", color: "#4c1d95", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {docLang === "en" ? "Export Oils Commercial Specification" : "Especificación Comercial — Aceites de Exportación"}
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {oilsConfig.productId && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Oil Type" : "Tipo de Aceite"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oilsConfig.productId?.replace(/_/g," ")}</Text>
-                  </View>
-                )}
-                {oilsConfig.packagingType && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Packaging" : "Empaque"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oilsConfig.packagingType?.replace(/_/g," ")}</Text>
-                  </View>
-                )}
-                {oilsConfig.sizeId && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.sizeId}</Text>
-                  </View>
-                )}
-                {oilsConfig.incoterm && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>Incoterm</Text>
-                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.incoterm}</Text>
-                  </View>
-                )}
-                {oilsConfig.market && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Export Market" : "Mercado"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.market}</Text>
-                  </View>
-                )}
-                {oilsConfig.destination && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Destination" : "Destino"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.destination?.replace(/([A-Z])/g," $1").trim()}</Text>
-                  </View>
-                )}
-                {oilsConfig.basePrice > 0 && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{oilsConfig.incoterm || "FOB"} Price / Unit</Text>
-                    <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>${Number(oilsConfig.basePrice).toFixed(2)} USD</Text>
-                  </View>
-                )}
-                {oilsConfig.unitsPerContainer > 0 && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Units / 40HQ" : "Unidades / 40HQ"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{Number(oilsConfig.unitsPerContainer).toLocaleString()}</Text>
-                  </View>
-                )}
-                {oilsConfig.simulation?.netProfit != null && (
-                  <View style={{ flex: 1, minWidth: "30%" }}>
-                    <Text style={s.infoLabel}>{docLang === "en" ? "Net Profit / Container" : "Utilidad Neta / Contenedor"}</Text>
-                    <Text style={{ fontSize: 8.5, color: oilsConfig.simulation.meetsTarget ? "#065f46" : "#dc2626", fontWeight: "bold" }}>
-                      ${Number(oilsConfig.simulation.netProfit).toFixed(0)} USD
-                      {oilsConfig.simulation.meetsTarget ? " ✓" : " ⚠"}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              {(oilsConfig.pouchType || oilsConfig.filmMaterial) && (
-                <View style={{ marginTop: 6 }}>
-                  <Text style={{ fontSize: 8, color: "#6d28d9" }}>
-                    {[oilsConfig.pouchType, oilsConfig.filmMaterial, oilsConfig.sealType].filter(Boolean).join(" · ")}
+          {/* V8.1: Oil Technical Specification + Export Logistics Summary — only for OILS */}
+          {isOilsRow && (() => {
+            // Safe extraction — never crash PDF rendering
+            const oProductId   = safeStr(oilsConfig.productId, "");
+            const oPackaging   = safeStr(oilsConfig.packagingType, "");
+            const oSizeId      = safeStr(oilsConfig.sizeId, "");
+            const oIncoterm    = safeStr(oilsConfig.incoterm, "FOB");
+            const oMarket      = safeStr(oilsConfig.market, "");
+            const oDest        = safeStr(oilsConfig.customCountry || oilsConfig.destination, "");
+            const oGrade       = safeStr(oilsConfig.grade, "");
+            const oGmo         = safeStr(oilsConfig.gmoStatus, "");
+            const oOrigin      = safeStr(oilsConfig.origin, "");
+            const oShelfLife   = safeStr(oilsConfig.shelfLife, "");
+            const oPouchType   = safeStr(oilsConfig.pouchType, "");
+            const oFilm        = safeStr(oilsConfig.filmMaterial, "");
+            const oSeal        = safeStr(oilsConfig.sealType, "");
+            const oUnits       = safeNum(oilsConfig.unitsPerContainer, 0);
+            const oBasePrice   = safeNum(oilsConfig.basePrice, 0);
+            const oFreight     = safeNum(oilsConfig.freightUSD, 0);
+            const oFoodGrade   = safeArr(oilsConfig.foodGrade);
+            const oOemCaps     = safeArr(oilsConfig.oemCaps);
+            const oCerts       = safeArr(oilsConfig.certifications);
+            const oContainerType = safeStr(oilsConfig.containerType, "40HQ");
+            const oMoq         = safeStr(oilsConfig.moq, "");
+            const oFrequency   = safeStr(oilsConfig.frequency, "");
+            const oContractDur = safeStr(oilsConfig.contractDuration, "");
+            const oGroupLabel  = oPackaging.includes("POUCH") || oPackaging.includes("DOYPACK") ? "Pouch"
+                               : (oPackaging.includes("JERRY") || oPackaging.includes("DRUM") || oPackaging.includes("IBC") || oPackaging.includes("FLEXITANK") || oPackaging.includes("ISOTANK")) ? "Industrial"
+                               : "PET";
+            const hasOilData = oProductId || oPackaging;
+            if (!hasOilData) return null;
+
+            return (
+              <>
+                {/* OIL TECHNICAL SPECIFICATION */}
+                <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#f5f3ff", borderRadius: 6 }}>
+                  <Text style={{ fontSize: 10, fontWeight: "bold", color: "#4c1d95", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    {docLang === "en" ? "Oil Technical Specification" : "Especificación Técnica — Aceite"}
                   </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                    {oProductId && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Oil Type" : "Tipo de Aceite"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oProductId.replace(/_/g," ")}</Text>
+                    </View>}
+                    {oGrade && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>Grade</Text>
+                      <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oGrade}</Text>
+                    </View>}
+                    {oGmo && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>GMO Status</Text>
+                      <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oGmo}</Text>
+                    </View>}
+                    {oOrigin && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Origin" : "Origen"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oOrigin}</Text>
+                    </View>}
+                    {oShelfLife && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Shelf Life" : "Vida Útil"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oShelfLife}</Text>
+                    </View>}
+                    {oPackaging && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Format" : "Formato"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oPackaging.replace(/_/g," ")}</Text>
+                    </View>}
+                    {oSizeId && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oSizeId}</Text>
+                    </View>}
+                    {oMarket && <View style={{ flex: 1, minWidth: "28%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Export Market" : "Mercado"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oMarket}</Text>
+                    </View>}
+                    {oFoodGrade.length > 0 && <View style={{ flex: 1, minWidth: "55%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Food Grade / Certs" : "Grado Alimenticio"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oFoodGrade.join(" · ")}</Text>
+                    </View>}
+                    {oCerts.length > 0 && <View style={{ flex: 1, minWidth: "55%" }}>
+                      <Text style={s.infoLabel}>{docLang === "en" ? "Certifications" : "Certificaciones"}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oCerts.join(" · ")}</Text>
+                    </View>}
+                  </View>
+
+                  {/* Packaging-type specific technical fields */}
+                  {oGroupLabel === "Pouch" && (oPouchType || oFilm || oSeal) && (
+                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#ede9fe", borderRadius: 4 }}>
+                      <Text style={{ fontSize: 8, color: "#4c1d95", fontWeight: "bold" }}>
+                        {[oPouchType, oFilm, oSeal].filter(Boolean).map(v => v.replace(/_/g," ")).join(" · ")}
+                      </Text>
+                      <Text style={{ fontSize: 7.5, color: "#6d28d9", marginTop: 2 }}>
+                        {docLang === "en" ? "Multilayer flexible packaging — food grade, grease-resistant, export ready"
+                          : "Empaque flexible multicapa — grado alimenticio, resistente a grasas, apto exportación"}
+                      </Text>
+                    </View>
+                  )}
+                  {oGroupLabel === "PET" && oSizeId && (
+                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#e0f2fe", borderRadius: 4 }}>
+                      <Text style={{ fontSize: 7.5, color: "#0369a1" }}>
+                        {docLang === "en"
+                          ? `PET bottle ${oSizeId} — food grade, tamper-evident cap, export carton structure`
+                          : `Botella PET ${oSizeId} — grado alimenticio, tapa inviolable, estructura cartón exportación`}
+                      </Text>
+                    </View>
+                  )}
+                  {oGroupLabel === "Industrial" && (
+                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#f0fdf4", borderRadius: 4 }}>
+                      <Text style={{ fontSize: 7.5, color: "#065f46" }}>
+                        {docLang === "en"
+                          ? `Industrial grade — stackable, horeca compatible, bulk foodservice supply`
+                          : `Grado industrial — apilable, compatible horeca, suministro a granel`}
+                      </Text>
+                    </View>
+                  )}
+                  {oOemCaps.length > 0 && (
+                    <Text style={{ fontSize: 8, color: "#7c3aed", marginTop: 4 }}>
+                      {oOemCaps.join(" · ")}
+                    </Text>
+                  )}
                 </View>
-              )}
-              {Array.isArray(oilsConfig.oemCaps) && oilsConfig.oemCaps.length > 0 && (
-                <Text style={{ fontSize: 8, color: "#7c3aed", marginTop: 4 }}>
-                  {oilsConfig.oemCaps.join(" · ")}
-                </Text>
-              )}
-            </View>
-          )}
+
+                {/* EXPORT LOGISTICS SUMMARY */}
+                {(oContainerType || oUnits > 0 || oBasePrice > 0 || oMoq) && (
+                  <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#f0fdf4", borderRadius: 6 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "bold", color: "#065f46", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      {docLang === "en" ? "Export Logistics Summary" : "Resumen Logístico de Exportación"}
+                    </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                      {oContainerType && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Container Type" : "Tipo Contenedor"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oContainerType}</Text>
+                      </View>}
+                      {oPackaging && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Format" : "Formato Empaque"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oGroupLabel} — {oSizeId || "—"}</Text>
+                      </View>}
+                      {oIncoterm && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Commercial Basis" : "Base Comercial"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oIncoterm}</Text>
+                      </View>}
+                      {oUnits > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Units / Container" : "Unidades / Contenedor"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oUnits.toLocaleString()}</Text>
+                      </View>}
+                      {oBasePrice > 0 && oUnits > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Shipment FOB Value" : "Valor FOB Embarque"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>${(oBasePrice * oUnits).toFixed(0)} USD</Text>
+                      </View>}
+                      {oFreight > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Freight / Container" : "Flete / Contenedor"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>${oFreight.toFixed(0)} USD</Text>
+                      </View>}
+                      {oDest && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Destination" : "Destino"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oDest.replace(/([A-Z])/g," $1").trim()}</Text>
+                      </View>}
+                      {oMoq && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>MOQ</Text>
+                        <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{Number(oMoq).toLocaleString()} {docLang === "en" ? "units" : "unidades"}</Text>
+                      </View>}
+                      {oFrequency && <View style={{ flex: 1, minWidth: "28%" }}>
+                        <Text style={s.infoLabel}>{docLang === "en" ? "Shipment Frequency" : "Frecuencia"}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oFrequency}{oContractDur ? ` / ${oContractDur}` : ""}</Text>
+                      </View>}
+                    </View>
+                  </View>
+                )}
+              </>
+            );
+          })()}
 
           {/* V5: Liquid/Packaged packaging details — 4-layer display */}
           {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (() => {
