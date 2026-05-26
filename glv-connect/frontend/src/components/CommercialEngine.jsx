@@ -13,6 +13,8 @@ import {
   // V6 Multi-SKU engine
   EXPORT_FORMAT_OPTIONS, INDUSTRIAL_SALE_UNITS, SKU_SALE_UNITS, SKU_PACKAGING_TYPES,
   isRetailExportFormat, isPouchExportFormat, getExportFormatLabel, getUnitContext,
+  // V7.1 Single source of truth
+  resolveNormalizedPresentationSize,
 } from "../engines/packagingEngine.js";
 import {
   POUCH_TYPES, FILM_STRUCTURES, POUCH_SIZES, SEAL_TYPES, PRINT_TYPES, FINISH_TYPES,
@@ -520,8 +522,11 @@ function MultiSkuEngine({ skus, setSkus, currency, exportFormat }) {
 // Shown inline inside ExportFormatEngine when a POUCH group format is selected.
 // Completely isolated — never shown for LIVE_ANIMALS or industrial formats.
 
-function PouchConfigPanel({ pouchConfig, setPouchConfig }) {
-  const set = (k, v) => setPouchConfig(p => ({ ...p, [k]: v }));
+function PouchConfigPanel({ pouchConfig, setPouchConfig, onPresentationSizeChange }) {
+  const set = (k, v) => {
+    setPouchConfig(p => ({ ...p, [k]: v }));
+    if (k === "presentationSize" && onPresentationSizeChange) onPresentationSizeChange(v);
+  };
   const toggleArr = (k, v) => {
     const arr = pouchConfig[k] || [];
     set(k, arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
@@ -713,7 +718,7 @@ function PouchConfigPanel({ pouchConfig, setPouchConfig }) {
 }
 
 function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, setSkus, currency,
-  commercialUnit, setCommercialUnit, pouchConfig, setPouchConfig }) {
+  commercialUnit, setCommercialUnit, pouchConfig, setPouchConfig, onPouchSizeChange }) {
   const profile = getCategoryProfile(category);
   if (!profile?.supportsPackaging && !profile?.supportsLiquidPackaging) return null;
   if (category === "LIVE_ANIMALS") return null;
@@ -836,7 +841,8 @@ function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, set
 
       {/* V7: POUCH — show PouchConfigPanel + Multi-SKU engine */}
       {exportFormat && isPouch && (
-        <PouchConfigPanel pouchConfig={pouchConfig} setPouchConfig={setPouchConfig} />
+        <PouchConfigPanel pouchConfig={pouchConfig} setPouchConfig={setPouchConfig}
+          onPresentationSizeChange={onPouchSizeChange} />
       )}
 
       {/* RETAIL (non-pouch) or POUCH: show Multi-SKU engine */}
@@ -1216,12 +1222,17 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   ) : null;
 
   useEffect(() => {
+    const normalizedPresentationSize = isPouchExportFormat(exportFormat)
+      ? resolveNormalizedPresentationSize(pouchConfig, skus)
+      : (presentationSize || null);
+
     onChange(rowId, {
       category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices,
       unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments,
       contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType,
       packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
       exportFormat, skus, pouchConfig,
+      normalizedPresentationSize,
       summary,
     });
   }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency,
@@ -1302,6 +1313,9 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
               currency={currency}
               commercialUnit={commercialUnit} setCommercialUnit={setCommercialUnit}
               pouchConfig={pouchConfig} setPouchConfig={setPouchConfig}
+              onPouchSizeChange={(sizeId) => {
+                setSkus(prev => prev.map(s => ({ ...s, presentationSize: sizeId })));
+              }}
             />
           )}
           {/* V5: fallback for docs without exportFormat set (backward compat) */}

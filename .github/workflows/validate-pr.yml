@@ -631,6 +631,47 @@ jobs:
           if [ "$FAILED" -eq 1 ]; then exit 1; fi
           echo "## ✅ V7 GlvPDF.jsx renders pouch packaging spec block" >> $GITHUB_STEP_SUMMARY
 
+      - name: V7.1 — Verify resolveNormalizedPresentationSize single source of truth
+        run: |
+          FAILED=0
+          # packagingEngine.js must export the resolver
+          if ! grep -q "resolveNormalizedPresentationSize" glv-connect/frontend/src/engines/packagingEngine.js; then
+            echo "::error::V7.1: resolveNormalizedPresentationSize missing from packagingEngine.js"
+            FAILED=1
+          else
+            echo "✅ packagingEngine.js — resolveNormalizedPresentationSize present"
+          fi
+          # validationSupervisor.js must have VAL-025
+          if ! grep -q "VAL-025" glv-connect/frontend/src/engines/validationSupervisor.js; then
+            echo "::error::V7.1: VAL-025 (PRESENTATION_SIZE_MISMATCH) missing from validationSupervisor.js"
+            FAILED=1
+          else
+            echo "✅ validationSupervisor.js — VAL-025 present"
+          fi
+          # validationSupervisor.js must import resolveNormalizedPresentationSize
+          if ! grep -q "resolveNormalizedPresentationSize" glv-connect/frontend/src/engines/validationSupervisor.js; then
+            echo "::error::V7.1: validationSupervisor.js does not import resolveNormalizedPresentationSize"
+            FAILED=1
+          else
+            echo "✅ validationSupervisor.js — imports resolveNormalizedPresentationSize"
+          fi
+          # GlvPDF.jsx must read normalizedPresentationSize, not pouchConfig.presentationSize for spec block
+          if ! grep -q "normalizedPresentationSize" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V7.1: GlvPDF.jsx does not use normalizedPresentationSize — size mismatch bug not fixed"
+            FAILED=1
+          else
+            echo "✅ GlvPDF.jsx — normalizedPresentationSize present"
+          fi
+          # CommercialEngine.jsx must expose normalizedPresentationSize in onChange payload
+          if ! grep -q "normalizedPresentationSize" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V7.1: CommercialEngine.jsx does not compute/expose normalizedPresentationSize"
+            FAILED=1
+          else
+            echo "✅ CommercialEngine.jsx — normalizedPresentationSize present"
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7.1 Single source of truth for presentation size — all guards pass" >> $GITHUB_STEP_SUMMARY
+
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
     name: Frontend Build

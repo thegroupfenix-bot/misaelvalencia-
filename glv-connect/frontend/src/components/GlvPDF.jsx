@@ -344,6 +344,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const rowSkus          = Array.isArray(firstCdRow.skus) ? firstCdRow.skus : [];
   // V7: Pouch packaging configuration
   const pouchConfig      = firstCdRow.pouchConfig      || {};
+  // V7.1: canonical size — always read normalizedPresentationSize, never pouchConfig.presentationSize directly
+  const normalizedPresentationSize = firstCdRow.normalizedPresentationSize || pouchConfig.presentationSize || null;
   const POUCH_FORMAT_IDS = new Set(["RETAIL_POUCH","PILLOW_POUCH","STAND_UP_POUCH","SPOUT_POUCH","GUSSET_POUCH","SIDE_SEAL_POUCH","BAG_IN_BOX","RETAIL_DOYPACK"]);
   const isPouchFormat    = POUCH_FORMAT_IDS.has(exportFormat);
   const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perCarton:"/carton", perPouch:"/pouch", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
@@ -681,10 +683,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </Text>
                   </View>
                 )}
-                {pouchConfig.presentationSize && (
+                {normalizedPresentationSize && (
                   <View style={{ flex: 1, minWidth: "30%" }}>
                     <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#0f172a", fontWeight: "bold" }}>{pouchConfig.presentationSize}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#0f172a", fontWeight: "bold" }}>{normalizedPresentationSize}</Text>
                   </View>
                 )}
                 {pouchConfig.unitsPerCarton && (

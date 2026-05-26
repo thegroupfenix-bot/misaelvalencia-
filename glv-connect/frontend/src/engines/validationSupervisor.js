@@ -1,5 +1,5 @@
 /**
- * validationSupervisor.js — GLV Commercial Document Validation Supervisor V7.0.
+ * validationSupervisor.js — GLV Commercial Document Validation Supervisor V7.1.
  *
  * 24 mandatory validation checks before any PDF generation or document submission:
  *
@@ -33,6 +33,7 @@ import { getCategoryEngine } from "./categoryEngine.js";
 import { getCategoryProfile } from "./categoryProfiles.js";
 import { isLivestockContainer, isLiquidContainer } from "./containerEngine.js";
 import { POUCH_SIZES, PALLET_CONFIG, POUCH_EXPORT_FORMAT_IDS } from "./PouchPackagingEngine.js";
+import { resolveNormalizedPresentationSize } from "./packagingEngine.js";
 
 /**
  * Run all 10 validation checks against a document + its CD rows.
@@ -73,6 +74,8 @@ export function validateDocument(doc, cdRows = []) {
     checkContainerOptimizationSanity(firstRow),
     checkExportFormatCategoryConsistency(firstRow, profile),
     checkPouchPriceBasisConsistency(firstRow),
+    // V7.1: Single source of truth — blocks PDF if pouchConfig and SKUs disagree on size
+    checkPresentationSizeMismatch(firstRow),
   ];
 
   const errors   = checks.filter(c => !c.pass && c.severity === "error");
@@ -501,5 +504,33 @@ function checkPouchPriceBasisConsistency(row) {
       ? `Commercial sale basis declared: ${unit}`
       : `Pouch format "${ef}" requires a commercial sale basis (perPouch, perCarton, perBox, etc.) — PDF pricing will be incomplete`,
     severity: "warning",
+  };
+}
+
+// VAL-025 — V7.1: Presentation size must agree between pouchConfig and all SKUs.
+// Blocks PDF generation when pouchConfig.presentationSize ≠ sku.presentationSize on any SKU.
+function checkPresentationSizeMismatch(row) {
+  const ef = row.exportFormat || "";
+  if (!POUCH_EXPORT_FORMAT_IDS.has(ef)) {
+    return { id: "VAL-025", name: "Presentation Size Mismatch", pass: true, message: "No pouch format active", severity: "error" };
+  }
+  const resolved = resolveNormalizedPresentationSize(row.pouchConfig || {}, row.skus || []);
+  if (resolved !== null) {
+    return {
+      id: "VAL-025", name: "Presentation Size Mismatch",
+      pass: true,
+      message: resolved
+        ? `Presentation size consistent: ${resolved}`
+        : "No size set — specify a presentation size in Pouch Config",
+      severity: "error",
+    };
+  }
+  const pouchSize = (row.pouchConfig || {}).presentationSize || "(none)";
+  const skuSizes  = [...new Set((row.skus || []).map(s => s.presentationSize).filter(Boolean))];
+  return {
+    id: "VAL-025", name: "Presentation Size Mismatch",
+    pass: false,
+    message: `PRESENTATION SIZE MISMATCH — Pouch config: ${pouchSize} vs SKU sizes: [${skuSizes.join(", ")}]. PDF generation blocked until sizes are unified.`,
+    severity: "error",
   };
 }
