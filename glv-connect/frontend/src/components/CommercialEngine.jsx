@@ -724,6 +724,8 @@ function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, set
   const profile = getCategoryProfile(category);
   if (!profile?.supportsPackaging && !profile?.supportsLiquidPackaging) return null;
   if (category === "LIVE_ANIMALS") return null;
+  // OILS uses OilsExportPanel for all format/packaging/pricing config — no ExportFormatEngine needed
+  if (category === "OILS") return null;
 
   const isRetail = isRetailExportFormat(exportFormat);
   const isPouch  = isPouchExportFormat(exportFormat);

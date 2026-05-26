@@ -1013,6 +1013,139 @@ jobs:
           if [ "$FAILED" -eq 1 ]; then exit 1; fi
           echo "## ✅ V8.1 All 7 commercial hierarchy sections present in OilsExportPanel" >> $GITHUB_STEP_SUMMARY
 
+  # ── V9: Enterprise Multi-Agent Architecture Validation ────────────────────
+  v9-architecture-validation:
+    name: V9 Enterprise Architecture Guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: V9 — Core commercial calculation bridge exists
+        run: |
+          if [ ! -f glv-connect/frontend/src/engines/core/commercialCore.js ]; then
+            echo "::error::V9: engines/core/commercialCore.js missing — canonical calculation bridge required"
+            exit 1
+          fi
+          if ! grep -q "createEmptyNormalizedPayload" glv-connect/frontend/src/engines/core/commercialCore.js; then
+            echo "::error::V9: commercialCore.js must export createEmptyNormalizedPayload"
+            exit 1
+          fi
+          echo "✅ commercialCore.js present with createEmptyNormalizedPayload"
+          echo "## ✅ V9 commercialCore.js — canonical bridge present" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — PDF payload normalizer routes by category
+        run: |
+          if [ ! -f glv-connect/frontend/src/engines/core/pdf/pdfPayloadNormalizer.js ]; then
+            echo "::error::V9: pdfPayloadNormalizer.js missing"
+            exit 1
+          fi
+          for category in "OILS" "LIVE_ANIMALS" "FRUITS"; do
+            if ! grep -q "$category" glv-connect/frontend/src/engines/core/pdf/pdfPayloadNormalizer.js; then
+              echo "::error::V9: pdfPayloadNormalizer.js must handle category $category"
+              exit 1
+            fi
+          done
+          echo "✅ pdfPayloadNormalizer.js handles OILS, LIVE_ANIMALS, FRUITS"
+          echo "## ✅ V9 pdfPayloadNormalizer.js — multi-category routing present" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — Per-category PDF adapters exist
+        run: |
+          FAILED=0
+          for adapter in "oilsPdfAdapter.js" "livestockPdfAdapter.js" "fruitsPdfAdapter.js"; do
+            if [ ! -f "glv-connect/frontend/src/engines/core/pdf/$adapter" ]; then
+              echo "::error::V9: engines/core/pdf/$adapter missing"
+              FAILED=1
+            else
+              echo "✅ $adapter present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9 All 3 per-category PDF adapters present" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — Livestock PDF adapter is a safe passthrough (no oils engine import)
+        run: |
+          if grep -qi "oilsPricingEngine\|oilsConfig\|getOilPrice\|PRICE_MATRIX" \
+             glv-connect/frontend/src/engines/core/pdf/livestockPdfAdapter.js; then
+            echo "::error::V9: livestockPdfAdapter.js imports oils engine — cross-contamination"
+            exit 1
+          fi
+          if ! grep -q "LIVE_ANIMALS" glv-connect/frontend/src/engines/core/pdf/livestockPdfAdapter.js; then
+            echo "::error::V9: livestockPdfAdapter.js must gate on LIVE_ANIMALS category"
+            exit 1
+          fi
+          echo "✅ livestockPdfAdapter.js is oils-free and LIVE_ANIMALS gated"
+          echo "## ✅ V9 Livestock adapter isolation verified — no oils contamination" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — PdfErrorBoundary React class component exists
+        run: |
+          if [ ! -f glv-connect/frontend/src/components/PdfErrorBoundary.jsx ]; then
+            echo "::error::V9: PdfErrorBoundary.jsx missing — PDF render errors will crash the app"
+            exit 1
+          fi
+          if ! grep -q "getDerivedStateFromError\|componentDidCatch" glv-connect/frontend/src/components/PdfErrorBoundary.jsx; then
+            echo "::error::V9: PdfErrorBoundary.jsx must be a React error boundary (getDerivedStateFromError or componentDidCatch)"
+            exit 1
+          fi
+          echo "✅ PdfErrorBoundary.jsx is a valid React error boundary"
+          echo "## ✅ V9 PdfErrorBoundary — PDF crash safety active" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — Category agent index stubs exist
+        run: |
+          FAILED=0
+          for stub in "liveAnimals" "fruits" "grains" "meat"; do
+            if [ ! -f "glv-connect/frontend/src/engines/${stub}/index.js" ]; then
+              echo "::error::V9: engines/${stub}/index.js missing — agent namespace not registered"
+              FAILED=1
+            else
+              echo "✅ engines/${stub}/index.js present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9 All 4 category agent index stubs registered" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — Section 4 Logistics is read-only in OilsExportPanel
+        run: |
+          # Section 4 must NOT contain an editable Container Type selector (Sel/select) driving setContainer
+          # It should show read-only stats only
+          if grep -q "setContainer\b" glv-connect/frontend/src/components/OilsExportPanel.jsx && \
+             grep -q "onChange={setContainer}" glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+            echo "::error::V9: OilsExportPanel Section 4 still has editable Container Type selector — must be read-only"
+            exit 1
+          fi
+          if ! grep -q "Auto-Resolved\|read-only\|Read-Only\|READ-ONLY\|resolved automatically" \
+             glv-connect/frontend/src/components/OilsExportPanel.jsx; then
+            echo "::error::V9: Section 4 in OilsExportPanel must indicate it is auto-resolved / read-only"
+            exit 1
+          fi
+          echo "✅ OilsExportPanel Section 4 is read-only logistics resolution"
+          echo "## ✅ V9 Section 4 is read-only — no duplicate editable logistics state" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — ExportFormatEngine skips OILS (no legacy unit conflict)
+        run: |
+          # ExportFormatEngine must return null for OILS so the old COMMERCIAL_SALE_UNITS
+          # dropdown does not conflict with OilsExportPanel's own price engine
+          if ! grep -q 'category === "OILS"' glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V9: CommercialEngine ExportFormatEngine must skip OILS category"
+            exit 1
+          fi
+          echo "✅ CommercialEngine.jsx ExportFormatEngine returns null for OILS"
+          echo "## ✅ V9 Legacy unit selector conflict resolved — OILS uses OilsExportPanel exclusively" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9 — LIVE_ANIMALS engine integrity (no regression)
+        run: |
+          # liveAnimals/index.js must re-export breeds, not reimport livestock logic from oils
+          if grep -qi "oilsPricingEngine\|oilsConfig\|PRICE_MATRIX" \
+             glv-connect/frontend/src/engines/liveAnimals/index.js; then
+            echo "::error::V9: liveAnimals/index.js imports oils engine — regression"
+            exit 1
+          fi
+          if ! grep -q "LIVE_ANIMALS" glv-connect/frontend/src/engines/liveAnimals/index.js; then
+            echo "::error::V9: liveAnimals/index.js must declare LIVE_ANIMALS as supported category"
+            exit 1
+          fi
+          echo "✅ liveAnimals/index.js is clean — no oils contamination"
+          echo "## ✅ V9 LIVE_ANIMALS engine integrity maintained — no cross-contamination" >> $GITHUB_STEP_SUMMARY
+
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
     name: Frontend Build

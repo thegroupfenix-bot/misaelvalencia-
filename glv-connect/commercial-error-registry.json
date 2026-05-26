@@ -1,5 +1,5 @@
 {
-  "registry_version": "8.1.0",
+  "registry_version": "9.0.0",
   "last_updated": "2026-05-26",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
@@ -353,6 +353,51 @@
       "prevention_ci": {
         "file": "glv-connect/frontend/src/utils/calculations.js",
         "must_contain": "calcMultiSkuSummary"
+      }
+    },
+    {
+      "id": "ERR-030",
+      "title": "V9: No normalized PDF payload — each category built its own ad-hoc PDF data",
+      "status": "resolved",
+      "resolved_in": "PR #60",
+      "root_cause": "GlvPDF.jsx consumed raw row fields directly for each category with no shared abstraction. Adding a new category required modifying GlvPDF.jsx directly, risking cross-contamination.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "V9 introduces pdfPayloadNormalizer.js + per-category adapters (oilsPdfAdapter, livestockPdfAdapter, fruitsPdfAdapter). GlvPDF consumes normalized payload via adapters. PdfErrorBoundary wraps GlvPDF to prevent PDF crashes from reaching the host app.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/core/pdf/pdfPayloadNormalizer.js",
+        "must_contain": "normalizePdfPayload"
+      }
+    },
+    {
+      "id": "ERR-031",
+      "title": "V9: Section 4 Logistics in OilsExportPanel was editable — duplicate state with Section 3",
+      "status": "resolved",
+      "resolved_in": "PR #60",
+      "root_cause": "Section 4 had an editable Container Type selector (setContainer). Container logistics are auto-derived from packagingType + sizeId in Section 3 via logisticsCapacityEngine. Allowing manual override created conflicting state.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/OilsExportPanel.jsx"
+      ],
+      "fix": "Section 4 is now strictly read-only. Container type fixed to 40HQ (industry standard for oils export). All logistics stats (unitsMin–unitsMax, cartonsPerPallet, pallets) are derived from capacity preset. No editable inputs in Section 4.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/OilsExportPanel.jsx",
+        "must_contain": "Auto-Resolved"
+      }
+    },
+    {
+      "id": "ERR-032",
+      "title": "V9: Legacy COMMERCIAL_SALE_UNITS dropdown appeared for OILS — conflicted with OilsExportPanel price engine",
+      "status": "resolved",
+      "resolved_in": "PR #60",
+      "root_cause": "ExportFormatEngine rendered for all non-LIVE_ANIMALS categories, including OILS. For OILS, this showed the old industrial Commercial Sale Basis selector which conflicted with oilsPricingEngine's FOB/CFR/CIF matrix.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx"
+      ],
+      "fix": "ExportFormatEngine returns null when category === 'OILS'. OilsExportPanel is the sole configuration source for OILS format, sizing, pricing, and commercial terms.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_contain": "category === \"OILS\""
       }
     }
   ]
