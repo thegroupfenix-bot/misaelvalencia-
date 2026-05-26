@@ -364,6 +364,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const normalizedPresentationSize = firstCdRow.normalizedPresentationSize || pouchConfig.presentationSize || null;
   const POUCH_FORMAT_IDS = new Set(["RETAIL_POUCH","PILLOW_POUCH","STAND_UP_POUCH","SPOUT_POUCH","GUSSET_POUCH","SIDE_SEAL_POUCH","BAG_IN_BOX","RETAIL_DOYPACK"]);
   const isPouchFormat    = POUCH_FORMAT_IDS.has(exportFormat);
+  // Category-aware row classification — MUST be declared before isOilsRow
+  // (const TDZ: isLiveAnimalRow must precede any reference to it)
+  const isLiveAnimalRow  = firstCdRow.category === "LIVE_ANIMALS";
   // V8: Oils Export Engine configuration — only used when category === "OILS"
   const oilsConfig       = firstCdRow.oilsConfig       || {};
   const isOilsRow        = firstCdRow.category === "OILS" && !isLiveAnimalRow;
@@ -382,8 +385,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     Object.values(firstCdRow.incotermPrices || {}).find(v => parseFloat(v) > 0) ||
     firstCdRow.unitPrice || 0
   );
-  // Category-aware extraction — LIVE_ANIMALS uses head×weight; all other categories use quantity directly.
-  const isLiveAnimalRow = firstCdRow.category === "LIVE_ANIMALS";
+  // isLiveAnimalRow declared above (before isOilsRow) to avoid const TDZ crash
   // engineHeads: ONLY for LIVE_ANIMALS; other categories must not inherit headCount into quantity
   const engineHeads = isLiveAnimalRow
     ? parseFloat(firstCdRow.specs?.headCount || firstCdRow.quantity || doc.headcount || 0)

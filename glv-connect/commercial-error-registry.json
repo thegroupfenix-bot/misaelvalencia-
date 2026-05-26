@@ -1,5 +1,5 @@
 {
-  "registry_version": "9.0.0",
+  "registry_version": "9.1.0",
   "last_updated": "2026-05-26",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
@@ -398,6 +398,60 @@
       "prevention_ci": {
         "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
         "must_contain": "category === \"OILS\""
+      }
+    }
+  ],
+  "errors_v9_1": [
+    {
+      "id": "ERR-033",
+      "title": "V9.1: TDZ crash in GlvPDF.jsx — isOilsRow referenced isLiveAnimalRow before its const declaration",
+      "status": "resolved",
+      "resolved_in": "V9.1 hotfix",
+      "root_cause": "const isOilsRow at line 369 contained the expression !isLiveAnimalRow, but isLiveAnimalRow was declared with const at line 386. JavaScript const has a temporal dead zone — any access before the declaration throws ReferenceError: Cannot access 'isLiveAnimalRow' before initialization. This crashed every PDF render silently: the react-pdf BlobProvider promise rejected, the UI showed nothing, no error surfaced to the user.",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "Moved isLiveAnimalRow declaration to line 369, before isOilsRow at line 372. Removed duplicate isLiveAnimalRow declaration that previously existed at old line 389. Added CI guard V9.1 to enforce this ordering on every PR.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "guard": "isLiveAnimalRow line number must be strictly less than isOilsRow line number"
+      }
+    },
+    {
+      "id": "ERR-034",
+      "title": "V9.1: Container math inconsistency — min/max average diverged from canonical carton × pallet formula",
+      "status": "resolved",
+      "resolved_in": "V9.1 hotfix",
+      "root_cause": "Section 4 (OilsExportPanel) derived unitsPerContainer from (unitsMin + unitsMax) / 2, sourced from logisticsCapacityEngine's range estimates. Section 6 summary used different local logic. For 900ml PET: old engine reported 22,500 units but the canonical formula (20 upc × 60 cpp × 20 pallets = 24,000) gives 24,000 — a 6.7% discrepancy. The two sections could silently diverge, producing PDF summaries that did not match section 4 logistics.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/OilsExportPanel.jsx",
+        "glv-connect/frontend/src/engines/core/containerMathEngine.js"
+      ],
+      "fix": "containerMathEngine.js created as the single source of truth. CANONICAL_CARTON_CONFIG table encodes exact upc × cpp × p values per packaging group × size. OilsExportPanel imports calcCanonicalContainerLogistics and validateUnitConsistency. Section 6 consumes the same canonical result — no local recalculation. Auto-validation guard blocks PDF if divergence > 5%.",
+      "canonical_formula": "unitsPerContainer = unitsPerCarton × cartonsPerPallet × palletsPerContainer",
+      "test_cases": {
+        "900ml_PET":  "20 upc × 60 cpp × 20 p = 24,000 units",
+        "1000ml_PET": "20 upc × 56 cpp × 20 p = 22,400 units",
+        "5000ml_PET": "6 upc × 40 cpp × 20 p = 4,800 units",
+        "1000ml_POUCH": "24 upc × 64 cpp × 20 p = 30,720 units",
+        "20L_JERRY": "1 upc × 56 cpp × 20 p = 1,120 units"
+      },
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/core/containerMathEngine.js",
+        "must_contain": "calcCanonicalContainerLogistics"
+      }
+    },
+    {
+      "id": "ERR-035",
+      "title": "V9.1: Global destination selector limited to 29 hardcoded Caribbean countries",
+      "status": "resolved",
+      "resolved_in": "V9.1 hotfix",
+      "root_cause": "globalDestinationEngine.js (V8.1) contained a PRESET_DESTINATIONS list of 29 Caribbean/Latin American countries. Buyers from Europe, Africa, Asia, or other regions could not be represented in the commercial document. OilsExportPanel showed no search capability — agents had to pick from the fixed list or use 'Custom Destination' with no freight estimation.",
+      "affected_files": [
+        "glv-connect/frontend/src/engines/core/globalCountryEngine.js"
+      ],
+      "fix": "globalCountryEngine.js created in engines/core/. Imports WORLD_COUNTRIES from existing worldCountries.js config (complete UN country list). REGION_FREIGHT_ESTIMATES provides freight bands for 9 world regions (Caribbean, South America, Central America, Africa, Middle East, Europe, North America, Asia, Oceania). PRESET_FREIGHT map has exact freight+port+transit for 27 high-priority destinations. resolveExportDestination falls back to region estimate for unlisted countries. getAllCountryOptions exposes full world list for searchable dropdown.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/core/globalCountryEngine.js",
+        "must_contain": "getAllCountryOptions"
       }
     }
   ]

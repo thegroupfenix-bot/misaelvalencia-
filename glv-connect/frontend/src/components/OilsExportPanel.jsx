@@ -19,6 +19,8 @@ import { PRESET_DESTINATIONS, GLOBAL_REGIONS, resolveDestination, calcGlobalCont
 import { OIL_PACKAGING_TYPES, getPackagingCostPerUnit, calcTotalPackagingCost } from "../engines/oils/packagingCostEngine.js";
 import { MARKET_SEGMENTS, MARKET_IDS, getMarketMOQ } from "../engines/oils/exportMarketEngine.js";
 import { getCapacityPreset } from "../engines/oils/logisticsCapacityEngine.js";
+// V9.1: containerMathEngine is the single source of truth for canonical container math
+import { calcCanonicalContainerLogistics, validateUnitConsistency } from "../engines/core/containerMathEngine.js";
 import { runProfitSimulation, PROFIT_TARGET_MIN_USD, PROFIT_TARGET_MAX_USD, calcPriceAdjustmentNeeded } from "../engines/oils/profitSimulationEngine.js";
 import { OIL_POUCH_TYPES, OIL_FILM_MATERIALS, OIL_SEAL_TYPES, OIL_POUCH_SIZES, OIL_FOOD_GRADE_LEVELS, OIL_OEM_CAPABILITIES, getOilPouchCartonOptions } from "../engines/oils/oilsPouchEngine.js";
 import { PET_OIL_SIZES, getPetCartonOptions } from "../engines/oils/petPackagingEngine.js";
@@ -225,8 +227,15 @@ export default function OilsExportPanel({ category, userRole, onChange, initial 
   const sizes          = getSizesForPackaging(packagingType);
   const triplet        = (productId && packagingType && sizeId) ? getOilPriceTriplet(productId, packagingType, sizeId) : null;
   const basePrice      = triplet?.[incoterm] ?? 0;
+  // V9.1: canonical container logistics from containerMathEngine (single source of truth)
+  const canonicalLogistics = (packagingType && sizeId) ? calcCanonicalContainerLogistics(packagingType, sizeId) : null;
   const capacity       = sizeId ? getCapacityPreset(packagingType, sizeId) : null;
-  const nominalUnits   = capacity ? Math.round((capacity.unitsMin + capacity.unitsMax) / 2) : 0;
+  // nominalUnits from canonical formula (upc × cpp × p), NOT from min/max average
+  const nominalUnits   = canonicalLogistics?.unitsPerContainer || (capacity ? Math.round((capacity.unitsMin + capacity.unitsMax) / 2) : 0);
+  // Auto-validation: check canonical consistency for PDF guard
+  const unitsConsistency = canonicalLogistics && nominalUnits
+    ? validateUnitConsistency(packagingType, sizeId, nominalUnits)
+    : null;
   const destInfo       = destination ? resolveDestination(destination, { customCountry, customFreightUSD: parseFloat(customFreightUSD)||0, regionId }) : null;
   const freightUSD     = destInfo ? calcGlobalContainerFreight(destination, { customCountry, customFreightUSD: parseFloat(customFreightUSD)||0, regionId }) : 0;
   const fobTotal       = basePrice * nominalUnits;
@@ -257,13 +266,15 @@ export default function OilsExportPanel({ category, userRole, onChange, initial 
         productId, grade, origin, gmoStatus, certifications, market,
         packagingType, sizeId, unitsPerCarton, pouchType, filmMaterial, sealType,
         foodGrade, oemCaps, shelfLife,
-        containerType, incoterm, destination, customCountry, customFreightUSD,
+        containerType: "40HQ", incoterm, destination, customCountry, customFreightUSD,
         regionId, moq, frequency, contractDuration,
         // Only pass admin financials if role permits
         ...(canFinance ? { exportMarginPct, commissionPct, agentPct, intermediaryPct, simulation } : {}),
         skus, skuSummary,
         basePrice, freightUSD, insuranceUSD, pkgCostPerUnit,
         unitsPerContainer: nominalUnits, triplet,
+        // V9.1: canonical logistics from containerMathEngine
+        canonicalLogistics,
         _sectionOpen: open,
       },
     });
@@ -364,22 +375,29 @@ export default function OilsExportPanel({ category, userRole, onChange, initial 
         </div>
       </Section>
 
-      {/* ── SECTION 4: Logistics — READ-ONLY resolved from packaging selection ── */}
+      {/* ── SECTION 4: Logistics — READ-ONLY, derived from containerMathEngine ── */}
       <Section num={4} title="Logistics (Auto-Resolved)" open={open[4]} onToggle={() => toggle(4)}>
         <div style={{ marginBottom: 8, fontSize: 11, color: SEC_COLORS[4], fontWeight: 600, fontStyle: "italic" }}>
-          Container logistics are resolved automatically from your packaging selection in Section 3.
+          Container logistics resolved automatically from containerMathEngine (canonical formula: upc × cpp × p).
         </div>
-        {capacity && sizeId ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <div style={s.stat}><div style={s.statVal}>{containerType || "40HQ"}</div><div style={s.statLbl}>Container Type</div></div>
-            <div style={s.stat}><div style={s.statVal}>{fmtNum(capacity.unitsMin)}–{fmtNum(capacity.unitsMax)}</div><div style={s.statLbl}>Units / 40HQ</div></div>
-            <div style={s.stat}><div style={s.statVal}>{capacity.unitsPerCarton}</div><div style={s.statLbl}>Units / Carton</div></div>
-            <div style={s.stat}><div style={s.statVal}>{capacity.cartonsPerPallet}</div><div style={s.statLbl}>Cartons / Pallet</div></div>
-            <div style={s.stat}><div style={s.statVal}>{capacity.pallets}</div><div style={s.statLbl}>Pallets / Container</div></div>
-            <div style={s.stat}><div style={s.statVal}>{fmtNum(nominalUnits)}</div><div style={s.statLbl}>Nominal Units</div></div>
-          </div>
+        {canonicalLogistics && sizeId ? (
+          <>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={s.stat}><div style={s.statVal}>40HQ</div><div style={s.statLbl}>Container Type</div></div>
+              <div style={s.stat}><div style={s.statVal}>{fmtNum(canonicalLogistics.unitsPerContainer)}</div><div style={s.statLbl}>Units / Container</div></div>
+              <div style={s.stat}><div style={s.statVal}>{canonicalLogistics.unitsPerCarton}</div><div style={s.statLbl}>Units / Carton</div></div>
+              <div style={s.stat}><div style={s.statVal}>{canonicalLogistics.cartonsPerPallet}</div><div style={s.statLbl}>Cartons / Pallet</div></div>
+              <div style={s.stat}><div style={s.statVal}>{canonicalLogistics.palletsPerContainer}</div><div style={s.statLbl}>Pallets / Container</div></div>
+              <div style={s.stat}><div style={s.statVal}>{canonicalLogistics.netWeightMT} MT</div><div style={s.statLbl}>Net Weight</div></div>
+              <div style={s.stat}><div style={s.statVal}>{canonicalLogistics.grossWeightMT} MT</div><div style={s.statLbl}>Gross Weight</div></div>
+              <div style={s.stat}><div style={{ ...s.statVal, color: canonicalLogistics.withinPayload ? "#065f46" : "#dc2626" }}>{canonicalLogistics.payloadUtilizationPct}%</div><div style={s.statLbl}>Payload Utilization</div></div>
+            </div>
+            <div style={{ marginTop: 6, fontSize: 10, color: SEC_COLORS[4], fontFamily: "monospace" }}>
+              Formula: {canonicalLogistics.unitsPerCarton} upc × {canonicalLogistics.cartonsPerPallet} cpp × {canonicalLogistics.palletsPerContainer} pallets = {fmtNum(canonicalLogistics.unitsPerContainer)} units
+            </div>
+          </>
         ) : (
-          <div style={{ fontSize: 12, color: "#9ca3af" }}>Select a packaging type and size in Section 3 to see logistics capacity.</div>
+          <div style={{ fontSize: 12, color: "#9ca3af" }}>Select packaging type and size in Section 3 to see logistics.</div>
         )}
       </Section>
 
@@ -438,15 +456,27 @@ export default function OilsExportPanel({ category, userRole, onChange, initial 
         </div>
       </Section>
 
-      {/* ── SECTION 6: Commercial Summary ────────────────────────────────────── */}
+      {/* ── SECTION 6: Commercial Summary — consumes containerMathEngine only ── */}
       <Section num={6} title="Commercial Summary" open={open[6]} onToggle={() => toggle(6)}>
+        {/* Auto-validation block: CONTAINER LOGISTICS MISMATCH */}
+        {unitsConsistency && !unitsConsistency.valid && (
+          <div style={{ marginBottom: 10, padding: "8px 12px", borderRadius: 8, background: "#fff7ed", border: "2px solid #f97316" }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#92400e" }}>
+              ⚠ CONTAINER LOGISTICS MISMATCH — PDF generation blocked
+            </span>
+            <div style={{ fontSize: 10, color: "#78350f", marginTop: 4 }}>
+              Reported: {fmtNum(unitsConsistency.reported)} units · Canonical: {fmtNum(unitsConsistency.canonical)} units · Delta: {(unitsConsistency.deltaFraction * 100).toFixed(1)}%
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           {basePrice > 0 && nominalUnits > 0 && (
             <>
               <div style={s.stat}><div style={s.statVal}>{fmtUSD(basePrice * nominalUnits)}</div><div style={s.statLbl}>Shipment FOB Value</div></div>
               <div style={s.stat}><div style={s.statVal}>{fmtNum(nominalUnits)}</div><div style={s.statLbl}>Units / Container</div></div>
               <div style={s.stat}><div style={s.statVal}>{fmtUSD(basePrice)}</div><div style={s.statLbl}>{incoterm} / Unit</div></div>
-              <div style={s.stat}><div style={s.statVal}>{containerType || "40HQ"}</div><div style={s.statLbl}>Container Type</div></div>
+              <div style={s.stat}><div style={s.statVal}>40HQ</div><div style={s.statLbl}>Container Type</div></div>
+              {canonicalLogistics && <div style={s.stat}><div style={s.statVal}>{canonicalLogistics.netWeightMT} MT</div><div style={s.statLbl}>Net Weight</div></div>}
             </>
           )}
           {frequency && contractDuration && (
