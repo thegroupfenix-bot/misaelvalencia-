@@ -94,6 +94,10 @@ export function calcShipmentValue({
         // qty = total units/bottles (or qty × unitsPerBox if box engine)
         if (upb > 0) return qty * upb * price;
         return qty * price;
+      case "perPouch":
+      case "perCarton":
+        // qty = pouches or cartons, price per pouch/carton
+        return qty * price;
       case "perDrum":
       case "perJerrycan":
       case "perIBC":

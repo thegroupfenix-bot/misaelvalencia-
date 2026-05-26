@@ -229,6 +229,8 @@ export const COMMERCIAL_SALE_UNITS = [
   { id: "perMT",        label: { es: "Precio por MT",         en: "Price per MT" },         abbr: "/MT",        requiresWeight: true  },
   { id: "perLiter",     label: { es: "Precio por Litro",      en: "Price per Liter" },      abbr: "/L",         requiresWeight: false },
   { id: "perBox",       label: { es: "Precio por Caja",       en: "Price per Box" },        abbr: "/box",       requiresWeight: false },
+  { id: "perCarton",    label: { es: "Precio por Cartón",     en: "Price per Carton" },     abbr: "/carton",    requiresWeight: false },
+  { id: "perPouch",     label: { es: "Precio por Pouch",      en: "Price per Pouch" },      abbr: "/pouch",     requiresWeight: false },
   { id: "perUnit",      label: { es: "Precio por Unidad",     en: "Price per Unit" },       abbr: "/unit",      requiresWeight: false },
   { id: "perContainer", label: { es: "Precio por Contenedor", en: "Price per Container" },  abbr: "/container", requiresWeight: false },
   { id: "perDrum",      label: { es: "Precio por Bidón",      en: "Price per Drum" },       abbr: "/drum",      requiresWeight: false },
@@ -247,12 +249,12 @@ export function getSaleUnitsForProfile(categoryProfile) {
   if (!categoryProfile) return COMMERCIAL_SALE_UNITS;
   if (categoryProfile.supportsLiquidPackaging) {
     return COMMERCIAL_SALE_UNITS.filter(u =>
-      ["perKg","perMT","perLiter","perContainer","perDrum","perJerrycan","perBottle","perBox","perIBC","perFlexitank"].includes(u.id)
+      ["perKg","perMT","perLiter","perContainer","perDrum","perJerrycan","perBottle","perBox","perCarton","perPouch","perIBC","perFlexitank"].includes(u.id)
     );
   }
   if (categoryProfile.supportsLivestock) return []; // not used for livestock
   return COMMERCIAL_SALE_UNITS.filter(u =>
-    ["perKg","perMT","perBox","perUnit","perPallet","perContainer"].includes(u.id)
+    ["perKg","perMT","perBox","perCarton","perUnit","perPallet","perContainer"].includes(u.id)
   );
 }
 
@@ -262,18 +264,26 @@ export function getSaleUnitsForProfile(categoryProfile) {
 
 export const EXPORT_FORMAT_OPTIONS = [
   // INDUSTRIAL
-  { id: "FLEXITANK",     label: "Flexitank",           desc: "~24,000 L / 40FT container",   group: "INDUSTRIAL", isRetail: false },
-  { id: "ISO_TANK",      label: "ISO Tank",             desc: "~26,000 L / tank container",   group: "INDUSTRIAL", isRetail: false },
-  { id: "IBC_1000L",     label: "IBC 1000L",            desc: "Intermediate bulk container",  group: "INDUSTRIAL", isRetail: false },
-  { id: "DRUM_200L",     label: "Drum 200L",            desc: "Industrial 200L steel drum",   group: "INDUSTRIAL", isRetail: false },
-  { id: "JERRYCAN_20L",  label: "Jerrycan 20L",         desc: "Plastic jerrycan 20 liters",   group: "INDUSTRIAL", isRetail: false },
+  { id: "FLEXITANK",       label: "Flexitank",            desc: "~24,000 L / 40FT container",            group: "INDUSTRIAL", isRetail: false, isPouch: false },
+  { id: "ISO_TANK",        label: "ISO Tank",              desc: "~26,000 L / tank container",            group: "INDUSTRIAL", isRetail: false, isPouch: false },
+  { id: "IBC_1000L",       label: "IBC 1000L",             desc: "Intermediate bulk container",           group: "INDUSTRIAL", isRetail: false, isPouch: false },
+  { id: "DRUM_200L",       label: "Drum 200L",             desc: "Industrial 200L steel drum",            group: "INDUSTRIAL", isRetail: false, isPouch: false },
+  { id: "JERRYCAN_20L",    label: "Jerrycan 20L",          desc: "Plastic jerrycan 20 liters",            group: "INDUSTRIAL", isRetail: false, isPouch: false },
   // RETAIL DISTRIBUTION
-  { id: "RETAIL_MIXED",  label: "Retail Mixed SKU",     desc: "Multiple retail sizes / SKUs", group: "RETAIL",     isRetail: true  },
-  { id: "RETAIL_PET",    label: "Retail PET",           desc: "PET bottles, retail cartons",  group: "RETAIL",     isRetail: true  },
-  { id: "RETAIL_TETRA",  label: "Retail Tetra Pak",     desc: "Tetra Pak aseptic retail",     group: "RETAIL",     isRetail: true  },
-  { id: "RETAIL_DOYPACK",label: "Retail Doypack",       desc: "Flexible pouch retail",        group: "RETAIL",     isRetail: true  },
+  { id: "RETAIL_MIXED",    label: "Retail Mixed SKU",      desc: "Multiple retail sizes / SKUs",          group: "RETAIL",     isRetail: true,  isPouch: false },
+  { id: "RETAIL_PET",      label: "Retail PET",            desc: "PET bottles, retail cartons",           group: "RETAIL",     isRetail: true,  isPouch: false },
+  { id: "RETAIL_TETRA",    label: "Retail Tetra Pak",      desc: "Tetra Pak aseptic retail",              group: "RETAIL",     isRetail: true,  isPouch: false },
+  { id: "RETAIL_DOYPACK",  label: "Retail Doypack",        desc: "Flexible pouch retail",                 group: "RETAIL",     isRetail: true,  isPouch: true  },
+  // V7: POUCH FORMATS — flexible multilayer packaging
+  { id: "RETAIL_POUCH",    label: "Retail Pouch",          desc: "General retail pouch — multiple types", group: "POUCH",      isRetail: true,  isPouch: true  },
+  { id: "PILLOW_POUCH",    label: "Pillow Pouch",          desc: "Flat seal, high-density packing",       group: "POUCH",      isRetail: true,  isPouch: true  },
+  { id: "STAND_UP_POUCH",  label: "Stand Up Pouch",        desc: "Doypack stable base, shelf-ready",      group: "POUCH",      isRetail: true,  isPouch: true  },
+  { id: "SPOUT_POUCH",     label: "Spout Pouch",           desc: "Re-closable spout, liquid optimized",   group: "POUCH",      isRetail: true,  isPouch: true  },
+  { id: "GUSSET_POUCH",    label: "Gusset Pouch",          desc: "Side/bottom gusset for high volume",    group: "POUCH",      isRetail: true,  isPouch: true  },
+  { id: "SIDE_SEAL_POUCH", label: "Side Seal Pouch",       desc: "3-side seal sachets / flat packs",      group: "POUCH",      isRetail: true,  isPouch: true  },
+  { id: "BAG_IN_BOX",      label: "Bag In Box",            desc: "Flexible bag in outer carton, 3–20L",   group: "POUCH",      isRetail: true,  isPouch: true  },
   // CUSTOM
-  { id: "CUSTOM",        label: "Other / Custom",       desc: "Custom export format",         group: "CUSTOM",     isRetail: false },
+  { id: "CUSTOM",          label: "Other / Custom",        desc: "Custom export format",                  group: "CUSTOM",     isRetail: false, isPouch: false },
 ];
 
 export const INDUSTRIAL_SALE_UNITS = COMMERCIAL_SALE_UNITS.filter(u =>
@@ -281,22 +291,33 @@ export const INDUSTRIAL_SALE_UNITS = COMMERCIAL_SALE_UNITS.filter(u =>
 );
 
 export const SKU_SALE_UNITS = COMMERCIAL_SALE_UNITS.filter(u =>
-  ["perBox","perUnit","perBottle","perLiter","perKg"].includes(u.id)
+  ["perBox","perCarton","perPouch","perUnit","perBottle","perLiter","perKg"].includes(u.id)
 );
 
-// ─── V6: SKU Packaging Types (retail carton engine) ──────────────────────────
+// ─── V6: SKU Packaging Types (retail carton + pouch engine) ──────────────────
 export const SKU_PACKAGING_TYPES = [
-  { id: "PET_BOTTLE",     label: "PET Bottle"        },
-  { id: "GLASS_BOTTLE",   label: "Glass Bottle"      },
-  { id: "TETRA_PAK",      label: "Tetra Pak"         },
-  { id: "DOYPACK",        label: "Doypack / Pouch"   },
-  { id: "SACHET",         label: "Sachet"            },
-  { id: "CAN_TIN",        label: "Can / Tin"         },
-  { id: "PREMIUM_BOTTLE", label: "Premium Bottle"    },
+  { id: "PET_BOTTLE",     label: "PET Bottle",       group: "BOTTLE"  },
+  { id: "GLASS_BOTTLE",   label: "Glass Bottle",     group: "BOTTLE"  },
+  { id: "TETRA_PAK",      label: "Tetra Pak",        group: "BOTTLE"  },
+  { id: "DOYPACK",        label: "Doypack / Pouch",  group: "POUCH"   },
+  { id: "SACHET",         label: "Sachet",           group: "POUCH"   },
+  { id: "CAN_TIN",        label: "Can / Tin",        group: "CAN"     },
+  { id: "PREMIUM_BOTTLE", label: "Premium Bottle",   group: "BOTTLE"  },
+  // V7: Pouch types
+  { id: "PILLOW_POUCH",    label: "Pillow Pouch",    group: "POUCH"   },
+  { id: "STAND_UP_POUCH",  label: "Stand Up Pouch",  group: "POUCH"   },
+  { id: "SPOUT_POUCH",     label: "Spout Pouch",     group: "POUCH"   },
+  { id: "GUSSET_POUCH",    label: "Gusset Pouch",    group: "POUCH"   },
+  { id: "SIDE_SEAL_POUCH", label: "Side Seal Pouch", group: "POUCH"   },
+  { id: "BAG_IN_BOX",      label: "Bag In Box",      group: "BAG_IN_BOX" },
 ];
 
 export function isRetailExportFormat(formatId) {
   return EXPORT_FORMAT_OPTIONS.find(f => f.id === formatId)?.isRetail || false;
+}
+
+export function isPouchExportFormat(formatId) {
+  return EXPORT_FORMAT_OPTIONS.find(f => f.id === formatId)?.isPouch || false;
 }
 
 export function getExportFormatLabel(formatId) {
@@ -310,6 +331,8 @@ export function getExportFormatLabel(formatId) {
 export function getUnitContext(commercialUnit, lang = "es") {
   const MAP = {
     perBox:       { es: "CAJAS",      en: "BOXES"     },
+    perCarton:    { es: "CARTONES",   en: "CARTONS"   },
+    perPouch:     { es: "POUCHES",    en: "POUCHES"   },
     perUnit:      { es: "UNIDADES",   en: "UNITS"     },
     perBottle:    { es: "BOTELLAS",   en: "BOTTLES"   },
     perLiter:     { es: "LITROS",     en: "LITERS"    },

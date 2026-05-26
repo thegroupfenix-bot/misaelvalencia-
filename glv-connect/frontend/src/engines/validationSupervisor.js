@@ -1,31 +1,38 @@
 /**
- * validationSupervisor.js — GLV Commercial Document Validation Supervisor V6.0.
+ * validationSupervisor.js — GLV Commercial Document Validation Supervisor V7.0.
  *
- * 18 mandatory validation checks before any PDF generation or document submission:
+ * 24 mandatory validation checks before any PDF generation or document submission:
  *
- *   VAL-001  Pricing consistency        — unit price must be > 0
- *   VAL-002  Unit consistency           — unit type compatible with category
- *   VAL-003  Packaging consistency      — packaging field filled for packaged categories
- *   VAL-004  PDF overflow risk          — description length within safe limits
- *   VAL-005  Media contamination        — enforced server-side, surfaced as info
- *   VAL-006  Country contamination      — destination country must be set
- *   VAL-007  Port contamination         — destination port should be set
- *   VAL-008  Container mismatch         — selected container compatible with category
- *   VAL-009  Stale cache detection      — multiple categories in one document
- *   VAL-010  Formula mismatch           — required fields present for category engine
- *   VAL-011  Commercial unit required   — liquid/packaged categories must declare sale unit
- *   VAL-012  Packaging mode required    — packaged categories must declare packaging mode
- *   VAL-013  Retail size required       — retail bottle/can packaging must declare presentation size
- *   VAL-014  Box engine units required  — retail carton packaging with size must declare units/box
- *   VAL-015  SKU packaging required     — each retail SKU must declare packaging type
- *   VAL-016  SKU size required          — each retail SKU must declare presentation size
- *   VAL-017  SKU sale basis required    — each retail SKU must declare commercial sale unit
- *   VAL-018  SKU price required         — each retail SKU must have a price > 0
+ *   VAL-001  Pricing consistency           — unit price must be > 0
+ *   VAL-002  Unit consistency              — unit type compatible with category
+ *   VAL-003  Packaging consistency         — packaging field filled for packaged categories
+ *   VAL-004  PDF overflow risk             — description length within safe limits
+ *   VAL-005  Media contamination           — enforced server-side, surfaced as info
+ *   VAL-006  Country contamination         — destination country must be set
+ *   VAL-007  Port contamination            — destination port should be set
+ *   VAL-008  Container mismatch            — selected container compatible with category
+ *   VAL-009  Stale cache detection         — multiple categories in one document
+ *   VAL-010  Formula mismatch              — required fields present for category engine
+ *   VAL-011  Commercial unit required      — liquid/packaged categories must declare sale unit
+ *   VAL-012  Packaging mode required       — packaged categories must declare packaging mode
+ *   VAL-013  Retail size required          — retail bottle/can packaging must declare presentation size
+ *   VAL-014  Box engine units required     — retail carton packaging with size must declare units/box
+ *   VAL-015  SKU packaging required        — each retail SKU must declare packaging type
+ *   VAL-016  SKU size required             — each retail SKU must declare presentation size
+ *   VAL-017  SKU sale basis required       — each retail SKU must declare commercial sale unit
+ *   VAL-018  SKU price required            — each retail SKU must have a price > 0
+ *   VAL-019  Pouch sizing consistency      — pouch config size must be in POUCH_SIZES
+ *   VAL-020  Pouch carton consistency      — unitsPerCarton must be positive for pouch formats
+ *   VAL-021  Pouch pallet consistency      — pallet config exists for declared size
+ *   VAL-022  Container optimization sanity — pouch format should not use livestock/bulk vessel
+ *   VAL-023  Export format consistency     — pouch format only for liquid-compatible categories
+ *   VAL-024  Price basis consistency       — pouch formats must declare a commercial sale unit
  */
 
 import { getCategoryEngine } from "./categoryEngine.js";
 import { getCategoryProfile } from "./categoryProfiles.js";
 import { isLivestockContainer, isLiquidContainer } from "./containerEngine.js";
+import { POUCH_SIZES, PALLET_CONFIG, POUCH_EXPORT_FORMAT_IDS } from "./PouchPackagingEngine.js";
 
 /**
  * Run all 10 validation checks against a document + its CD rows.
@@ -59,6 +66,13 @@ export function validateDocument(doc, cdRows = []) {
     ...checkSkuSizeRequired(firstRow),
     ...checkSkuSaleBasisRequired(firstRow),
     ...checkSkuPriceRequired(firstRow),
+    // V7: Pouch packaging guards
+    checkPouchSizingConsistency(firstRow),
+    checkPouchCartonConsistency(firstRow),
+    checkPouchPalletConsistency(firstRow),
+    checkContainerOptimizationSanity(firstRow),
+    checkExportFormatCategoryConsistency(firstRow, profile),
+    checkPouchPriceBasisConsistency(firstRow),
   ];
 
   const errors   = checks.filter(c => !c.pass && c.severity === "error");
@@ -364,4 +378,128 @@ function checkSkuPriceRequired(row) {
       severity: "error",
     };
   });
+}
+
+// ─── V7: Pouch Packaging Guards ───────────────────────────────────────────────
+
+const POUCH_SIZE_IDS = new Set(POUCH_SIZES.map(s => s.id));
+const LIQUID_COMPATIBLE = new Set(["OILS","FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS"]);
+
+function checkPouchSizingConsistency(row) {
+  const ef = row.exportFormat || "";
+  if (!POUCH_EXPORT_FORMAT_IDS.has(ef)) {
+    return { id: "VAL-019", name: "Pouch Sizing Consistency", pass: true, message: "No pouch format active", severity: "warning" };
+  }
+  const sizeId = row.pouchConfig?.presentationSize || "";
+  const valid = !sizeId || POUCH_SIZE_IDS.has(sizeId);
+  return {
+    id: "VAL-019", name: "Pouch Sizing Consistency",
+    pass: valid,
+    message: valid
+      ? (sizeId ? `Pouch size "${sizeId}" is valid` : "Pouch size not yet selected")
+      : `Pouch size "${sizeId}" is not in the approved POUCH_SIZES list — select a valid size (250ml–20L)`,
+    severity: "warning",
+  };
+}
+
+function checkPouchCartonConsistency(row) {
+  const ef = row.exportFormat || "";
+  if (!POUCH_EXPORT_FORMAT_IDS.has(ef)) {
+    return { id: "VAL-020", name: "Pouch Carton Consistency", pass: true, message: "No pouch format active", severity: "warning" };
+  }
+  const sizeId = row.pouchConfig?.presentationSize || "";
+  const upb    = parseFloat(row.pouchConfig?.unitsPerCarton || 0);
+  if (!sizeId) {
+    return { id: "VAL-020", name: "Pouch Carton Consistency", pass: true, message: "Pouch size not selected yet", severity: "warning" };
+  }
+  return {
+    id: "VAL-020", name: "Pouch Carton Consistency",
+    pass: upb > 0,
+    message: upb > 0
+      ? `Units per carton: ${upb}`
+      : `Pouch format "${ef}" with size "${sizeId}" requires units per carton — carton weight and pallet calculations will be zero`,
+    severity: "warning",
+  };
+}
+
+function checkPouchPalletConsistency(row) {
+  const ef = row.exportFormat || "";
+  if (!POUCH_EXPORT_FORMAT_IDS.has(ef)) {
+    return { id: "VAL-021", name: "Pouch Pallet Consistency", pass: true, message: "No pouch format active", severity: "warning" };
+  }
+  const sizeId = row.pouchConfig?.presentationSize || "";
+  if (!sizeId) {
+    return { id: "VAL-021", name: "Pouch Pallet Consistency", pass: true, message: "Pouch size not selected", severity: "warning" };
+  }
+  const hasPalletConfig = !!PALLET_CONFIG[sizeId];
+  return {
+    id: "VAL-021", name: "Pouch Pallet Consistency",
+    pass: hasPalletConfig,
+    message: hasPalletConfig
+      ? `Pallet configuration available for ${sizeId}`
+      : `No pallet configuration found for size "${sizeId}" — container utilization estimate may be inaccurate`,
+    severity: "warning",
+  };
+}
+
+function checkContainerOptimizationSanity(row) {
+  const ef = row.exportFormat || "";
+  if (!POUCH_EXPORT_FORMAT_IDS.has(ef)) {
+    return { id: "VAL-022", name: "Container Optimization Sanity", pass: true, message: "No pouch format active", severity: "warning" };
+  }
+  const ct = row.containerType || "";
+  const invalidForPouch = ["LIVESTOCK_VESSEL","BULK_VESSEL","ISO_TANK"].includes(ct);
+  return {
+    id: "VAL-022", name: "Container Optimization Sanity",
+    pass: !invalidForPouch,
+    message: invalidForPouch
+      ? `Container type "${ct}" is not compatible with pouch packaging — use 40FT Dry or 40HC for retail pouch export`
+      : ct ? `Container "${ct}" compatible with pouch packaging` : "Container not yet selected",
+    severity: "warning",
+  };
+}
+
+function checkExportFormatCategoryConsistency(row, profile) {
+  const ef = row.exportFormat || "";
+  if (!POUCH_EXPORT_FORMAT_IDS.has(ef)) {
+    return { id: "VAL-023", name: "Export Format Consistency", pass: true, message: "No pouch format active", severity: "warning" };
+  }
+  const category = row.category || "";
+  const compatible = !category || LIQUID_COMPATIBLE.has(category);
+  return {
+    id: "VAL-023", name: "Export Format Consistency",
+    pass: compatible,
+    message: compatible
+      ? `Category "${category}" supports pouch export format`
+      : `Pouch export format "${ef}" is designed for liquid categories (OILS, FRUIT_PRODUCTS, COLOMBIAN_EXOTIC_FRUITS) — current category "${category}" may produce unexpected PDF output`,
+    severity: "warning",
+  };
+}
+
+function checkPouchPriceBasisConsistency(row) {
+  const ef = row.exportFormat || "";
+  if (!POUCH_EXPORT_FORMAT_IDS.has(ef)) {
+    return { id: "VAL-024", name: "Price Basis Consistency", pass: true, message: "No pouch format active", severity: "warning" };
+  }
+  const skus = Array.isArray(row.skus) ? row.skus : [];
+  if (skus.length > 0) {
+    const allHaveBasis = skus.every(sk => !!sk.commercialUnit);
+    return {
+      id: "VAL-024", name: "Price Basis Consistency",
+      pass: allHaveBasis,
+      message: allHaveBasis
+        ? "All SKUs have a commercial sale basis"
+        : "One or more SKUs are missing a commercial sale basis (perPouch, perCarton, perBox, etc.) — shipment value will be zero",
+      severity: "error",
+    };
+  }
+  const unit = row.commercialUnit || "";
+  return {
+    id: "VAL-024", name: "Price Basis Consistency",
+    pass: !!unit,
+    message: unit
+      ? `Commercial sale basis declared: ${unit}`
+      : `Pouch format "${ef}" requires a commercial sale basis (perPouch, perCarton, perBox, etc.) — PDF pricing will be incomplete`,
+    severity: "warning",
+  };
 }
