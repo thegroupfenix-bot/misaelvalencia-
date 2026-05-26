@@ -1146,6 +1146,180 @@ jobs:
           echo "✅ liveAnimals/index.js is clean — no oils contamination"
           echo "## ✅ V9 LIVE_ANIMALS engine integrity maintained — no cross-contamination" >> $GITHUB_STEP_SUMMARY
 
+  # ── V9.1: Critical Hotfix + Logistics Normalization + PDF Restoration ────────
+  v9-1-hotfix-validation:
+    name: V9.1 Hotfix Guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: V9.1 — GlvPDF.jsx TDZ fix (isLiveAnimalRow declared before isOilsRow)
+        run: |
+          FILE="glv-connect/frontend/src/components/GlvPDF.jsx"
+          # Extract line numbers for both declarations
+          LA_LINE=$(grep -n "const isLiveAnimalRow" "$FILE" | grep -v "//.*const" | head -1 | cut -d: -f1)
+          OIL_LINE=$(grep -n "const isOilsRow" "$FILE" | grep -v "//.*const" | head -1 | cut -d: -f1)
+          if [ -z "$LA_LINE" ] || [ -z "$OIL_LINE" ]; then
+            echo "::error::V9.1: Could not find isLiveAnimalRow or isOilsRow declarations in GlvPDF.jsx"
+            exit 1
+          fi
+          echo "isLiveAnimalRow at line $LA_LINE, isOilsRow at line $OIL_LINE"
+          if [ "$LA_LINE" -ge "$OIL_LINE" ]; then
+            echo "::error::V9.1: TDZ REGRESSION — isLiveAnimalRow (line $LA_LINE) must be declared BEFORE isOilsRow (line $OIL_LINE). PDF will crash with ReferenceError."
+            exit 1
+          fi
+          echo "✅ isLiveAnimalRow declared at line $LA_LINE — before isOilsRow at line $OIL_LINE"
+          echo "## ✅ V9.1 GlvPDF.jsx TDZ fix verified — isLiveAnimalRow precedes isOilsRow" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — containerMathEngine.js exists with canonical formula symbols
+        run: |
+          CFILE="glv-connect/frontend/src/engines/core/containerMathEngine.js"
+          if [ ! -f "$CFILE" ]; then
+            echo "::error::V9.1: containerMathEngine.js missing — container math has no single source of truth"
+            exit 1
+          fi
+          FAILED=0
+          for sym in CANONICAL_CARTON_CONFIG calcCanonicalUnitsPerContainer calcCanonicalContainerLogistics validateUnitConsistency OIL_DENSITY_KG_PER_L MAX_40HQ_PAYLOAD_KG; do
+            if ! grep -q "$sym" "$CFILE"; then
+              echo "::error::V9.1: containerMathEngine.js missing required symbol: $sym"
+              FAILED=1
+            else
+              echo "✅ containerMathEngine.js — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9.1 containerMathEngine.js — canonical formula SSOT verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — Canonical container test cases embedded (900ml PET, 1L PET, 5L PET, 1L POUCH, 20L JERRY)
+        run: |
+          CFILE="glv-connect/frontend/src/engines/core/containerMathEngine.js"
+          FAILED=0
+          # Check canonical units are present in config table
+          for value in "24000\|24,000\|upc.*20.*cpp.*60\|cpp.*60.*upc.*20" "22400\|22,400\|upc.*20.*cpp.*56\|cpp.*56.*upc.*20" "4800\|4,800\|upc.*6.*cpp.*40" "30720\|30,720\|upc.*24.*cpp.*64" "1120\|1,120\|upc.*1.*cpp.*56"; do
+            if ! grep -qE "$value" "$CFILE"; then
+              echo "::warning::V9.1: containerMathEngine.js may be missing a canonical test value: $value"
+            fi
+          done
+          if ! grep -q "runCanonicalTests\|900ml.*PET\|PET.*900ml" "$CFILE"; then
+            echo "::error::V9.1: containerMathEngine.js missing runCanonicalTests or 900ml PET config"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9.1 Canonical container test config present in containerMathEngine.js" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — globalCountryEngine.js exists with full-world support
+        run: |
+          GFILE="glv-connect/frontend/src/engines/core/globalCountryEngine.js"
+          if [ ! -f "$GFILE" ]; then
+            echo "::error::V9.1: globalCountryEngine.js missing — destination selector limited to 29 hardcoded countries"
+            exit 1
+          fi
+          FAILED=0
+          for sym in getAllCountryOptions searchWorldCountries resolveExportDestination PRESET_FREIGHT REGION_FREIGHT_ESTIMATES; do
+            if ! grep -q "$sym" "$GFILE"; then
+              echo "::error::V9.1: globalCountryEngine.js missing: $sym"
+              FAILED=1
+            else
+              echo "✅ globalCountryEngine.js — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9.1 globalCountryEngine.js — full-world destination support verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — PdfRenderSupervisor components exist
+        run: |
+          FAILED=0
+          for comp in "glv-connect/frontend/src/components/pdf/PdfRenderSupervisor.jsx" \
+                      "glv-connect/frontend/src/components/pdf/PdfRenderBoundary.jsx" \
+                      "glv-connect/frontend/src/components/pdf/PdfPayloadInspector.js" \
+                      "glv-connect/frontend/src/components/pdf/PdfSafeRenderer.js"; do
+            if [ ! -f "$comp" ]; then
+              echo "::error::V9.1: Missing PDF supervisor component: $comp"
+              FAILED=1
+            else
+              echo "✅ $(basename $comp) present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9.1 All PdfRenderSupervisor components present" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — PdfRenderSupervisor implements mismatch block
+        run: |
+          SUP="glv-connect/frontend/src/components/pdf/PdfRenderSupervisor.jsx"
+          if ! grep -q "LOGISTICS MISMATCH\|CONTAINER LOGISTICS MISMATCH\|MISMATCH" "$SUP"; then
+            echo "::error::V9.1: PdfRenderSupervisor.jsx must block PDF on container logistics mismatch"
+            exit 1
+          fi
+          if ! grep -q "getDerivedStateFromError\|componentDidCatch\|PdfRenderBoundary" "$SUP"; then
+            echo "::error::V9.1: PdfRenderSupervisor.jsx must wrap with PdfRenderBoundary error boundary"
+            exit 1
+          fi
+          echo "✅ PdfRenderSupervisor.jsx implements mismatch block and error boundary"
+          echo "## ✅ V9.1 PdfRenderSupervisor — mismatch block and error boundary active" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — All 5 validation agents exist
+        run: |
+          FAILED=0
+          for agent in "LogisticsValidationAgent.js" "PdfValidationAgent.js" "PackagingValidationAgent.js" \
+                       "FormulaAuditAgent.js" "RegressionSupervisorAgent.js"; do
+            if [ ! -f "glv-connect/frontend/src/agents/$agent" ]; then
+              echo "::error::V9.1: Missing validation agent: agents/$agent"
+              FAILED=1
+            else
+              echo "✅ agents/$agent present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9.1 All 5 validation agents registered" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — OilsExportPanel uses containerMathEngine (canonical SSOT)
+        run: |
+          PANEL="glv-connect/frontend/src/components/OilsExportPanel.jsx"
+          if ! grep -q "containerMathEngine\|calcCanonicalContainerLogistics" "$PANEL"; then
+            echo "::error::V9.1: OilsExportPanel.jsx must import from containerMathEngine.js — old min/max average formula is retired"
+            exit 1
+          fi
+          if ! grep -q "validateUnitConsistency" "$PANEL"; then
+            echo "::error::V9.1: OilsExportPanel.jsx must call validateUnitConsistency for auto-validation guard"
+            exit 1
+          fi
+          echo "✅ OilsExportPanel.jsx uses containerMathEngine — canonical formula active"
+          echo "## ✅ V9.1 OilsExportPanel uses containerMathEngine as SSOT" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — OilsExportPanel has MISMATCH guard (PDF block)
+        run: |
+          PANEL="glv-connect/frontend/src/components/OilsExportPanel.jsx"
+          if ! grep -q "MISMATCH\|unitsConsistency\|blockPdf\|logistics.*mismatch\|mismatch.*logistics" "$PANEL"; then
+            echo "::error::V9.1: OilsExportPanel.jsx must display CONTAINER LOGISTICS MISMATCH warning when canonical units diverge"
+            exit 1
+          fi
+          echo "✅ OilsExportPanel.jsx has container mismatch guard"
+          echo "## ✅ V9.1 Auto-validation mismatch guard present in OilsExportPanel" >> $GITHUB_STEP_SUMMARY
+
+      - name: V9.1 — Regression: LIVE_ANIMALS formula and engine untouched
+        run: |
+          FAILED=0
+          # liveAnimals engine must have NO reference to containerMathEngine or oilsConfig
+          LA_IDX="glv-connect/frontend/src/engines/liveAnimals/index.js"
+          if grep -q "containerMathEngine\|oilsConfig\|OIL_DENSITY" "$LA_IDX"; then
+            echo "::error::V9.1: REGRESSION — liveAnimals/index.js has been contaminated with oils/container logic"
+            FAILED=1
+          else
+            echo "✅ liveAnimals/index.js — no containerMathEngine or oilsConfig contamination"
+          fi
+          # RegressionSupervisorAgent must have the 3 invariants
+          RSA="glv-connect/frontend/src/agents/RegressionSupervisorAgent.js"
+          for inv in "LIVE_ANIMALS_FORMULA" "OILS_NO_LIVESTOCK_CONTAMINATION" "LIVE_ANIMALS_NO_OILS_PRICE_MATRIX"; do
+            if ! grep -q "$inv" "$RSA"; then
+              echo "::error::V9.1: RegressionSupervisorAgent.js missing invariant: $inv"
+              FAILED=1
+            else
+              echo "✅ RegressionSupervisorAgent.js — $inv present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V9.1 LIVE_ANIMALS regression guard confirmed — no cross-contamination" >> $GITHUB_STEP_SUMMARY
+
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
     name: Frontend Build
