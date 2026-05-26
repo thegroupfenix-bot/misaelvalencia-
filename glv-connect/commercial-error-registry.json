@@ -1,6 +1,6 @@
 {
-  "registry_version": "7.0.0",
-  "last_updated": "2026-05-25",
+  "registry_version": "8.0.0",
+  "last_updated": "2026-05-26",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
     {
@@ -264,9 +264,33 @@
       { "id": "ERR-022", "file": "glv-connect/frontend/src/engines/PouchPackagingEngine.js",  "must_contain": "MASTER_CARTON_CONFIG" },
       { "id": "ERR-023", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "isPouchExportFormat" },
       { "id": "ERR-024", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-019" },
-      { "id": "ERR-025", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "perPouch" }
+      { "id": "ERR-025", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "perPouch" },
+      { "id": "ERR-026", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "resolveNormalizedPresentationSize" },
+      { "id": "ERR-027", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-025" },
+      { "id": "ERR-028", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",            "must_contain": "normalizedPresentationSize" },
+      { "id": "ERR-029", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "normalizedPresentationSize" }
     ]
   },
+  "errors_v7_1": [
+    {
+      "id": "ERR-026",
+      "title": "PRESENTATION SIZE MISMATCH — pouchConfig.presentationSize and sku.presentationSize are independent states, causing divergence between Pouch Spec block and SKU breakdown table in PDF",
+      "status": "resolved",
+      "resolved_in": "V7.1",
+      "root_cause": "PouchConfigPanel sets pouchConfig.presentationSize; each SkuCard sets sku.presentationSize independently. Two separate React state trees with no synchronization. PDF reads pouchConfig.presentationSize for spec block header and sku.presentationSize for SKU rows — can show different values (e.g. 1000ml vs 900ml).",
+      "affected_files": [
+        "glv-connect/frontend/src/engines/packagingEngine.js",
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/frontend/src/engines/validationSupervisor.js"
+      ],
+      "fix": "resolveNormalizedPresentationSize(pouchConfig, skus) added to packagingEngine.js — single canonical source. When PouchConfigPanel selects a size, all SKUs sync via onPouchSizeChange propagation. ProductRowPanel computes normalizedPresentationSize and includes it in onChange payload. GlvPDF reads firstCdRow.normalizedPresentationSize for spec block. VAL-025 blocks PDF if mismatch is detected.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/packagingEngine.js",
+        "must_contain": "resolveNormalizedPresentationSize"
+      }
+    }
+  ],
   "errors_v7": [
     {
       "id": "ERR-020",

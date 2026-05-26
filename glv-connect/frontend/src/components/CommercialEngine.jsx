@@ -6,6 +6,8 @@ import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js
 import { getPortsForCountry } from "../config/destinationPorts.js";
 import { getDefaultContainer, getDefaultCargoType } from "../engines/categoryEngine.js";
 import { CONTAINER_TYPES as CONTAINER_TYPES_ENGINE, getContainerLabel } from "../engines/containerEngine.js";
+// V8: Oils Export Engine panel — only renders when category === "OILS"
+import OilsExportPanel from "./OilsExportPanel.jsx";
 import { getCategoryProfile } from "../engines/categoryProfiles.js";
 import {
   BULK_INDUSTRIAL_OPTIONS, RETAIL_CONSUMER_OPTIONS, RETAIL_BOX_ENGINE_TYPES,
@@ -13,6 +15,8 @@ import {
   // V6 Multi-SKU engine
   EXPORT_FORMAT_OPTIONS, INDUSTRIAL_SALE_UNITS, SKU_SALE_UNITS, SKU_PACKAGING_TYPES,
   isRetailExportFormat, isPouchExportFormat, getExportFormatLabel, getUnitContext,
+  // V7.1 Single source of truth
+  resolveNormalizedPresentationSize,
 } from "../engines/packagingEngine.js";
 import {
   POUCH_TYPES, FILM_STRUCTURES, POUCH_SIZES, SEAL_TYPES, PRINT_TYPES, FINISH_TYPES,
@@ -520,8 +524,11 @@ function MultiSkuEngine({ skus, setSkus, currency, exportFormat }) {
 // Shown inline inside ExportFormatEngine when a POUCH group format is selected.
 // Completely isolated — never shown for LIVE_ANIMALS or industrial formats.
 
-function PouchConfigPanel({ pouchConfig, setPouchConfig }) {
-  const set = (k, v) => setPouchConfig(p => ({ ...p, [k]: v }));
+function PouchConfigPanel({ pouchConfig, setPouchConfig, onPresentationSizeChange }) {
+  const set = (k, v) => {
+    setPouchConfig(p => ({ ...p, [k]: v }));
+    if (k === "presentationSize" && onPresentationSizeChange) onPresentationSizeChange(v);
+  };
   const toggleArr = (k, v) => {
     const arr = pouchConfig[k] || [];
     set(k, arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
@@ -713,7 +720,7 @@ function PouchConfigPanel({ pouchConfig, setPouchConfig }) {
 }
 
 function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, setSkus, currency,
-  commercialUnit, setCommercialUnit, pouchConfig, setPouchConfig }) {
+  commercialUnit, setCommercialUnit, pouchConfig, setPouchConfig, onPouchSizeChange }) {
   const profile = getCategoryProfile(category);
   if (!profile?.supportsPackaging && !profile?.supportsLiquidPackaging) return null;
   if (category === "LIVE_ANIMALS") return null;
@@ -836,7 +843,8 @@ function ExportFormatEngine({ category, exportFormat, setExportFormat, skus, set
 
       {/* V7: POUCH — show PouchConfigPanel + Multi-SKU engine */}
       {exportFormat && isPouch && (
-        <PouchConfigPanel pouchConfig={pouchConfig} setPouchConfig={setPouchConfig} />
+        <PouchConfigPanel pouchConfig={pouchConfig} setPouchConfig={setPouchConfig}
+          onPresentationSizeChange={onPouchSizeChange} />
       )}
 
       {/* RETAIL (non-pouch) or POUCH: show Multi-SKU engine */}
@@ -1180,6 +1188,8 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   const [skus, setSkus]                           = useState(initial?.skus || []);
   // V7: pouch packaging configuration
   const [pouchConfig, setPouchConfig]             = useState(initial?.pouchConfig || {});
+  // V8: oils export engine configuration — isolated state, never shared with other categories
+  const [oilsConfig, setOilsConfig]               = useState(initial?.oilsConfig  || {});
 
   const catDef      = cat ? PRODUCT_CATEGORIES[cat] : null;
   const isRetailMode = isRetailExportFormat(exportFormat);
@@ -1216,18 +1226,24 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   ) : null;
 
   useEffect(() => {
+    const normalizedPresentationSize = isPouchExportFormat(exportFormat)
+      ? resolveNormalizedPresentationSize(pouchConfig, skus)
+      : (presentationSize || null);
+
     onChange(rowId, {
       category: cat, product, specs, quantity: qty, unitType, incoterms, incotermPrices,
       unitPrice: primaryPrice, currency, deliveryFrequency: frequency, numShipments,
       contractDuration: duration, containerCapacity: containerCap, containerType, origin, cargoType,
       packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
       exportFormat, skus, pouchConfig,
+      normalizedPresentationSize,
+      oilsConfig,
       summary,
     });
   }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency,
       frequency, numShipments, duration, containerCap, containerType, origin,
       packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
-      exportFormat, skus, pouchConfig]);
+      exportFormat, skus, pouchConfig, oilsConfig]);
 
   return (
     <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
@@ -1293,6 +1309,13 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
               ? new Set(["packaging"]) : null} />}
           {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
 
+          {/* V8: Oils Export Panel — isolated, only renders for OILS category */}
+          <OilsExportPanel
+            category={cat}
+            initial={oilsConfig}
+            onChange={({ oilsConfig: cfg }) => setOilsConfig(cfg)}
+          />
+
           {/* V6/V7: Export Format Engine — replaces V5 LiquidPackagingEngine for supported categories */}
           {cat && cat !== "LIVE_ANIMALS" && (
             <ExportFormatEngine
@@ -1302,6 +1325,9 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
               currency={currency}
               commercialUnit={commercialUnit} setCommercialUnit={setCommercialUnit}
               pouchConfig={pouchConfig} setPouchConfig={setPouchConfig}
+              onPouchSizeChange={(sizeId) => {
+                setSkus(prev => prev.map(s => ({ ...s, presentationSize: sizeId })));
+              }}
             />
           )}
           {/* V5: fallback for docs without exportFormat set (backward compat) */}

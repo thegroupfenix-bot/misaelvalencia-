@@ -631,6 +631,246 @@ jobs:
           if [ "$FAILED" -eq 1 ]; then exit 1; fi
           echo "## ✅ V7 GlvPDF.jsx renders pouch packaging spec block" >> $GITHUB_STEP_SUMMARY
 
+      - name: V7.1 — Verify resolveNormalizedPresentationSize single source of truth
+        run: |
+          FAILED=0
+          # packagingEngine.js must export the resolver
+          if ! grep -q "resolveNormalizedPresentationSize" glv-connect/frontend/src/engines/packagingEngine.js; then
+            echo "::error::V7.1: resolveNormalizedPresentationSize missing from packagingEngine.js"
+            FAILED=1
+          else
+            echo "✅ packagingEngine.js — resolveNormalizedPresentationSize present"
+          fi
+          # validationSupervisor.js must have VAL-025
+          if ! grep -q "VAL-025" glv-connect/frontend/src/engines/validationSupervisor.js; then
+            echo "::error::V7.1: VAL-025 (PRESENTATION_SIZE_MISMATCH) missing from validationSupervisor.js"
+            FAILED=1
+          else
+            echo "✅ validationSupervisor.js — VAL-025 present"
+          fi
+          # validationSupervisor.js must import resolveNormalizedPresentationSize
+          if ! grep -q "resolveNormalizedPresentationSize" glv-connect/frontend/src/engines/validationSupervisor.js; then
+            echo "::error::V7.1: validationSupervisor.js does not import resolveNormalizedPresentationSize"
+            FAILED=1
+          else
+            echo "✅ validationSupervisor.js — imports resolveNormalizedPresentationSize"
+          fi
+          # GlvPDF.jsx must read normalizedPresentationSize, not pouchConfig.presentationSize for spec block
+          if ! grep -q "normalizedPresentationSize" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V7.1: GlvPDF.jsx does not use normalizedPresentationSize — size mismatch bug not fixed"
+            FAILED=1
+          else
+            echo "✅ GlvPDF.jsx — normalizedPresentationSize present"
+          fi
+          # CommercialEngine.jsx must expose normalizedPresentationSize in onChange payload
+          if ! grep -q "normalizedPresentationSize" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V7.1: CommercialEngine.jsx does not compute/expose normalizedPresentationSize"
+            FAILED=1
+          else
+            echo "✅ CommercialEngine.jsx — normalizedPresentationSize present"
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V7.1 Single source of truth for presentation size — all guards pass" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify all 10 oils engine files exist with required symbols
+        run: |
+          FAILED=0
+          declare -A REQUIRED_ENGINES=(
+            ["glv-connect/frontend/src/engines/oils/oilsPricingEngine.js"]="PRICE_MATRIX getOilPrice OIL_INCOTERMS"
+            ["glv-connect/frontend/src/engines/oils/exportFreightEngine.js"]="DESTINATION_MATRIX calcContainerFreight calcInsurance"
+            ["glv-connect/frontend/src/engines/oils/logisticsCapacityEngine.js"]="CONTAINER_CAPACITY calcContainerLogistics validateContainerLoad"
+            ["glv-connect/frontend/src/engines/oils/profitSimulationEngine.js"]="runProfitSimulation PROFIT_TARGET_MIN_USD"
+            ["glv-connect/frontend/src/engines/oils/packagingCostEngine.js"]="PACKAGING_COST getPackagingCostPerUnit OIL_PACKAGING_TYPES"
+            ["glv-connect/frontend/src/engines/oils/exportMarketEngine.js"]="MARKET_SEGMENTS getMarketMOQ getPreferredPackaging"
+            ["glv-connect/frontend/src/engines/oils/oilsPouchEngine.js"]="OIL_POUCH_TYPES OIL_FILM_MATERIALS OIL_SEAL_TYPES"
+            ["glv-connect/frontend/src/engines/oils/petPackagingEngine.js"]="PET_OIL_SIZES PET_CARTON_CONFIG"
+            ["glv-connect/frontend/src/engines/oils/jerrycanEngine.js"]="INDUSTRIAL_FORMATS calcIndustrialShipment validateJerrycanMOQ"
+            ["glv-connect/frontend/src/engines/oils/retailSkuEngine.js"]="createOilSku calcOilMultiSkuSummary validateOilSku"
+          )
+          for FILE in "${!REQUIRED_ENGINES[@]}"; do
+            if [ ! -f "$FILE" ]; then
+              echo "::error::V8: Missing engine file: $FILE"
+              FAILED=1
+            else
+              for sym in ${REQUIRED_ENGINES[$FILE]}; do
+                if ! grep -q "$sym" "$FILE"; then
+                  echo "::error::V8: $FILE missing symbol: $sym"
+                  FAILED=1
+                else
+                  echo "✅ $FILE — $sym"
+                fi
+              done
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8 All 10 oils engine files present with required symbols" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify OilsExportPanel is isolated from LIVE_ANIMALS
+        run: |
+          FAILED=0
+          PANEL="glv-connect/frontend/src/components/OilsExportPanel.jsx"
+          if [ ! -f "$PANEL" ]; then
+            echo "::error::V8: OilsExportPanel.jsx not found"
+            exit 1
+          fi
+          # Must have OILS guard
+          if ! grep -q 'category !== "OILS"' "$PANEL"; then
+            echo "::error::V8: OilsExportPanel.jsx missing OILS category guard — may render for other categories"
+            FAILED=1
+          else
+            echo "✅ OilsExportPanel.jsx — OILS guard present"
+          fi
+          # Must NOT reference LIVE_ANIMALS
+          if grep -q "LIVE_ANIMALS" "$PANEL"; then
+            echo "::error::V8: OilsExportPanel.jsx references LIVE_ANIMALS — isolation broken"
+            FAILED=1
+          else
+            echo "✅ OilsExportPanel.jsx — no LIVE_ANIMALS contamination"
+          fi
+          # CommercialEngine must import OilsExportPanel
+          if ! grep -q "OilsExportPanel" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V8: CommercialEngine.jsx does not import OilsExportPanel"
+            FAILED=1
+          else
+            echo "✅ CommercialEngine.jsx — OilsExportPanel imported"
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8 OilsExportPanel isolation and CommercialEngine integration confirmed" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify VAL-030 through VAL-040 in validationSupervisor
+        run: |
+          FAILED=0
+          for code in VAL-030 VAL-031 VAL-032 VAL-033 VAL-034 VAL-035 VAL-036 VAL-037 VAL-038 VAL-039 VAL-040; do
+            if ! grep -q "$code" glv-connect/frontend/src/engines/validationSupervisor.js; then
+              echo "::error::V8: $code missing from validationSupervisor.js"
+              FAILED=1
+            else
+              echo "✅ validationSupervisor.js — $code present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8 VAL-030 through VAL-040 present in validationSupervisor" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify LIVE_ANIMALS unbroken after V8 oils changes
+        run: |
+          FAILED=0
+          # LIVE_ANIMALS null-guard must still exist in ExportFormatEngine
+          if ! grep -q 'LIVE_ANIMALS.*return null\|return null.*LIVE_ANIMALS' glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V8: LIVE_ANIMALS null-guard missing from ExportFormatEngine"
+            FAILED=1
+          else
+            echo "✅ CommercialEngine.jsx — LIVE_ANIMALS isolation guard intact"
+          fi
+          # oilsConfig should never appear inside LIVE_ANIMALS branch
+          if ! grep -q "isLiveAnimalRow\|isLiveAnimal" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V8: isLiveAnimalRow missing from GlvPDF.jsx"
+            FAILED=1
+          else
+            echo "✅ GlvPDF.jsx — isLiveAnimalRow guard intact"
+          fi
+          # V8 oils section must be gated by isOilsRow
+          if ! grep -q "isOilsRow" glv-connect/frontend/src/components/GlvPDF.jsx; then
+            echo "::error::V8: GlvPDF.jsx oils section not gated by isOilsRow — may render for all categories"
+            FAILED=1
+          else
+            echo "✅ GlvPDF.jsx — isOilsRow gate present"
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8: LIVE_ANIMALS isolation confirmed intact after oils engine addition" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify price matrix coverage for all 3 oil types
+        run: |
+          FAILED=0
+          PFILE="glv-connect/frontend/src/engines/oils/oilsPricingEngine.js"
+          for product in PALM_OIL_RBD SOYBEAN_OIL_RBD SUNFLOWER_OIL_RBD; do
+            if ! grep -q "$product" "$PFILE"; then
+              echo "::error::V8: oilsPricingEngine.js missing price matrix for $product"
+              FAILED=1
+            else
+              echo "✅ oilsPricingEngine.js — $product present"
+            fi
+          done
+          for incoterm in FOB CFR CIF; do
+            if ! grep -q "$incoterm" "$PFILE"; then
+              echo "::error::V8: oilsPricingEngine.js missing $incoterm entries"
+              FAILED=1
+            else
+              echo "✅ oilsPricingEngine.js — $incoterm present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8 Price matrix has PALM/SOYBEAN/SUNFLOWER × FOB/CFR/CIF" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify profit simulation targets and destination matrix
+        run: |
+          FAILED=0
+          if ! grep -q "4500" glv-connect/frontend/src/engines/oils/profitSimulationEngine.js; then
+            echo "::error::V8: profitSimulationEngine.js missing PROFIT_TARGET_MIN_USD=4500"
+            FAILED=1
+          fi
+          if ! grep -q "6000" glv-connect/frontend/src/engines/oils/profitSimulationEngine.js; then
+            echo "::error::V8: profitSimulationEngine.js missing PROFIT_TARGET_MAX_USD=6000"
+            FAILED=1
+          fi
+          for dest in Venezuela DominicanRepublic Jamaica TrinidadTobago Guyana Barbados Curacao Aruba Haiti; do
+            if ! grep -q "$dest" glv-connect/frontend/src/engines/oils/exportFreightEngine.js; then
+              echo "::error::V8: exportFreightEngine.js missing destination: $dest"
+              FAILED=1
+            else
+              echo "✅ exportFreightEngine.js — $dest present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8 Profit targets and all 9 CFR/CIF destinations verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify GlvPDF oils section is category-gated
+        run: |
+          FAILED=0
+          for sym in isOilsRow oilsConfig "Export Oils"; do
+            if ! grep -q "$sym" glv-connect/frontend/src/components/GlvPDF.jsx; then
+              echo "::error::V8: GlvPDF.jsx missing V8 oils symbol: $sym"
+              FAILED=1
+            else
+              echo "✅ GlvPDF.jsx — $sym present"
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "## ✅ V8 GlvPDF.jsx oils section is category-gated and symbol-complete" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Verify no hardcoded prices in UI components
+        run: |
+          # Price data must live only in engine files, never in UI or component files
+          PANEL="glv-connect/frontend/src/components/OilsExportPanel.jsx"
+          # Panel should not contain raw price values — it reads from engine functions
+          if grep -qE '(FOB|CFR|CIF).*[0-9]+\.[0-9]{2}' "$PANEL"; then
+            echo "::error::V8: OilsExportPanel.jsx contains hardcoded price values — prices must live in oilsPricingEngine.js only"
+            exit 1
+          fi
+          echo "✅ OilsExportPanel.jsx — no hardcoded prices detected"
+          echo "## ✅ V8 No hardcoded prices in UI layer" >> $GITHUB_STEP_SUMMARY
+
+      - name: V8 — Regression guard: existing SCO categories unmodified
+        run: |
+          FAILED=0
+          # LIVE_ANIMALS must still have its isolated breed selector
+          if ! grep -q "LivestockBreedSelector\|LIVE_ANIMALS" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V8: LivestockBreedSelector or LIVE_ANIMALS logic removed from CommercialEngine.jsx"
+            FAILED=1
+          fi
+          # Frozen cargo / FRUIT_PRODUCTS / COLOMBIAN_EXOTIC_FRUITS must still appear in DynamicFields hidden keys
+          if ! grep -q "FRUIT_PRODUCTS\|COLOMBIAN_EXOTIC_FRUITS" glv-connect/frontend/src/components/CommercialEngine.jsx; then
+            echo "::error::V8: FRUIT_PRODUCTS / COLOMBIAN_EXOTIC_FRUITS logic removed from CommercialEngine.jsx"
+            FAILED=1
+          fi
+          # calcCommercialSummary must still be imported (not replaced)
+          if ! grep -q "calcCommercialSummary" glv-connect/frontend/src/utils/calculations.js; then
+            echo "::error::V8: calcCommercialSummary removed from calculations.js"
+            FAILED=1
+          fi
+          if [ "$FAILED" -eq 1 ]; then exit 1; fi
+          echo "✅ All existing SCO categories and formulas intact after V8"
+          echo "## ✅ V8 Regression guard — LIVE_ANIMALS, FRUIT_PRODUCTS, frozen cargo, formulas unmodified" >> $GITHUB_STEP_SUMMARY
+
   # ── 3. Frontend build verification ────────────────────────────────────────
   frontend-build:
     name: Frontend Build

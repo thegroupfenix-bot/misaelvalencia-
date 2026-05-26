@@ -320,6 +320,30 @@ export function isPouchExportFormat(formatId) {
   return EXPORT_FORMAT_OPTIONS.find(f => f.id === formatId)?.isPouch || false;
 }
 
+/**
+ * V7.1 — Single source of truth for presentation size across pouch config + multi-SKU.
+ *
+ * Rules:
+ *   - No SKUs (or all sizes empty): return pouchConfig.presentationSize
+ *   - All SKUs agree on one size: return that size
+ *   - Mixed SKU sizes OR pouchConfig vs SKU divergence: return null → VAL-025 fires
+ *
+ * @param {object} pouchConfig  — { presentationSize, ... }
+ * @param {object[]} skus       — array of SKU rows, each may have .presentationSize
+ * @returns {string|null}
+ */
+export function resolveNormalizedPresentationSize(pouchConfig, skus) {
+  const pouchSize = pouchConfig?.presentationSize || null;
+  const skuSizes  = (skus || []).map(s => s.presentationSize).filter(Boolean);
+  const uniqueSkuSizes = [...new Set(skuSizes)];
+
+  if (uniqueSkuSizes.length === 0) return pouchSize;
+  if (uniqueSkuSizes.length > 1)   return null; // cross-SKU mismatch
+  const skuSize = uniqueSkuSizes[0];
+  if (pouchSize && pouchSize !== skuSize) return null; // pouch vs SKU mismatch
+  return skuSize;
+}
+
 export function getExportFormatLabel(formatId) {
   return EXPORT_FORMAT_OPTIONS.find(f => f.id === formatId)?.label || formatId || "";
 }

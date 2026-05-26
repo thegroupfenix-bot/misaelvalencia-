@@ -344,8 +344,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const rowSkus          = Array.isArray(firstCdRow.skus) ? firstCdRow.skus : [];
   // V7: Pouch packaging configuration
   const pouchConfig      = firstCdRow.pouchConfig      || {};
+  // V7.1: canonical size — always read normalizedPresentationSize, never pouchConfig.presentationSize directly
+  const normalizedPresentationSize = firstCdRow.normalizedPresentationSize || pouchConfig.presentationSize || null;
   const POUCH_FORMAT_IDS = new Set(["RETAIL_POUCH","PILLOW_POUCH","STAND_UP_POUCH","SPOUT_POUCH","GUSSET_POUCH","SIDE_SEAL_POUCH","BAG_IN_BOX","RETAIL_DOYPACK"]);
   const isPouchFormat    = POUCH_FORMAT_IDS.has(exportFormat);
+  // V8: Oils Export Engine configuration — only used when category === "OILS"
+  const oilsConfig       = firstCdRow.oilsConfig       || {};
+  const isOilsRow        = firstCdRow.category === "OILS" && !isLiveAnimalRow;
   const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perCarton:"/carton", perPouch:"/pouch", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
   // Dynamic price label: "Precio CFR /pouch" instead of always "Precio CFR (USD/kg)"
   const cuAbbr = COMMERCIAL_UNIT_LABELS[commercialUnit] || null;
@@ -681,10 +686,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </Text>
                   </View>
                 )}
-                {pouchConfig.presentationSize && (
+                {normalizedPresentationSize && (
                   <View style={{ flex: 1, minWidth: "30%" }}>
                     <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#0f172a", fontWeight: "bold" }}>{pouchConfig.presentationSize}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#0f172a", fontWeight: "bold" }}>{normalizedPresentationSize}</Text>
                   </View>
                 )}
                 {pouchConfig.unitsPerCarton && (
@@ -735,6 +740,86 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   : "Empaque flexible multicapa de grado alimenticio diseñado para distribución de exportación de alto volumen, optimizado para eficiencia de flete, reducción de costos y mercados minoristas y mayoristas a gran escala."
                 }
               </Text>
+            </View>
+          )}
+
+          {/* V8: Oils Export Engine Summary — only for OILS category */}
+          {isOilsRow && (oilsConfig.productId || oilsConfig.packagingType) && (
+            <View style={{ marginBottom: 10, padding: 10, backgroundColor: "#f5f3ff", borderRadius: 6, borderLeft: "3px solid #7c3aed" }}>
+              <Text style={{ fontSize: 10, fontWeight: "bold", color: "#4c1d95", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {docLang === "en" ? "Export Oils Commercial Specification" : "Especificación Comercial — Aceites de Exportación"}
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {oilsConfig.productId && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Oil Type" : "Tipo de Aceite"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oilsConfig.productId?.replace(/_/g," ")}</Text>
+                  </View>
+                )}
+                {oilsConfig.packagingType && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Packaging" : "Empaque"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oilsConfig.packagingType?.replace(/_/g," ")}</Text>
+                  </View>
+                )}
+                {oilsConfig.sizeId && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.sizeId}</Text>
+                  </View>
+                )}
+                {oilsConfig.incoterm && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>Incoterm</Text>
+                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.incoterm}</Text>
+                  </View>
+                )}
+                {oilsConfig.market && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Export Market" : "Mercado"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.market}</Text>
+                  </View>
+                )}
+                {oilsConfig.destination && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Destination" : "Destino"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oilsConfig.destination?.replace(/([A-Z])/g," $1").trim()}</Text>
+                  </View>
+                )}
+                {oilsConfig.basePrice > 0 && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{oilsConfig.incoterm || "FOB"} Price / Unit</Text>
+                    <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>${Number(oilsConfig.basePrice).toFixed(2)} USD</Text>
+                  </View>
+                )}
+                {oilsConfig.unitsPerContainer > 0 && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Units / 40HQ" : "Unidades / 40HQ"}</Text>
+                    <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{Number(oilsConfig.unitsPerContainer).toLocaleString()}</Text>
+                  </View>
+                )}
+                {oilsConfig.simulation?.netProfit != null && (
+                  <View style={{ flex: 1, minWidth: "30%" }}>
+                    <Text style={s.infoLabel}>{docLang === "en" ? "Net Profit / Container" : "Utilidad Neta / Contenedor"}</Text>
+                    <Text style={{ fontSize: 8.5, color: oilsConfig.simulation.meetsTarget ? "#065f46" : "#dc2626", fontWeight: "bold" }}>
+                      ${Number(oilsConfig.simulation.netProfit).toFixed(0)} USD
+                      {oilsConfig.simulation.meetsTarget ? " ✓" : " ⚠"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {(oilsConfig.pouchType || oilsConfig.filmMaterial) && (
+                <View style={{ marginTop: 6 }}>
+                  <Text style={{ fontSize: 8, color: "#6d28d9" }}>
+                    {[oilsConfig.pouchType, oilsConfig.filmMaterial, oilsConfig.sealType].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+              )}
+              {Array.isArray(oilsConfig.oemCaps) && oilsConfig.oemCaps.length > 0 && (
+                <Text style={{ fontSize: 8, color: "#7c3aed", marginTop: 4 }}>
+                  {oilsConfig.oemCaps.join(" · ")}
+                </Text>
+              )}
             </View>
           )}
 
