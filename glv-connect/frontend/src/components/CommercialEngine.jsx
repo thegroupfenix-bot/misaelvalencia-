@@ -6,6 +6,8 @@ import { BREEDS, SPECIES_LABELS, getBreedsForSpecies } from "../config/breeds.js
 import { getPortsForCountry } from "../config/destinationPorts.js";
 import { getDefaultContainer, getDefaultCargoType } from "../engines/categoryEngine.js";
 import { CONTAINER_TYPES as CONTAINER_TYPES_ENGINE, getContainerLabel } from "../engines/containerEngine.js";
+// V8: Oils Export Engine panel — only renders when category === "OILS"
+import OilsExportPanel from "./OilsExportPanel.jsx";
 import { getCategoryProfile } from "../engines/categoryProfiles.js";
 import {
   BULK_INDUSTRIAL_OPTIONS, RETAIL_CONSUMER_OPTIONS, RETAIL_BOX_ENGINE_TYPES,
@@ -1186,6 +1188,8 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
   const [skus, setSkus]                           = useState(initial?.skus || []);
   // V7: pouch packaging configuration
   const [pouchConfig, setPouchConfig]             = useState(initial?.pouchConfig || {});
+  // V8: oils export engine configuration — isolated state, never shared with other categories
+  const [oilsConfig, setOilsConfig]               = useState(initial?.oilsConfig  || {});
 
   const catDef      = cat ? PRODUCT_CATEGORIES[cat] : null;
   const isRetailMode = isRetailExportFormat(exportFormat);
@@ -1233,12 +1237,13 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
       packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
       exportFormat, skus, pouchConfig,
       normalizedPresentationSize,
+      oilsConfig,
       summary,
     });
   }, [cat, product, specs, qty, unitType, incoterms, incotermPrices, primaryPrice, currency,
       frequency, numShipments, duration, containerCap, containerType, origin,
       packagingMode, packagingType, presentationSize, commercialUnit, unitsPerBox, netWeightPerUnit,
-      exportFormat, skus, pouchConfig]);
+      exportFormat, skus, pouchConfig, oilsConfig]);
 
   return (
     <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
@@ -1303,6 +1308,13 @@ function ProductRowPanel({ rowId, initial, onChange, onRemove, index, isOnly }) 
             hiddenKeys={exportFormat && ["OILS","FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS"].includes(cat)
               ? new Set(["packaging"]) : null} />}
           {cat === "LIVE_ANIMALS" && <DynamicFields category={cat} specs={specs} setSpecs={setSpecs} />}
+
+          {/* V8: Oils Export Panel — isolated, only renders for OILS category */}
+          <OilsExportPanel
+            category={cat}
+            initial={oilsConfig}
+            onChange={({ oilsConfig: cfg }) => setOilsConfig(cfg)}
+          />
 
           {/* V6/V7: Export Format Engine — replaces V5 LiquidPackagingEngine for supported categories */}
           {cat && cat !== "LIVE_ANIMALS" && (

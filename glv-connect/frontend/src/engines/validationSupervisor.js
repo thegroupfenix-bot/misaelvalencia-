@@ -34,6 +34,11 @@ import { getCategoryProfile } from "./categoryProfiles.js";
 import { isLivestockContainer, isLiquidContainer } from "./containerEngine.js";
 import { POUCH_SIZES, PALLET_CONFIG, POUCH_EXPORT_FORMAT_IDS } from "./PouchPackagingEngine.js";
 import { resolveNormalizedPresentationSize } from "./packagingEngine.js";
+import { getOilPrice, OIL_INCOTERMS } from "./oils/oilsPricingEngine.js";
+import { DESTINATION_MATRIX } from "./oils/exportFreightEngine.js";
+import { PROFIT_TARGET_MIN_USD, runProfitSimulation } from "./oils/profitSimulationEngine.js";
+import { validateContainerLoad } from "./oils/logisticsCapacityEngine.js";
+import { validateJerrycanMOQ } from "./oils/jerrycanEngine.js";
 
 /**
  * Run all 10 validation checks against a document + its CD rows.
@@ -76,6 +81,8 @@ export function validateDocument(doc, cdRows = []) {
     checkPouchPriceBasisConsistency(firstRow),
     // V7.1: Single source of truth — blocks PDF if pouchConfig and SKUs disagree on size
     checkPresentationSizeMismatch(firstRow),
+    // V8: Oils Export Engine guards — only activate when category === "OILS"
+    ...checkOilsValidation(firstRow),
   ];
 
   const errors   = checks.filter(c => !c.pass && c.severity === "error");
@@ -533,4 +540,168 @@ function checkPresentationSizeMismatch(row) {
     message: `PRESENTATION SIZE MISMATCH — Pouch config: ${pouchSize} vs SKU sizes: [${skuSizes.join(", ")}]. PDF generation blocked until sizes are unified.`,
     severity: "error",
   };
+}
+
+// ─── V8: Oils Export Engine Validation ───────────────────────────────────────
+// VAL-030 through VAL-040
+// All checks are no-ops when category !== "OILS" — zero impact on other flows.
+
+function makeOilPass(id, name) {
+  return { id, name, pass: true, message: "No oils engine active", severity: "warning" };
+}
+
+function checkOilsValidation(row) {
+  if (row.category !== "OILS") {
+    return [
+      makeOilPass("VAL-030","Oils Packaging Compatibility"),
+      makeOilPass("VAL-031","Oils Container Sanity"),
+      makeOilPass("VAL-032","Oils SKU Consistency"),
+      makeOilPass("VAL-033","Oils Freight Sanity"),
+      makeOilPass("VAL-034","Oils Incoterm Logic"),
+      makeOilPass("VAL-035","Oils Destination Compatibility"),
+      makeOilPass("VAL-036","Oils MOQ Logic"),
+      makeOilPass("VAL-037","Oils Profit Threshold"),
+      makeOilPass("VAL-038","Oils Pallet Overload"),
+      makeOilPass("VAL-039","Oils Invalid Pouch Structure"),
+      makeOilPass("VAL-040","Oils Price Matrix Coverage"),
+    ];
+  }
+
+  const cfg = row.oilsConfig || {};
+  const { productId, packagingType, sizeId, incoterm, destination, moq, skus = [],
+          unitsPerContainer, simulation, pouchType, filmMaterial } = cfg;
+
+  // VAL-030: Packaging compatibility
+  const val030 = (() => {
+    if (!packagingType) return { id:"VAL-030", name:"Oils Packaging Compatibility", pass: false, message: "Oils document missing packaging type", severity:"error" };
+    return { id:"VAL-030", name:"Oils Packaging Compatibility", pass: true, message:`Packaging type declared: ${packagingType}`, severity:"warning" };
+  })();
+
+  // VAL-031: Container sanity
+  const val031 = (() => {
+    if (!sizeId || !packagingType || !unitsPerContainer) return { id:"VAL-031", name:"Oils Container Sanity", pass: true, message:"Container not yet configured", severity:"warning" };
+    const load = validateContainerLoad(packagingType, sizeId, unitsPerContainer);
+    return {
+      id:"VAL-031", name:"Oils Container Sanity",
+      pass: load.valid,
+      message: load.valid ? `Container load within capacity for ${packagingType} ${sizeId}` : `Container overloaded by ${load.overloadPct}% for ${packagingType} ${sizeId}`,
+      severity: "error",
+    };
+  })();
+
+  // VAL-032: SKU consistency (if multi-SKU active)
+  const val032 = (() => {
+    if (!Array.isArray(skus) || skus.length === 0) return { id:"VAL-032", name:"Oils SKU Consistency", pass: true, message:"No multi-SKU active", severity:"warning" };
+    const invalid = skus.filter(s => !s.productId || !s.sizeId || !(s.pricePerUnit > 0));
+    return {
+      id:"VAL-032", name:"Oils SKU Consistency",
+      pass: invalid.length === 0,
+      message: invalid.length === 0 ? `All ${skus.length} SKUs valid` : `${invalid.length} SKU(s) missing required fields (product, size, or price)`,
+      severity: "error",
+    };
+  })();
+
+  // VAL-033: Freight sanity
+  const val033 = (() => {
+    if (incoterm === "FOB") return { id:"VAL-033", name:"Oils Freight Sanity", pass: true, message:"FOB — freight is buyer's responsibility", severity:"warning" };
+    if (!destination) return {
+      id:"VAL-033", name:"Oils Freight Sanity",
+      pass: false,
+      message:`Incoterm is ${incoterm} but no destination selected — freight cannot be calculated`,
+      severity: "error",
+    };
+    return { id:"VAL-033", name:"Oils Freight Sanity", pass: true, message:`Freight destination: ${destination}`, severity:"warning" };
+  })();
+
+  // VAL-034: Incoterm logic
+  const val034 = (() => {
+    const valid = OIL_INCOTERMS.includes(incoterm);
+    return {
+      id:"VAL-034", name:"Oils Incoterm Logic",
+      pass: !incoterm || valid,
+      message: valid ? `Incoterm ${incoterm} is valid for oils export` : `Incoterm "${incoterm}" is not supported — use FOB, CFR, or CIF`,
+      severity: "error",
+    };
+  })();
+
+  // VAL-035: Destination compatibility
+  const val035 = (() => {
+    if (!destination) return { id:"VAL-035", name:"Oils Destination Compatibility", pass: true, message:"No destination set", severity:"warning" };
+    const known = !!DESTINATION_MATRIX[destination];
+    return {
+      id:"VAL-035", name:"Oils Destination Compatibility",
+      pass: known,
+      message: known ? `Destination "${destination}" in freight matrix` : `Destination "${destination}" not in freight matrix — freight/insurance cannot be calculated`,
+      severity: "error",
+    };
+  })();
+
+  // VAL-036: MOQ logic
+  const val036 = (() => {
+    const moqNum = parseFloat(moq);
+    if (!moqNum) return { id:"VAL-036", name:"Oils MOQ Logic", pass: true, message:"No MOQ specified", severity:"warning" };
+    const reasonable = moqNum >= 100 && moqNum <= 500000;
+    return {
+      id:"VAL-036", name:"Oils MOQ Logic",
+      pass: reasonable,
+      message: reasonable ? `MOQ ${moqNum.toLocaleString()} units` : `MOQ ${moqNum} is outside reasonable range (100–500,000 units)`,
+      severity: "warning",
+    };
+  })();
+
+  // VAL-037: Profit threshold
+  const val037 = (() => {
+    if (!simulation) return { id:"VAL-037", name:"Oils Profit Threshold", pass: true, message:"Profit simulation not yet run", severity:"warning" };
+    return {
+      id:"VAL-037", name:"Oils Profit Threshold",
+      pass: simulation.meetsTarget,
+      message: simulation.meetsTarget
+        ? `Net profit $${simulation.netProfit.toFixed(0)}/container meets target ($${PROFIT_TARGET_MIN_USD}–$6000)`
+        : `Net profit $${simulation.netProfit.toFixed(0)}/container below target minimum $${PROFIT_TARGET_MIN_USD}`,
+      severity: "warning",
+    };
+  })();
+
+  // VAL-038: Pallet overload
+  const val038 = (() => {
+    if (!sizeId || !packagingType) return { id:"VAL-038", name:"Oils Pallet Overload", pass: true, message:"No size/packaging configured", severity:"warning" };
+    const load = validateContainerLoad(packagingType, sizeId, unitsPerContainer || 0);
+    return {
+      id:"VAL-038", name:"Oils Pallet Overload",
+      pass: load.valid,
+      message: load.valid ? "Pallet configuration within container limits" : `Pallet overload: ${load.overloadPct}% over max capacity for ${sizeId}`,
+      severity: "warning",
+    };
+  })();
+
+  // VAL-039: Invalid pouch structure
+  const POUCH_PKG_IDS = new Set(["RETAIL_POUCH","DOYPACK","SPOUT_POUCH","PILLOW_POUCH","LAMINATED_POUCH","MULTILAYER_POUCH","FLEXIBLE_OIL_POUCH"]);
+  const val039 = (() => {
+    if (!packagingType || !POUCH_PKG_IDS.has(packagingType)) return { id:"VAL-039", name:"Oils Invalid Pouch Structure", pass: true, message:"Non-pouch format — no structure check needed", severity:"warning" };
+    const missingStructure = !pouchType || !filmMaterial;
+    return {
+      id:"VAL-039", name:"Oils Invalid Pouch Structure",
+      pass: !missingStructure,
+      message: missingStructure
+        ? "Pouch packaging requires pouch type and film material to be specified"
+        : `Pouch structure complete: ${pouchType} / ${filmMaterial}`,
+      severity: "warning",
+    };
+  })();
+
+  // VAL-040: Price matrix coverage
+  const val040 = (() => {
+    if (!productId || !packagingType || !sizeId || !incoterm) return { id:"VAL-040", name:"Oils Price Matrix Coverage", pass: true, message:"Incomplete configuration — price check skipped", severity:"warning" };
+    const price = getOilPrice(productId, packagingType, sizeId, incoterm);
+    return {
+      id:"VAL-040", name:"Oils Price Matrix Coverage",
+      pass: price !== null,
+      message: price !== null
+        ? `Price matrix entry found: ${productId} / ${packagingType} / ${sizeId} ${incoterm} = $${price}`
+        : `No price matrix entry for ${productId} / ${packagingType} / ${sizeId} — document may have incorrect pricing`,
+      severity: "error",
+    };
+  })();
+
+  return [val030, val031, val032, val033, val034, val035, val036, val037, val038, val039, val040];
 }

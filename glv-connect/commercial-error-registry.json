@@ -1,5 +1,5 @@
 {
-  "registry_version": "7.1.0",
+  "registry_version": "8.0.0",
   "last_updated": "2026-05-26",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
