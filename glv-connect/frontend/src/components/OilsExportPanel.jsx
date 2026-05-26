@@ -364,21 +364,22 @@ export default function OilsExportPanel({ category, userRole, onChange, initial 
         </div>
       </Section>
 
-      {/* ── SECTION 4: Logistics ─────────────────────────────────────────────── */}
-      <Section num={4} title="Logistics" open={open[4]} onToggle={() => toggle(4)}>
-        <div style={s.row}>
-          <Sel label="Container Type" value={containerType} onChange={setContainer}
-            options={[{id:"20FT",label:"20FT Dry"},{id:"40FT",label:"40FT Dry"},{id:"40HQ",label:"40HQ High Cube"},{id:"REEFER_40",label:"Reefer 40FT"},{id:"FLEXITANK",label:"Flexitank"},{id:"ISO_TANK",label:"ISO Tank"}]}
-            color={SEC_COLORS[4]} />
+      {/* ── SECTION 4: Logistics — READ-ONLY resolved from packaging selection ── */}
+      <Section num={4} title="Logistics (Auto-Resolved)" open={open[4]} onToggle={() => toggle(4)}>
+        <div style={{ marginBottom: 8, fontSize: 11, color: SEC_COLORS[4], fontWeight: 600, fontStyle: "italic" }}>
+          Container logistics are resolved automatically from your packaging selection in Section 3.
         </div>
-        {capacity && sizeId && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+        {capacity && sizeId ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={s.stat}><div style={s.statVal}>{containerType || "40HQ"}</div><div style={s.statLbl}>Container Type</div></div>
             <div style={s.stat}><div style={s.statVal}>{fmtNum(capacity.unitsMin)}–{fmtNum(capacity.unitsMax)}</div><div style={s.statLbl}>Units / 40HQ</div></div>
             <div style={s.stat}><div style={s.statVal}>{capacity.unitsPerCarton}</div><div style={s.statLbl}>Units / Carton</div></div>
             <div style={s.stat}><div style={s.statVal}>{capacity.cartonsPerPallet}</div><div style={s.statLbl}>Cartons / Pallet</div></div>
             <div style={s.stat}><div style={s.statVal}>{capacity.pallets}</div><div style={s.statLbl}>Pallets / Container</div></div>
             <div style={s.stat}><div style={s.statVal}>{fmtNum(nominalUnits)}</div><div style={s.statLbl}>Nominal Units</div></div>
           </div>
+        ) : (
+          <div style={{ fontSize: 12, color: "#9ca3af" }}>Select a packaging type and size in Section 3 to see logistics capacity.</div>
         )}
       </Section>
 
