@@ -2054,8 +2054,15 @@ function DocPreviewModal({ doc, onClose }) {
       boundMedia = null;
     }
     setDownloadLabel("Generando...");
-    try { await downloadPDF(doc, agentProfile, boundMedia, pdfLang); } catch (e) { console.error(e); }
-    finally { setDownloading(false); setDownloadLabel("PDF"); }
+    try {
+      await downloadPDF(doc, agentProfile, boundMedia, pdfLang);
+    } catch (e) {
+      console.error("[GLV-PDF] Generation failed:", e);
+      setGenError(e?.message || "Error desconocido generando PDF. Abre la consola del navegador y busca [PDF_FATAL] para ver el stack trace.");
+    } finally {
+      setDownloading(false);
+      setDownloadLabel("PDF");
+    }
   };
 
   return (
@@ -2134,6 +2141,14 @@ function DocPreviewModal({ doc, onClose }) {
             <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: 0 }}>
               Agente: {doc.agent} | Copia automática a: contabilidad@glvservicesexp.com • info@glvglobalfoodservices.com
             </p>
+            {/* V9.2: PDF error display — shows actual crash message instead of silent failure */}
+            {genError && (
+              <div style={{ marginBottom: 10, padding: "10px 14px", background: "#fee2e2", borderRadius: 8, border: "1px solid #fca5a5" }}>
+                <p style={{ margin: 0, fontSize: 12, color: "#991b1b", fontWeight: 600 }}>⚠ Error generando PDF</p>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#7f1d1d", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{genError}</p>
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#6b7280" }}>Abre DevTools → Consola y busca <code style={{ background: "#f3f4f6", padding: "1px 4px", borderRadius: 3 }}>[PDF_FATAL]</code> para ver el stack trace completo.</p>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {/* Language selector for PDF */}
               <div style={{ display: "flex", gap: 4, background: "#f3f4f6", borderRadius: 8, padding: 3 }}>
