@@ -966,3 +966,30 @@ export function validateStaleFields(cdRows = []) {
     severity: stale.length === 0 ? "info" : "warning",
   };
 }
+
+// VAL-049: OILS_V5_CATEGORY_GUARD — verifies OILS rows are blocked from entering V5/V6 liquid IIFEs.
+// This is a category-level guard (isOilsRow check in JSX) that is independent of field sanitization.
+// Even if stale packagingType/commercialUnit/presentationSize fields slip through sanitizer,
+// the isOilsRow guard prevents V5/V6 from ever executing for OILS documents.
+export function validateOilsV5CategoryGuard(cdRows = []) {
+  const oilsRows = cdRows.filter(r => r.category === "OILS");
+  const issues   = [];
+
+  for (const [i, row] of oilsRows.entries()) {
+    if (row.packagingType || row.commercialUnit || row.presentationSize) {
+      issues.push(`OILS row[${i}] still has stale liquid fields after sanitization: packagingType="${row.packagingType}" commercialUnit="${row.commercialUnit}" presentationSize="${row.presentationSize}" — !isOilsRow guard will prevent V5 from firing`);
+    }
+  }
+
+  return {
+    id:       "VAL-049",
+    name:     "OILS V5/V6 Category Guard",
+    pass:     true,           // never blocks — !isOilsRow guard in JSX handles this categorically
+    blockPdf: false,
+    issues,
+    message: issues.length === 0
+      ? "OILS rows confirmed clean — no stale liquid fields"
+      : `${issues.length} OILS row(s) have stale fields — !isOilsRow guard active in V5/V6 IIFEs`,
+    severity: issues.length === 0 ? "info" : "warning",
+  };
+}

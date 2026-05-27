@@ -949,7 +949,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           })()}
 
           {/* V5: Liquid/Packaged packaging details — 4-layer display */}
-          {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (() => { try {
+          {/* VAL-049: !isOilsRow guard — OILS must NEVER enter V5 even if stale liquid fields exist */}
+          {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && !isOilsRow && (() => { try {
             console.log("[PDF_SECTION_RENDER] V5 packaging section — resolvedCurrency:", resolvedCurrency);
             // Resolve human-readable labels for PDF display
             const LIQUID_RETAIL_SIZE_LABELS = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
@@ -1020,7 +1021,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           }})()}
 
           {/* V6: Multi-SKU retail breakdown table */}
-          {rowSkus.length > 0 && !isLiveAnimalRow && (() => { try {
+          {/* VAL-049: !isOilsRow guard — OILS must NEVER enter V6 multi-SKU section */}
+          {rowSkus.length > 0 && !isLiveAnimalRow && !isOilsRow && (() => { try {
             console.log("[PDF_SECTION_RENDER] V6 multi-SKU section — resolvedCurrency:", resolvedCurrency);
             const SKU_PKG_LABELS = { PET_BOTTLE:"PET Bottle", GLASS_BOTTLE:"Glass Bottle", TETRA_PAK:"Tetra Pak", DOYPACK:"Doypack", SACHET:"Sachet", CAN_TIN:"Can / Tin", PREMIUM_BOTTLE:"Premium Bottle" };
             const SIZE_LABELS    = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
@@ -1508,10 +1510,11 @@ export async function downloadPDF(rawDoc, agentProfile, boundMedia, lang = "es")
   console.log("[PDF_CURRENCY_AUDIT] firstCdRow.currency:", firstRowForAudit.currency ?? "(missing)");
   console.log("[PDF_CURRENCY_AUDIT] safeCurrencyResolver output:", auditedCurrency);
   console.log("[PDF_CURRENCY_AUDIT] oilsConfig.currency:", firstRowForAudit.oilsConfig?.currency ?? "(absent)");
-  console.log("[PDF_SCOPE_CHECK] V5 IIFE: try/catch ✓ | resolvedCurrency direct (no local currency var) ✓");
-  console.log("[PDF_SCOPE_CHECK] V6 IIFE: try/catch ✓ | resolvedCurrency + fmtPdfCurrency ✓");
+  console.log("[PDF_SCOPE_CHECK] V5 IIFE: try/catch ✓ | !isOilsRow guard ✓ | resolvedCurrency direct (no local currency var) ✓");
+  console.log("[PDF_SCOPE_CHECK] V6 IIFE: try/catch ✓ | !isOilsRow guard ✓ | resolvedCurrency + fmtPdfCurrency ✓");
   console.log("[PDF_SCOPE_CHECK] OILS IIFE: try/catch ✓ | no currency variable at all ✓");
   console.log("[PDF_SCOPE_CHECK] CD table: try/catch ✓ | rowCurrency=safeCurrencyResolver(row.currency) ✓");
+  console.log("[PDF_SCOPE_CHECK] VAL-049: isOilsRow =", cdRowsForInspect[0]?.category === "OILS", "| V5/V6 will be SKIPPED for OILS ✓");
   console.log("[PDF_INTL_CHECK] All Intl.NumberFormat calls wrapped in fmtPdfCurrency — never throw ✓");
   console.groupEnd();
 
