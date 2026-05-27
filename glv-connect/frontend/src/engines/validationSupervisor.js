@@ -924,3 +924,45 @@ export function validateIntlFormatting(currency = "USD") {
     return { id: "VAL-047", name: "Intl Format Validation", pass: false, currency, message: `Intl.NumberFormat("${currency}") failed: ${err.message} — will use USD`, severity: "warning" };
   }
 }
+
+// VAL-048: PDF_STALE_FIELDS_DETECTED — detects stale legacy fields in cdRows payload.
+// Triggers if OILS row contains packagingType/commercialUnit/presentationSize from prior state.
+// Never blocks — sanitizePdfPayload() always called before render to fix these.
+export function validateStaleFields(cdRows = []) {
+  const stale = [];
+  const info  = [];
+
+  const OILS_LIQUID_FIELDS = ["packagingType","presentationSize","commercialUnit","exportFormat","packagingMode","normalizedPresentationSize"];
+
+  for (const [i, row] of cdRows.entries()) {
+    const cat = row.category;
+    info.push(`row[${i}]: category=${cat}`);
+
+    if (cat === "OILS") {
+      for (const f of OILS_LIQUID_FIELDS) {
+        const v = row[f];
+        const hasValue = v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
+        if (hasValue) {
+          stale.push(`STALE: row[${i}].${f}="${String(v).slice(0,30)}" on OILS row — sanitizer will remove`);
+        }
+      }
+    }
+
+    if (cat === "LIVE_ANIMALS" && row.packagingType) {
+      stale.push(`STALE: row[${i}].packagingType on LIVE_ANIMALS row`);
+    }
+  }
+
+  return {
+    id: "VAL-048",
+    name: "PDF Stale Fields Detection",
+    pass: true,               // never fails — sanitizer handles all stale fields
+    blockPdf: false,
+    stale,
+    info,
+    message: stale.length === 0
+      ? "No stale legacy fields detected"
+      : `${stale.length} stale field(s) detected — sanitizePdfPayload() will clean before render`,
+    severity: stale.length === 0 ? "info" : "warning",
+  };
+}

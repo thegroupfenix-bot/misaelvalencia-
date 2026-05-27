@@ -6,7 +6,8 @@ import { generatePaymentText } from "../utils/paymentText.js";
 import { runFullInspection } from "./pdf/PdfRuntimeInspector.js";
 import { getPDFTextKey } from "../engines/categoryEngine.js";
 import { safeCurrencyResolver, resolvePdfCurrency, fmtPdfCurrency } from "../utils/safeCurrencyResolver.js";
-import { validatePdfCurrencyScope, validatePdfRuntimeSafety, validateIntlFormatting } from "../engines/validationSupervisor.js";
+import { sanitizePdfPayload, detectStaleFields } from "../utils/pdfPayloadSanitizer.js";
+import { validatePdfCurrencyScope, validatePdfRuntimeSafety, validateIntlFormatting, validateStaleFields } from "../engines/validationSupervisor.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
 // Wraps any field extraction in a try/catch with a typed fallback.
@@ -1383,7 +1384,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   );
 }
 
-export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
+export async function downloadPDF(rawDoc, agentProfile, boundMedia, lang = "es") {
+  // ── PHASE 1: Sanitize payload — remove stale fields BEFORE any rendering ──────
+  // OILS rows may contain stale packagingType/commercialUnit/presentationSize from prior
+  // CommercialEngine state (user switched category from LIQUID → OILS). These stale
+  // fields trigger V5 liquid IIFE for OILS documents and cause currency scope crashes.
+  console.log("[PDF_RENDER_START] Sanitizing payload for doc:", rawDoc?.id);
+  const doc = sanitizePdfPayload(rawDoc);
+
   // ── Destination / port / media isolation log ──────────────────────────────────
   console.log("[GLV-PDF] Pre-render isolation state —", doc.id, {
     destination:    doc.destination,
@@ -1478,12 +1486,21 @@ export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
   console.groupEnd();
 
   // ─── V9.2: Currency audit before render ──────────────────────────────────────
-  // ─── V9.2: Pre-render validation chain (VAL-045/046/047) ────────────────────
-  const firstRowForAudit  = cdRowsForInspect[0] || {};
-  const auditedCurrency   = safeCurrencyResolver(firstRowForAudit.currency);
+  // ─── V9.2: Pre-render validation chain (VAL-045/046/047/048) ─────────────────
+  const firstRowForAudit   = cdRowsForInspect[0] || {};
+  const auditedCurrency    = safeCurrencyResolver(firstRowForAudit.currency);
   const runtimeSafetyCheck = validatePdfRuntimeSafety(doc, cdRowsForInspect);
   const intlCheck          = validateIntlFormatting(auditedCurrency);
   const scopeCheck         = validatePdfCurrencyScope(cdRowsForInspect);
+  const staleCheck         = validateStaleFields(cdRowsForInspect);
+  const rawStale           = detectStaleFields(rawDoc, cdRowsForInspect);
+
+  if (rawStale.count > 0) {
+    console.group("[PDF_STALE_FIELDS_REMOVED] Stale fields detected in raw doc — sanitizer applied");
+    rawStale.stale.forEach(s => console.warn(" →", s));
+    console.groupEnd();
+  }
+  if (staleCheck.stale.length > 0) console.warn("[PDF_RENDER_FAILSAFE] Post-sanitize stale fields still present:", staleCheck.stale);
   if (runtimeSafetyCheck.issues.length > 0) console.warn("[PDF_RENDER_FAILSAFE] Runtime safety issues:", runtimeSafetyCheck.issues);
   if (!intlCheck.pass) console.warn("[PDF_INTL_CHECK] Intl.NumberFormat failed for", auditedCurrency, "— falling back to USD. Error:", intlCheck.message);
   if (scopeCheck.issues.length > 0) console.warn("[PDF_SCOPE_CHECK] Currency scope issues:", scopeCheck.issues);
