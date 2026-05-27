@@ -3,6 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Font, pdf, Image,
 } from "@react-pdf/renderer";
 import { generatePaymentText } from "../utils/paymentText.js";
+import { runFullInspection } from "./pdf/PdfRuntimeInspector.js";
 import { getPDFTextKey } from "../engines/categoryEngine.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
@@ -21,12 +22,11 @@ function safeStr(v, fallback = "")  { return (v != null && String(v).trim()) ? S
 function safeNum(v, fallback = 0)   { const n = parseFloat(v); return isNaN(n) ? fallback : n; }
 function safeArr(v)                 { return Array.isArray(v) ? v : []; }
 
-Font.register({
-  family: "Helvetica",
-  fonts: [
-    { src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2" },
-  ],
-});
+// V9.2 FIX: Do NOT register custom font named "Helvetica".
+// In @react-pdf/renderer v3.x, "Helvetica" is a built-in standard PDF font.
+// Registering it with an external URL forces a network fetch during pdf().toBlob().
+// If that fetch fails (CORS / timeout / network), the entire PDF crashes silently.
+// Solution: let react-pdf use the built-in Helvetica — no network fetch, always works.
 
 // ─── Bilingual translations for PDF document terms ────────────────────────────
 const PDF_T = {
@@ -763,6 +763,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
           {/* V8.1: Oil Technical Specification + Export Logistics Summary — only for OILS */}
           {isOilsRow && (() => {
+            try {
             // Safe extraction — never crash PDF rendering
             const oProductId   = safeStr(oilsConfig.productId, "");
             const oPackaging   = safeStr(oilsConfig.packagingType, "");
@@ -928,6 +929,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 )}
               </>
             );
+            } catch (oilsSectionErr) {
+              console.error("[PDF_RENDER] Oils spec section crashed:", oilsSectionErr?.message, oilsSectionErr?.stack);
+              return (
+                <View style={{ padding: 8, backgroundColor: "#fff7ed", borderRadius: 4, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 8, color: "#92400e" }}>Oil Technical Specification — section unavailable</Text>
+                </View>
+              );
+            }
           })()}
 
           {/* V5: Liquid/Packaged packaging details — 4-layer display */}
@@ -991,7 +1000,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           })()}
 
           {/* V6: Multi-SKU retail breakdown table */}
-          {rowSkus.length > 0 && !isLiveAnimalRow && (() => {
+          {rowSkus.length > 0 && !isLiveAnimalRow && (() => { try {
             const SKU_PKG_LABELS = { PET_BOTTLE:"PET Bottle", GLASS_BOTTLE:"Glass Bottle", TETRA_PAK:"Tetra Pak", DOYPACK:"Doypack", SACHET:"Sachet", CAN_TIN:"Can / Tin", PREMIUM_BOTTLE:"Premium Bottle" };
             const SIZE_LABELS    = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
             const CU_ABBR        = { perBox:"/box", perUnit:"/unit", perBottle:"/bottle", perLiter:"/L", perKg:"/kg" };
@@ -1049,7 +1058,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 )}
               </View>
             );
-          })()}
+          } catch (skuSectionErr) {
+            console.error("[PDF_RENDER] Multi-SKU section crashed:", skuSectionErr?.message);
+            return <View><Text style={{ fontSize: 8, color: "#92400e" }}>SKU breakdown — section unavailable</Text></View>;
+          }})()}
 
           {(doc.custom_unit || doc.customUnit) && (
             <View style={{ marginTop: 6 }}>
@@ -1060,7 +1072,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         </View>
 
         {/* Commercial data table — multi-product rows from CommercialEngine */}
-        {(() => {
+        {(() => { try {
           const cd = doc.commercialData || doc.commercial_data;
           const rows = cd?.rows?.filter(r => r.category && (r.quantity || (Array.isArray(r.skus) && r.skus.length > 0))) || [];
           if (rows.length === 0) return null;
@@ -1133,7 +1145,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               })()}
             </View>
           );
-        })()}
+        } catch (cdTableErr) {
+          console.error("[PDF_RENDER] Commercial data table crashed:", cdTableErr?.message, cdTableErr?.stack);
+          return <View style={{ padding: 8, backgroundColor: "#fff7ed", borderRadius: 4, marginBottom: 8 }}>
+            <Text style={{ fontSize: 8, color: "#92400e" }}>Commercial data table — section unavailable</Text>
+          </View>;
+        }})()}
 
         {/* Section 3: Price */}
         <SectionTitle text={L.price} />
@@ -1407,14 +1424,81 @@ export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
   } catch (err) {
     console.warn("[GLV-PDF] Pre-render validation error:", err.message);
   }
-  // ─────────────────────────────────────────────────────────────────────────────
-  const blob = await pdf(<DocPDF doc={doc} agentProfile={agentProfile} boundMedia={boundMedia} lang={lang} />).toBlob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${doc.id}.pdf`;
-  a.click();
-  URL.revokeObjectURL(url);
+  // ─── V9.2: Runtime inspection before render ──────────────────────────────────
+  const cd = doc.commercialData || doc.commercial_data;
+  const parsedCdForInspect = typeof cd === "string" ? (() => { try { return JSON.parse(cd); } catch { return {}; } })() : (cd || {});
+  const cdRowsForInspect = parsedCdForInspect?.rows || [];
+  const inspection = runFullInspection(doc, cdRowsForInspect, lang);
+
+  console.group("[PDF_SUPERVISOR] Pre-render inspection — " + doc.id);
+  console.log("[PDF_PAYLOAD]", {
+    docId:       doc.id,
+    docType:     doc.type,
+    destination: doc.destination,
+    category:    cdRowsForInspect[0]?.category,
+    adapter:     cdRowsForInspect[0]?.category || "default",
+    language:    lang,
+    payload:     cdRowsForInspect[0] ? "present" : "EMPTY",
+    rows:        cdRowsForInspect.length,
+    exportFormat:cdRowsForInspect[0]?.exportFormat,
+    oilsConfig:  cdRowsForInspect[0]?.oilsConfig ? "present" : "absent",
+    logistics:   cdRowsForInspect[0]?.canonicalLogistics ? "present" : "absent",
+    pricing:     cdRowsForInspect[0]?.incotermPrices,
+  });
+  console.log("[PDF_ADAPTER]", inspection.adapters);
+  console.log("[PDF_LANGUAGE]", inspection.language);
+  if (inspection.summary.fatals.length > 0) {
+    console.error("[PDF_FATAL] Pre-render fatals:", inspection.summary.fatals);
+  }
+  if (inspection.summary.warnings.length > 0) {
+    console.warn("[PDF_RENDER] Pre-render warnings:", inspection.summary.warnings);
+  }
+  console.groupEnd();
+
+  // ─── V9.2: Render with full trace ────────────────────────────────────────────
+  let blob;
+  try {
+    console.group("[PDF_RENDER] Starting react-pdf render — " + doc.id);
+    console.log("[PDF_RENDER] Calling pdf().toBlob()...");
+    blob = await pdf(
+      <DocPDF doc={doc} agentProfile={agentProfile} boundMedia={boundMedia} lang={lang} />
+    ).toBlob();
+    console.log("[PDF_RENDER] Blob generated. size:", blob.size, "type:", blob.type);
+    console.groupEnd();
+  } catch (renderErr) {
+    console.groupEnd();
+    console.group("[PDF_FATAL] react-pdf render FAILED");
+    console.error("[PDF_FATAL] Error:", renderErr);
+    console.error("[PDF_FATAL] Message:", renderErr?.message);
+    console.error("[PDF_FATAL] Stack:", renderErr?.stack);
+    console.error("[PDF_FATAL] Doc id:", doc.id, "Category:", cdRowsForInspect[0]?.category);
+    console.error("[PDF_FATAL] Inspection fatals:", inspection.summary.fatals);
+    console.error("[PDF_FATAL] Inspection warnings:", inspection.summary.warnings);
+    console.groupEnd();
+
+    // Re-throw with a user-readable message that includes the root cause
+    const userMsg = renderErr?.message
+      ? `PDF render error: ${renderErr.message}`
+      : "PDF render failed — unknown error. Check browser console [PDF_FATAL] for stack trace.";
+    throw new Error(userMsg);
+  }
+
+  // ─── V9.2: Download ──────────────────────────────────────────────────────────
+  try {
+    console.log("[PDF_DOWNLOAD] Creating object URL and triggering download...");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${doc.id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    console.log("[PDF_DOWNLOAD] Download triggered for:", doc.id);
+  } catch (dlErr) {
+    console.error("[PDF_DOWNLOAD] Download trigger failed:", dlErr);
+    throw new Error(`PDF generated but download failed: ${dlErr.message}`);
+  }
 }
 
 export default DocPDF;
