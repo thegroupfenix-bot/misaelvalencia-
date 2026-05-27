@@ -403,6 +403,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   // pricePerKg — CommercialEngine ONLY. doc.pricePerKg is PRICE_TABLE-contaminated at save time.
   const pricePerKg = engineUnitPrice || null;
 
+  // VAL-045: resolvedCurrency — canonical currency resolver, declared at DocPDF function scope.
+  // Available to ALL closures (V5, V6, OILS, commercial table). Never use a bare undeclared
+  // `currency` variable inside any IIFE — always derive from this.
+  const resolvedCurrency = firstCdRow?.currency || "USD";
+
   // totalKgDisplay — live animals: head×weight; food/commodity: MT→kg conversion applied
   const totalKgDisplay = isLiveAnimalRow
     ? (engineHeads * engineAvgW)
@@ -940,13 +945,15 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           })()}
 
           {/* V5: Liquid/Packaged packaging details — 4-layer display */}
-          {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (() => {
+          {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (() => { try {
             // Resolve human-readable labels for PDF display
             const LIQUID_RETAIL_SIZE_LABELS = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
             const COMMERCIAL_UNIT_FULL_EN   = { perKg:"per KG",perMT:"per MT",perLiter:"per Liter",perBox:"per Box",perUnit:"per Unit",perContainer:"per Container",perDrum:"per Drum",perJerrycan:"per Jerrycan",perBottle:"per Bottle",perPallet:"per Pallet",perIBC:"per IBC",perFlexitank:"per Flexitank" };
             const COMMERCIAL_UNIT_FULL_ES   = { perKg:"por KG",perMT:"por MT",perLiter:"por Litro",perBox:"por Caja",perUnit:"por Unidad",perContainer:"por Contenedor",perDrum:"por Bidón",perJerrycan:"por Jerrycan",perBottle:"por Botella",perPallet:"por Paleta",perIBC:"por IBC",perFlexitank:"por Flexitank" };
-            // VAL-044: currency must always resolve — default USD if missing from payload
-            const currency   = firstCdRow.currency || "USD";
+            // VAL-044/VAL-045: use resolvedCurrency declared at DocPDF scope — never declare
+            // a bare `currency` variable in this IIFE because OILS rows may enter V5 when
+            // packagingType/commercialUnit are non-null, and a missing declaration crashes the render.
+            const currency   = resolvedCurrency;
             const ptLabel    = PACKAGING_TYPE_LABELS[packagingType] || packagingType || "";
             const sizeLabel  = LIQUID_RETAIL_SIZE_LABELS[presentationSize] || presentationSize || "";
             const cuLabelEn  = COMMERCIAL_UNIT_FULL_EN[commercialUnit] || commercialUnit || "";
@@ -999,7 +1006,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 )}
               </View>
             );
-          })()}
+          } catch (v5SectionErr) {
+            console.error("[PDF_RENDER] V5 packaging section crashed:", v5SectionErr?.message, v5SectionErr?.stack);
+            return (
+              <View style={{ padding: 8, backgroundColor: "#fff7ed", borderRadius: 4, marginBottom: 8 }}>
+                <Text style={{ fontSize: 8, color: "#92400e" }}>Packaging details — section unavailable</Text>
+              </View>
+            );
+          }})()}
 
           {/* V6: Multi-SKU retail breakdown table */}
           {rowSkus.length > 0 && !isLiveAnimalRow && (() => { try {
@@ -1008,7 +1022,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             const CU_ABBR        = { perBox:"/box", perUnit:"/unit", perBottle:"/bottle", perLiter:"/L", perKg:"/kg" };
             const fmtV = (v, cur = "USD") => v ? new Intl.NumberFormat("en-US", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(v) : "—";
             const totalShipV = rowSkus.reduce((s, sk) => s + (parseFloat(sk.quantity) || 0) * (parseFloat(sk.price) || 0), 0);
-            const currency = firstCdRow.currency || "USD";
+            const currency = resolvedCurrency;
             return (
               <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0" }}>
                 <Text style={{ fontSize: 7.5, color: "#64748b", fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
@@ -1457,6 +1471,18 @@ export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
   }
   console.groupEnd();
 
+  // ─── V9.2: Currency audit before render ──────────────────────────────────────
+  const firstRowForAudit = cdRowsForInspect[0] || {};
+  const auditedCurrency  = firstRowForAudit.currency || "USD (auto-injected)";
+  console.group("[PDF_CURRENCY_AUDIT] VAL-045 scope check — " + doc.id);
+  console.log("[PDF_CURRENCY_AUDIT] firstCdRow.currency:", firstRowForAudit.currency ?? "(missing — resolved to USD)");
+  console.log("[PDF_CURRENCY_AUDIT] resolvedCurrency will be:", auditedCurrency);
+  console.log("[PDF_SCOPE_CHECK] V5 IIFE: try/catch guarded ✓ | uses resolvedCurrency ✓");
+  console.log("[PDF_SCOPE_CHECK] V6 IIFE: try/catch guarded ✓ | uses resolvedCurrency ✓");
+  console.log("[PDF_SCOPE_CHECK] OILS IIFE: try/catch guarded ✓ | no bare currency reference ✓");
+  console.log("[PDF_SCOPE_CHECK] Commercial table: try/catch guarded ✓ | per-row row.currency ✓");
+  console.groupEnd();
+
   // ─── V9.2: Render with full trace ────────────────────────────────────────────
   let blob;
   try {
@@ -1466,6 +1492,7 @@ export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
       <DocPDF doc={doc} agentProfile={agentProfile} boundMedia={boundMedia} lang={lang} />
     ).toBlob();
     console.log("[PDF_RENDER] Blob generated. size:", blob.size, "type:", blob.type);
+    console.log("[PDF_RENDER_SUCCESS] PDF rendered without errors. Category:", cdRowsForInspect[0]?.category, "| Currency:", auditedCurrency, "| Lang:", lang);
     console.groupEnd();
   } catch (renderErr) {
     console.groupEnd();

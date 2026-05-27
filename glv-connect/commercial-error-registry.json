@@ -1,6 +1,6 @@
 {
-  "registry_version": "9.1.0",
-  "last_updated": "2026-05-26",
+  "registry_version": "9.2.0",
+  "last_updated": "2026-05-27",
   "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
   "errors": [
     {
@@ -452,6 +452,64 @@
       "prevention_ci": {
         "file": "glv-connect/frontend/src/engines/core/globalCountryEngine.js",
         "must_contain": "getAllCountryOptions"
+      }
+    },
+    {
+      "id": "ERR-036",
+      "title": "V9.2: Font.register('Helvetica') overrides react-pdf v3 built-in and crashes PDF silently",
+      "status": "resolved",
+      "resolved_in": "PR #62 (feat/pdf-runtime-debug-v9.2)",
+      "root_cause": "GlvPDF.jsx registered a custom font named 'Helvetica' via Font.register(), which overrides the react-pdf v3 built-in Helvetica Type 1. This forced an external Google Fonts CDN woff2 fetch during pdf().toBlob(). If the fetch failed (network issue, CORS, Railway cold start), the entire PDF crashed silently. App.jsx catch block only called console.error and never called setGenError, so the error was invisible to the user.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/frontend/src/App.jsx"
+      ],
+      "fix": "Removed Font.register call entirely. react-pdf v3 has Helvetica built in as Type 1 — no registration needed. Added setGenError in App.jsx catch block and rendered genError in modal JSX. Added full [PDF_RENDER]/[PDF_FATAL] try/catch pipeline in downloadPDF.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_not_contain": "Font\\.register.*Helvetica"
+      }
+    },
+    {
+      "id": "ERR-037",
+      "title": "V9.2 Hotfix 1: currency ReferenceError in V5 liquid/packaged IIFE",
+      "status": "resolved",
+      "resolved_in": "PR #62 (feat/pdf-runtime-debug-v9.2)",
+      "root_cause": "GlvPDF.jsx V5 'Liquid/Packaged packaging' IIFE referenced {currency} at the JSX return but the variable was never declared in that IIFE's closure. The variable was declared in the V6 Multi-SKU IIFE (a completely different closure) and was therefore out of scope for V5.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "Added 'const currency = firstCdRow.currency || USD' inside V5 IIFE (VAL-044). Also added VAL-044 validatePdfCurrency() to validationSupervisor.js.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/validationSupervisor.js",
+        "must_contain": "VAL-044"
+      }
+    },
+    {
+      "id": "ERR-038",
+      "title": "V9.2 Hotfix 2: currency ReferenceError persisting for OILS documents — scope leak across IIFEs",
+      "status": "resolved",
+      "resolved_in": "PR #62 (feat/pdf-runtime-debug-v9.2)",
+      "root_cause": "After ERR-037 fix, OILS PDFs still crashed with 'currency is not defined'. Root analysis: (1) OILS rows may have packagingType or commercialUnit set at row level (not only inside oilsConfig), causing V5 IIFE to execute for OILS. (2) V5 IIFE had no try/catch, so any scope error propagated to react-pdf and crashed the full render. (3) ERR-037 fix added 'const currency = firstCdRow.currency' but if firstCdRow.currency is undefined for an OILS row, the declaration exists but the value is still undefined — the subsequent {currency} renders nothing and cannot be used as an Intl.NumberFormat currency code without defaulting. The correct architectural fix is to declare resolvedCurrency at DocPDF function scope (not inside IIFEs) so it is available to ALL closures.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/frontend/src/engines/validationSupervisor.js",
+        "glv-connect/frontend/src/agents/PdfCurrencyAuditAgent.js"
+      ],
+      "fix": "Declared 'const resolvedCurrency = firstCdRow?.currency || USD' at DocPDF function scope level (available to all closures). V5/V6 IIFEs now use resolvedCurrency. Added try/catch to V5 IIFE (it was the only section without one). Added VAL-045 PDF_CURRENCY_SCOPE_LEAK to validationSupervisor.js. Created PdfCurrencyAuditAgent.js. Added [PDF_CURRENCY_AUDIT]/[PDF_SCOPE_CHECK]/[PDF_RENDER_SUCCESS] console diagnostics.",
+      "smoke_tests": {
+        "OILS_PET_ES":      "OILS PET bottle document — ES — must render and download",
+        "OILS_PET_EN":      "OILS PET bottle document — EN — must render and download",
+        "OILS_POUCH_ES":    "OILS Pouch document — ES — must render and download",
+        "OILS_POUCH_EN":    "OILS Pouch document — EN — must render and download",
+        "OILS_JERRYCAN_ES": "OILS Jerrycan document — ES — must render and download",
+        "OILS_JERRYCAN_EN": "OILS Jerrycan document — EN — must render and download",
+        "OILS_MULTISKু_ES": "OILS Multi-SKU document — ES — must render and download",
+        "OILS_MULTISKU_EN": "OILS Multi-SKU document — EN — must render and download"
+      },
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "resolvedCurrency"
       }
     }
   ]

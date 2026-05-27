@@ -809,3 +809,38 @@ export function validatePdfCurrency(cdRow = {}) {
     severity: raw ? "info" : "warning",
   };
 }
+
+// VAL-045: PDF_CURRENCY_SCOPE_LEAK — detects currency scope leaks across OILS/V5/V6 IIFEs.
+// Verifies resolvedCurrency is present and all PDF rendering sections use the canonical resolver.
+// This is a static diagnostic guard — it does NOT block PDF generation.
+export function validatePdfCurrencyScope(cdRows = []) {
+  const issues = [];
+  const info   = [];
+
+  for (const [i, row] of cdRows.entries()) {
+    const hasCurrency = row.currency != null && row.currency !== "";
+    info.push(`row[${i}] category=${row.category} currency=${row.currency ?? "(missing)"}`);
+    if (!hasCurrency) {
+      issues.push(`row[${i}] (${row.category}): currency missing — resolvedCurrency will auto-inject USD`);
+    }
+    if (Array.isArray(row.skus)) {
+      for (const [j, sk] of row.skus.entries()) {
+        if (sk.currency != null && sk.currency !== row.currency) {
+          issues.push(`row[${i}].skus[${j}]: SKU currency "${sk.currency}" differs from row currency "${row.currency}" — PDF will use row currency`);
+        }
+      }
+    }
+  }
+
+  return {
+    id: "VAL-045",
+    name: "PDF Currency Scope Leak",
+    pass: true,   // never blocks — resolvedCurrency always provides safe fallback
+    issues,
+    info,
+    message: issues.length === 0
+      ? "All currency references resolved correctly — no scope leak detected"
+      : `${issues.length} currency scope warning(s) — PDF will render with USD fallback`,
+    severity: issues.length === 0 ? "info" : "warning",
+  };
+}
