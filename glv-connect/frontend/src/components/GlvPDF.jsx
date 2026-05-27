@@ -8,6 +8,13 @@ import { getPDFTextKey } from "../engines/categoryEngine.js";
 import { safeCurrencyResolver, resolvePdfCurrency, fmtPdfCurrency } from "../utils/safeCurrencyResolver.js";
 import { sanitizePdfPayload, detectStaleFields } from "../utils/pdfPayloadSanitizer.js";
 import { validatePdfCurrencyScope, validatePdfRuntimeSafety, validateIntlFormatting, validateStaleFields } from "../engines/validationSupervisor.js";
+import {
+  resolveDocumentMode, getCategoryDisplayLabel,
+  getModeProductDescription, getModeCertifications,
+  getModeTimeline, getModeMandatoryInfo, getModeCoverLabel,
+  DOCUMENT_MODES,
+} from "../engines/documentModeResolver.js";
+import { auditBoundMediaForMode, getMaxSecondaryImages } from "../engines/media/MediaCategoryIsolationEngine.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
 // Wraps any field extraction in a try/catch with a typed fallback.
@@ -373,6 +380,16 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   // V8: Oils Export Engine configuration — only used when category === "OILS"
   const oilsConfig       = firstCdRow.oilsConfig       || {};
   const isOilsRow        = firstCdRow.category === "OILS" && !isLiveAnimalRow;
+
+  // Document Intelligence Mode — drives all executive content selection
+  const docMode = resolveDocumentMode(firstCdRow, doc);
+  // Media isolation audit — log only, never blocks PDF
+  const mediaAudit = auditBoundMediaForMode(boundMedia, docMode);
+  if (mediaAudit.issues.length > 0) {
+    console.warn("[PDF_MEDIA_ISOLATION]", mediaAudit.issues);
+  }
+  const maxSecImages = getMaxSecondaryImages(docMode);
+
   const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perCarton:"/carton", perPouch:"/pouch", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
   // Dynamic price label: "Precio CFR /pouch" instead of always "Precio CFR (USD/kg)"
   const cuAbbr = COMMERCIAL_UNIT_LABELS[commercialUnit] || null;
@@ -463,56 +480,18 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     bankName,
   });
 
-  let productDesc = "";
-  if (doc.product === "Otro" || doc.custom_product_name) {
-    productDesc = doc.custom_product_desc || doc.customProductDesc || "";
-  } else if (pdfTextKey === "livestock") {
-    productDesc = docLang === "en"
-      ? `Live animals sourced from registered, export-certified facilities. All animals meet international sanitary requirements and are certified by competent zoo-sanitary authorities in the country of origin.`
-      : `Animales vivos procedentes de establecimientos registrados y habilitados para exportación. Los animales cumplen con todos los requisitos sanitarios internacionales y son certificados por autoridades zoosanitarias competentes del país de origen.`;
-  } else if (pdfTextKey === "grain") {
-    productDesc = docLang === "en"
-      ? `High-quality bulk agricultural commodity with moisture, protein and aflatoxin analysis within international export standards.`
-      : `Producto agrícola a granel de alta calidad, con análisis de humedad, proteína y aflatoxinas dentro de los estándares internacionales de exportación.`;
-  } else {
-    productDesc = docLang === "en"
-      ? `Export food product meeting international quality standards established by GLV Global Food Services LLC.`
-      : `Producto alimenticio de exportación que cumple con los estándares de calidad internacional establecidos por GLV Global Food Services LLC.`;
-  }
+  // Executive product description — mode-aware, never generic template text
+  const productDesc = (doc.product === "Otro" || doc.custom_product_name)
+    ? (doc.custom_product_desc || doc.customProductDesc || getModeProductDescription(docMode, firstCdRow, doc, docLang))
+    : getModeProductDescription(docMode, firstCdRow, doc, docLang);
 
   const exporter = doc.exporter || "GLV Global Food Services LLC (Miami, FL)";
   const domain = doc.domain || "glvglobalfoodservices.com";
 
-  let certifications = docLang === "en"
-    ? "• Official certificate of origin\n• Sanitary / phytosanitary export certificate\n• SGS inspection (or agreed equivalent)\n• Lot traceability documentation"
-    : "• Certificado de origen oficial\n• Certificado sanitario/fitosanitario de exportación\n• Inspección SGS (o equivalente acordado)\n• Documentación de trazabilidad del lote";
-  if (pdfTextKey === "livestock") {
-    certifications = docLang === "en"
-      ? "• Official zoo-sanitary certificate from the exporting country\n• Halal certificate (internationally recognized authority)\n• SGS live weight and quantity certificate\n• Official veterinary health declaration for the lot\n• Quarantine period approval certificate\n• Lot vaccination certificate"
-      : "• Certificado zoosanitario oficial del país exportador\n• Certificado Halal (autoridad reconocida internacionalmente)\n• Certificado SGS de peso vivo y cantidad\n• Declaración de salud del lote por médico veterinario oficial\n• Aprobación del período de cuarentena\n• Certificado de vacunación del lote";
-  }
+  const certifications = getModeCertifications(docMode, docLang);
 
-  let timeline = "";
-  if (pdfTextKey === "livestock") {
-    timeline = docLang === "en"
-      ? "Week 1–2: Contract signing (SPA) and advance payment\nWeek 3–6: Lot selection and concentration at origin\nWeek 7–10: Official quarantine period (minimum 21 days)\nWeek 11: SGS inspection, certification and SBLC activation\nWeek 12: Loading on specialized livestock vessel\nWeek 13–16: Maritime transit to CFR destination\nWeek 16+: Port delivery and final settlement"
-      : "Semana 1–2: Firma de contrato (SPA) y pago del anticipo\nSemana 3–6: Selección y concentración del lote en origen\nSemana 7–10: Período de cuarentena oficial (mínimo 21 días)\nSemana 11: Inspección SGS, certificación y activación de SBLC\nSemana 12: Embarque en buque ganadero especializado\nSemana 13–16: Tránsito marítimo hacia destino CFR\nSemana 16+: Entrega en puerto y liquidación final";
-  } else {
-    timeline = docLang === "en"
-      ? "Week 1: Contract signing and advance payment\nWeek 2–3: Lot preparation and consolidation\nWeek 4: Quality inspection and certifications\nWeek 5: Loading and dispatch at origin\nWeek 6+: Maritime transit and CFR delivery at destination"
-      : "Semana 1: Firma de contrato y pago del anticipo\nSemana 2–3: Preparación y consolidación del lote\nSemana 4: Inspección de calidad y certificaciones\nSemana 5: Carga y despacho en origen\nSemana 6+: Tránsito marítimo y entrega CFR en destino";
-  }
-
-  let mandatoryInfo = null;
-  if (pdfTextKey === "livestock") {
-    mandatoryInfo = docLang === "en"
-      ? "MANDATORY INFORMATION — LIVE ANIMALS:\n• All shipments comply with the OIE Terrestrial Animal Health Code\n• Vessels used are specialized livestock carriers with certified ventilation systems\n• Sexual composition of the lot shall be certified by an official veterinarian\n• The buyer is responsible for obtaining import permits in the destination country\n• Animals are certified free of notifiable diseases\n• TRANSIT MORTALITY: Invoicing is based on the certified loaded quantity at origin. Any mortality during transport is the buyer's sole responsibility and must be covered by their live cargo insurance policy. The seller applies no commercial deduction for transit mortality."
-      : "INFORMACIÓN MANDATORIA — ANIMALES VIVOS:\n• Todos los embarques cumplen con el Código Sanitario para los Animales Terrestres de la OIE\n• Los buques utilizados son especializados en transporte de ganado vivo con sistema de ventilación certificado\n• La composición sexual del lote será certificada por veterinario oficial\n• El comprador es responsable de gestionar los permisos de importación en el país destino\n• Los animales son certificados libres de enfermedades de declaración obligatoria\n• MORTALIDAD EN TRÁNSITO: La facturación se realiza sobre la cantidad cargada certificada en origen. Cualquier mortalidad durante el transporte es responsabilidad exclusiva del comprador y deberá estar cubierta por su póliza de seguro de carga viva. El vendedor no aplica deducción comercial por mortalidad en tránsito.";
-  } else if (pdfTextKey === "grain") {
-    mandatoryInfo = docLang === "en"
-      ? "MANDATORY INFORMATION — GRAINS AND CEREALS:\n• Product free of GMOs not authorized at destination\n• Maximum moisture content guaranteed per contract\n• Free of pests and contaminants per Codex Alimentarius standards\n• Fumigation and phytosanitary treatment included in CFR price"
-      : "INFORMACIÓN MANDATORIA — GRANOS Y CEREALES:\n• Producto libre de organismos genéticamente modificados no autorizados en destino\n• Humedad máxima garantizada según contrato\n• Libre de plagas y contaminantes según normativa Codex Alimentarius\n• Fumigación y tratamiento fitosanitario incluidos en el precio CFR";
-  }
+  const timeline      = getModeTimeline(docMode, docLang);
+  const mandatoryInfo = getModeMandatoryInfo(docMode, docLang);
 
   const tcText = docLang === "en"
     ? `GENERAL TERMS AND CONDITIONS:\n1. This offer is issued by ${exporter} in its capacity as a certified international exporter.\n2. Prices are per the agreed Incoterm(s) in accordance with Incoterms 2020, at the indicated destination port.\n3. Formal acceptance of this offer activates the SPA (Sales Purchase Agreement) process.\n4. All prices are denominated in the currency stated in the offer.\n5. Any dispute shall be resolved by international arbitration under ICC rules (Paris).\n6. The applicable law shall be as established in the definitive contract (SPA).\n7. GLV Global Food Services LLC reserves the right to modify prices due to force majeure or changes in international sanitary regulations.`
@@ -556,11 +535,22 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "bold", marginBottom: 3 }}>
               {isSCO ? "Soft Corporate Offer" : isFCO ? "Full Corporate Offer" : "Sales Purchase Agreement"}
             </Text>
+            {/* Document mode category badge */}
+            {(() => {
+              const modeLabel = getModeCoverLabel(docMode, docLang);
+              return modeLabel ? (
+                <View style={{ marginBottom: 10, alignSelf: "flex-start" }}>
+                  <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.7)", backgroundColor: "rgba(255,255,255,0.1)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, letterSpacing: 0.5 }}>
+                    {modeLabel}
+                  </Text>
+                </View>
+              ) : null;
+            })()}
 
-            <Text style={s.coverSub}>Cliente / Client: {doc.client}</Text>
-            <Text style={s.coverSub}>Producto / Product: {doc.product}</Text>
-            <Text style={s.coverSub}>Destino / Destination: {doc.destination}{(() => { const p = doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port; return p ? ` — ${p}` : ""; })()}</Text>
-            <Text style={s.coverSub}>Fecha / Date: {doc.date}</Text>
+            <Text style={s.coverSub}>{docLang === "en" ? "Client:" : "Cliente:"} {doc.client}</Text>
+            <Text style={s.coverSub}>{docLang === "en" ? "Product:" : "Producto:"} {doc.custom_product_name || doc.customProductName || doc.product}</Text>
+            <Text style={s.coverSub}>{docLang === "en" ? "Destination:" : "Destino:"} {doc.destination}{(() => { const p = doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port; return p ? ` — ${p}` : ""; })()}</Text>
+            <Text style={s.coverSub}>{docLang === "en" ? "Date:" : "Fecha:"} {doc.date}</Text>
             {totalValue && (
               <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginTop: 12 }}>
                 {fmtCurrency(totalValue)} USD
@@ -589,18 +579,17 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
       {/* PAGE 2 — MAIN CONTENT */}
       <Page size="A4" style={s.page}>
 
-        {/* Bound media images */}
+        {/* Commercial product imagery — max 2 images per MediaCategoryIsolationEngine rules */}
         {boundMedia?.main && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={s.sectionTitle}>Producto / Product</Text>
-            <View style={{ flexDirection: "row", marginTop: 6 }}>
-              <Image src={boundMedia.main} style={{ width: 190, height: 130, objectFit: "cover", borderRadius: 4, marginRight: 8 }} />
-              {boundMedia.secondary?.[0] && (
-                <Image src={boundMedia.secondary[0]} style={{ width: 110, height: 130, objectFit: "cover", borderRadius: 4, marginRight: 8 }} />
+          <View style={{ marginBottom: 14 }}>
+            <View style={{ flexDirection: "row" }}>
+              <Image src={boundMedia.main} style={{ width: 200, height: 134, objectFit: "cover", borderRadius: 5, marginRight: 8 }} />
+              {boundMedia.secondary?.[0] && maxSecImages >= 1 && (
+                <Image src={boundMedia.secondary[0]} style={{ width: 118, height: 134, objectFit: "cover", borderRadius: 5, marginRight: 8 }} />
               )}
               {boundMedia.branding && (
                 <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "flex-end" }}>
-                  <Image src={boundMedia.branding} style={{ width: 80, height: 45, objectFit: "contain" }} />
+                  <Image src={boundMedia.branding} style={{ width: 82, height: 46, objectFit: "contain" }} />
                 </View>
               )}
             </View>
@@ -665,27 +654,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             )}
           </View>
 
-          {/* V6/V7: Export Logistics line — shown when exportFormat or containerType is set */}
-          {(exportFormat || containerType) && !isLiveAnimalRow && (
+          {/* Export format — only shown for non-OILS liquid packaging modes (OILS has its own dedicated section) */}
+          {exportFormat && !isLiveAnimalRow && !isOilsRow && (
             <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0", flexDirection: "row", gap: 8 }}>
-              {exportFormat && (
-                <View style={{ flex: 1 }}>
-                  <Text style={s.infoLabel}>{docLang === "en" ? "Export Format" : "Formato de exportación"}</Text>
-                  <Text style={{ fontSize: 9, color: isPouchFormat ? "#6d28d9" : "#1e40af", fontWeight: "bold" }}>{exportFormatLabel}</Text>
-                </View>
-              )}
-              {containerType && (
-                <View style={{ flex: 1 }}>
-                  <Text style={s.infoLabel}>{docLang === "en" ? "Export Logistics" : "Logística de exportación"}</Text>
-                  <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{CONTAINER_LABELS[containerType] || containerType}</Text>
-                </View>
-              )}
-              {commercialUnit && (
-                <View style={{ flex: 1 }}>
-                  <Text style={s.infoLabel}>{docLang === "en" ? "Commercial Basis" : "Base comercial"}</Text>
-                  <Text style={{ fontSize: 9, color: "#059669", fontWeight: "bold" }}>USD {cuAbbr || "/unit"}</Text>
-                </View>
-              )}
+              <View style={{ flex: 1 }}>
+                <Text style={s.infoLabel}>{docLang === "en" ? "Export Format" : "Formato de Exportación"}</Text>
+                <Text style={{ fontSize: 9, color: isPouchFormat ? "#6d28d9" : "#1e40af", fontWeight: "bold" }}>{exportFormatLabel}</Text>
+              </View>
             </View>
           )}
 
@@ -1000,12 +975,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     )}
                   </View>
                 )}
-                {/* Layer 4: Commercial basis line */}
+                {/* Layer 4: Sale basis */}
                 {commercialUnit && (
                   <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
                     <Text style={{ fontSize: 8, color: "#78350f", fontWeight: "bold" }}>
-                      {docLang === "en" ? "Commercial basis:" : "Base comercial:"} {resolvedCurrency} {docLang === "en" ? cuLabelEn : cuLabelEs}
-                      {containerType ? ` — ${CONTAINER_LABELS[containerType] || containerType}` : ""}
+                      {docLang === "en" ? "Sale basis:" : "Base de venta:"} {resolvedCurrency} {docLang === "en" ? cuLabelEn : cuLabelEs}
                     </Text>
                   </View>
                 )}
@@ -1069,15 +1043,6 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     <Text style={{ flex: 1, fontSize: 8, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(totalShipV, resolvedCurrency)}</Text>
                   </View>
                 )}
-                {/* Export format indicator */}
-                {exportFormat && (
-                  <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
-                    <Text style={{ fontSize: 7.5, color: "#78350f" }}>
-                      {docLang === "en" ? "Export Format:" : "Formato de exportación:"} {exportFormat.replace(/_/g, " ")}
-                      {containerType ? ` — ${CONTAINER_LABELS[containerType] || containerType}` : ""}
-                    </Text>
-                  </View>
-                )}
               </View>
             );
           } catch (skuSectionErr) {
@@ -1112,7 +1077,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 </View>
               </View>
               {rows.map((row, i) => {
-                const catLabel = row.category || "—";
+                const catLabel = getCategoryDisplayLabel(row.category || "", docLang);
                 const inc = (row.incoterms || ["CFR"])[0];
                 const price = parseFloat(row.incotermPrices?.[inc] || row.unitPrice || 0);
                 const isSkuRow = Array.isArray(row.skus) && row.skus.length > 0;
