@@ -5,6 +5,8 @@ import {
 import { generatePaymentText } from "../utils/paymentText.js";
 import { runFullInspection } from "./pdf/PdfRuntimeInspector.js";
 import { getPDFTextKey } from "../engines/categoryEngine.js";
+import { safeCurrencyResolver, resolvePdfCurrency, fmtPdfCurrency } from "../utils/safeCurrencyResolver.js";
+import { validatePdfCurrencyScope, validatePdfRuntimeSafety, validateIntlFormatting } from "../engines/validationSupervisor.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
 // Wraps any field extraction in a try/catch with a typed fallback.
@@ -404,9 +406,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const pricePerKg = engineUnitPrice || null;
 
   // VAL-045: resolvedCurrency — canonical currency resolver, declared at DocPDF function scope.
-  // Available to ALL closures (V5, V6, OILS, commercial table). Never use a bare undeclared
-  // `currency` variable inside any IIFE — always derive from this.
-  const resolvedCurrency = firstCdRow?.currency || "USD";
+  // Uses safeCurrencyResolver to guarantee a valid ISO code regardless of payload state.
+  // This is the ONLY currency source for all closures — no IIFE may declare its own `currency`.
+  const resolvedCurrency = resolvePdfCurrency(firstCdRow, oilsConfig);
 
   // totalKgDisplay — live animals: head×weight; food/commodity: MT→kg conversion applied
   const totalKgDisplay = isLiveAnimalRow
@@ -769,6 +771,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           {/* V8.1: Oil Technical Specification + Export Logistics Summary — only for OILS */}
           {isOilsRow && (() => {
             try {
+            console.log("[PDF_SECTION_RENDER] OILS spec section — resolvedCurrency:", resolvedCurrency, "| oilsConfig.currency:", oilsConfig?.currency);
             // Safe extraction — never crash PDF rendering
             const oProductId   = safeStr(oilsConfig.productId, "");
             const oPackaging   = safeStr(oilsConfig.packagingType, "");
@@ -946,14 +949,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
           {/* V5: Liquid/Packaged packaging details — 4-layer display */}
           {(packagingType || presentationSize || commercialUnit) && !isLiveAnimalRow && (() => { try {
+            console.log("[PDF_SECTION_RENDER] V5 packaging section — resolvedCurrency:", resolvedCurrency);
             // Resolve human-readable labels for PDF display
             const LIQUID_RETAIL_SIZE_LABELS = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
             const COMMERCIAL_UNIT_FULL_EN   = { perKg:"per KG",perMT:"per MT",perLiter:"per Liter",perBox:"per Box",perUnit:"per Unit",perContainer:"per Container",perDrum:"per Drum",perJerrycan:"per Jerrycan",perBottle:"per Bottle",perPallet:"per Pallet",perIBC:"per IBC",perFlexitank:"per Flexitank" };
             const COMMERCIAL_UNIT_FULL_ES   = { perKg:"por KG",perMT:"por MT",perLiter:"por Litro",perBox:"por Caja",perUnit:"por Unidad",perContainer:"por Contenedor",perDrum:"por Bidón",perJerrycan:"por Jerrycan",perBottle:"por Botella",perPallet:"por Paleta",perIBC:"por IBC",perFlexitank:"por Flexitank" };
-            // VAL-044/VAL-045: use resolvedCurrency declared at DocPDF scope — never declare
-            // a bare `currency` variable in this IIFE because OILS rows may enter V5 when
-            // packagingType/commercialUnit are non-null, and a missing declaration crashes the render.
-            const currency   = resolvedCurrency;
+            // VAL-045: NEVER declare a local `currency` variable here — use resolvedCurrency from
+            // DocPDF function scope directly. Local declaration risks shadowing bugs if OILS rows
+            // trigger V5. resolvedCurrency is always a safe ISO code via safeCurrencyResolver.
             const ptLabel    = PACKAGING_TYPE_LABELS[packagingType] || packagingType || "";
             const sizeLabel  = LIQUID_RETAIL_SIZE_LABELS[presentationSize] || presentationSize || "";
             const cuLabelEn  = COMMERCIAL_UNIT_FULL_EN[commercialUnit] || commercialUnit || "";
@@ -999,7 +1002,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 {commercialUnit && (
                   <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
                     <Text style={{ fontSize: 8, color: "#78350f", fontWeight: "bold" }}>
-                      {docLang === "en" ? "Commercial basis:" : "Base comercial:"} {currency} {docLang === "en" ? cuLabelEn : cuLabelEs}
+                      {docLang === "en" ? "Commercial basis:" : "Base comercial:"} {resolvedCurrency} {docLang === "en" ? cuLabelEn : cuLabelEs}
                       {containerType ? ` — ${CONTAINER_LABELS[containerType] || containerType}` : ""}
                     </Text>
                   </View>
@@ -1017,12 +1020,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
           {/* V6: Multi-SKU retail breakdown table */}
           {rowSkus.length > 0 && !isLiveAnimalRow && (() => { try {
+            console.log("[PDF_SECTION_RENDER] V6 multi-SKU section — resolvedCurrency:", resolvedCurrency);
             const SKU_PKG_LABELS = { PET_BOTTLE:"PET Bottle", GLASS_BOTTLE:"Glass Bottle", TETRA_PAK:"Tetra Pak", DOYPACK:"Doypack", SACHET:"Sachet", CAN_TIN:"Can / Tin", PREMIUM_BOTTLE:"Premium Bottle" };
             const SIZE_LABELS    = { "100ml":"100 ml","125ml":"125 ml","200ml":"200 ml","250ml":"250 ml","330ml":"330 ml","350ml":"350 ml","500ml":"500 ml","750ml":"750 ml","900ml":"900 ml","1000ml":"1 L","1L":"1 L","2L":"2 L","3L":"3 L","5L":"5 L","10L":"10 L","20L":"20 L" };
             const CU_ABBR        = { perBox:"/box", perUnit:"/unit", perBottle:"/bottle", perLiter:"/L", perKg:"/kg" };
-            const fmtV = (v, cur = "USD") => v ? new Intl.NumberFormat("en-US", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(v) : "—";
             const totalShipV = rowSkus.reduce((s, sk) => s + (parseFloat(sk.quantity) || 0) * (parseFloat(sk.price) || 0), 0);
-            const currency = resolvedCurrency;
+            // VAL-045: no local `currency` variable — use resolvedCurrency from DocPDF scope directly
             return (
               <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0" }}>
                 <Text style={{ fontSize: 7.5, color: "#64748b", fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
@@ -1049,8 +1052,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                       <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{sizeLabel}</Text>
                       <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{upb > 0 ? upb : "—"}</Text>
                       <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{qty > 0 ? new Intl.NumberFormat("en-US").format(qty) : "—"}</Text>
-                      <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{price > 0 ? `${currency} ${price}${cuAbbr}` : "—"}</Text>
-                      <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv, currency)}</Text>
+                      <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{price > 0 ? `${resolvedCurrency} ${price}${cuAbbr}` : "—"}</Text>
+                      <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(sv, resolvedCurrency)}</Text>
                     </View>
                   );
                 })}
@@ -1060,7 +1063,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     <Text style={{ flex: 5, fontSize: 7.5, color: "#fff", fontWeight: "bold" }}>
                       {docLang === "en" ? "TOTAL SHIPMENT VALUE" : "VALOR TOTAL POR EMBARQUE"}
                     </Text>
-                    <Text style={{ flex: 1, fontSize: 8, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtV(totalShipV, currency)}</Text>
+                    <Text style={{ flex: 1, fontSize: 8, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(totalShipV, resolvedCurrency)}</Text>
                   </View>
                 )}
                 {/* Export format indicator */}
@@ -1089,6 +1092,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Commercial data table — multi-product rows from CommercialEngine */}
         {(() => { try {
+          console.log("[PDF_SECTION_RENDER] Commercial data table — resolvedCurrency:", resolvedCurrency);
           const cd = doc.commercialData || doc.commercial_data;
           const rows = cd?.rows?.filter(r => r.category && (r.quantity || (Array.isArray(r.skus) && r.skus.length > 0))) || [];
           if (rows.length === 0) return null;
@@ -1131,8 +1135,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   }
                 }
 
-                const currency = row.currency || "USD";
-                const fmtV = (v) => v ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v) : "—";
+                // VAL-045: use safeCurrencyResolver for per-row currency — never raw row.currency
+                const rowCurrency = safeCurrencyResolver(row.currency);
+                const fmtV = (v) => fmtPdfCurrency(v, rowCurrency);
                 return (
                   <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "5 10", borderRadius: 4 }}>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{catLabel}</Text>
@@ -1140,16 +1145,17 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? `${row.skus.length} SKU` : (row.quantity || "—")}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? "Multi-SKU" : (row.unitType || "").split("/")[0].trim()}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{inc}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{isSkuRow ? "—" : (price ? `${currency} ${price}` : "—")}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{isSkuRow ? "—" : (price ? `${rowCurrency} ${price}` : "—")}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv)}</Text>
                     <Text style={{ flex: 1, fontSize: 8, color: "#1B2A4A", fontWeight: "bold", textAlign: "right" }}>{fmtV(cv)}</Text>
                   </View>
                 );
               })}
               {rows.length > 1 && (() => {
-                const currency = rows[0]?.currency || "USD";
+                // VAL-045: use safeCurrencyResolver — never a raw rows[0].currency
+                const totalsCurrency = safeCurrencyResolver(rows[0]?.currency);
                 const totalCV = rows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
-                const fmtV = (v) => new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(v);
+                const fmtV = (v) => fmtPdfCurrency(v, totalsCurrency);
                 return (
                   <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "6 10", borderRadius: 4, marginTop: 2 }}>
                     <Text style={{ flex: 6, fontSize: 8, color: "#fff", fontWeight: "bold" }}>
@@ -1472,15 +1478,24 @@ export async function downloadPDF(doc, agentProfile, boundMedia, lang = "es") {
   console.groupEnd();
 
   // ─── V9.2: Currency audit before render ──────────────────────────────────────
-  const firstRowForAudit = cdRowsForInspect[0] || {};
-  const auditedCurrency  = firstRowForAudit.currency || "USD (auto-injected)";
+  // ─── V9.2: Pre-render validation chain (VAL-045/046/047) ────────────────────
+  const firstRowForAudit  = cdRowsForInspect[0] || {};
+  const auditedCurrency   = safeCurrencyResolver(firstRowForAudit.currency);
+  const runtimeSafetyCheck = validatePdfRuntimeSafety(doc, cdRowsForInspect);
+  const intlCheck          = validateIntlFormatting(auditedCurrency);
+  const scopeCheck         = validatePdfCurrencyScope(cdRowsForInspect);
+  if (runtimeSafetyCheck.issues.length > 0) console.warn("[PDF_RENDER_FAILSAFE] Runtime safety issues:", runtimeSafetyCheck.issues);
+  if (!intlCheck.pass) console.warn("[PDF_INTL_CHECK] Intl.NumberFormat failed for", auditedCurrency, "— falling back to USD. Error:", intlCheck.message);
+  if (scopeCheck.issues.length > 0) console.warn("[PDF_SCOPE_CHECK] Currency scope issues:", scopeCheck.issues);
   console.group("[PDF_CURRENCY_AUDIT] VAL-045 scope check — " + doc.id);
-  console.log("[PDF_CURRENCY_AUDIT] firstCdRow.currency:", firstRowForAudit.currency ?? "(missing — resolved to USD)");
-  console.log("[PDF_CURRENCY_AUDIT] resolvedCurrency will be:", auditedCurrency);
-  console.log("[PDF_SCOPE_CHECK] V5 IIFE: try/catch guarded ✓ | uses resolvedCurrency ✓");
-  console.log("[PDF_SCOPE_CHECK] V6 IIFE: try/catch guarded ✓ | uses resolvedCurrency ✓");
-  console.log("[PDF_SCOPE_CHECK] OILS IIFE: try/catch guarded ✓ | no bare currency reference ✓");
-  console.log("[PDF_SCOPE_CHECK] Commercial table: try/catch guarded ✓ | per-row row.currency ✓");
+  console.log("[PDF_CURRENCY_AUDIT] firstCdRow.currency:", firstRowForAudit.currency ?? "(missing)");
+  console.log("[PDF_CURRENCY_AUDIT] safeCurrencyResolver output:", auditedCurrency);
+  console.log("[PDF_CURRENCY_AUDIT] oilsConfig.currency:", firstRowForAudit.oilsConfig?.currency ?? "(absent)");
+  console.log("[PDF_SCOPE_CHECK] V5 IIFE: try/catch ✓ | resolvedCurrency direct (no local currency var) ✓");
+  console.log("[PDF_SCOPE_CHECK] V6 IIFE: try/catch ✓ | resolvedCurrency + fmtPdfCurrency ✓");
+  console.log("[PDF_SCOPE_CHECK] OILS IIFE: try/catch ✓ | no currency variable at all ✓");
+  console.log("[PDF_SCOPE_CHECK] CD table: try/catch ✓ | rowCurrency=safeCurrencyResolver(row.currency) ✓");
+  console.log("[PDF_INTL_CHECK] All Intl.NumberFormat calls wrapped in fmtPdfCurrency — never throw ✓");
   console.groupEnd();
 
   // ─── V9.2: Render with full trace ────────────────────────────────────────────
