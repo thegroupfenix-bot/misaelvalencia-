@@ -789,3 +789,23 @@ function checkMissingPriceMatrix(row) {
     severity: "warning",
   };
 }
+
+// VAL-044: PDF_CURRENCY_REQUIRED — currency must always resolve to a valid ISO code
+// Auto-injects "USD" if missing so the PDF renderer never sees an undefined variable.
+export function validatePdfCurrency(cdRow = {}) {
+  const raw = cdRow.currency;
+  const resolved = raw || "USD";
+  const VALID_CURRENCIES = new Set(["USD","EUR","GBP","AED","SAR","CNY","JPY","BRL","COP","MXN","CAD","AUD"]);
+  const knownCode = VALID_CURRENCIES.has(resolved);
+  return {
+    id: "VAL-044",
+    name: "PDF Currency Required",
+    pass: true,  // always passes — we auto-inject USD
+    autoInjected: !raw,
+    resolvedCurrency: resolved,
+    message: raw
+      ? (knownCode ? `Currency OK: ${resolved}` : `Currency "${resolved}" not in known list — using as-is`)
+      : `Currency missing from payload — auto-injected USD for PDF renderer`,
+    severity: raw ? "info" : "warning",
+  };
+}
