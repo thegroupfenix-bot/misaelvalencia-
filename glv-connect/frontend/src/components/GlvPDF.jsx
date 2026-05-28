@@ -256,7 +256,7 @@ const COVER_COLORS = {
 };
 
 const s = StyleSheet.create({
-  page:         { padding: 40, fontSize: 9, fontFamily: "Helvetica", color: "#1a202c" },
+  page:         { paddingTop: 32, paddingBottom: 46, paddingHorizontal: 40, fontSize: 9, fontFamily: "Helvetica", color: "#1a202c" },
   coverPage:    { padding: 0, fontSize: 9, fontFamily: "Helvetica" },
   coverBg:      { padding: 40, minHeight: "100%", justifyContent: "space-between" },
   coverLogo:    { width: 60, height: 60, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 24 },
@@ -278,16 +278,16 @@ const s = StyleSheet.create({
   highlight:    { color: "#059669" },
   chinaBox:     { backgroundColor: "#fffbeb", borderWidth: 1, borderColor: "#f59e0b", borderRadius: 6, padding: "8 12", marginBottom: 12 },
   chinaText:    { fontSize: 9, color: "#92400e", fontWeight: "bold" },
-  paymentBox:   { backgroundColor: "#f0f4ff", borderWidth: 0.5, borderColor: "#c7d2fe", borderRadius: 6, padding: "10 12", marginBottom: 12 },
-  paymentText:  { fontSize: 8.5, color: "#1e3a5f", lineHeight: 1.5 },
-  spaBox:       { backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#86efac", borderRadius: 6, padding: "10 12", marginBottom: 12 },
-  indicativaBox:{ backgroundColor: "#fef3c7", borderWidth: 1, borderColor: "#fde68a", borderRadius: 6, padding: "8 12", marginBottom: 12 },
+  paymentBox:   { backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: "#059669", borderRadius: 2, padding: "10 14", marginBottom: 18 },
+  paymentText:  { fontSize: 8.5, color: "#1e3a5f", lineHeight: 1.6 },
+  spaBox:       { backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: "#1B2A4A", borderRadius: 2, padding: "10 14", marginBottom: 14 },
+  indicativaBox:{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#FDE68A", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 },
   firmeBox:     { backgroundColor: "#dcfce7", borderWidth: 1, borderColor: "#86efac", borderRadius: 6, padding: "8 12", marginBottom: 12 },
   sigBlock:     { borderTopWidth: 1, borderTopColor: "#e2e8f0", paddingTop: 16, marginTop: 20 },
   buyerSigBlock:{ borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 8, padding: "14 16", marginTop: 16, minHeight: 80 },
   footer:       { marginTop: 16, paddingTop: 10, borderTopWidth: 0.5, borderTopColor: "#e2e8f0", flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: "#94a3b8" },
-  tcBox:        { backgroundColor: "#f8fafc", borderRadius: 6, padding: "10 12", marginBottom: 12, borderWidth: 0.5, borderColor: "#e2e8f0" },
-  tcText:       { fontSize: 7.5, color: "#374151", lineHeight: 1.5 },
+  tcBox:        { backgroundColor: "#F7F9FC", borderRadius: 2, padding: "10 14", marginBottom: 16, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: "#94A3B8" },
+  tcText:       { fontSize: 7.5, color: "#374151", lineHeight: 1.65 },
   // Language indicator bar
   langBar:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "5 10", marginBottom: 20 },
   langBarTxt:   { fontSize: 8, color: "rgba(255,255,255,0.7)" },
@@ -480,6 +480,11 @@ function ExecTimelineStrip({ workflowState, lang }) {
       </View>
     );
   } catch (_) { return null; }
+}
+
+// Subtle grey cadence line between major sections — adds rhythm without weight
+function SectionSep() {
+  return <View style={{ height: 0.5, backgroundColor: "#E8ECF1", marginVertical: 10 }} />;
 }
 
 function ExecAuditFooter({ documentRef, date, lang }) {
@@ -847,38 +852,39 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 1: Parties */}
         <ExecSectionTitle text={L.parties} />
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-          <View style={[s.infoBox, { width: "48%", backgroundColor: "#EEF2FF", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK }]}>
-            <Text style={[s.infoLabel, { color: "#1e3a5f" }]}>{L.seller}</Text>
-            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{exporter}</Text>
-            <Text style={{ fontSize: 8, color: "#374151" }}>19790 W Dixie Hwy, Unit 1115{"\n"}Miami, FL 33180, USA</Text>
-            <Text style={{ fontSize: 8, color: "#374151", marginTop: 2 }}>{domain}</Text>
-            {isChina && <Text style={{ fontSize: 8, color: "#d97706", fontWeight: "bold", marginTop: 3 }}>GACC No. YA11000PDY110K805</Text>}
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 0 }}>
+          <View style={{ width: "48%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 12", borderRadius: 2 }}>
+            <Text style={[s.infoLabel, { color: "#1e3a5f", marginBottom: 4 }]}>{L.seller}</Text>
+            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 3 }}>{exporter}</Text>
+            <Text style={{ fontSize: 7.5, color: "#475569" }}>19790 W Dixie Hwy, Unit 1115{"\n"}Miami, FL 33180, USA</Text>
+            <Text style={{ fontSize: 7.5, color: "#475569", marginTop: 2 }}>{domain}</Text>
+            {isChina && <Text style={{ fontSize: 7.5, color: "#D97706", fontWeight: "bold", marginTop: 3 }}>GACC No. YA11000PDY110K805</Text>}
           </View>
-          <View style={[s.infoBox, { width: "48%", backgroundColor: "#f8fafc" }]}>
-            <Text style={s.infoLabel}>{L.buyer}</Text>
-            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{doc.client}</Text>
-            {doc.clientCountry && <Text style={{ fontSize: 8, color: "#374151" }}>{docLang === "en" ? "Country:" : "País:"} {doc.clientCountry}</Text>}
+          <View style={{ width: "48%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD, padding: "10 12", borderRadius: 2 }}>
+            <Text style={[s.infoLabel, { marginBottom: 4 }]}>{L.buyer}</Text>
+            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 3 }}>{doc.client}</Text>
+            {doc.clientCountry && <Text style={{ fontSize: 7.5, color: "#475569" }}>{docLang === "en" ? "Country:" : "País:"} {doc.clientCountry}</Text>}
             {(doc.clientRepresentative || doc.client_representative) && (
-              <Text style={{ fontSize: 8, color: "#374151" }}>Rep: {doc.clientRepresentative || doc.client_representative}</Text>
+              <Text style={{ fontSize: 7.5, color: "#475569" }}>Rep: {doc.clientRepresentative || doc.client_representative}</Text>
             )}
             {(doc.clientEmail || doc.client_email) && (
-              <Text style={{ fontSize: 8, color: "#374151" }}>{doc.clientEmail || doc.client_email}</Text>
+              <Text style={{ fontSize: 7.5, color: "#475569" }}>{doc.clientEmail || doc.client_email}</Text>
             )}
             {(doc.clientPhone || doc.client_phone) && (
-              <Text style={{ fontSize: 8, color: "#374151" }}>Tel: {doc.clientPhone || doc.client_phone}</Text>
+              <Text style={{ fontSize: 7.5, color: "#475569" }}>Tel: {doc.clientPhone || doc.client_phone}</Text>
             )}
           </View>
         </View>
+        <SectionSep />
 
         {/* Section 2: Product */}
         <ExecSectionTitle text={L.product} />
-        <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
-          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 4 }}>
+        <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 14", marginBottom: 0, borderRadius: 2 }}>
+          <Text style={{ fontSize: 9.5, fontWeight: "bold", color: "#1B2A4A", marginBottom: 5, letterSpacing: 0.2 }}>
             {doc.custom_product_name || doc.customProductName || doc.product}
           </Text>
-          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.5 }}>{productDesc}</Text>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+          <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.6 }}>{productDesc}</Text>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#E8ECF1" }}>
             <View style={{ flex: 1 }}>
               <Text style={s.infoLabel}>{L.origin_lbl}</Text>
               <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{doc.origin || "Brazil"}</Text>
@@ -1258,7 +1264,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   {docLang === "en" ? `SKU Breakdown — ${rowSkus.length} Presentation${rowSkus.length > 1 ? "s" : ""}` : `Desglose SKU — ${rowSkus.length} Presentación${rowSkus.length > 1 ? "es" : ""}`}
                 </Text>
                 {/* Column headers */}
-                <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", borderRadius: 4, padding: "4 6", marginBottom: 2 }}>
+                <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 0, padding: "5 8", marginBottom: 0 }}>
                   {["SKU", docLang === "en" ? "Packaging" : "Empaque", docLang === "en" ? "Size" : "Tamaño", docLang === "en" ? "Units/Carton" : "Unid/Caja", docLang === "en" ? "Qty" : "Cant.", docLang === "en" ? "Price" : "Precio", docLang === "en" ? "Shipment Value" : "Valor Embarque"].map((h, i) => (
                     <Text key={i} style={{ flex: i === 0 ? 0.4 : i >= 4 ? 1 : 1.2, fontSize: 6.5, color: "#fff", fontWeight: "bold", textAlign: i >= 4 ? "right" : "left" }}>{h}</Text>
                   ))}
@@ -1272,7 +1278,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   const cuAbbr    = CU_ABBR[sk.commercialUnit] || sk.commercialUnit || "";
                   const upb       = parseFloat(sk.unitsPerCarton) || 0;
                   return (
-                    <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "4 6", borderRadius: 3 }}>
+                    <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "5 8", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
                       <Text style={{ flex: 0.4, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{i + 1}</Text>
                       <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{pkgLabel}</Text>
                       <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{sizeLabel}</Text>
@@ -1285,7 +1291,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 })}
                 {/* Total shipment value row */}
                 {totalShipV > 0 && (
-                  <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "5 6", borderRadius: 4, marginTop: 2 }}>
+                  <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "6 8", borderTopWidth: 1.5, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
                     <Text style={{ flex: 5, fontSize: 7.5, color: "#fff", fontWeight: "bold" }}>
                       {docLang === "en" ? "TOTAL SHIPMENT VALUE" : "VALOR TOTAL POR EMBARQUE"}
                     </Text>
@@ -1300,12 +1306,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           }})()}
 
           {(doc.custom_unit || doc.customUnit) && (
-            <View style={{ marginTop: 6 }}>
+            <View style={{ marginTop: 8 }}>
               <Text style={s.infoLabel}>{L.unit_lbl}</Text>
               <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{doc.custom_unit || doc.customUnit}</Text>
             </View>
           )}
         </View>
+        <SectionSep />
 
         {/* Commercial data table — multi-product rows from CommercialEngine */}
         {(() => { try {
@@ -1314,8 +1321,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           const rows = cd?.rows?.filter(r => r.category && (r.quantity || (Array.isArray(r.skus) && r.skus.length > 0))) || [];
           if (rows.length === 0) return null;
           return (
-            <View style={{ marginBottom: 16 }}>
-              <View style={{ backgroundColor: "#1B2A4A", borderRadius: 6, padding: "6 10", marginBottom: 4 }}>
+            <View style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+              <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "7 10", marginBottom: 0 }}>
                 <View style={{ flexDirection: "row" }}>
                   {(docLang === "en"
                     ? ["Product", "Origin", "Quantity", "Unit", "Incoterm", "Price/U", "Shipment Value", "Contract Value"]
@@ -1356,7 +1363,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 const rowCurrency = safeCurrencyResolver(row.currency);
                 const fmtV = (v) => fmtPdfCurrency(v, rowCurrency);
                 return (
-                  <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "5 10", borderRadius: 4 }}>
+                  <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "6 10", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{catLabel}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151" }}>{row.origin || "—"}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? `${row.skus.length} SKU` : (row.quantity || "—")}</Text>
@@ -1374,11 +1381,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 const totalCV = rows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
                 const fmtV = (v) => fmtPdfCurrency(v, totalsCurrency);
                 return (
-                  <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "6 10", borderRadius: 4, marginTop: 2 }}>
-                    <Text style={{ flex: 6, fontSize: 8, color: "#fff", fontWeight: "bold" }}>
-                      {docLang === "en" ? `TOTAL EXPORT PROGRAM (${rows.length} products)` : `TOTAL PROGRAMA EXPORTACIÓN (${rows.length} productos)`}
+                  <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "7 10", borderRadius: 0, marginTop: 0, borderTopWidth: 1.5, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+                    <Text style={{ flex: 6, fontSize: 7.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", letterSpacing: 0.5 }}>
+                      {docLang === "en" ? `TOTAL EXPORT PROGRAM — ${rows.length} PRODUCTS` : `TOTAL PROGRAMA DE EXPORTACIÓN — ${rows.length} PRODUCTOS`}
                     </Text>
-                    <Text style={{ flex: 1, fontSize: 8.5, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
+                    <Text style={{ flex: 1, fontSize: 9, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
                   </View>
                 );
               })()}
@@ -1448,37 +1455,42 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               value={doc.guaranteeBank || doc.guarantee_bank || "Por confirmar en contrato"} />
           )}
         </View>
+        <SectionSep />
 
         {/* Section 4: Certifications */}
         <ExecSectionTitle text={L.certs} />
-        <View style={{ backgroundColor: "#F7F9FC", borderRadius: 2, padding: "8 12", marginBottom: 16, borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
-          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{certifications}</Text>
+        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{certifications}</Text>
         </View>
+        <SectionSep />
 
         {/* Section 5: Payment */}
         <ExecSectionTitle text={L.payment} />
         <View style={s.paymentBox}>
           <Text style={s.paymentText}>{paymentText}</Text>
         </View>
+        <SectionSep />
 
         {/* Section 6: Timeline */}
         <ExecSectionTitle text={L.timeline} />
         <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} />
+        <SectionSep />
 
         {/* Section 7: Mandatory */}
         {mandatoryInfo && (
           <>
             <SectionTitle text={L.mandatory} />
-            <View style={[s.chinaBox, { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }]}>
-              <Text style={{ fontSize: 8.5, color: "#7c2d12", lineHeight: 1.5 }}>{mandatoryInfo}</Text>
+            <View style={{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#FDE68A", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+              <Text style={{ fontSize: 8.5, color: "#7c2d12", lineHeight: 1.6 }}>{mandatoryInfo}</Text>
             </View>
+            <SectionSep />
           </>
         )}
 
         {/* China alert box */}
         {isChina && (
-          <View style={s.chinaBox}>
-            <Text style={s.chinaText}>FILTRO CHINA — Entidad: GLV Services SAS (Colombia) | GACC No. YA11000PDY110K805</Text>
+          <View style={{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#F59E0B", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+            <Text style={{ fontSize: 8, color: "#92400e", fontWeight: "bold" }}>FILTRO CHINA — Entidad: GLV Services SAS (Colombia) | GACC No. YA11000PDY110K805</Text>
             {docLang === "zh" && (
               <Text style={{ fontSize: 8, color: "#92400e", marginTop: 4 }}>
                 中国过滤器已激活 — 实体: GLV Services SAS (哥伦比亚) | GACC编号: YA11000PDY110K805
@@ -1506,9 +1518,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {doc.observations && (
           <>
             <SectionTitle text={L.observations} />
-            <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
-              <Text style={{ fontSize: 8.5, color: "#374151" }}>{doc.observations}</Text>
+            <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "8 12", marginBottom: 14, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+              <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{doc.observations}</Text>
             </View>
+            <SectionSep />
           </>
         )}
 
