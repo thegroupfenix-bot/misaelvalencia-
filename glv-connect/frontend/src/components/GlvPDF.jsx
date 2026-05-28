@@ -364,19 +364,20 @@ function ExecSectionTitle({ text }) {
   );
 }
 
-function ExecIdentityBar({ lang }) {
+function ExecIdentityBar({ lang, tag }) {
+  const tagLabel = tag || (lang === "en" ? "ENTERPRISE EXPORT" : "EXPORTACIÓN ENTERPRISE");
   return (
     <View style={execS.identityBar}>
       <View style={execS.identityLeft}>
         <Text style={execS.identityPlatform}>GLV GLOBAL OPERATING SYSTEM</Text>
         <Text style={execS.identityGroup}>GLV Holding Group  ·  Global Export & Operations  ·  Multi-Country</Text>
       </View>
-      <Text style={execS.identityTag}>{lang === "en" ? "ENTERPRISE EXPORT" : "EXPORTACIÓN ENTERPRISE"}</Text>
+      <Text style={execS.identityTag}>{tagLabel}</Text>
     </View>
   );
 }
 
-function ExecOperationSummaryTable({ product, origin, destination, incoterm, totalValue, currency, validityDays, date, containerType, lang }) {
+function ExecOperationSummaryTable({ product, origin, destination, incoterm, totalValue, currency, validityDays, date, containerType, lang, rowOrder }) {
   const labels = {
     es: { product:"PRODUCTO", origin:"ORIGEN", dest:"DESTINO", incoterm:"INCOTERM", value:"VALOR TOTAL", validity:"VALIDEZ", container:"CONTENEDOR" },
     en: { product:"PRODUCT",  origin:"ORIGIN", dest:"DESTINATION", incoterm:"INCOTERM", value:"TOTAL VALUE", validity:"VALIDITY", container:"CONTAINER" },
@@ -386,15 +387,17 @@ function ExecOperationSummaryTable({ product, origin, destination, incoterm, tot
   const fmt = (n) => n ? `${currency || "USD"} ${Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : null;
   const validStr = validityDays ? `${validityDays} ${lang === "en" ? "days" : "días"}` : null;
 
-  const rows = [
-    product      && { label: L.product,   value: product },
-    origin       && { label: L.origin,    value: origin },
-    destination  && { label: L.dest,      value: destination },
-    incoterm     && { label: L.incoterm,  value: incoterm },
-    containerType && { label: L.container, value: containerType },
-    totalValue   && { label: L.value,     value: fmt(totalValue) },
-    validStr     && { label: L.validity,  value: validStr },
-  ].filter(Boolean);
+  const rowMap = {
+    product:     product       ? { label: L.product,   value: product }          : null,
+    origin:      origin        ? { label: L.origin,    value: origin }            : null,
+    destination: destination   ? { label: L.dest,      value: destination }       : null,
+    incoterm:    incoterm      ? { label: L.incoterm,  value: incoterm }          : null,
+    container:   containerType ? { label: L.container, value: containerType }     : null,
+    value:       totalValue    ? { label: L.value,     value: fmt(totalValue) }   : null,
+    validity:    validStr      ? { label: L.validity,  value: validStr }          : null,
+  };
+  const defaultOrder = ["product","origin","destination","incoterm","container","value","validity"];
+  const rows = (rowOrder || defaultOrder).map(k => rowMap[k]).filter(Boolean);
 
   return (
     <View style={execS.summaryTable}>
@@ -424,7 +427,7 @@ function ExecTrustRow({ lang }) {
   );
 }
 
-function ExecTimelineStrip({ workflowState, lang }) {
+function ExecTimelineStrip({ workflowState, lang, lifecycleLabel }) {
   try {
     const tl     = buildTimelineData(workflowState || "QUOTED", lang === "en" ? "en" : "es");
     const stages = tl.stages || [];
@@ -434,7 +437,7 @@ function ExecTimelineStrip({ workflowState, lang }) {
       <View style={execS.timelineWrap}>
         <View style={execS.timelineHeader}>
           <Text style={{ fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1.1, textTransform: "uppercase" }}>
-            {lang === "en" ? "OPERATION LIFECYCLE" : "CICLO OPERATIVO"}
+            {lifecycleLabel || (lang === "en" ? "OPERATION LIFECYCLE" : "CICLO OPERATIVO")}
           </Text>
           <Text style={execS.timelineProgress}>
             {stageLabel} · {tl.progressPercent}%
@@ -588,6 +591,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   // V8: Oils Export Engine configuration — only used when category === "OILS"
   const oilsConfig       = firstCdRow.oilsConfig       || {};
   const isOilsRow        = firstCdRow.category === "OILS" && !isLiveAnimalRow;
+  // Category atmosphere helpers — READ-ONLY derivations from firstCdRow.category
+  const isGrainRow = !isLiveAnimalRow && !isOilsRow &&
+    ["GRAINS","BEANS","LENTILS","CHICKPEAS","COMMODITIES","ANIMAL_FEED"].includes(firstCdRow.category);
+  const isFrozenRow = !isLiveAnimalRow && !isOilsRow &&
+    ["FROZEN_MEAT","FROZEN_POULTRY"].includes(firstCdRow.category);
 
   // Document Intelligence Mode — drives all executive content selection
   const docMode = resolveDocumentMode(firstCdRow, doc);
@@ -665,6 +673,53 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     })();
 
   const validityDays = doc.validityDays || doc.validity_days || 15;
+
+  // catAtmosphere — READ-ONLY visual atmosphere config derived from category booleans.
+  // Drives: identity tag, lifecycle label, hero framing, summary row order, certs accent, regulated marker.
+  // Zero business logic. No formula changes.
+  const catAtmosphere = (() => {
+    if (isLiveAnimalRow) return {
+      tag:             docLang === "en" ? "LIVESTOCK EXPORT"          : "EXPORTACIÓN GANADO",
+      lifecycleLabel:  docLang === "en" ? "LIVESTOCK OPERATION LIFECYCLE" : "CICLO OPERACIÓN PECUARIA",
+      heroHeight: 140, heroOpacity: 0.92,
+      summaryOrder:    ["product","origin","destination","incoterm","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.PRIMARY_DARK,
+      regulatedMarker: true,
+    };
+    if (isOilsRow) return {
+      tag:             docLang === "en" ? "OILS EXPORT"               : "EXPORTACIÓN ACEITES",
+      lifecycleLabel:  docLang === "en" ? "OILS OPERATION LIFECYCLE"  : "CICLO OPERACIÓN ACEITES",
+      heroHeight: 155, heroOpacity: 0.88,
+      summaryOrder:    ["product","incoterm","container","value","origin","destination","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    if (isGrainRow) return {
+      tag:             docLang === "en" ? "GRAIN COMMODITIES"         : "COMMODITIES GRANOS",
+      lifecycleLabel:  docLang === "en" ? "BULK OPERATION LIFECYCLE"  : "CICLO OPERACIÓN GRANEL",
+      heroHeight: 150, heroOpacity: 0.84,
+      summaryOrder:    ["product","origin","incoterm","destination","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    if (isFrozenRow) return {
+      tag:             docLang === "en" ? "FROZEN CARGO"              : "CARGA REFRIGERADA",
+      lifecycleLabel:  docLang === "en" ? "COLD CHAIN LIFECYCLE"      : "CICLO CADENA FRÍO",
+      heroHeight: 148, heroOpacity: 0.86,
+      summaryOrder:    ["product","incoterm","container","origin","destination","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    return {
+      tag:             docLang === "en" ? "ENTERPRISE EXPORT"         : "EXPORTACIÓN ENTERPRISE",
+      lifecycleLabel:  docLang === "en" ? "OPERATION LIFECYCLE"       : "CICLO OPERATIVO",
+      heroHeight: 150, heroOpacity: 0.86,
+      summaryOrder:    null,
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+  })();
+
   const productCategory = doc.product || "";
   const pdfTextKey = firstCdRow?.category
     ? getPDFTextKey(firstCdRow.category)
@@ -714,7 +769,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         <View style={[s.coverBg, { backgroundColor: coverBg, paddingTop: 32, paddingBottom: 28, paddingHorizontal: 40 }]}>
 
           {/* Zone 1 — Corporate Identity Bar */}
-          <ExecIdentityBar lang={docLang} />
+          <ExecIdentityBar lang={docLang} tag={catAtmosphere.tag} />
           <GoldRule />
 
           {/* Zone 2 — Document title + reference */}
@@ -764,7 +819,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             <View style={{ marginVertical: 12, marginHorizontal: 0 }}>
               <Image
                 src={boundMedia.main}
-                style={{ width: "100%", height: 150, objectFit: "cover", opacity: 0.86 }}
+                style={{ width: "100%", height: catAtmosphere.heroHeight, objectFit: "cover", opacity: catAtmosphere.heroOpacity }}
               />
               <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, opacity: 0.6 }} />
             </View>
@@ -782,6 +837,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             date={doc.date}
             containerType={containerType ? (CONTAINER_LABELS[containerType] || containerType) : null}
             lang={docLang}
+            rowOrder={catAtmosphere.summaryOrder}
           />
 
           {/* Financial Dominance Zone — stops the eye, communicates transaction scale */}
@@ -1451,8 +1507,20 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         <SectionSep />
 
         {/* Section 4: Certifications */}
+        {catAtmosphere.regulatedMarker && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <View style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
+              <Text style={{ fontSize: 6.5, fontWeight: "bold", color: "#FFFFFF", letterSpacing: 1.0, textTransform: "uppercase" }}>
+                {docLang === "en" ? "REGULATED OPERATION" : "OPERACIÓN REGULADA"}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 0.3 }}>
+              {docLang === "en" ? "Veterinary · Sanitary · International Standards" : "Veterinario · Sanitario · Normas Internacionales"}
+            </Text>
+          </View>
+        )}
         <ExecSectionTitle text={L.certs} />
-        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: catAtmosphere.certsAccentColor }}>
           <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{certifications}</Text>
         </View>
         <SectionSep />
@@ -1466,7 +1534,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 6: Timeline */}
         <ExecSectionTitle text={L.timeline} />
-        <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} />
+        <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} lifecycleLabel={catAtmosphere.lifecycleLabel} />
         <SectionSep />
 
         {/* Section 7: Mandatory */}
