@@ -283,10 +283,10 @@ const s = StyleSheet.create({
   spaBox:       { backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: "#1B2A4A", borderRadius: 2, padding: "10 14", marginBottom: 14 },
   indicativaBox:{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#FDE68A", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 },
   firmeBox:     { backgroundColor: "#dcfce7", borderWidth: 1, borderColor: "#86efac", borderRadius: 6, padding: "8 12", marginBottom: 12 },
-  sigBlock:     { borderTopWidth: 1, borderTopColor: "#e2e8f0", paddingTop: 16, marginTop: 20 },
+  sigBlock:     { borderTopWidth: 0.5, borderTopColor: "#E8ECF1", paddingTop: 16, marginTop: 20 },
   buyerSigBlock:{ borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 8, padding: "14 16", marginTop: 16, minHeight: 80 },
   footer:       { marginTop: 16, paddingTop: 10, borderTopWidth: 0.5, borderTopColor: "#e2e8f0", flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: "#94a3b8" },
-  tcBox:        { backgroundColor: "#F7F9FC", borderRadius: 2, padding: "10 14", marginBottom: 16, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: "#94A3B8" },
+  tcBox:        { backgroundColor: "#FAFBFC", borderRadius: 2, padding: "10 14", marginBottom: 16, borderWidth: 0.5, borderColor: "#EEF1F5" },
   tcText:       { fontSize: 7.5, color: "#374151", lineHeight: 1.65 },
   // Language indicator bar
   langBar:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "5 10", marginBottom: 20 },
@@ -371,10 +371,7 @@ function ExecIdentityBar({ lang }) {
         <Text style={execS.identityPlatform}>GLV GLOBAL OPERATING SYSTEM</Text>
         <Text style={execS.identityGroup}>GLV Holding Group  ·  Global Export & Operations  ·  Multi-Country</Text>
       </View>
-      <View style={execS.identityRight}>
-        <Text style={execS.identityTag}>{lang === "en" ? "ENTERPRISE · EXPORT" : "ENTERPRISE · EXPORTACIÓN"}</Text>
-        <Text style={execS.identityTag}>ISO-READY · AUDIT-GRADE</Text>
-      </View>
+      <Text style={execS.identityTag}>{lang === "en" ? "ENTERPRISE EXPORT" : "EXPORTACIÓN ENTERPRISE"}</Text>
     </View>
   );
 }
@@ -544,9 +541,9 @@ function SectionTitle({ text }) {
 // ─── InfoBox ──────────────────────────────────────────────────────────────────
 function BiInfoBox({ esLabel, secLabel, value, style, highlight }) {
   return (
-    <View style={[s.infoBox, style]}>
-      <Text style={s.infoLabel}>{esLabel}</Text>
-      <Text style={[s.infoValue, highlight ? s.highlight : {}]}>{value}</Text>
+    <View style={[{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E8ECF1", borderRadius: 2, padding: "7 10" }, style]}>
+      <Text style={{ fontSize: 6.5, color: "#94A3B8", fontWeight: "bold", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 3 }}>{esLabel}</Text>
+      <Text style={[{ fontSize: 9.5, color: "#0F172A", fontWeight: "bold" }, highlight ? s.highlight : {}]}>{value}</Text>
     </View>
   );
 }
@@ -731,30 +728,25 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   : (docLang === "en" ? "International Supply Agreement" : "Contrato Internacional de Suministro")}
             </Text>
 
-            {/* Reference + type badges row */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <Text style={{ fontSize: 10, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.5 }}>{doc.id}</Text>
-              {/* Status badge */}
+            {/* Reference + metadata — single quiet line, no competing badge boxes */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <Text style={{ fontSize: 9.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.5 }}>{doc.id}</Text>
+              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", letterSpacing: 0.3 }}>·</Text>
               {(isSCO || isFCO) && (
-                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", borderRadius: 2, backgroundColor: "rgba(255,255,255,0.08)" }}>
-                  <Text style={{ color: "#fff", fontSize: 7.5, fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                    {isSCO ? L.indicative : L.firm}
-                  </Text>
-                </View>
+                <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                  {isSCO ? L.indicative : L.firm}
+                </Text>
               )}
-              {/* Category mode badge */}
               {(() => {
                 const modeLabel = getModeCoverLabel(docMode, docLang);
                 return modeLabel ? (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, backgroundColor: "rgba(201,168,76,0.12)" }}>
-                    <Text style={{ fontSize: 7, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.5 }}>{modeLabel}</Text>
-                  </View>
+                  <>
+                    <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.3)" }}>·</Text>
+                    <Text style={{ fontSize: 7, color: "rgba(201,168,76,0.7)", letterSpacing: 0.5 }}>{modeLabel}</Text>
+                  </>
                 ) : null;
               })()}
-              {/* Language indicator */}
-              <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.25)", borderRadius: 2 }}>
-                <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.6)", letterSpacing: 0.5 }}>{docLang === "en" ? "EN" : "ES"}</Text>
-              </View>
+              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.28)", letterSpacing: 0.5 }}>{docLang === "en" ? "EN" : "ES"}</Text>
             </View>
 
             {/* Client + date */}
@@ -792,31 +784,31 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             lang={docLang}
           />
 
-          {/* Total value hero display */}
+          {/* Financial Dominance Zone — stops the eye, communicates transaction scale */}
           {totalValue > 0 && (
-            <View style={{ marginTop: 4, marginBottom: 12 }}>
-              <Text style={execS.coverValue}>
-                {fmtCurrency(totalValue)}{" "}
-                <Text style={execS.coverValueCurrency}>{resolvedCurrency}</Text>
+            <View style={{ marginTop: 14, marginBottom: 14, paddingVertical: 14, paddingHorizontal: 18, backgroundColor: "rgba(0,0,0,0.24)", borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.07)", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.07)" }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.35)", letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 7 }}>
+                {docLang === "en" ? "ESTIMATED CONTRACT VALUE" : "VALOR ESTIMADO DEL CONTRATO"}
               </Text>
-              <Text style={execS.coverValueSub}>{docLang === "en" ? "Estimated Contract Value" : "Valor Estimado del Contrato"}</Text>
+              <Text style={{ fontSize: 28, fontWeight: "bold", color: "#FFFFFF", letterSpacing: 0.5 }}>
+                {fmtCurrency(totalValue)}{" "}
+                <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.42)" }}>{resolvedCurrency}</Text>
+              </Text>
             </View>
           )}
 
-          <GoldRule />
-
-          {/* Zone 5 — Enterprise Trust Indicators */}
+          {/* Zone 5 — Enterprise Trust Indicators — quiet footer of cover */}
           <ExecTrustRow lang={docLang} />
 
-          {/* SCO / FCO legal note */}
+          {/* Legal note — quiet, supporting, not competing with financial zone */}
           {isSCO && (
-            <View style={{ marginTop: 12, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 3, borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
-              <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>{L.sco_note}</Text>
+            <View style={{ marginTop: 12, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(201,168,76,0.3)" }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.55 }}>{L.sco_note}</Text>
             </View>
           )}
           {isFCO && (
-            <View style={{ marginTop: 12, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 3, borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.STATUS_GREEN }}>
-              <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>{fcoNote}</Text>
+            <View style={{ marginTop: 12, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(5,150,105,0.4)" }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.55 }}>{fcoNote}</Text>
             </View>
           )}
 
@@ -887,7 +879,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           <View style={{ flexDirection: "row", gap: 8, marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#E8ECF1" }}>
             <View style={{ flex: 1 }}>
               <Text style={s.infoLabel}>{L.origin_lbl}</Text>
-              <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{doc.origin || "Brazil"}</Text>
+              <Text style={{ fontSize: 9.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{doc.origin || "Brazil"}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.infoLabel}>{L.port_lbl}</Text>
@@ -1325,10 +1317,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "7 10", marginBottom: 0 }}>
                 <View style={{ flexDirection: "row" }}>
                   {(docLang === "en"
-                    ? ["Product", "Origin", "Quantity", "Unit", "Incoterm", "Price/U", "Shipment Value", "Contract Value"]
-                    : ["Producto", "Origen", "Cantidad", "Unidad", "Incoterm", "Precio/U", "Valor Embarque", "Valor Contrato"]
-                  ).map(h => (
-                    <Text key={h} style={{ flex: 1, fontSize: 7, color: "#fff", fontWeight: "bold", textAlign: "center" }}>{h}</Text>
+                    ? ["Product", "Origin", "Qty", "Unit", "Incoterm", "Price/U", "Shipment", "Contract"]
+                    : ["Producto", "Origen", "Cant.", "Unidad", "Incoterm", "Precio/U", "Embarque", "Contrato"]
+                  ).map((h, i) => (
+                    <Text key={h} style={{ flex: 1, fontSize: 6.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", textAlign: i < 2 ? "left" : "right", letterSpacing: 0.3 }}>{h}</Text>
                   ))}
                 </View>
               </View>
@@ -1401,25 +1393,26 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {/* Section 3: Price */}
         <ExecSectionTitle text={L.price} />
 
-        {/* Shipment value — primary operational figure, displayed prominently above the grid */}
+        {/* Shipment value — DOMINANT financial card, no left accent needed: dark bg IS the emphasis */}
         {engineShipmentValue > 0 && (
-          <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "12 16", marginBottom: 10, borderLeftWidth: 3, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
-            <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.55)", fontWeight: "bold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 5 }}>
+          <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "14 18", marginBottom: 8 }}>
+            <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.35)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.shipment_val_lbl}
             </Text>
-            <Text style={{ fontSize: 18, color: "#ffffff", fontWeight: "bold", letterSpacing: 0.5 }}>
+            <Text style={{ fontSize: 22, color: "#FFFFFF", fontWeight: "bold", letterSpacing: 0.5 }}>
               {fmtCurrency(engineShipmentValue)}
             </Text>
+            <View style={{ height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginTop: 10, width: 36 }} />
           </View>
         )}
 
         {/* Total contract value — full-width secondary card when shipment value is also shown */}
         {totalValue && totalValue > 0 && (engineShipmentValue <= 0 || Math.abs(totalValue - engineShipmentValue) > 1) && (
-          <View style={{ backgroundColor: "#F0FDF4", borderRadius: 2, padding: "10 14", marginBottom: 10, borderWidth: 0.5, borderColor: "#86EFAC", borderLeftWidth: 2.5, borderLeftColor: "#059669" }}>
-            <Text style={{ fontSize: 7, color: "#166534", fontWeight: "bold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "12 18", marginBottom: 12, borderWidth: 0.5, borderColor: "#D1FAE5", borderLeftWidth: 3, borderLeftColor: "#059669" }}>
+            <Text style={{ fontSize: 6.5, color: "#166534", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.total_val_lbl}
             </Text>
-            <Text style={{ fontSize: 14, color: "#059669", fontWeight: "bold", letterSpacing: 0.3 }}>
+            <Text style={{ fontSize: 18, color: "#059669", fontWeight: "bold", letterSpacing: 0.5 }}>
               {fmtCurrency(totalValue)}
             </Text>
           </View>
@@ -1518,8 +1511,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {doc.observations && (
           <>
             <SectionTitle text={L.observations} />
-            <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "8 12", marginBottom: 14, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
-              <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{doc.observations}</Text>
+            <View style={{ backgroundColor: "#FAFBFC", borderRadius: 2, padding: "8 12", marginBottom: 14, borderWidth: 0.5, borderColor: "#EEF1F5" }}>
+              <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.6 }}>{doc.observations}</Text>
             </View>
             <SectionSep />
           </>
