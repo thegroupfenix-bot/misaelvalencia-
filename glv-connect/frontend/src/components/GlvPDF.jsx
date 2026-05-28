@@ -355,9 +355,9 @@ function GoldRule() {
 
 function ExecSectionTitle({ text }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 14 }}>
-      <View style={{ width: 2.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginRight: 7, marginTop: 1, height: 12 }} />
-      <View style={{ flex: 1, borderBottomWidth: 1, borderBottomColor: EXECUTIVE_COLORS.ACCENT_GOLD, paddingBottom: 5 }}>
+    <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12 }}>
+      <View style={{ width: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginRight: 8, marginTop: 1, height: 11 }} />
+      <View style={{ flex: 1, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7", paddingBottom: 5 }}>
         <Text style={execS.execSectionTitle}>{text}</Text>
       </View>
     </View>
@@ -703,16 +703,16 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
       regulatedMarker: false,
     };
     if (isGrainRow) return {
-      tag:             docLang === "en" ? "GRAIN COMMODITIES"         : "COMMODITIES GRANOS",
-      lifecycleLabel:  docLang === "en" ? "BULK OPERATION LIFECYCLE"  : "CICLO OPERACIÓN GRANEL",
+      tag:             docLang === "en" ? "AGRICULTURAL EXPORT"            : "EXPORTACIÓN AGRÍCOLA",
+      lifecycleLabel:  docLang === "en" ? "AGRICULTURAL EXPORT LIFECYCLE"  : "CICLO DE EXPORTACIÓN AGRÍCOLA",
       heroHeight: 150, heroOpacity: 0.84,
       summaryOrder:    ["product","origin","incoterm","destination","value","validity"],
       certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
       regulatedMarker: false,
     };
     if (isFrozenRow) return {
-      tag:             docLang === "en" ? "FROZEN CARGO"              : "CARGA REFRIGERADA",
-      lifecycleLabel:  docLang === "en" ? "COLD CHAIN LIFECYCLE"      : "CICLO CADENA FRÍO",
+      tag:             docLang === "en" ? "REEFER CARGO EXPORT"          : "EXPORTACIÓN CARGA REEFER",
+      lifecycleLabel:  docLang === "en" ? "COLD CHAIN EXPORT LIFECYCLE"  : "CICLO EXPORTACIÓN CADENA FRÍO",
       heroHeight: 148, heroOpacity: 0.86,
       summaryOrder:    ["product","incoterm","container","origin","destination","value","validity"],
       certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
@@ -999,7 +999,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 </View>
                 <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
                 <View style={{ alignItems: "center", minWidth: 50 }}>
-                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#059669" }} />
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#334155" }} />
                   <Text style={{ fontSize: 6, color: "#475569", marginTop: 3, textAlign: "center" }}>
                     {doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port || doc.destination || "—"}
                   </Text>
@@ -1008,7 +1008,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   <>
                     <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
                     <View style={{ alignItems: "center" }}>
-                      <Text style={{ fontSize: 7.5, color: "#059669", fontWeight: "bold" }}>{portInfo.transit}d</Text>
+                      <Text style={{ fontSize: 7.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold" }}>{portInfo.transit}d</Text>
                       <Text style={{ fontSize: 5.5, color: "#94A3B8", marginTop: 2 }}>{docLang === "en" ? "transit" : "tránsito"}</Text>
                     </View>
                   </>
@@ -1029,15 +1029,15 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
           {/* V7: Pouch Packaging Details — shown when a POUCH export format is active */}
           {isPouchFormat && !isLiveAnimalRow && (
-            <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#ddd6fe", background: "#faf5ff" }}>
-              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#5b21b6", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {docLang === "en" ? "Pouch Packaging Specification" : "Especificación de Empaque Flexible"}
+            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#E8ECF1" }}>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.9 }}>
+                {docLang === "en" ? "PACKAGING SPECIFICATION" : "ESPECIFICACIÓN DE EMPAQUE"}
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
                 {pouchConfig.filmStructure && (
                   <View style={{ flex: 1, minWidth: "45%" }}>
                     <Text style={s.infoLabel}>{docLang === "en" ? "Film Structure" : "Estructura de Film"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#1e40af", fontWeight: "bold" }}>
+                    <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
                       {FILM_STRUCTURE_LABELS[pouchConfig.filmStructure] || pouchConfig.filmStructure}
                     </Text>
                   </View>
@@ -1045,7 +1045,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 {pouchConfig.pouchType && (
                   <View style={{ flex: 1, minWidth: "45%" }}>
                     <Text style={s.infoLabel}>{docLang === "en" ? "Pouch Type" : "Tipo de Pouch"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#5b21b6", fontWeight: "bold" }}>
+                    <Text style={{ fontSize: 8.5, color: "#334155", fontWeight: "bold" }}>
                       {PACKAGING_TYPE_LABELS[pouchConfig.pouchType] || pouchConfig.pouchType}
                     </Text>
                   </View>
@@ -1144,14 +1144,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             return (
               <>
                 {/* OIL TECHNICAL SPECIFICATION */}
-                <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#f5f3ff", borderRadius: 6 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "bold", color: "#4c1d95", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    {docLang === "en" ? "Oil Technical Specification" : "Especificación Técnica — Aceite"}
+                <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
+                  <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.1 }}>
+                    {docLang === "en" ? "PRODUCT SPECIFICATION" : "ESPECIFICACIÓN DE PRODUCTO"}
                   </Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {oProductId && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Oil Type" : "Tipo de Aceite"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oProductId.replace(/_/g," ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{oProductId.replace(/_/g," ")}</Text>
                     </View>}
                     {oGrade && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>Grade</Text>
@@ -1171,7 +1171,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>}
                     {oPackaging && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Format" : "Formato"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oPackaging.replace(/_/g," ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{oPackaging.replace(/_/g," ")}</Text>
                     </View>}
                     {oSizeId && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
@@ -1183,29 +1183,29 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>}
                     {oFoodGrade.length > 0 && <View style={{ flex: 1, minWidth: "55%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Food Grade / Certs" : "Grado Alimenticio"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oFoodGrade.join(" · ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#059669", fontWeight: "bold" }}>{oFoodGrade.join(" · ")}</Text>
                     </View>}
                     {oCerts.length > 0 && <View style={{ flex: 1, minWidth: "55%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Certifications" : "Certificaciones"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oCerts.join(" · ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#059669", fontWeight: "bold" }}>{oCerts.join(" · ")}</Text>
                     </View>}
                   </View>
 
                   {/* Packaging-type specific technical fields */}
                   {oGroupLabel === "Pouch" && (oPouchType || oFilm || oSeal) && (
-                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#ede9fe", borderRadius: 4 }}>
-                      <Text style={{ fontSize: 8, color: "#4c1d95", fontWeight: "bold" }}>
-                        {[oPouchType, oFilm, oSeal].filter(Boolean).map(v => v.replace(/_/g," ")).join(" · ")}
+                    <View style={{ marginTop: 8, padding: "5 8", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+                      <Text style={{ fontSize: 8, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold", marginBottom: 2 }}>
+                        {[oPouchType, oFilm, oSeal].filter(Boolean).map(v => v.replace(/_/g," ")).join("  ·  ")}
                       </Text>
-                      <Text style={{ fontSize: 7.5, color: "#6d28d9", marginTop: 2 }}>
+                      <Text style={{ fontSize: 7, color: "#64748B" }}>
                         {docLang === "en" ? "Multilayer flexible packaging — food grade, grease-resistant, export ready"
                           : "Empaque flexible multicapa — grado alimenticio, resistente a grasas, apto exportación"}
                       </Text>
                     </View>
                   )}
                   {oGroupLabel === "PET" && oSizeId && (
-                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#e0f2fe", borderRadius: 4 }}>
-                      <Text style={{ fontSize: 7.5, color: "#0369a1" }}>
+                    <View style={{ marginTop: 8, padding: "5 8", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+                      <Text style={{ fontSize: 7, color: "#334155" }}>
                         {docLang === "en"
                           ? `PET bottle ${oSizeId} — food grade, tamper-evident cap, export carton structure`
                           : `Botella PET ${oSizeId} — grado alimenticio, tapa inviolable, estructura cartón exportación`}
@@ -1213,8 +1213,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>
                   )}
                   {oGroupLabel === "Industrial" && (
-                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#f0fdf4", borderRadius: 4 }}>
-                      <Text style={{ fontSize: 7.5, color: "#065f46" }}>
+                    <View style={{ marginTop: 8, padding: "5 8", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+                      <Text style={{ fontSize: 7, color: "#334155" }}>
                         {docLang === "en"
                           ? `Industrial grade — stackable, horeca compatible, bulk foodservice supply`
                           : `Grado industrial — apilable, compatible horeca, suministro a granel`}
@@ -1222,22 +1222,22 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>
                   )}
                   {oOemCaps.length > 0 && (
-                    <Text style={{ fontSize: 8, color: "#7c3aed", marginTop: 4 }}>
-                      {oOemCaps.join(" · ")}
+                    <Text style={{ fontSize: 7.5, color: "#334155", marginTop: 6 }}>
+                      {oOemCaps.join("  ·  ")}
                     </Text>
                   )}
                 </View>
 
                 {/* EXPORT LOGISTICS SUMMARY */}
                 {(oContainerType || oUnits > 0 || oBasePrice > 0 || oMoq) && (
-                  <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#f0fdf4", borderRadius: 6 }}>
-                    <Text style={{ fontSize: 10, fontWeight: "bold", color: "#065f46", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {docLang === "en" ? "Export Logistics Summary" : "Resumen Logístico de Exportación"}
+                  <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2 }}>
+                    <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.1 }}>
+                      {docLang === "en" ? "EXPORT LOGISTICS" : "LOGÍSTICA DE EXPORTACIÓN"}
                     </Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                       {oContainerType && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Container Type" : "Tipo Contenedor"}</Text>
-                        <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oContainerType}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#334155", fontWeight: "bold" }}>{oContainerType}</Text>
                       </View>}
                       {oPackaging && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Format" : "Formato Empaque"}</Text>
@@ -1253,7 +1253,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                       </View>}
                       {oBasePrice > 0 && oUnits > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Shipment FOB Value" : "Valor FOB Embarque"}</Text>
-                        <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>${(oBasePrice * oUnits).toFixed(0)} USD</Text>
+                        <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>${(oBasePrice * oUnits).toFixed(0)} USD</Text>
                       </View>}
                       {oFreight > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Freight / Container" : "Flete / Contenedor"}</Text>
@@ -1327,8 +1327,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 </View>
                 {/* Layer 3: Box engine carton summary — e.g. "20 PET Bottles × 900 ml per export carton" */}
                 {hasBoxEngine && (
-                  <View style={{ marginTop: 4, backgroundColor: "#eff6ff", borderRadius: 4, padding: "5 8" }}>
-                    <Text style={{ fontSize: 8.5, color: "#1e40af", fontWeight: "bold" }}>
+                  <View style={{ marginTop: 6, backgroundColor: "#F8FAFC", borderRadius: 2, padding: "5 8", borderWidth: 0.5, borderColor: "#E2E8F0" }}>
+                    <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
                       {`${unitsPerBox} ${ptLabel}${presentationSize ? ` × ${sizeLabel}` : ""} ${docLang === "en" ? "per export carton" : "por caja de exportación"}`}
                     </Text>
                     {netKgPerCarton && (
@@ -1340,8 +1340,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 )}
                 {/* Layer 4: Sale basis */}
                 {commercialUnit && (
-                  <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
-                    <Text style={{ fontSize: 8, color: "#78350f", fontWeight: "bold" }}>
+                  <View style={{ marginTop: 4, backgroundColor: "#F8FAFC", borderRadius: 2, padding: "4 8", borderWidth: 0.5, borderColor: "#E2E8F0" }}>
+                    <Text style={{ fontSize: 8, color: "#334155", fontWeight: "bold" }}>
                       {docLang === "en" ? "Sale basis:" : "Base de venta:"} {resolvedCurrency} {docLang === "en" ? cuLabelEn : cuLabelEs}
                     </Text>
                   </View>
@@ -1525,11 +1525,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Total contract value — full-width secondary card when shipment value is also shown */}
         {totalValue && totalValue > 0 && (engineShipmentValue <= 0 || Math.abs(totalValue - engineShipmentValue) > 1) && (
-          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "12 18", marginBottom: 12, borderWidth: 0.5, borderColor: "#D1FAE5", borderLeftWidth: 3, borderLeftColor: "#059669" }}>
-            <Text style={{ fontSize: 6.5, color: "#166534", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
+          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "12 18", marginBottom: 12, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 3, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK }}>
+            <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.total_val_lbl}
             </Text>
-            <Text style={{ fontSize: 18, color: "#059669", fontWeight: "bold", letterSpacing: 0.5 }}>
+            <Text style={{ fontSize: 18, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold", letterSpacing: 0.5 }}>
               {fmtCurrency(totalValue)}
             </Text>
           </View>
@@ -1570,14 +1570,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 4: Certifications */}
         {catAtmosphere.regulatedMarker && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-            <View style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
-              <Text style={{ fontSize: 6.5, fontWeight: "bold", color: "#FFFFFF", letterSpacing: 1.0, textTransform: "uppercase" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: "#EEF2F7", borderWidth: 0.5, borderColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
+              <Text style={{ fontSize: 6.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.8, textTransform: "uppercase" }}>
                 {docLang === "en" ? "REGULATED OPERATION" : "OPERACIÓN REGULADA"}
               </Text>
             </View>
             <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 0.3 }}>
-              {docLang === "en" ? "Veterinary · Sanitary · International Standards" : "Veterinario · Sanitario · Normas Internacionales"}
+              {docLang === "en" ? "Veterinary  ·  Sanitary  ·  International Standards" : "Veterinario  ·  Sanitario  ·  Normas Internacionales"}
             </Text>
           </View>
         )}
@@ -1603,16 +1603,16 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {mandatoryInfo && (
           <>
             <SectionTitle text={L.mandatory} />
-            <View style={{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#FDE68A", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
-              <Text style={{ fontSize: 8.5, color: "#7c2d12", lineHeight: 1.6 }}>{mandatoryInfo}</Text>
+            <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+              <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{mandatoryInfo}</Text>
             </View>
           </>
         )}
 
         {/* China alert box */}
         {isChina && (
-          <View style={{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#F59E0B", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
-            <Text style={{ fontSize: 8, color: "#92400e", fontWeight: "bold" }}>FILTRO CHINA — Entidad: GLV Services SAS (Colombia) | GACC No. YA11000PDY110K805</Text>
+          <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+            <Text style={{ fontSize: 8, color: "#374151", fontWeight: "bold" }}>FILTRO CHINA — Entidad: GLV Services SAS (Colombia) | GACC No. YA11000PDY110K805</Text>
             {docLang === "zh" && (
               <Text style={{ fontSize: 8, color: "#92400e", marginTop: 4 }}>
                 中国过滤器已激活 — 实体: GLV Services SAS (哥伦比亚) | GACC编号: YA11000PDY110K805
