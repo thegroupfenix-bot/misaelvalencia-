@@ -86,7 +86,10 @@ function AuthProvider({ children }) {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0d1b2a" }}>
-        <p style={{ color: "#fff", fontSize: 14 }}>Cargando...</p>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: "0 0 4px" }}>GLV GOS</p>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>Global Operating System — Initializing...</p>
+        </div>
       </div>
     );
   }
@@ -279,8 +282,9 @@ function LoginScreen() {
           <div style={{ width: 64, height: 64, borderRadius: 16, background: "#1B2A4A", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
             <span style={{ color: "#fff", fontSize: 28, fontWeight: 700 }}>G</span>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 600, color: "#1B2A4A", margin: "0 0 4px" }}>GLV-Connect</h1>
-          <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>Portal de Agentes — GLV Holding Group</p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1B2A4A", margin: "0 0 4px", letterSpacing: "-0.3px" }}>GLV GOS</h1>
+          <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 2px" }}>Global Operating System</p>
+          <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>Enterprise Export & Operations Infrastructure</p>
         </div>
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Usuario</label>
@@ -303,9 +307,9 @@ function LoginScreen() {
         {error && <p style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: "8px 12px", borderRadius: 8, marginBottom: 16 }}>{error}</p>}
         <button onClick={handleLogin} disabled={loading}
           style={{ width: "100%", padding: "11px", background: loading ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
-          {loading ? "Verificando..." : "Ingresar al Portal"}
+          {loading ? "Verificando..." : "Acceder a GLV GOS"}
         </button>
-        <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 16 }}>Acceso restringido — GLV Holding Group © 2026</p>
+        <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 16 }}>Acceso restringido — GLV Holding Group © 2026 · GLV GOS v1.0</p>
       </div>
     </div>
   );
@@ -320,7 +324,7 @@ function OnboardingScreen({ user, onContinue }) {
           <div style={{ width: 56, height: 56, borderRadius: 50, background: "#1B2A4A", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
             <i className="ti ti-shield-check" style={{ fontSize: 26, color: "#fff" }} />
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: "#1B2A4A", margin: "0 0 4px" }}>Bienvenido al Portal de Agentes GLV-Connect</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: "#1B2A4A", margin: "0 0 4px" }}>Bienvenido a GLV Global Operating System</h2>
           <p style={{ fontSize: 14, color: "#6b7280" }}>Hola, {user.name}. Su acceso ha sido autorizado.</p>
         </div>
         <div style={{ background: "#f8fafc", borderRadius: 10, padding: "1.25rem 1.5rem", border: "1px solid #e2e8f0", marginBottom: "1.5rem" }}>
@@ -388,8 +392,8 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
             <span style={{ color: "#1B2A4A", fontSize: 18, fontWeight: 700 }}>G</span>
           </div>
           <div>
-            <p style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>GLV-Connect</p>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>Corporate SAT v3.0</p>
+            <p style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>GLV GOS</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>Global Operating System</p>
           </div>
         </div>
         {/* Language selector */}
