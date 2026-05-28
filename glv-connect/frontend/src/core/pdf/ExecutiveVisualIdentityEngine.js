@@ -18,9 +18,12 @@ export const EXECUTIVE_COLORS = Object.freeze({
   PRIMARY_DARK:     "#1B2A4A",   // GLV deep navy — hero headers, cover bg
   PRIMARY_MEDIUM:   "#243656",   // section headers, table heads
   PRIMARY_LIGHT:    "#2D4A7A",   // secondary headers, highlights
+  COVER_DEEP:       "#0F1B30",   // deepest cover layer — maximum authority
+  COVER_MID:        "#162340",   // mid-depth cover tone — footer bar
 
   // Accent
   ACCENT_GOLD:      "#C9A84C",   // enterprise gold — dividers, badges, emphasis
+  ACCENT_GOLD_MUTED:"#A87E3A",   // muted gold — secondary accents, subtle borders
   ACCENT_GOLD_LIGHT:"#E8C97A",   // light gold — secondary accents
   ACCENT_BLUE:      "#2D6BC4",   // action blue — links, call-outs
 
@@ -62,23 +65,23 @@ export const EXECUTIVE_COLORS = Object.freeze({
 export const EXECUTIVE_TYPOGRAPHY = Object.freeze({
 
   HEADER: Object.freeze({
-    platformName:  { size: 18, weight: 700, letterSpacing: 2, family: "Helvetica-Bold" },
-    platformSub:   { size: 9,  weight: 400, letterSpacing: 1.5, family: "Helvetica" },
+    platformName:  { size: 13, weight: 700, letterSpacing: 2.5, family: "Helvetica-Bold" },
+    platformSub:   { size: 7,  weight: 400, letterSpacing: 1.2, family: "Helvetica" },
     entityName:    { size: 11, weight: 600, letterSpacing: 0.5, family: "Helvetica-Bold" },
     documentRef:   { size: 9,  weight: 400, family: "Helvetica" },
   }),
 
   TITLE: Object.freeze({
-    mainTitle:     { size: 24, weight: 700, letterSpacing: 0.5, family: "Helvetica-Bold" },
+    mainTitle:     { size: 26, weight: 700, letterSpacing: 0.8, family: "Helvetica-Bold" },
     subTitle:      { size: 14, weight: 400, letterSpacing: 0.3, family: "Helvetica" },
     refBadge:      { size: 10, weight: 600, family: "Helvetica-Bold" },
   }),
 
   SECTION: Object.freeze({
-    heading:       { size: 12, weight: 700, letterSpacing: 1.2, family: "Helvetica-Bold", transform: "uppercase" },
-    subheading:    { size: 10, weight: 600, family: "Helvetica-Bold" },
+    heading:       { size: 8.5, weight: 700, letterSpacing: 1.3, family: "Helvetica-Bold", transform: "uppercase" },
+    subheading:    { size: 10,  weight: 600, family: "Helvetica-Bold" },
     body:          { size: 9.5, weight: 400, lineHeight: 1.5, family: "Helvetica" },
-    caption:       { size: 8,  weight: 400, lineHeight: 1.4, family: "Helvetica" },
+    caption:       { size: 8,   weight: 400, lineHeight: 1.4, family: "Helvetica" },
   }),
 
   TABLE: Object.freeze({
@@ -89,17 +92,23 @@ export const EXECUTIVE_TYPOGRAPHY = Object.freeze({
   }),
 
   BADGE: Object.freeze({
-    label:         { size: 7.5, weight: 700, letterSpacing: 0.6, family: "Helvetica-Bold", transform: "uppercase" },
+    label:         { size: 6.5, weight: 700, letterSpacing: 0.8, family: "Helvetica-Bold", transform: "uppercase" },
   }),
 
   FOOTER: Object.freeze({
-    text:          { size: 7.5, weight: 400, family: "Helvetica" },
-    ref:           { size: 7,   weight: 600, family: "Helvetica-Bold" },
+    text:          { size: 6.5, weight: 400, letterSpacing: 0.3, family: "Helvetica" },
+    ref:           { size: 7.5, weight: 600, letterSpacing: 0.3, family: "Helvetica-Bold" },
   }),
 
   TIMELINE: Object.freeze({
-    state:         { size: 7.5, weight: 700, family: "Helvetica-Bold" },
-    label:         { size: 7,   weight: 400, family: "Helvetica" },
+    state:         { size: 7, weight: 700, family: "Helvetica-Bold" },
+    label:         { size: 6, weight: 400, letterSpacing: 0.2, family: "Helvetica" },
+  }),
+
+  META: Object.freeze({
+    label:         { size: 7,   weight: 400, letterSpacing: 0.4, family: "Helvetica" },
+    value:         { size: 9,   weight: 700, letterSpacing: 0.2, family: "Helvetica-Bold" },
+    caption:       { size: 6.5, weight: 400, letterSpacing: 0.3, family: "Helvetica" },
   }),
 
 });
@@ -110,43 +119,43 @@ export const EXECUTIVE_SPACING = Object.freeze({
 
   // Page margins
   PAGE_MARGIN_TOP:     36,
-  PAGE_MARGIN_BOTTOM:  48,   // extra bottom for footer
+  PAGE_MARGIN_BOTTOM:  50,   // extra bottom for footer
   PAGE_MARGIN_LEFT:    40,
   PAGE_MARGIN_RIGHT:   40,
 
-  // Section rhythm
-  SECTION_GAP_LARGE:   28,
-  SECTION_GAP_MEDIUM:  18,
-  SECTION_GAP_SMALL:   10,
-  SECTION_GAP_MICRO:   5,
+  // Section rhythm — premium vertical cadence
+  SECTION_GAP_LARGE:   32,
+  SECTION_GAP_MEDIUM:  20,
+  SECTION_GAP_SMALL:   12,
+  SECTION_GAP_MICRO:   6,
 
-  // Component internal
-  PANEL_PADDING_V:     14,
-  PANEL_PADDING_H:     16,
-  BADGE_PADDING_V:     5,
+  // Component internal — institutional padding
+  PANEL_PADDING_V:     16,
+  PANEL_PADDING_H:     18,
+  BADGE_PADDING_V:     4,
   BADGE_PADDING_H:     10,
-  TABLE_CELL_PADDING_V:6,
+  TABLE_CELL_PADDING_V:7,
   TABLE_CELL_PADDING_H:10,
 
   // Cover zones
-  HERO_HEADER_HEIGHT:  64,
-  TITLE_ZONE_HEIGHT:   80,
-  PRODUCT_HERO_HEIGHT: 180,
-  SUMMARY_ROW_HEIGHT:  22,
-  TRUST_BADGE_HEIGHT:  36,
+  HERO_HEADER_HEIGHT:  60,
+  TITLE_ZONE_HEIGHT:   90,
+  PRODUCT_HERO_HEIGHT: 150,
+  SUMMARY_ROW_HEIGHT:  24,
+  TRUST_BADGE_HEIGHT:  32,
 
   // Decorative
-  GOLD_RULE_HEIGHT:    2,
+  GOLD_RULE_HEIGHT:    1,
   SECTION_RULE_HEIGHT: 0.5,
-  SEPARATOR_MARGIN:    8,
+  SEPARATOR_MARGIN:    10,
 
   // Timeline
   TIMELINE_NODE_SIZE:  10,
-  TIMELINE_CONNECTOR:  32,
-  TIMELINE_ROW_HEIGHT: 40,
+  TIMELINE_CONNECTOR:  28,
+  TIMELINE_ROW_HEIGHT: 36,
 
   // Footer
-  FOOTER_HEIGHT:       32,
+  FOOTER_HEIGHT:       30,
 
 });
 

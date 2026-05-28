@@ -293,42 +293,58 @@ const s = StyleSheet.create({
   langBarTxt:   { fontSize: 8, color: "rgba(255,255,255,0.7)" },
 });
 
-// ─── Executive V2 styles ──────────────────────────────────────────────────────
+// ─── Executive V2 styles — Enterprise Visual Dominance ───────────────────────
 const execS = StyleSheet.create({
-  // Identity bar — very top of cover
-  identityBar:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18 },
-  identityPlatform:{ color: "rgba(255,255,255,0.95)", fontSize: 11, fontWeight: "bold", letterSpacing: 1.5 },
-  identityGroup:  { color: "rgba(255,255,255,0.55)", fontSize: 7.5, letterSpacing: 0.8 },
-  // Gold rule
-  goldRule:       { height: 1.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginVertical: 14 },
-  goldRuleThin:   { height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginBottom: 10, width: 60 },
-  // Executive section heading
-  execSectionTitle:{ fontSize: 9, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10, borderBottomWidth: 1.5, borderBottomColor: EXECUTIVE_COLORS.ACCENT_GOLD, paddingBottom: 5 },
-  // Operation summary table (cover)
-  summaryTable:   { marginBottom: 14, marginTop: 8 },
-  summaryRow:     { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.12)", paddingVertical: 5 },
-  summaryLabel:   { width: "38%", fontSize: 7.5, color: "rgba(255,255,255,0.6)", letterSpacing: 0.4, textTransform: "uppercase", paddingRight: 4 },
-  summaryValue:   { flex: 1, fontSize: 8.5, color: "#FFFFFF", fontWeight: "bold" },
-  // Trust badge row (cover bottom)
-  trustRow:       { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
-  trustBadge:     { paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, backgroundColor: "rgba(201,168,76,0.08)" },
-  trustBadgeTxt:  { fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.ACCENT_GOLD, letterSpacing: 0.5, textTransform: "uppercase" },
-  // Timeline visualization
-  timelineWrap:   { marginBottom: 14, paddingVertical: 10, paddingHorizontal: 8, backgroundColor: EXECUTIVE_COLORS.SURFACE_ALT, borderRadius: 4, borderWidth: 0.5, borderColor: EXECUTIVE_COLORS.BORDER_LIGHT },
-  timelineRow:    { flexDirection: "row", alignItems: "center" },
-  timelineNode:   { width: 9, height: 9, borderRadius: 5, justifyContent: "center", alignItems: "center", marginRight: 2 },
-  timelineNodeInner:{ width: 5, height: 5, borderRadius: 3 },
-  timelineConnector:{ flex: 1, height: 1.5, marginHorizontal: 1 },
-  timelineLabels: { flexDirection: "row", marginTop: 5 },
-  timelineLabel:  { fontSize: 6.5, textAlign: "center" },
-  // Executive footer
-  execFooter:     { position: "absolute", bottom: 0, left: 0, right: 0, height: 28, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16 },
-  execFooterText: { fontSize: 7, color: "rgba(255,255,255,0.6)" },
-  execFooterRef:  { fontSize: 7, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold" },
-  execFooterConf: { fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: 0.5 },
-  // Value display on cover
-  coverValue:     { fontSize: 20, fontWeight: "bold", color: "#FFFFFF", marginTop: 10, letterSpacing: 0.5 },
-  coverValueSub:  { fontSize: 8, color: "rgba(255,255,255,0.55)", marginTop: 1 },
+
+  // ── Identity bar (top of cover) ────────────────────────────────────────────
+  identityBar:       { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 14, borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.14)" },
+  identityLeft:      { flex: 1 },
+  identityPlatform:  { color: "#FFFFFF", fontSize: 13, fontWeight: "bold", letterSpacing: 2.5, marginBottom: 4 },
+  identityGroup:     { color: "rgba(255,255,255,0.48)", fontSize: 7, letterSpacing: 1.2 },
+  identityRight:     { alignItems: "flex-end" },
+  identityTag:       { fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 0.8, marginBottom: 2 },
+
+  // ── Gold rules ─────────────────────────────────────────────────────────────
+  goldRule:          { height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginVertical: 16 },
+  goldRuleThin:      { height: 0.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginBottom: 10, width: 48 },
+
+  // ── Section heading (Page 2) — gold left bar + gold bottom rule ────────────
+  execSectionTitle:  { fontSize: 8.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1.3, textTransform: "uppercase" },
+
+  // ── Operation summary table (cover Zone 4) ─────────────────────────────────
+  summaryTable:      { marginBottom: 18, marginTop: 12 },
+  summaryTableHdr:   { fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 10, paddingBottom: 6, borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.09)" },
+  summaryRow:        { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.07)", paddingVertical: 6 },
+  summaryLabel:      { width: "40%", fontSize: 7, color: "rgba(255,255,255,0.48)", letterSpacing: 0.6, textTransform: "uppercase", paddingRight: 4 },
+  summaryValue:      { flex: 1, fontSize: 9, color: "#FFFFFF", fontWeight: "bold", letterSpacing: 0.2 },
+
+  // ── Trust badges (cover Zone 5) ────────────────────────────────────────────
+  trustRow:          { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  trustBadge:        { paddingHorizontal: 10, paddingVertical: 4, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.45)", borderRadius: 1, backgroundColor: "rgba(201,168,76,0.05)" },
+  trustBadgeTxt:     { fontSize: 6.5, fontWeight: "bold", color: "rgba(201,168,76,0.82)", letterSpacing: 0.9, textTransform: "uppercase" },
+
+  // ── Timeline strip (Page 2 Section 6) ─────────────────────────────────────
+  timelineWrap:      { marginBottom: 16, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: "#F7F9FC", borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2 },
+  timelineHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  timelineRow:       { flexDirection: "row", alignItems: "center" },
+  timelineNode:      { width: 10, height: 10, borderRadius: 5, justifyContent: "center", alignItems: "center" },
+  timelineNodeInner: { width: 4, height: 4, borderRadius: 2 },
+  timelineConnector: { flex: 1, height: 1, marginHorizontal: 2 },
+  timelineLabels:    { flexDirection: "row", marginTop: 7 },
+  timelineLabel:     { fontSize: 6, textAlign: "center", letterSpacing: 0.2 },
+  timelineProgress:  { fontSize: 6.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.4 },
+
+  // ── Audit footer (absolute bottom bar on every page) ──────────────────────
+  execFooter:        { position: "absolute", bottom: 0, left: 0, right: 0, height: 30, backgroundColor: "#162340", flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18 },
+  execFooterAccent:  { position: "absolute", top: 0, left: 0, right: 0, height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD },
+  execFooterText:    { fontSize: 6.5, color: "rgba(255,255,255,0.52)", letterSpacing: 0.3 },
+  execFooterRef:     { fontSize: 7.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.3 },
+  execFooterConf:    { fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 1.1 },
+
+  // ── Contract value hero (cover) ────────────────────────────────────────────
+  coverValue:        { fontSize: 24, fontWeight: "bold", color: "#FFFFFF", marginTop: 8, letterSpacing: 0.8 },
+  coverValueSub:     { fontSize: 7.5, color: "rgba(255,255,255,0.48)", marginTop: 2, letterSpacing: 0.4 },
+  coverValueCurrency:{ fontSize: 11, color: "rgba(255,255,255,0.58)" },
 });
 
 // ─── Executive helper components ─────────────────────────────────────────────
@@ -339,8 +355,11 @@ function GoldRule() {
 
 function ExecSectionTitle({ text }) {
   return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={execS.execSectionTitle}>{text}</Text>
+    <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 14 }}>
+      <View style={{ width: 2.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginRight: 7, marginTop: 1, height: 12 }} />
+      <View style={{ flex: 1, borderBottomWidth: 1, borderBottomColor: EXECUTIVE_COLORS.ACCENT_GOLD, paddingBottom: 5 }}>
+        <Text style={execS.execSectionTitle}>{text}</Text>
+      </View>
     </View>
   );
 }
@@ -348,13 +367,14 @@ function ExecSectionTitle({ text }) {
 function ExecIdentityBar({ lang }) {
   return (
     <View style={execS.identityBar}>
-      <View>
+      <View style={execS.identityLeft}>
         <Text style={execS.identityPlatform}>GLV GLOBAL OPERATING SYSTEM</Text>
-        <Text style={execS.identityGroup}>GLV Holding Group  ·  Global Export & Operations</Text>
+        <Text style={execS.identityGroup}>GLV Holding Group  ·  Global Export & Operations  ·  Multi-Country</Text>
       </View>
-      <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)", letterSpacing: 0.5 }}>
-        {lang === "en" ? "ENTERPRISE · EXPORT" : "ENTERPRISE · EXPORTACIÓN"}
-      </Text>
+      <View style={execS.identityRight}>
+        <Text style={execS.identityTag}>{lang === "en" ? "ENTERPRISE · EXPORT" : "ENTERPRISE · EXPORTACIÓN"}</Text>
+        <Text style={execS.identityTag}>ISO-READY · AUDIT-GRADE</Text>
+      </View>
     </View>
   );
 }
@@ -381,6 +401,9 @@ function ExecOperationSummaryTable({ product, origin, destination, incoterm, tot
 
   return (
     <View style={execS.summaryTable}>
+      <Text style={execS.summaryTableHdr}>
+        {lang === "en" ? "OPERATION BRIEF" : "RESUMEN DE OPERACIÓN"}
+      </Text>
       {rows.map((row, i) => (
         <View key={i} style={execS.summaryRow}>
           <Text style={execS.summaryLabel}>{row.label}</Text>
@@ -397,7 +420,7 @@ function ExecTrustRow({ lang }) {
     <View style={execS.trustRow}>
       {badges.map(b => (
         <View key={b.id} style={execS.trustBadge}>
-          <Text style={execS.trustBadgeTxt}>{b.label}</Text>
+          <Text style={execS.trustBadgeTxt}>· {b.label}</Text>
         </View>
       ))}
     </View>
@@ -409,26 +432,34 @@ function ExecTimelineStrip({ workflowState, lang }) {
     const tl     = buildTimelineData(workflowState || "QUOTED", lang === "en" ? "en" : "es");
     const stages = tl.stages || [];
     const w      = 100 / Math.max(stages.length, 1);
+    const stageLabel = lang === "en" ? `STAGE ${tl.currentOrder}/${tl.totalStages}` : `ETAPA ${tl.currentOrder}/${tl.totalStages}`;
     return (
       <View style={execS.timelineWrap}>
-        <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8 }}>
-          {lang === "en" ? "OPERATION LIFECYCLE" : "CICLO OPERATIVO"}
-        </Text>
+        <View style={execS.timelineHeader}>
+          <Text style={{ fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1.1, textTransform: "uppercase" }}>
+            {lang === "en" ? "OPERATION LIFECYCLE" : "CICLO OPERATIVO"}
+          </Text>
+          <Text style={execS.timelineProgress}>
+            {stageLabel} · {tl.progressPercent}%
+          </Text>
+        </View>
         <View style={execS.timelineRow}>
           {stages.map((stage, idx) => (
             <React.Fragment key={stage.id}>
               <View style={[execS.timelineNode, {
-                backgroundColor: stage.isCompleted ? EXECUTIVE_COLORS.STATUS_GREEN
+                backgroundColor: stage.isCompleted ? "#059669"
                                : stage.isCurrent   ? EXECUTIVE_COLORS.ACCENT_GOLD
-                               :                     EXECUTIVE_COLORS.BORDER_MEDIUM,
+                               :                     "#E2E8F0",
               }]}>
                 <View style={[execS.timelineNodeInner, {
-                  backgroundColor: stage.isCompleted || stage.isCurrent ? "#fff" : EXECUTIVE_COLORS.BORDER_MEDIUM,
+                  backgroundColor: stage.isCompleted ? "#FFFFFF"
+                                 : stage.isCurrent   ? "#FFFFFF"
+                                 :                     "#CBD5E1",
                 }]} />
               </View>
               {idx < stages.length - 1 && (
                 <View style={[execS.timelineConnector, {
-                  backgroundColor: stage.isCompleted ? EXECUTIVE_COLORS.ACCENT_GOLD : EXECUTIVE_COLORS.BORDER_LIGHT,
+                  backgroundColor: stage.isCompleted ? EXECUTIVE_COLORS.ACCENT_GOLD : "#E2E8F0",
                 }]} />
               )}
             </React.Fragment>
@@ -439,8 +470,8 @@ function ExecTimelineStrip({ workflowState, lang }) {
             <View key={stage.id} style={{ width: `${w}%` }}>
               <Text style={[execS.timelineLabel, {
                 color: stage.isCurrent   ? EXECUTIVE_COLORS.PRIMARY_DARK
-                     : stage.isCompleted ? EXECUTIVE_COLORS.STATUS_GREEN
-                     :                     EXECUTIVE_COLORS.TEXT_DISABLED,
+                     : stage.isCompleted ? "#059669"
+                     :                     "#94A3B8",
                 fontWeight: stage.isCurrent ? "bold" : "normal",
               }]}>{stage.label}</Text>
             </View>
@@ -455,6 +486,7 @@ function ExecAuditFooter({ documentRef, date, lang }) {
   const confLabel = lang === "en" ? "CONFIDENTIAL" : "CONFIDENCIAL";
   return (
     <View style={execS.execFooter}>
+      <View style={execS.execFooterAccent} />
       <Text style={execS.execFooterRef}>{documentRef}</Text>
       <Text style={execS.execFooterText}>GLV GOS  ·  GLV Holding Group  ·  {date}</Text>
       <Text style={execS.execFooterConf}>{confLabel}</Text>
@@ -686,7 +718,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           {/* Zone 2 — Document title + reference */}
           <View style={{ marginBottom: 6 }}>
             {/* Document type title */}
-            <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "bold", letterSpacing: 0.3, marginBottom: 3 }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 26, fontWeight: "bold", letterSpacing: 0.8, lineHeight: 1.2, marginBottom: 5 }}>
               {isSCO
                 ? (docLang === "en" ? "Soft Corporate Offer" : "Oferta Corporativa Blanda")
                 : isFCO
@@ -732,11 +764,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
           {/* Zone 3 — Hero product image (category-isolated, max 1) */}
           {boundMedia?.main && (
-            <View style={{ marginVertical: 10 }}>
+            <View style={{ marginVertical: 12, marginHorizontal: 0 }}>
               <Image
                 src={boundMedia.main}
-                style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 4, opacity: 0.88 }}
+                style={{ width: "100%", height: 150, objectFit: "cover", opacity: 0.86 }}
               />
+              <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, opacity: 0.6 }} />
             </View>
           )}
 
@@ -756,8 +789,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
           {/* Total value hero display */}
           {totalValue > 0 && (
-            <View style={{ marginTop: 2, marginBottom: 10 }}>
-              <Text style={execS.coverValue}>{fmtCurrency(totalValue)} <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{resolvedCurrency}</Text></Text>
+            <View style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text style={execS.coverValue}>
+                {fmtCurrency(totalValue)}{" "}
+                <Text style={execS.coverValueCurrency}>{resolvedCurrency}</Text>
+              </Text>
               <Text style={execS.coverValueSub}>{docLang === "en" ? "Estimated Contract Value" : "Valor Estimado del Contrato"}</Text>
             </View>
           )}
@@ -793,25 +829,26 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Commercial product imagery — max 2 images per MediaCategoryIsolationEngine rules */}
         {boundMedia?.main && (
-          <View style={{ marginBottom: 14 }}>
+          <View style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2, overflow: "hidden" }}>
             <View style={{ flexDirection: "row" }}>
-              <Image src={boundMedia.main} style={{ width: 200, height: 134, objectFit: "cover", borderRadius: 5, marginRight: 8 }} />
+              <Image src={boundMedia.main} style={{ width: 206, height: 138, objectFit: "cover" }} />
               {boundMedia.secondary?.[0] && maxSecImages >= 1 && (
-                <Image src={boundMedia.secondary[0]} style={{ width: 118, height: 134, objectFit: "cover", borderRadius: 5, marginRight: 8 }} />
+                <Image src={boundMedia.secondary[0]} style={{ width: 116, height: 138, objectFit: "cover", marginLeft: 1 }} />
               )}
               {boundMedia.branding && (
-                <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "flex-end" }}>
-                  <Image src={boundMedia.branding} style={{ width: 82, height: 46, objectFit: "contain" }} />
+                <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "flex-end", padding: 8 }}>
+                  <Image src={boundMedia.branding} style={{ width: 80, height: 44, objectFit: "contain" }} />
                 </View>
               )}
             </View>
+            <View style={{ height: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, opacity: 0.55 }} />
           </View>
         )}
 
         {/* Section 1: Parties */}
-        <SectionTitle text={L.parties} />
+        <ExecSectionTitle text={L.parties} />
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-          <View style={[s.infoBox, { width: "48%", backgroundColor: "#f0f4ff" }]}>
+          <View style={[s.infoBox, { width: "48%", backgroundColor: "#EEF2FF", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK }]}>
             <Text style={[s.infoLabel, { color: "#1e3a5f" }]}>{L.seller}</Text>
             <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{exporter}</Text>
             <Text style={{ fontSize: 8, color: "#374151" }}>19790 W Dixie Hwy, Unit 1115{"\n"}Miami, FL 33180, USA</Text>
@@ -835,7 +872,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         </View>
 
         {/* Section 2: Product */}
-        <SectionTitle text={L.product} />
+        <ExecSectionTitle text={L.product} />
         <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
           <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 4 }}>
             {doc.custom_product_name || doc.customProductName || doc.product}
@@ -1355,15 +1392,15 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         }})()}
 
         {/* Section 3: Price */}
-        <SectionTitle text={L.price} />
+        <ExecSectionTitle text={L.price} />
 
         {/* Shipment value — primary operational figure, displayed prominently above the grid */}
         {engineShipmentValue > 0 && (
-          <View style={{ backgroundColor: "#1e3a5f", borderRadius: 8, padding: "12 14", marginBottom: 10 }}>
-            <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.65)", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+          <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "12 16", marginBottom: 10, borderLeftWidth: 3, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+            <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.55)", fontWeight: "bold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 5 }}>
               {L.shipment_val_lbl}
             </Text>
-            <Text style={{ fontSize: 18, color: "#ffffff", fontWeight: "bold" }}>
+            <Text style={{ fontSize: 18, color: "#ffffff", fontWeight: "bold", letterSpacing: 0.5 }}>
               {fmtCurrency(engineShipmentValue)}
             </Text>
           </View>
@@ -1371,11 +1408,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Total contract value — full-width secondary card when shipment value is also shown */}
         {totalValue && totalValue > 0 && (engineShipmentValue <= 0 || Math.abs(totalValue - engineShipmentValue) > 1) && (
-          <View style={{ backgroundColor: "#f0fdf4", borderRadius: 8, padding: "10 12", marginBottom: 10, borderWidth: 0.5, borderColor: "#86efac" }}>
-            <Text style={{ fontSize: 7.5, color: "#166534", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+          <View style={{ backgroundColor: "#F0FDF4", borderRadius: 2, padding: "10 14", marginBottom: 10, borderWidth: 0.5, borderColor: "#86EFAC", borderLeftWidth: 2.5, borderLeftColor: "#059669" }}>
+            <Text style={{ fontSize: 7, color: "#166534", fontWeight: "bold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
               {L.total_val_lbl}
             </Text>
-            <Text style={{ fontSize: 14, color: "#059669", fontWeight: "bold" }}>
+            <Text style={{ fontSize: 14, color: "#059669", fontWeight: "bold", letterSpacing: 0.3 }}>
               {fmtCurrency(totalValue)}
             </Text>
           </View>
@@ -1413,19 +1450,19 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         </View>
 
         {/* Section 4: Certifications */}
-        <SectionTitle text={L.certs} />
-        <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
+        <ExecSectionTitle text={L.certs} />
+        <View style={{ backgroundColor: "#F7F9FC", borderRadius: 2, padding: "8 12", marginBottom: 16, borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
           <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{certifications}</Text>
         </View>
 
         {/* Section 5: Payment */}
-        <SectionTitle text={L.payment} />
+        <ExecSectionTitle text={L.payment} />
         <View style={s.paymentBox}>
           <Text style={s.paymentText}>{paymentText}</Text>
         </View>
 
         {/* Section 6: Timeline */}
-        <SectionTitle text={L.timeline} />
+        <ExecSectionTitle text={L.timeline} />
         <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} />
 
         {/* Section 7: Mandatory */}
