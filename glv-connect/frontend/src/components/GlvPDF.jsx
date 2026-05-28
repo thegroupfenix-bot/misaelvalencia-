@@ -486,6 +486,14 @@ function ExecTimelineStrip({ workflowState, lang, lifecycleLabel }) {
 function SectionSep() {
   return <View style={{ height: 0.5, backgroundColor: "#E8ECF1", marginVertical: 10 }} />;
 }
+// Larger narrative break — used between major reading zone transitions (PRODUCT→VALUE, VALUE→COMPLIANCE)
+function NarrativeSep() {
+  return <View style={{ height: 0.5, backgroundColor: "#E2E8F0", marginTop: 18, marginBottom: 16 }} />;
+}
+// Pure breathing room — no line — used before financial and compliance zones
+function SilentPause() {
+  return <View style={{ height: 12 }} />;
+}
 
 function ExecAuditFooter({ documentRef, date, lang }) {
   const confLabel = lang === "en" ? "CONFIDENTIAL" : "CONFIDENCIAL";
@@ -880,6 +888,16 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
       {/* PAGE 2 — MAIN CONTENT */}
       <Page size="A4" style={s.page}>
 
+        {/* Quiet document continuation context — ties Page 2 narrative to Page 1 */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
         {/* Commercial product imagery — max 2 images per MediaCategoryIsolationEngine rules */}
         {boundMedia?.main && (
           <View style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2, overflow: "hidden" }}>
@@ -956,6 +974,48 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               </View>
             )}
           </View>
+
+          {/* Logistics movement flow — GRAINS / LIVE_ANIMALS / FROZEN only */}
+          {(isGrainRow || isLiveAnimalRow || isFrozenRow) && (doc.origin || doc.destination) && (
+            <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#EEF2F7" }}>
+              <Text style={{ fontSize: 6, color: "#94A3B8", letterSpacing: 1.0, textTransform: "uppercase", marginBottom: 7 }}>
+                {docLang === "en" ? "OPERATION MOVEMENT" : "MOVIMIENTO DE OPERACIÓN"}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={{ alignItems: "center", minWidth: 40 }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK }} />
+                  <Text style={{ fontSize: 6, color: "#475569", marginTop: 3, textAlign: "center" }}>{doc.origin || "—"}</Text>
+                </View>
+                <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
+                <View style={{ alignItems: "center", minWidth: 44 }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 1.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD }} />
+                  <Text style={{ fontSize: 6, color: "#475569", marginTop: 3, textAlign: "center" }}>
+                    {isLiveAnimalRow
+                      ? (docLang === "en" ? "Livestock\nVessel" : "Buque\nGanado")
+                      : isFrozenRow
+                        ? (docLang === "en" ? "Reefer\nCont." : "Cont.\nRefrig.")
+                        : (docLang === "en" ? "Bulk\nVessel" : "Buque\nGranel")}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
+                <View style={{ alignItems: "center", minWidth: 50 }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#059669" }} />
+                  <Text style={{ fontSize: 6, color: "#475569", marginTop: 3, textAlign: "center" }}>
+                    {doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port || doc.destination || "—"}
+                  </Text>
+                </View>
+                {portInfo?.transit && (
+                  <>
+                    <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
+                    <View style={{ alignItems: "center" }}>
+                      <Text style={{ fontSize: 7.5, color: "#059669", fontWeight: "bold" }}>{portInfo.transit}d</Text>
+                      <Text style={{ fontSize: 5.5, color: "#94A3B8", marginTop: 2 }}>{docLang === "en" ? "transit" : "tránsito"}</Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Export format — only shown for non-OILS liquid packaging modes (OILS has its own dedicated section) */}
           {exportFormat && !isLiveAnimalRow && !isOilsRow && (
@@ -1360,7 +1420,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </View>
           )}
         </View>
-        <SectionSep />
+        <NarrativeSep />
 
         {/* Commercial data table — multi-product rows from CommercialEngine */}
         {(() => { try {
@@ -1447,11 +1507,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         }})()}
 
         {/* Section 3: Price */}
+        <SilentPause />
         <ExecSectionTitle text={L.price} />
 
         {/* Shipment value — DOMINANT financial card, no left accent needed: dark bg IS the emphasis */}
         {engineShipmentValue > 0 && (
-          <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "14 18", marginBottom: 8 }}>
+          <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "14 18", marginTop: 12, marginBottom: 12 }}>
             <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.35)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.shipment_val_lbl}
             </Text>
@@ -1505,6 +1566,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           )}
         </View>
         <SectionSep />
+        <SilentPause />
 
         {/* Section 4: Certifications */}
         {catAtmosphere.regulatedMarker && (
@@ -1530,7 +1592,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         <View style={s.paymentBox}>
           <Text style={s.paymentText}>{paymentText}</Text>
         </View>
-        <SectionSep />
+        <NarrativeSep />
 
         {/* Section 6: Timeline */}
         <ExecSectionTitle text={L.timeline} />
@@ -1544,7 +1606,6 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             <View style={{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#FDE68A", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
               <Text style={{ fontSize: 8.5, color: "#7c2d12", lineHeight: 1.6 }}>{mandatoryInfo}</Text>
             </View>
-            <SectionSep />
           </>
         )}
 
@@ -1587,12 +1648,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         )}
 
         {/* Section 9: T&C */}
+        <SectionSep />
         <SectionTitle text={L.tc} />
         <View style={s.tcBox}>
           <Text style={s.tcText}>{tcText}</Text>
         </View>
 
         {/* Section 10: Agent signature */}
+        <SilentPause />
         <View style={s.sigBlock}>
           <SectionTitle text={L.agent_sig} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
