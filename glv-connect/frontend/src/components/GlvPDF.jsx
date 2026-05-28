@@ -15,6 +15,11 @@ import {
   DOCUMENT_MODES,
 } from "../engines/documentModeResolver.js";
 import { auditBoundMediaForMode, getMaxSecondaryImages } from "../engines/media/MediaCategoryIsolationEngine.js";
+import {
+  EXECUTIVE_COLORS, EXECUTIVE_SPACING,
+  buildCoverPageData, buildTimelineData,
+  getTrustBadges, getCategoryVisualMode, buildFooterData,
+} from "../core/pdf/ExecutivePdfIntegrationBridge.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
 // Wraps any field extraction in a try/catch with a typed fallback.
@@ -288,6 +293,175 @@ const s = StyleSheet.create({
   langBarTxt:   { fontSize: 8, color: "rgba(255,255,255,0.7)" },
 });
 
+// ─── Executive V2 styles ──────────────────────────────────────────────────────
+const execS = StyleSheet.create({
+  // Identity bar — very top of cover
+  identityBar:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18 },
+  identityPlatform:{ color: "rgba(255,255,255,0.95)", fontSize: 11, fontWeight: "bold", letterSpacing: 1.5 },
+  identityGroup:  { color: "rgba(255,255,255,0.55)", fontSize: 7.5, letterSpacing: 0.8 },
+  // Gold rule
+  goldRule:       { height: 1.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginVertical: 14 },
+  goldRuleThin:   { height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginBottom: 10, width: 60 },
+  // Executive section heading
+  execSectionTitle:{ fontSize: 9, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10, borderBottomWidth: 1.5, borderBottomColor: EXECUTIVE_COLORS.ACCENT_GOLD, paddingBottom: 5 },
+  // Operation summary table (cover)
+  summaryTable:   { marginBottom: 14, marginTop: 8 },
+  summaryRow:     { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.12)", paddingVertical: 5 },
+  summaryLabel:   { width: "38%", fontSize: 7.5, color: "rgba(255,255,255,0.6)", letterSpacing: 0.4, textTransform: "uppercase", paddingRight: 4 },
+  summaryValue:   { flex: 1, fontSize: 8.5, color: "#FFFFFF", fontWeight: "bold" },
+  // Trust badge row (cover bottom)
+  trustRow:       { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  trustBadge:     { paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, backgroundColor: "rgba(201,168,76,0.08)" },
+  trustBadgeTxt:  { fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.ACCENT_GOLD, letterSpacing: 0.5, textTransform: "uppercase" },
+  // Timeline visualization
+  timelineWrap:   { marginBottom: 14, paddingVertical: 10, paddingHorizontal: 8, backgroundColor: EXECUTIVE_COLORS.SURFACE_ALT, borderRadius: 4, borderWidth: 0.5, borderColor: EXECUTIVE_COLORS.BORDER_LIGHT },
+  timelineRow:    { flexDirection: "row", alignItems: "center" },
+  timelineNode:   { width: 9, height: 9, borderRadius: 5, justifyContent: "center", alignItems: "center", marginRight: 2 },
+  timelineNodeInner:{ width: 5, height: 5, borderRadius: 3 },
+  timelineConnector:{ flex: 1, height: 1.5, marginHorizontal: 1 },
+  timelineLabels: { flexDirection: "row", marginTop: 5 },
+  timelineLabel:  { fontSize: 6.5, textAlign: "center" },
+  // Executive footer
+  execFooter:     { position: "absolute", bottom: 0, left: 0, right: 0, height: 28, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16 },
+  execFooterText: { fontSize: 7, color: "rgba(255,255,255,0.6)" },
+  execFooterRef:  { fontSize: 7, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold" },
+  execFooterConf: { fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: 0.5 },
+  // Value display on cover
+  coverValue:     { fontSize: 20, fontWeight: "bold", color: "#FFFFFF", marginTop: 10, letterSpacing: 0.5 },
+  coverValueSub:  { fontSize: 8, color: "rgba(255,255,255,0.55)", marginTop: 1 },
+});
+
+// ─── Executive helper components ─────────────────────────────────────────────
+
+function GoldRule() {
+  return <View style={execS.goldRule} />;
+}
+
+function ExecSectionTitle({ text }) {
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <Text style={execS.execSectionTitle}>{text}</Text>
+    </View>
+  );
+}
+
+function ExecIdentityBar({ lang }) {
+  return (
+    <View style={execS.identityBar}>
+      <View>
+        <Text style={execS.identityPlatform}>GLV GLOBAL OPERATING SYSTEM</Text>
+        <Text style={execS.identityGroup}>GLV Holding Group  ·  Global Export & Operations</Text>
+      </View>
+      <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.45)", letterSpacing: 0.5 }}>
+        {lang === "en" ? "ENTERPRISE · EXPORT" : "ENTERPRISE · EXPORTACIÓN"}
+      </Text>
+    </View>
+  );
+}
+
+function ExecOperationSummaryTable({ product, origin, destination, incoterm, totalValue, currency, validityDays, date, containerType, lang }) {
+  const labels = {
+    es: { product:"PRODUCTO", origin:"ORIGEN", dest:"DESTINO", incoterm:"INCOTERM", value:"VALOR TOTAL", validity:"VALIDEZ", container:"CONTENEDOR" },
+    en: { product:"PRODUCT",  origin:"ORIGIN", dest:"DESTINATION", incoterm:"INCOTERM", value:"TOTAL VALUE", validity:"VALIDITY", container:"CONTAINER" },
+  };
+  const L = labels[lang === "en" ? "en" : "es"];
+
+  const fmt = (n) => n ? `${currency || "USD"} ${Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : null;
+  const validStr = validityDays ? `${validityDays} ${lang === "en" ? "days" : "días"}` : null;
+
+  const rows = [
+    product      && { label: L.product,   value: product },
+    origin       && { label: L.origin,    value: origin },
+    destination  && { label: L.dest,      value: destination },
+    incoterm     && { label: L.incoterm,  value: incoterm },
+    containerType && { label: L.container, value: containerType },
+    totalValue   && { label: L.value,     value: fmt(totalValue) },
+    validStr     && { label: L.validity,  value: validStr },
+  ].filter(Boolean);
+
+  return (
+    <View style={execS.summaryTable}>
+      {rows.map((row, i) => (
+        <View key={i} style={execS.summaryRow}>
+          <Text style={execS.summaryLabel}>{row.label}</Text>
+          <Text style={execS.summaryValue}>{row.value}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ExecTrustRow({ lang }) {
+  const badges = getTrustBadges(lang === "en" ? "en" : "es");
+  return (
+    <View style={execS.trustRow}>
+      {badges.map(b => (
+        <View key={b.id} style={execS.trustBadge}>
+          <Text style={execS.trustBadgeTxt}>{b.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ExecTimelineStrip({ workflowState, lang }) {
+  try {
+    const tl     = buildTimelineData(workflowState || "QUOTED", lang === "en" ? "en" : "es");
+    const stages = tl.stages || [];
+    const w      = 100 / Math.max(stages.length, 1);
+    return (
+      <View style={execS.timelineWrap}>
+        <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8 }}>
+          {lang === "en" ? "OPERATION LIFECYCLE" : "CICLO OPERATIVO"}
+        </Text>
+        <View style={execS.timelineRow}>
+          {stages.map((stage, idx) => (
+            <React.Fragment key={stage.id}>
+              <View style={[execS.timelineNode, {
+                backgroundColor: stage.isCompleted ? EXECUTIVE_COLORS.STATUS_GREEN
+                               : stage.isCurrent   ? EXECUTIVE_COLORS.ACCENT_GOLD
+                               :                     EXECUTIVE_COLORS.BORDER_MEDIUM,
+              }]}>
+                <View style={[execS.timelineNodeInner, {
+                  backgroundColor: stage.isCompleted || stage.isCurrent ? "#fff" : EXECUTIVE_COLORS.BORDER_MEDIUM,
+                }]} />
+              </View>
+              {idx < stages.length - 1 && (
+                <View style={[execS.timelineConnector, {
+                  backgroundColor: stage.isCompleted ? EXECUTIVE_COLORS.ACCENT_GOLD : EXECUTIVE_COLORS.BORDER_LIGHT,
+                }]} />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+        <View style={execS.timelineLabels}>
+          {stages.map(stage => (
+            <View key={stage.id} style={{ width: `${w}%` }}>
+              <Text style={[execS.timelineLabel, {
+                color: stage.isCurrent   ? EXECUTIVE_COLORS.PRIMARY_DARK
+                     : stage.isCompleted ? EXECUTIVE_COLORS.STATUS_GREEN
+                     :                     EXECUTIVE_COLORS.TEXT_DISABLED,
+                fontWeight: stage.isCurrent ? "bold" : "normal",
+              }]}>{stage.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  } catch (_) { return null; }
+}
+
+function ExecAuditFooter({ documentRef, date, lang }) {
+  const confLabel = lang === "en" ? "CONFIDENTIAL" : "CONFIDENCIAL";
+  return (
+    <View style={execS.execFooter}>
+      <Text style={execS.execFooterRef}>{documentRef}</Text>
+      <Text style={execS.execFooterText}>GLV GOS  ·  GLV Holding Group  ·  {date}</Text>
+      <Text style={execS.execFooterConf}>{confLabel}</Text>
+    </View>
+  );
+}
+
 const PRICE_TABLE = {
   "UAE":                 { port: "Jebel Ali / Port Rashid, Dubai",   price: 5.70, transit: "25–28" },
   "Saudi Arabia (East)": { port: "Port of Dammam",                   price: 5.80, transit: "27–30" },
@@ -501,78 +675,116 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   return (
     <Document>
-      {/* PAGE 1 — COVER */}
+      {/* PAGE 1 — EXECUTIVE COVER */}
       <Page size="A4" style={s.coverPage}>
-        <View style={[s.coverBg, { backgroundColor: coverBg }]}>
-          <View>
-            {/* Logo */}
-            <View style={s.coverLogo}>
-              <Text style={s.coverLogoTxt}>G</Text>
-            </View>
-            <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, marginBottom: 4 }}>
-              GLV Global Food Services LLC — {domain}
+        <View style={[s.coverBg, { backgroundColor: coverBg, paddingTop: 32, paddingBottom: 28, paddingHorizontal: 40 }]}>
+
+          {/* Zone 1 — Corporate Identity Bar */}
+          <ExecIdentityBar lang={docLang} />
+          <GoldRule />
+
+          {/* Zone 2 — Document title + reference */}
+          <View style={{ marginBottom: 6 }}>
+            {/* Document type title */}
+            <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "bold", letterSpacing: 0.3, marginBottom: 3 }}>
+              {isSCO
+                ? (docLang === "en" ? "Soft Corporate Offer" : "Oferta Corporativa Blanda")
+                : isFCO
+                  ? (docLang === "en" ? "Full Corporate Offer" : "Oferta Corporativa Completa")
+                  : (docLang === "en" ? "International Supply Agreement" : "Contrato Internacional de Suministro")}
             </Text>
 
-            {/* Language indicator */}
-            <View style={s.langBar}>
-              <Text style={s.langBarTxt}>{docLang === "en" ? "Document in English" : "Documento en Español"}</Text>
-              <Text style={s.langBarTxt}>{doc.type}</Text>
-            </View>
-
-            {/* Status badge */}
-            {(isSCO || isFCO) && (
-              <View style={[s.badge, {
-                backgroundColor: isSCO ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.2)",
-                borderWidth: 1, borderColor: "rgba(255,255,255,0.4)"
-              }]}>
-                <Text style={{ color: "#fff", fontSize: 9, fontWeight: "bold" }}>
-                  {isSCO ? L.indicative : L.firm}
-                </Text>
-              </View>
-            )}
-
-            <Text style={s.coverTitle}>{doc.id}</Text>
-            <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "bold", marginBottom: 3 }}>
-              {isSCO ? "Soft Corporate Offer" : isFCO ? "Full Corporate Offer" : "Sales Purchase Agreement"}
-            </Text>
-            {/* Document mode category badge */}
-            {(() => {
-              const modeLabel = getModeCoverLabel(docMode, docLang);
-              return modeLabel ? (
-                <View style={{ marginBottom: 10, alignSelf: "flex-start" }}>
-                  <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.7)", backgroundColor: "rgba(255,255,255,0.1)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, letterSpacing: 0.5 }}>
-                    {modeLabel}
+            {/* Reference + type badges row */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Text style={{ fontSize: 10, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.5 }}>{doc.id}</Text>
+              {/* Status badge */}
+              {(isSCO || isFCO) && (
+                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", borderRadius: 2, backgroundColor: "rgba(255,255,255,0.08)" }}>
+                  <Text style={{ color: "#fff", fontSize: 7.5, fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                    {isSCO ? L.indicative : L.firm}
                   </Text>
                 </View>
-              ) : null;
-            })()}
-
-            <Text style={s.coverSub}>{docLang === "en" ? "Client:" : "Cliente:"} {doc.client}</Text>
-            <Text style={s.coverSub}>{docLang === "en" ? "Product:" : "Producto:"} {doc.custom_product_name || doc.customProductName || doc.product}</Text>
-            <Text style={s.coverSub}>{docLang === "en" ? "Destination:" : "Destino:"} {doc.destination}{(() => { const p = doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port; return p ? ` — ${p}` : ""; })()}</Text>
-            <Text style={s.coverSub}>{docLang === "en" ? "Date:" : "Fecha:"} {doc.date}</Text>
-            {totalValue && (
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginTop: 12 }}>
-                {fmtCurrency(totalValue)} USD
-              </Text>
-            )}
-          </View>
-
-          <View>
-            {isSCO && (
-              <View style={[s.indicativaBox, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.3)" }]}>
-                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{L.sco_note}</Text>
+              )}
+              {/* Category mode badge */}
+              {(() => {
+                const modeLabel = getModeCoverLabel(docMode, docLang);
+                return modeLabel ? (
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, backgroundColor: "rgba(201,168,76,0.12)" }}>
+                    <Text style={{ fontSize: 7, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.5 }}>{modeLabel}</Text>
+                  </View>
+                ) : null;
+              })()}
+              {/* Language indicator */}
+              <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.25)", borderRadius: 2 }}>
+                <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.6)", letterSpacing: 0.5 }}>{docLang === "en" ? "EN" : "ES"}</Text>
               </View>
-            )}
-            {isFCO && (
-              <View style={[s.firmeBox, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.3)" }]}>
-                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{fcoNote}</Text>
-              </View>
-            )}
-            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 8 }}>
-              GLV Holding Group © 2026 | {exporter}
+            </View>
+
+            {/* Client + date */}
+            <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.8)", marginBottom: 2 }}>
+              {docLang === "en" ? "Prepared for:" : "Elaborado para:"}{" "}
+              <Text style={{ fontWeight: "bold", color: "#FFFFFF" }}>{doc.client}</Text>
+            </Text>
+            <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>
+              {docLang === "en" ? "Date:" : "Fecha:"} {doc.date}{"  "}·{"  "}{exporter}
             </Text>
           </View>
+
+          {/* Zone 3 — Hero product image (category-isolated, max 1) */}
+          {boundMedia?.main && (
+            <View style={{ marginVertical: 10 }}>
+              <Image
+                src={boundMedia.main}
+                style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 4, opacity: 0.88 }}
+              />
+            </View>
+          )}
+
+          {/* Zone 4 — Executive Operation Summary Table */}
+          <ExecOperationSummaryTable
+            product={doc.custom_product_name || doc.customProductName || doc.product}
+            origin={doc.origin || "Brazil"}
+            destination={doc.destination}
+            incoterm={cdInc}
+            totalValue={totalValue}
+            currency={resolvedCurrency}
+            validityDays={validityDays}
+            date={doc.date}
+            containerType={containerType ? (CONTAINER_LABELS[containerType] || containerType) : null}
+            lang={docLang}
+          />
+
+          {/* Total value hero display */}
+          {totalValue > 0 && (
+            <View style={{ marginTop: 2, marginBottom: 10 }}>
+              <Text style={execS.coverValue}>{fmtCurrency(totalValue)} <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{resolvedCurrency}</Text></Text>
+              <Text style={execS.coverValueSub}>{docLang === "en" ? "Estimated Contract Value" : "Valor Estimado del Contrato"}</Text>
+            </View>
+          )}
+
+          <GoldRule />
+
+          {/* Zone 5 — Enterprise Trust Indicators */}
+          <ExecTrustRow lang={docLang} />
+
+          {/* SCO / FCO legal note */}
+          {isSCO && (
+            <View style={{ marginTop: 12, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 3, borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+              <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>{L.sco_note}</Text>
+            </View>
+          )}
+          {isFCO && (
+            <View style={{ marginTop: 12, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 3, borderLeftWidth: 2, borderLeftColor: EXECUTIVE_COLORS.STATUS_GREEN }}>
+              <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>{fcoNote}</Text>
+            </View>
+          )}
+
+          {/* Footer line */}
+          <View style={{ marginTop: "auto", paddingTop: 10, borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.12)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>{domain}</Text>
+            <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>GLV Holding Group © 2026</Text>
+          </View>
+
         </View>
       </Page>
 
@@ -1214,9 +1426,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 6: Timeline */}
         <SectionTitle text={L.timeline} />
-        <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
-          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{timeline}</Text>
-        </View>
+        <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} />
 
         {/* Section 7: Mandatory */}
         {mandatoryInfo && (
@@ -1341,11 +1551,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </View>
         )}
 
-        {/* Footer — keep Latin text only to avoid bidirectional rendering issues */}
-        <View style={s.footer}>
-          <Text>Agente: {doc.agent} | {PDF_T.en.footer_copy}</Text>
-          <Text>GLV Holding Group © 2026</Text>
-        </View>
+        {/* Footer — executive audit footer */}
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
       </Page>
     </Document>
   );
