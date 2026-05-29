@@ -204,5 +204,6 @@ export function transitionStatus(task, newStatus, actorRole) {
   return updateTask(task, {
     status: newStatus,
     completionPercent,
+    statusChangedAt: new Date().toISOString(),
   });
 }

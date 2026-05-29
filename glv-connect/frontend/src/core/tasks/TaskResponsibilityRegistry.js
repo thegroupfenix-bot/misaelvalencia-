@@ -6,6 +6,8 @@
  * Pure ES module — no external dependencies, no side effects at load time.
  */
 
+import { TASK_CATEGORIES } from './TaskEngine.js';
+
 // ---------------------------------------------------------------------------
 // ROLES (frozen enum)
 // ---------------------------------------------------------------------------
@@ -19,6 +21,7 @@ export const ROLES = Object.freeze({
   PROCUREMENT_MANAGER: 'PROCUREMENT_MANAGER',
   LOGISTICS_MANAGER: 'LOGISTICS_MANAGER',
   GLOBAL_ADMIN: 'GLOBAL_ADMIN',
+  SYSTEM: 'SYSTEM',
 });
 
 // ---------------------------------------------------------------------------
@@ -197,93 +200,67 @@ export const CATEGORY_RESPONSIBILITY_MATRIX = Object.freeze({
 // ---------------------------------------------------------------------------
 export const ROLE_PERMISSIONS = Object.freeze({
   [ROLES.GLOBAL_ADMIN]: Object.freeze({
-    canCreate: Object.freeze(Object.values({
-      COMMERCIAL: 'COMMERCIAL',
-      FINANCIAL: 'FINANCIAL',
-      LOGISTICS: 'LOGISTICS',
-      PROCUREMENT: 'PROCUREMENT',
-      QUALITY: 'QUALITY',
-      COMPLIANCE: 'COMPLIANCE',
-      AUDIT: 'AUDIT',
-      PRODUCTION: 'PRODUCTION',
-      INVENTORY: 'INVENTORY',
-      LIVESTOCK: 'LIVESTOCK',
-      TRANSPORT: 'TRANSPORT',
-      DOCUMENTATION: 'DOCUMENTATION',
-    })),
+    canCreate: Object.freeze(Object.values(TASK_CATEGORIES)),
     canAssign: Object.freeze(Object.values(ROLES)),
-    canApprove: Object.freeze(Object.values({
-      COMMERCIAL: 'COMMERCIAL',
-      FINANCIAL: 'FINANCIAL',
-      LOGISTICS: 'LOGISTICS',
-      PROCUREMENT: 'PROCUREMENT',
-      QUALITY: 'QUALITY',
-      COMPLIANCE: 'COMPLIANCE',
-      AUDIT: 'AUDIT',
-      PRODUCTION: 'PRODUCTION',
-      INVENTORY: 'INVENTORY',
-      LIVESTOCK: 'LIVESTOCK',
-      TRANSPORT: 'TRANSPORT',
-      DOCUMENTATION: 'DOCUMENTATION',
-    })),
+    canApprove: Object.freeze(Object.values(TASK_CATEGORIES)),
     canAudit: true,
   }),
 
   [ROLES.OPERATIONS_MANAGER]: Object.freeze({
     canCreate: Object.freeze([
-      'COMMERCIAL', 'LOGISTICS', 'PRODUCTION', 'TRANSPORT',
-      'DOCUMENTATION', 'QUALITY', 'PROCUREMENT', 'INVENTORY', 'LIVESTOCK',
+      TASK_CATEGORIES.COMMERCIAL, TASK_CATEGORIES.LOGISTICS, TASK_CATEGORIES.PRODUCTION, TASK_CATEGORIES.TRANSPORT,
+      TASK_CATEGORIES.DOCUMENTATION, TASK_CATEGORIES.QUALITY, TASK_CATEGORIES.PROCUREMENT, TASK_CATEGORIES.INVENTORY, TASK_CATEGORIES.LIVESTOCK,
     ]),
     canAssign: Object.freeze([
       ROLES.AGENT, ROLES.COUNTRY_MANAGER, ROLES.QUALITY_MANAGER,
       ROLES.LOGISTICS_MANAGER, ROLES.PROCUREMENT_MANAGER,
     ]),
     canApprove: Object.freeze([
-      'COMMERCIAL', 'LOGISTICS', 'PRODUCTION', 'TRANSPORT',
-      'DOCUMENTATION', 'QUALITY', 'PROCUREMENT', 'INVENTORY', 'LIVESTOCK',
+      TASK_CATEGORIES.COMMERCIAL, TASK_CATEGORIES.LOGISTICS, TASK_CATEGORIES.PRODUCTION, TASK_CATEGORIES.TRANSPORT,
+      TASK_CATEGORIES.DOCUMENTATION, TASK_CATEGORIES.QUALITY, TASK_CATEGORIES.PROCUREMENT, TASK_CATEGORIES.INVENTORY, TASK_CATEGORIES.LIVESTOCK,
     ]),
     canAudit: false,
   }),
 
   [ROLES.COUNTRY_MANAGER]: Object.freeze({
-    canCreate: Object.freeze(['COMMERCIAL', 'LOGISTICS', 'DOCUMENTATION', 'TRANSPORT']),
+    canCreate: Object.freeze([TASK_CATEGORIES.COMMERCIAL, TASK_CATEGORIES.LOGISTICS, TASK_CATEGORIES.DOCUMENTATION, TASK_CATEGORIES.TRANSPORT]),
     canAssign: Object.freeze([ROLES.AGENT]),
-    canApprove: Object.freeze(['COMMERCIAL', 'DOCUMENTATION']),
+    canApprove: Object.freeze([TASK_CATEGORIES.COMMERCIAL, TASK_CATEGORIES.DOCUMENTATION]),
     canAudit: false,
   }),
 
   [ROLES.QUALITY_MANAGER]: Object.freeze({
-    canCreate: Object.freeze(['QUALITY', 'COMPLIANCE', 'PRODUCTION', 'LIVESTOCK']),
+    canCreate: Object.freeze([TASK_CATEGORIES.QUALITY, TASK_CATEGORIES.COMPLIANCE, TASK_CATEGORIES.PRODUCTION, TASK_CATEGORIES.LIVESTOCK]),
     canAssign: Object.freeze([ROLES.AGENT]),
-    canApprove: Object.freeze(['QUALITY', 'COMPLIANCE', 'PRODUCTION', 'LIVESTOCK']),
+    canApprove: Object.freeze([TASK_CATEGORIES.QUALITY, TASK_CATEGORIES.COMPLIANCE, TASK_CATEGORIES.PRODUCTION, TASK_CATEGORIES.LIVESTOCK]),
     canAudit: false,
   }),
 
   [ROLES.AUDITOR]: Object.freeze({
-    canCreate: Object.freeze(['AUDIT', 'COMPLIANCE']),
+    canCreate: Object.freeze([TASK_CATEGORIES.AUDIT, TASK_CATEGORIES.COMPLIANCE]),
     canAssign: Object.freeze([]),
-    canApprove: Object.freeze(['AUDIT', 'COMPLIANCE']),
+    canApprove: Object.freeze([TASK_CATEGORIES.AUDIT, TASK_CATEGORIES.COMPLIANCE]),
     canAudit: true,
   }),
 
   [ROLES.FINANCE_MANAGER]: Object.freeze({
-    canCreate: Object.freeze(['FINANCIAL', 'PROCUREMENT']),
+    canCreate: Object.freeze([TASK_CATEGORIES.FINANCIAL, TASK_CATEGORIES.PROCUREMENT]),
     canAssign: Object.freeze([ROLES.AGENT]),
-    canApprove: Object.freeze(['FINANCIAL', 'PROCUREMENT']),
+    canApprove: Object.freeze([TASK_CATEGORIES.FINANCIAL, TASK_CATEGORIES.PROCUREMENT]),
     canAudit: false,
   }),
 
   [ROLES.PROCUREMENT_MANAGER]: Object.freeze({
-    canCreate: Object.freeze(['PROCUREMENT', 'LOGISTICS', 'INVENTORY']),
+    canCreate: Object.freeze([TASK_CATEGORIES.PROCUREMENT, TASK_CATEGORIES.LOGISTICS, TASK_CATEGORIES.INVENTORY]),
     canAssign: Object.freeze([ROLES.AGENT]),
-    canApprove: Object.freeze(['PROCUREMENT', 'INVENTORY']),
+    canApprove: Object.freeze([TASK_CATEGORIES.PROCUREMENT, TASK_CATEGORIES.INVENTORY]),
     canAudit: false,
   }),
 
   [ROLES.LOGISTICS_MANAGER]: Object.freeze({
-    canCreate: Object.freeze(['LOGISTICS', 'TRANSPORT', 'INVENTORY']),
+    canCreate: Object.freeze([TASK_CATEGORIES.LOGISTICS, TASK_CATEGORIES.TRANSPORT, TASK_CATEGORIES.INVENTORY]),
     canAssign: Object.freeze([ROLES.AGENT]),
-    canApprove: Object.freeze(['LOGISTICS', 'TRANSPORT', 'INVENTORY']),
+    canApprove: Object.freeze([TASK_CATEGORIES.LOGISTICS, TASK_CATEGORIES.TRANSPORT, TASK_CATEGORIES.INVENTORY]),
     canAudit: false,
   }),
 
