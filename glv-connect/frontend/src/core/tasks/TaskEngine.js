@@ -39,6 +39,16 @@ export const TASK_CATEGORIES = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
+// Task Priority Enum (frozen)
+// ---------------------------------------------------------------------------
+export const TASK_PRIORITY = Object.freeze({
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+});
+
+// ---------------------------------------------------------------------------
 // Required fields for the full task model
 // ---------------------------------------------------------------------------
 const REQUIRED_FIELDS = [
@@ -76,6 +86,8 @@ export function createTask(fields = {}) {
     assignedUser: null,
     createdAt: now,
     updatedAt: now,
+    statusChangedAt: null,
+    metadata: {},
     auditTrail: [],
     evidence: [],
     escalations: [],
@@ -117,6 +129,11 @@ export function validateTaskModel(task) {
   // Validate category is a known value
   if (!Object.values(TASK_CATEGORIES).includes(task.category)) {
     return `Invalid category value: ${task.category}`;
+  }
+
+  // Validate priority is a known value
+  if (!Object.values(TASK_PRIORITY).includes(task.priority)) {
+    return `Invalid priority value: ${task.priority}`;
   }
 
   // Validate completionPercent is in range [0, 100]

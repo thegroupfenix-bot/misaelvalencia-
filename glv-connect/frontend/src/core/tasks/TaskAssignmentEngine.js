@@ -10,63 +10,25 @@ import { TASK_STATUS, updateTask } from './TaskEngine.js';
 import { ROLES, ROLE_PERMISSIONS } from './TaskResponsibilityRegistry.js';
 
 // ---------------------------------------------------------------------------
-// Assignment authorization matrix
-// Defines which actor roles can assign to which target roles.
-// ---------------------------------------------------------------------------
-const ASSIGNMENT_AUTHORITY = Object.freeze({
-  [ROLES.GLOBAL_ADMIN]: [
-    ROLES.AGENT,
-    ROLES.COUNTRY_MANAGER,
-    ROLES.OPERATIONS_MANAGER,
-    ROLES.QUALITY_MANAGER,
-    ROLES.AUDITOR,
-    ROLES.FINANCE_MANAGER,
-    ROLES.PROCUREMENT_MANAGER,
-    ROLES.LOGISTICS_MANAGER,
-    ROLES.GLOBAL_ADMIN,
-  ],
-  [ROLES.OPERATIONS_MANAGER]: [
-    ROLES.AGENT,
-    ROLES.COUNTRY_MANAGER,
-    ROLES.QUALITY_MANAGER,
-    ROLES.LOGISTICS_MANAGER,
-    ROLES.PROCUREMENT_MANAGER,
-  ],
-  [ROLES.COUNTRY_MANAGER]: [
-    ROLES.AGENT,
-  ],
-  [ROLES.QUALITY_MANAGER]: [
-    ROLES.AGENT,
-  ],
-  [ROLES.FINANCE_MANAGER]: [
-    ROLES.AGENT,
-  ],
-  [ROLES.PROCUREMENT_MANAGER]: [
-    ROLES.AGENT,
-  ],
-  [ROLES.LOGISTICS_MANAGER]: [
-    ROLES.AGENT,
-  ],
-  [ROLES.AUDITOR]: [],
-  [ROLES.AGENT]: [],
-});
-
-// ---------------------------------------------------------------------------
 // canAssign(actorRole, targetRole)
 // Returns true if actorRole is authorized to assign a task to targetRole.
+// Source of truth: ROLE_PERMISSIONS[actorRole].canAssign in TaskResponsibilityRegistry.js
 // ---------------------------------------------------------------------------
 export function canAssign(actorRole, targetRole) {
-  const allowed = ASSIGNMENT_AUTHORITY[actorRole];
-  if (!Array.isArray(allowed)) return false;
-  return allowed.includes(targetRole);
+  const perms = ROLE_PERMISSIONS[actorRole];
+  if (!perms || !Array.isArray(perms.canAssign)) return false;
+  return perms.canAssign.includes(targetRole);
 }
 
 // ---------------------------------------------------------------------------
 // getAssignableRoles(actorRole)
 // Returns array of roles the actor can assign tasks to.
+// Source of truth: ROLE_PERMISSIONS[actorRole].canAssign in TaskResponsibilityRegistry.js
 // ---------------------------------------------------------------------------
 export function getAssignableRoles(actorRole) {
-  return ASSIGNMENT_AUTHORITY[actorRole] ?? [];
+  const perms = ROLE_PERMISSIONS[actorRole];
+  if (!perms || !Array.isArray(perms.canAssign)) return [];
+  return perms.canAssign;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,14 +48,8 @@ export function assignTask(task, assignedRole, assignedUser, assignedBy) {
     throw new Error('assignTask: assignedBy must be a non-empty string');
   }
 
-  // Actor must have assignment authority over the target role
-  // Note: assignedBy here represents the actor's user id; role validation is
-  // done at the service layer. The engine trusts the actor's declared role
-  // passed via assignedBy context. For pure engine usage we validate via
-  // ROLE_PERMISSIONS.canAssign list.
-  const actorPermissions = ROLE_PERMISSIONS[assignedBy] ?? null;
-  // If assignedBy is a userId (not a role), we skip permission enforcement here
-  // and leave that to the service / canAssign() helper used by callers.
+  // Permission enforcement is handled at the service layer via canAssign().
+  // assignedBy here is the actor's user id; role checks are left to callers.
 
   const now = new Date().toISOString();
 

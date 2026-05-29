@@ -7,6 +7,7 @@
  */
 
 import { updateTask } from './TaskEngine.js';
+import { ROLES } from './TaskResponsibilityRegistry.js';
 
 // ---------------------------------------------------------------------------
 // AUDIT_ACTIONS (frozen enum)
@@ -136,7 +137,7 @@ export function shouldEscalate(task) {
   // Stuck-in-status check
   const threshold = STUCK_THRESHOLD_MS[task.status];
   if (threshold !== null && typeof threshold === 'number') {
-    const lastUpdated = new Date(task.updatedAt).getTime();
+    const lastUpdated = new Date(task.statusChangedAt || task.updatedAt).getTime();
     if (now - lastUpdated > threshold) {
       return true;
     }
@@ -172,7 +173,7 @@ export function escalateTask(task, escalatedTo, reason) {
   const auditEntry = createAuditEntry(
     task,
     AUDIT_ACTIONS.ESCALATED,
-    'SYSTEM',
+    ROLES.SYSTEM,
     'system',
     { escalatedTo: escalatedTo.trim(), reason: reason.trim(), fromStatus: task.status }
   );
@@ -215,6 +216,16 @@ function createHook() {
   }
 
   return { subscribe, emit };
+}
+
+/**
+ * createHookScope()
+ * Factory that returns a new isolated { subscribe, emit } hook scope.
+ * Useful for testing or creating scoped pub/sub channels independent of
+ * the module-level singletons below.
+ */
+export function createHookScope() {
+  return createHook();
 }
 
 // Internal hook instances (module-level singletons, but not observable at load time)
