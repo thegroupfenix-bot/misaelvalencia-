@@ -377,7 +377,7 @@ function ExecIdentityBar({ lang, tag }) {
   );
 }
 
-function ExecOperationSummaryTable({ product, origin, destination, incoterm, totalValue, currency, validityDays, date, containerType, lang, rowOrder }) {
+function ExecOperationSummaryTable({ product, origin, destination, incoterm, totalValue, currency, validityDays, date, containerType, lang, rowOrder, programLabel }) {
   const labels = {
     es: { product:"PRODUCTO", origin:"ORIGEN", dest:"DESTINO", incoterm:"INCOTERM", value:"VALOR TOTAL", validity:"VALIDEZ", container:"CONTENEDOR" },
     en: { product:"PRODUCT",  origin:"ORIGIN", dest:"DESTINATION", incoterm:"INCOTERM", value:"TOTAL VALUE", validity:"VALIDITY", container:"CONTAINER" },
@@ -402,7 +402,7 @@ function ExecOperationSummaryTable({ product, origin, destination, incoterm, tot
   return (
     <View style={execS.summaryTable}>
       <Text style={execS.summaryTableHdr}>
-        {lang === "en" ? "OPERATION BRIEF" : "RESUMEN DE OPERACIÓN"}
+        {programLabel || (lang === "en" ? "OPERATION BRIEF" : "RESUMEN DE OPERACIÓN")}
       </Text>
       {rows.map((row, i) => (
         <View key={i} style={execS.summaryRow}>
@@ -604,6 +604,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     ["GRAINS","BEANS","LENTILS","CHICKPEAS","COMMODITIES","ANIMAL_FEED"].includes(firstCdRow.category);
   const isFrozenRow = !isLiveAnimalRow && !isOilsRow &&
     ["FROZEN_MEAT","FROZEN_POULTRY"].includes(firstCdRow.category);
+  // Fresh produce — cold-chain aware container export, NOT bulk commodity
+  const isFreshProduceRow = !isLiveAnimalRow && !isOilsRow && !isGrainRow && !isFrozenRow &&
+    ["FRESH_PRODUCE","FRESH_FRUITS","AVOCADO","AVOCADOS","CITRUS","BANANAS","BANANA",
+     "PINEAPPLE","MANGO","FRESH_VEGETABLES","PRODUCE","TROPICAL_FRUITS","PAPAYA",
+     "BERRIES","TOMATO","ONION","GARLIC","FRESH_PULP"].includes(firstCdRow.category);
 
   // Document Intelligence Mode — drives all executive content selection
   const docMode = resolveDocumentMode(firstCdRow, doc);
@@ -682,6 +687,61 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   const validityDays = doc.validityDays || doc.validity_days || 15;
 
+  // TRADE_SCALE_INTELLIGENCE_V1 — READ-ONLY scale and program derivations.
+  // Uses already-computed totalKgDisplay. Zero pricing changes.
+  const totalMT = totalKgDisplay > 0
+    ? totalKgDisplay / 1000
+    : isMT ? engineQty : engineQty / 1000;
+
+  const scaleTier = totalMT >= 80000 ? "MEGA"
+    : totalMT >= 25000 ? "STRATEGIC"
+    : totalMT >= 5000  ? "PROGRAM"
+    : totalMT >= 26    ? "CONTAINER"
+    : totalMT > 0      ? "MICRO"
+    : null;
+
+  // Container program: containerType declared. Bulk vessel: large grain/agri, no container.
+  const tradeProgram = (() => {
+    if (!scaleTier) return null;
+    if (containerType) return "CONTAINER";
+    if ((isGrainRow || isFreshProduceRow) &&
+        (scaleTier === "PROGRAM" || scaleTier === "STRATEGIC" || scaleTier === "MEGA"))
+      return "BULK_VESSEL";
+    if (isOilsRow) return "CONTAINER";
+    return "CONTAINER";
+  })();
+
+  const scaleLabel = (() => {
+    if (!scaleTier) return null;
+    const map = {
+      MICRO:     { en: "Commercial Shipment",              es: "Embarque Comercial" },
+      CONTAINER: { en: "Container Export Program",         es: "Programa de Exportación" },
+      PROGRAM:   { en: "Supply Program",                   es: "Programa de Suministro" },
+      STRATEGIC: { en: "Strategic Supply Program",         es: "Programa de Suministro Estratégico" },
+      MEGA:      { en: "International Commodity Program",  es: "Programa Internacional de Commodities" },
+    };
+    return map[scaleTier]?.[docLang === "en" ? "en" : "es"] || null;
+  })();
+
+  // Vessel class — informational only, no calculation. Bulk grain/agri at PROGRAM+ scale.
+  // Prepared for future Handysize / Handymax / Supramax / Ultramax / Panamax / Post-Panamax support.
+  const vesselClass = (() => {
+    if (tradeProgram !== "BULK_VESSEL") return null;
+    if (scaleTier === "MEGA")      return "Panamax";
+    if (scaleTier === "STRATEGIC") return "Supramax";
+    if (scaleTier === "PROGRAM")   return "Handymax";
+    return null;
+  })();
+
+  // programLabel — adapts cover operation summary header to operational scale
+  const programLabel = (() => {
+    if (!scaleTier || scaleTier === "MICRO" || scaleTier === "CONTAINER") return null;
+    if (scaleTier === "MEGA")      return docLang === "en" ? "COMMODITY MOVEMENT PROGRAM"        : "PROGRAMA DE MOVIMIENTO COMMODITIES";
+    if (scaleTier === "STRATEGIC") return docLang === "en" ? "STRATEGIC SUPPLY PROGRAM"          : "PROGRAMA ESTRATÉGICO DE SUMINISTRO";
+    if (scaleTier === "PROGRAM")   return docLang === "en" ? "SUPPLY PROGRAM"                    : "PROGRAMA DE SUMINISTRO";
+    return null;
+  })();
+
   // catAtmosphere — READ-ONLY visual atmosphere config derived from category booleans.
   // Drives: identity tag, lifecycle label, hero framing, summary row order, certs accent, regulated marker.
   // Zero business logic. No formula changes.
@@ -715,6 +775,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
       lifecycleLabel:  docLang === "en" ? "COLD CHAIN EXPORT LIFECYCLE"  : "CICLO EXPORTACIÓN CADENA FRÍO",
       heroHeight: 148, heroOpacity: 0.86,
       summaryOrder:    ["product","incoterm","container","origin","destination","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    if (isFreshProduceRow) return {
+      tag:             docLang === "en" ? "FRESH PRODUCE EXPORT"             : "EXPORTACIÓN PRODUCE FRESCO",
+      lifecycleLabel:  docLang === "en" ? "FRESH PRODUCE EXPORT LIFECYCLE"   : "CICLO EXPORTACIÓN PRODUCE FRESCO",
+      heroHeight: 152, heroOpacity: 0.90,
+      summaryOrder:    ["product","origin","incoterm","container","destination","value","validity"],
       certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
       regulatedMarker: false,
     };
@@ -812,6 +880,32 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.28)", letterSpacing: 0.5 }}>{docLang === "en" ? "EN" : "ES"}</Text>
             </View>
 
+            {/* Scale / trade program — quiet institutional context line */}
+            {scaleLabel && scaleTier !== "MICRO" && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <Text style={{ fontSize: 6.5, color: "rgba(201,168,76,0.60)", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                  {scaleLabel}
+                </Text>
+                {tradeProgram === "BULK_VESSEL" && (
+                  <>
+                    <Text style={{ fontSize: 6, color: "rgba(255,255,255,0.2)" }}>·</Text>
+                    <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.38)", letterSpacing: 0.5 }}>
+                      {docLang === "en" ? "Bulk Vessel" : "Buque Granel"}
+                      {vesselClass ? `  (${vesselClass})` : ""}
+                    </Text>
+                  </>
+                )}
+                {tradeProgram === "CONTAINER" && (scaleTier === "PROGRAM" || scaleTier === "STRATEGIC" || scaleTier === "MEGA") && (
+                  <>
+                    <Text style={{ fontSize: 6, color: "rgba(255,255,255,0.2)" }}>·</Text>
+                    <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.38)", letterSpacing: 0.5 }}>
+                      {docLang === "en" ? "Container Program" : "Programa Contenedor"}
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
+
             {/* Client + date */}
             <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.8)", marginBottom: 2 }}>
               {docLang === "en" ? "Prepared for:" : "Elaborado para:"}{" "}
@@ -846,6 +940,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             containerType={containerType ? (CONTAINER_LABELS[containerType] || containerType) : null}
             lang={docLang}
             rowOrder={catAtmosphere.summaryOrder}
+            programLabel={programLabel}
           />
 
           {/* Financial Dominance Zone — stops the eye, communicates transaction scale */}
@@ -994,7 +1089,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                       ? (docLang === "en" ? "Livestock\nVessel" : "Buque\nGanado")
                       : isFrozenRow
                         ? (docLang === "en" ? "Reefer\nCont." : "Cont.\nRefrig.")
-                        : (docLang === "en" ? "Bulk\nVessel" : "Buque\nGranel")}
+                        : vesselClass
+                          ? vesselClass
+                          : (docLang === "en" ? "Bulk\nVessel" : "Buque\nGranel")}
                   </Text>
                 </View>
                 <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
