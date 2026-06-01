@@ -91,20 +91,26 @@ export function resolveDocumentMode(firstCdRow = {}, doc = {}) {
 
 // ─── Executive category labels ─────────────────────────────────────────────────
 
+// UTF-8 NOTE: All label strings use direct UTF-8 encoding.
+// @react-pdf/renderer built-in fonts (Helvetica/WinAnsi) support the full Latin-1
+// + Windows-1252 range, which covers all Spanish/Portuguese/English characters
+// used here (a-z, A-Z, 0-9, plus aá eé ií oó uú nñ uü).
+// NEVER use HTML entities or escape sequences — always embed the literal UTF-8 glyph.
 const CATEGORY_LABELS = {
-  OILS:                    { es: "Aceite Comestible de Exportación",  en: "Export Edible Oil" },
-  LIVE_ANIMALS:            { es: "Animales Vivos",                    en: "Live Animals" },
-  COMMODITIES:             { es: "Granos y Cereales",                 en: "Grains & Cereals" },
-  BEANS:                   { es: "Legumbres de Exportación",          en: "Export Legumes" },
-  LENTILS:                 { es: "Lentejas",                          en: "Lentils" },
-  CHICKPEAS:               { es: "Garbanzos",                         en: "Chickpeas" },
-  ANIMAL_FEED:             { es: "Alimento Animal",                   en: "Animal Feed" },
-  FROZEN_MEAT:             { es: "Carne Congelada",                   en: "Frozen Meat" },
-  FROZEN_POULTRY:          { es: "Aves Congeladas",                   en: "Frozen Poultry" },
-  FRUIT_PRODUCTS:          { es: "Productos Frutícolas",              en: "Fruit Products" },
-  COLOMBIAN_EXOTIC_FRUITS: { es: "Frutas Exóticas Colombianas",       en: "Colombian Exotic Fruits" },
-  CANNED_MEAT:             { es: "Carne en Conserva",                 en: "Canned Meat" },
-  EGGS:                    { es: "Huevos de Exportación",             en: "Export Eggs" },
+  OILS:                    { es: "Programa de Exportación de Aceites Vegetales", en: "Vegetable Oils Export Program" },
+  LIVE_ANIMALS:            { es: "Programa de Exportación Animal",               en: "Live Animal Export Program" },
+  COMMODITIES:             { es: "Programa de Commodities Agrícolas",            en: "Agricultural Commodities Program" },
+  GRAINS:                  { es: "Programa de Commodities Agrícolas",            en: "Agricultural Commodities Program" },
+  BEANS:                   { es: "Programa de Legumbres de Exportación",         en: "Export Legumes Program" },
+  LENTILS:                 { es: "Programa de Lentejas",                              en: "Lentils Export Program" },
+  CHICKPEAS:               { es: "Programa de Garbanzos",                             en: "Chickpeas Export Program" },
+  ANIMAL_FEED:             { es: "Programa de Alimento Animal",                       en: "Animal Feed Program" },
+  FROZEN_MEAT:             { es: "Productos Cárnicos Congelados",                en: "Frozen Meat Products" },
+  FROZEN_POULTRY:          { es: "Productos Avícolas Congelados",                en: "Frozen Poultry Products" },
+  FRUIT_PRODUCTS:          { es: "Productos Frutícolas Congelados",              en: "Frozen Fruit Products" },
+  COLOMBIAN_EXOTIC_FRUITS: { es: "Frutas Exóticas Colombianas",                  en: "Colombian Exotic Fruits" },
+  CANNED_MEAT:             { es: "Carne en Conserva",                                 en: "Canned Meat Products" },
+  EGGS:                    { es: "Programa de Exportación de Huevos",            en: "Export Eggs Program" },
 };
 
 /**

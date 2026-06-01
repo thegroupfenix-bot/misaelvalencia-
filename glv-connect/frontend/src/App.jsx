@@ -910,8 +910,8 @@ function NewDocForm({ type, user, setView, showNotif }) {
         product: effectiveProduct || form.product,
         destination: effectiveDestination,
         origin: chinaAlert ? "Colombia" : (commercialData?.origin || form.origin || "Brazil"),
-        headcount: form.headcount,
-        avgWeight: form.avgWeight,
+        headcount: isAnimalProduct ? form.headcount : null,
+        avgWeight: isAnimalProduct ? form.avgWeight : null,
         paymentMethod: form.paymentMethod,
         observations: form.observations,
         parentId: form.parentId,
@@ -2024,6 +2024,10 @@ function DocPreviewModal({ doc, onClose }) {
   const [pdfLang, setPdfLang] = useState("es");
   const [genError, setGenError] = useState(null);
   const isChina = (doc.destination || "").toLowerCase().includes("china");
+  const isDocAnimal = doc.product === "LIVE_ANIMALS"
+    || doc.commercialData?.cdRows?.[0]?.category === "LIVE_ANIMALS"
+    || doc.commercial_data?.cdRows?.[0]?.category === "LIVE_ANIMALS"
+    || (typeof doc.product === "string" && (doc.product.includes("Animales") || doc.product.includes("Ovina") || doc.product.includes("Bovina")));
 
   const handleDownload = async () => {
     setGenError(null);
@@ -2106,8 +2110,8 @@ function DocPreviewModal({ doc, onClose }) {
           <InfoBlock label="Puerto CFR" value={doc.commercialData?.destinationPort || lookupPriceTable(doc.destination)?.port || "—"} />
           <InfoBlock label="Origen" value={doc.origin} />
           <InfoBlock label="Sistema de pago" value={doc.paymentOption || doc.payment_option || doc.paymentMethod || "SBLC"} />
-          {doc.headcount && <InfoBlock label="Número de cabezas" value={new Intl.NumberFormat().format(doc.headcount)} />}
-          {doc.avgWeight  && <InfoBlock label="Peso prom. referencia" value={`${doc.avgWeight} kg`} />}
+          {isDocAnimal && doc.headcount && <InfoBlock label="Número de cabezas" value={new Intl.NumberFormat().format(doc.headcount)} />}
+          {isDocAnimal && doc.avgWeight  && <InfoBlock label="Peso prom. referencia" value={`${doc.avgWeight} kg`} />}
           {doc.pricePerKg && <InfoBlock label="Precio CFR" value={`USD ${Number(doc.pricePerKg).toFixed(2)}/kg`} />}
           {doc.totalValue && <InfoBlock label="Valor total referencial" value={fmt(doc.totalValue)} highlight />}
         </div>
