@@ -154,7 +154,7 @@ export function buildExecutiveTimeline(workflowState = "DRAFT", lang = "es") {
     currentOrder,
     totalStages:       TIMELINE_STAGES.length,
     completedCount:    stages.filter(s => s.isCompleted).length,
-    progressPercent:   Math.round(((currentOrder - 1) / (TIMELINE_STAGES.length - 1)) * 100),
+    progressPercent:   Math.round((currentOrder / TIMELINE_STAGES.length) * 100),
     stages,
     lang,
     layout: Object.freeze({
