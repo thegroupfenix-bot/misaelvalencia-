@@ -62,12 +62,12 @@ const PDF_T = {
     indicative:     "INDICATIVE — NON-BINDING",
     firm:           "FIRM OFFER — BINDING",
     origin_lbl:     "Origin",
-    port_lbl:       "CFR Destination Port",
+    port_lbl:       "Destination Port",
     transit_lbl:    "Estimated Transit",
     heads_lbl:      "Number of Heads",
     weight_lbl:     "Average Weight Reference",
     qty_lbl:        "Quantity",
-    price_lbl:      "CFR Price (USD/kg)",
+    price_lbl:      "Price (USD)",
     total_kg_lbl:   "Estimated Total Weight",
     shipment_val_lbl: "Value per Shipment / Lot",
     total_val_lbl:  "Total Contract Value",
@@ -100,11 +100,11 @@ const PDF_T = {
     indicative:     "参考报价 — 非约束性",
     firm:           "正式报价 — 具有约束力",
     origin_lbl:     "产地",
-    port_lbl:       "CFR目的港",
+    port_lbl:       "目的港",
     transit_lbl:    "预计运输时间",
     heads_lbl:      "头数",
     weight_lbl:     "参考平均体重",
-    price_lbl:      "CFR价格 (美元/千克)",
+    price_lbl:      "价格 (美元)",
     total_kg_lbl:   "预计总重量",
     total_val_lbl:  "参考总价值",
     currency_lbl:   "货币",
@@ -136,11 +136,11 @@ const PDF_T = {
     indicative:     "عرض استرشادي — غير ملزم",
     firm:           "عرض رسمي — ملزم قانوناً",
     origin_lbl:     "بلد المنشأ",
-    port_lbl:       "ميناء التسليم CFR",
+    port_lbl:       "ميناء التسليم",
     transit_lbl:    "وقت العبور التقديري",
     heads_lbl:      "عدد الرؤوس",
     weight_lbl:     "متوسط الوزن المرجعي",
-    price_lbl:      "سعر CFR (دولار/كغ)",
+    price_lbl:      "السعر (دولار)",
     total_kg_lbl:   "إجمالي الوزن التقديري",
     total_val_lbl:  "إجمالي القيمة المرجعية",
     currency_lbl:   "العملة",
@@ -172,11 +172,11 @@ const PDF_T = {
     indicative:     "INDICATIF — NON CONTRAIGNANT",
     firm:           "OFFRE FERME — CONTRAIGNANTE",
     origin_lbl:     "Origine",
-    port_lbl:       "Port de destination CFR",
+    port_lbl:       "Port de destination",
     transit_lbl:    "Transit estimé",
     heads_lbl:      "Nombre de têtes",
     weight_lbl:     "Poids moyen référence",
-    price_lbl:      "Prix CFR (USD/kg)",
+    price_lbl:      "Prix (USD)",
     total_kg_lbl:   "Poids total estimé",
     total_val_lbl:  "Valeur totale référentielle",
     currency_lbl:   "Devise",
@@ -210,12 +210,12 @@ PDF_T.es = {
   indicative:   "INDICATIVA — NO VINCULANTE",
   firm:         "OFERTA FIRME — VINCULANTE",
   origin_lbl:   "Origen",
-  port_lbl:     "Puerto destino CFR",
+  port_lbl:     "Puerto destino",
   transit_lbl:  "Tránsito estimado",
   heads_lbl:    "Número de Cabezas",
   weight_lbl:   "Peso Promedio Referencia",
   qty_lbl:      "Cantidad",
-  price_lbl:    "Precio CFR (USD/kg)",
+  price_lbl:    "Precio (USD)",
   total_kg_lbl: "Peso Total Estimado",
   shipment_val_lbl: "Valor por Embarque / Lote",
   total_val_lbl:"Valor Total del Contrato",
@@ -575,6 +575,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     : (doc.commercialData || doc.commercial_data || {}))?.rows || [];
   const firstCdRow = cdRows[0] || {};
   const cdInc = (firstCdRow.incoterms || ["CFR"])[0];
+  // Dynamic port label — incoterm-aware, never hardcodes "CFR"
+  const dynamicPortLbl = docLang === "en"
+    ? `${cdInc} Destination Port`
+    : `Puerto destino ${cdInc}`;
   const containerType = firstCdRow.containerType || null;
   const CONTAINER_LABELS = { "20FT":"20FT Dry","40FT":"40FT Dry","40HC":"40HC High Cube","REEFER_20":"Reefer 20FT","REEFER_40":"Reefer 40FT","FLEXITANK":"Flexitank","ISO_TANK":"ISO Tank","BULK_VESSEL":"Bulk Vessel","LIVESTOCK_VESSEL":"Livestock Vessel","AIR_CARGO":"Air Cargo" };
   // V5: liquid/packaged engine fields
@@ -622,12 +626,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   }
   const maxSecImages = getMaxSecondaryImages(docMode);
 
-  const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perCarton:"/carton", perPouch:"/pouch", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
-  // Dynamic price label: "Precio CFR /pouch" instead of always "Precio CFR (USD/kg)"
+  const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perCase:"/case", perCarton:"/carton", perPouch:"/pouch", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
+  // cuAbbr: null when no unit selected — never falls back to "/kg"
   const cuAbbr = COMMERCIAL_UNIT_LABELS[commercialUnit] || null;
-  const dynamicPriceLbl = cuAbbr && cuAbbr !== "/kg"
+  // dynamicPriceLbl: always uses cdInc, no hardcoded incoterm, no "/kg" default
+  const dynamicPriceLbl = cuAbbr
     ? (docLang === "en" ? `${cdInc} Price (USD${cuAbbr})` : `Precio ${cdInc} (USD${cuAbbr})`)
-    : (L.price_lbl || (docLang === "en" ? `${cdInc} Price (USD/kg)` : `Precio ${cdInc} (USD/kg)`));
+    : (docLang === "en" ? `${cdInc} Price` : `Precio ${cdInc}`);
   // Export format display label (V6/V7)
   const exportFormatLabel = exportFormat ? exportFormat.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null;
   const PACKAGING_TYPE_LABELS  = { FLEXITANK:"Flexi Tank",ISO_TANK:"ISO Tank",IBC_1000L:"IBC 1000L",DRUM_200L:"Drum 200L",JERRYCAN_20L:"Jerrycan 20L",JERRYCAN_10L:"Jerrycan 10L",JERRYCAN_5L:"Jerrycan 5L",BIG_BAG_1MT:"Big Bag 1MT",SACK_50KG:"Saco 50kg",BULK_VESSEL:"Granel Cisterna",PET_BOTTLE:"PET Bottle",GLASS_BOTTLE:"Glass Bottle",TETRA_PAK:"Tetra Pak",DOYPACK:"Doypack",SACHET:"Sachet",PLASTIC_GALLON:"Plastic Gallon",PREMIUM_BOTTLE:"Premium Bottle",CAN_TIN:"Can / Tin",RETAIL_BOX:"Retail Box",PILLOW_POUCH:"Pillow Pouch",STAND_UP_POUCH:"Stand Up Pouch",SPOUT_POUCH:"Spout Pouch",GUSSET_POUCH:"Gusset Pouch",SIDE_SEAL_POUCH:"Side Seal Pouch",BAG_IN_BOX:"Bag In Box" };
@@ -1076,7 +1081,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               <Text style={{ fontSize: 9.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{doc.origin || "Brazil"}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.infoLabel}>{L.port_lbl}</Text>
+              <Text style={s.infoLabel}>{dynamicPortLbl}</Text>
               <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>
                 {doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port || doc.destination}
               </Text>
@@ -1748,7 +1753,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           {/* Common fields — all categories */}
           {pricePerKg && (
             <BiInfoBox esLabel={dynamicPriceLbl}
-              value={`USD ${Number(pricePerKg).toFixed(2)}${cuAbbr || "/kg"}`} />
+              value={`USD ${Number(pricePerKg).toFixed(2)}${cuAbbr || ""}`} />
           )}
           {totalKgDisplay > 0 && !isOilsRow && !isFruitProductRow && (
             <BiInfoBox esLabel={L.total_kg_lbl}
