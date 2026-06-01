@@ -609,6 +609,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     ["FRESH_PRODUCE","FRESH_FRUITS","AVOCADO","AVOCADOS","CITRUS","BANANAS","BANANA",
      "PINEAPPLE","MANGO","FRESH_VEGETABLES","PRODUCE","TROPICAL_FRUITS","PAPAYA",
      "BERRIES","TOMATO","ONION","GARLIC","FRESH_PULP"].includes(firstCdRow.category);
+  // Frozen fruit / pulp products — reefer export with cold-chain summary fields
+  const isFruitProductRow = !isLiveAnimalRow && !isOilsRow && !isGrainRow && !isFrozenRow && !isFreshProduceRow &&
+    ["FRUIT_PRODUCTS","COLOMBIAN_EXOTIC_FRUITS"].includes(firstCdRow.category);
 
   // Document Intelligence Mode — drives all executive content selection
   const docMode = resolveDocumentMode(firstCdRow, doc);
@@ -837,6 +840,28 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     : `TÉRMINOS Y CONDICIONES GENERALES:\n1. La presente oferta es emitida por ${exporter} en su calidad de exportador internacional certificado.\n2. Los precios son según el/los Incoterm(s) pactado(s) conforme a Incoterms 2020, en el puerto de destino indicado.\n3. La aceptación formal de esta oferta activa el proceso de elaboración del SPA (Sales Purchase Agreement).\n4. Todos los precios están denominados en la moneda indicada en la oferta.\n5. Cualquier controversia será resuelta mediante arbitraje internacional según las reglas de la CCI (París).\n6. La ley aplicable es la establecida en el contrato definitivo (SPA).\n7. GLV Global Food Services LLC se reserva el derecho de modificar precios por causas de fuerza mayor o cambios en normativas sanitarias internacionales.`;
 
   const fcoNote = (L.fco_note || "").replace("{days}", validityDays).replace("{date}", doc.date);
+
+  // ── Phase 6: Category validation — runs before render, logs violations, never throws ──
+  (() => {
+    const cat  = firstCdRow.category || "";
+    const pkg  = (firstCdRow.packagingType || "").toUpperCase();
+    const cont = (firstCdRow.containerType || "").toUpperCase();
+    const violations = [];
+    if (cat === "LIVE_ANIMALS" && /RF20|RF40|REEFER/.test(cont))
+      violations.push("LIVE_ANIMALS + reefer container is invalid — livestock requires ventilated vessel, not reefer");
+    if (cat === "FRUIT_PRODUCTS" && (doc.headcount > 0 || firstCdRow.specs?.headCount > 0))
+      violations.push("FRUIT_PRODUCTS + headcount field is invalid — no livestock fields on produce documents");
+    if (cat === "OILS" && (firstCdRow.breed || doc.breed))
+      violations.push("OILS + breed field is invalid — livestock breed cannot appear on oils documents");
+    if (cat === "OILS" && /FLEXITANK/.test(cont) && cat === "LIVE_ANIMALS")
+      violations.push("LIVE_ANIMALS + flexitank is invalid");
+    if (isGrainRow && (firstCdRow.specs?.avgWeight > 0 || doc.avgWeight > 0))
+      violations.push("GRAINS + avgWeight field is invalid — animal weight cannot appear on grain documents");
+    if (cat === "FROZEN_MEAT" && /FLEXITANK/.test(pkg))
+      violations.push("FROZEN_MEAT + flexitank packaging is invalid — frozen meat requires reefer, not flexitank");
+    if (violations.length > 0)
+      console.warn("[PDF_CATEGORY_VALIDATION] Invalid combinations detected:", violations);
+  })();
 
   return (
     <Document>
@@ -1539,7 +1564,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               </View>
               {rows.map((row, i) => {
                 const catLabel = getCategoryDisplayLabel(row.category || "", docLang);
-                const inc = (row.incoterms || ["CFR"])[0];
+                const inc = cdInc; // normalized to document canonical incoterm — no per-row override allowed
                 const price = parseFloat(row.incotermPrices?.[inc] || row.unitPrice || 0);
                 const isSkuRow = Array.isArray(row.skus) && row.skus.length > 0;
                 let sv = row.summary?.shipmentValue || 0;
@@ -1633,23 +1658,99 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         )}
 
         <View style={s.grid}>
-          {isLiveAnimalRow && (engineHeads > 0 || doc.headcount) && (
-            <BiInfoBox esLabel={L.heads_lbl}
-              value={new Intl.NumberFormat().format(engineHeads || doc.headcount)} />
-          )}
-          {isLiveAnimalRow && (engineAvgW > 0 || doc.avgWeight) && (
-            <BiInfoBox esLabel={L.weight_lbl}
-              value={`${engineAvgW || doc.avgWeight} kg`} />
-          )}
-          {!isLiveAnimalRow && engineQty > 0 && (
+
+          {/* LIVE_ANIMALS — livestock-specific fields only */}
+          {isLiveAnimalRow && (() => {
+            const heads  = engineHeads || doc.headcount || 0;
+            const avgW   = engineAvgW  || doc.avgWeight  || 0;
+            const breed  = firstCdRow.breed  || doc.breed  || (docLang === "en" ? "Per contract" : "Según contrato");
+            const gender = firstCdRow.gender || doc.gender || (docLang === "en" ? "Per contract" : "Según contrato");
+            return (<>
+              {heads > 0 && <BiInfoBox esLabel={docLang === "en" ? "Number of Heads"   : "Número de Cabezas"}   value={new Intl.NumberFormat().format(heads)} />}
+              {avgW  > 0 && <BiInfoBox esLabel={docLang === "en" ? "Average Weight"     : "Peso Promedio"}       value={`${avgW} kg`} />}
+              {heads > 0 && avgW > 0 && <BiInfoBox esLabel={docLang === "en" ? "Total Live Weight" : "Peso Total Vivo"} value={`${new Intl.NumberFormat().format(heads * avgW)} kg`} />}
+              <BiInfoBox esLabel={docLang === "en" ? "Breed"  : "Raza"}   value={breed} />
+              <BiInfoBox esLabel={docLang === "en" ? "Gender" : "Sexo"}   value={gender} />
+            </>);
+          })()}
+
+          {/* FRUIT_PRODUCTS / COLOMBIAN_EXOTIC_FRUITS — reefer cold-chain summary */}
+          {isFruitProductRow && (() => {
+            const presentation = firstCdRow.presentationSize || doc.presentationSize || (docLang === "en" ? "Per specification" : "Según especificación");
+            const netWeight    = totalKgDisplay > 0 ? `${new Intl.NumberFormat().format(totalKgDisplay)} kg` : "—";
+            const reeferType   = firstCdRow.containerType || "RF40HC";
+            const storageTmp   = docLang === "en" ? "−18°C to −15°C" : "−18°C a −15°C";
+            return (<>
+              <BiInfoBox esLabel={docLang === "en" ? "Presentation"          : "Presentación"}               value={presentation} />
+              <BiInfoBox esLabel={docLang === "en" ? "Net Weight"            : "Peso Neto"}                  value={netWeight} />
+              {firstCdRow.cases   && <BiInfoBox esLabel={docLang === "en" ? "Cases"   : "Cajas"}   value={String(firstCdRow.cases)} />}
+              {firstCdRow.pallets && <BiInfoBox esLabel={docLang === "en" ? "Pallets" : "Pallets"} value={String(firstCdRow.pallets)} />}
+              <BiInfoBox esLabel={docLang === "en" ? "Reefer Type"           : "Tipo Reefer"}                value={reeferType} />
+              <BiInfoBox esLabel={docLang === "en" ? "Storage Temperature"   : "Temperatura de Almacenamiento"} value={storageTmp} />
+            </>);
+          })()}
+
+          {/* OILS — liquid commodity fields only */}
+          {isOilsRow && (() => {
+            const oConf     = firstCdRow.oilsConfig || {};
+            const pkgType   = firstCdRow.packagingType || oConf.packaging || (docLang === "en" ? "Per specification" : "Según especificación");
+            const unitVol   = firstCdRow.commercialUnit || oConf.unitVolume || "—";
+            const totalVol  = totalKgDisplay > 0 ? `${new Intl.NumberFormat().format(totalKgDisplay)} kg` : "—";
+            const contType  = firstCdRow.containerType || (docLang === "en" ? "Flexitank / ISO Tank" : "Flexitank / Tanque ISO");
+            const gmoStatus = firstCdRow.gmoStatus || oConf.gmoStatus || "Non-GMO";
+            return (<>
+              <BiInfoBox esLabel={docLang === "en" ? "Packaging Type"  : "Tipo de Empaque"}       value={pkgType} />
+              <BiInfoBox esLabel={docLang === "en" ? "Unit Volume"     : "Volumen Unitario"}       value={unitVol} />
+              <BiInfoBox esLabel={docLang === "en" ? "Total Volume"    : "Volumen Total"}          value={totalVol} />
+              <BiInfoBox esLabel={docLang === "en" ? "Container Type"  : "Tipo de Contenedor"}     value={contType} />
+              <BiInfoBox esLabel={docLang === "en" ? "GMO Status"      : "Estado OGM"}             value={gmoStatus} />
+            </>);
+          })()}
+
+          {/* GRAINS / BEANS / LENTILS / CHICKPEAS / COMMODITIES / ANIMAL_FEED — bulk agricultural */}
+          {isGrainRow && (() => {
+            const moisture   = firstCdRow.moisture   || firstCdRow.specs?.moisture   || (docLang === "en" ? "Per analysis" : "Según análisis");
+            const protein    = firstCdRow.protein    || firstCdRow.specs?.protein    || (docLang === "en" ? "Per analysis" : "Según análisis");
+            const testWeight = firstCdRow.testWeight || firstCdRow.specs?.testWeight || "—";
+            const pkgMode    = firstCdRow.packagingType ? firstCdRow.packagingType : (docLang === "en" ? "Bulk" : "Granel");
+            const shipType   = firstCdRow.containerType || (docLang === "en" ? "Bulk Vessel" : "Buque Granel");
+            return (<>
+              <BiInfoBox esLabel={docLang === "en" ? "Moisture"      : "Humedad"}           value={moisture} />
+              <BiInfoBox esLabel={docLang === "en" ? "Protein"       : "Proteína"}          value={protein} />
+              <BiInfoBox esLabel={docLang === "en" ? "Test Weight"   : "Peso Específico"}   value={testWeight} />
+              <BiInfoBox esLabel={docLang === "en" ? "Bulk / Bagged" : "Granel / Embolsado"} value={pkgMode} />
+              <BiInfoBox esLabel={docLang === "en" ? "Shipment Type" : "Tipo de Embarque"}  value={shipType} />
+            </>);
+          })()}
+
+          {/* FROZEN_MEAT / FROZEN_POULTRY — frozen protein fields only */}
+          {isFrozenRow && (() => {
+            const cut       = firstCdRow.cut || firstCdRow.product || doc.product || "—";
+            const frozenTmp = docLang === "en" ? "−18°C (continuous)" : "−18°C (cadena continua)";
+            const packaging = firstCdRow.packagingType || (docLang === "en" ? "Vacuum / Cryovac" : "Vacío / Cryovac");
+            const pallets   = firstCdRow.pallets ? String(firstCdRow.pallets) : (docLang === "en" ? "Per load plan" : "Según plan de carga");
+            const reeferT   = firstCdRow.containerType || "RF40";
+            return (<>
+              <BiInfoBox esLabel={docLang === "en" ? "Cut / Product"       : "Corte / Producto"}   value={cut} />
+              <BiInfoBox esLabel={docLang === "en" ? "Frozen Temperature"  : "Temperatura"}         value={frozenTmp} />
+              <BiInfoBox esLabel={docLang === "en" ? "Packaging"           : "Empaque"}             value={packaging} />
+              <BiInfoBox esLabel={docLang === "en" ? "Pallets"             : "Pallets"}             value={pallets} />
+              <BiInfoBox esLabel={docLang === "en" ? "Reefer Type"         : "Tipo Reefer"}         value={reeferT} />
+            </>);
+          })()}
+
+          {/* GENERAL categories (isFreshProduceRow or other) — show quantity */}
+          {!isLiveAnimalRow && !isFruitProductRow && !isOilsRow && !isGrainRow && !isFrozenRow && engineQty > 0 && (
             <BiInfoBox esLabel={L.qty_lbl}
               value={`${new Intl.NumberFormat().format(engineQty)} ${engineUnitType.split("/")[0].trim() || "unid."}`} />
           )}
+
+          {/* Common fields — all categories */}
           {pricePerKg && (
             <BiInfoBox esLabel={dynamicPriceLbl}
               value={`USD ${Number(pricePerKg).toFixed(2)}${cuAbbr || "/kg"}`} />
           )}
-          {totalKgDisplay > 0 && (
+          {totalKgDisplay > 0 && !isOilsRow && !isFruitProductRow && (
             <BiInfoBox esLabel={L.total_kg_lbl}
               value={`${new Intl.NumberFormat().format(totalKgDisplay)} kg`} />
           )}
