@@ -8,6 +8,18 @@ import { getPDFTextKey } from "../engines/categoryEngine.js";
 import { safeCurrencyResolver, resolvePdfCurrency, fmtPdfCurrency } from "../utils/safeCurrencyResolver.js";
 import { sanitizePdfPayload, detectStaleFields } from "../utils/pdfPayloadSanitizer.js";
 import { validatePdfCurrencyScope, validatePdfRuntimeSafety, validateIntlFormatting, validateStaleFields } from "../engines/validationSupervisor.js";
+import {
+  resolveDocumentMode, getCategoryDisplayLabel,
+  getModeProductDescription, getModeCertifications,
+  getModeTimeline, getModeMandatoryInfo, getModeCoverLabel,
+  DOCUMENT_MODES,
+} from "../engines/documentModeResolver.js";
+import { auditBoundMediaForMode, getMaxSecondaryImages } from "../engines/media/MediaCategoryIsolationEngine.js";
+import {
+  EXECUTIVE_COLORS, EXECUTIVE_SPACING,
+  buildCoverPageData, buildTimelineData,
+  getTrustBadges, getCategoryVisualMode, buildFooterData,
+} from "../core/pdf/ExecutivePdfIntegrationBridge.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
 // Wraps any field extraction in a try/catch with a typed fallback.
@@ -244,7 +256,7 @@ const COVER_COLORS = {
 };
 
 const s = StyleSheet.create({
-  page:         { padding: 40, fontSize: 9, fontFamily: "Helvetica", color: "#1a202c" },
+  page:         { paddingTop: 32, paddingBottom: 46, paddingHorizontal: 40, fontSize: 9, fontFamily: "Helvetica", color: "#1a202c" },
   coverPage:    { padding: 0, fontSize: 9, fontFamily: "Helvetica" },
   coverBg:      { padding: 40, minHeight: "100%", justifyContent: "space-between" },
   coverLogo:    { width: 60, height: 60, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 24 },
@@ -266,20 +278,234 @@ const s = StyleSheet.create({
   highlight:    { color: "#059669" },
   chinaBox:     { backgroundColor: "#fffbeb", borderWidth: 1, borderColor: "#f59e0b", borderRadius: 6, padding: "8 12", marginBottom: 12 },
   chinaText:    { fontSize: 9, color: "#92400e", fontWeight: "bold" },
-  paymentBox:   { backgroundColor: "#f0f4ff", borderWidth: 0.5, borderColor: "#c7d2fe", borderRadius: 6, padding: "10 12", marginBottom: 12 },
-  paymentText:  { fontSize: 8.5, color: "#1e3a5f", lineHeight: 1.5 },
-  spaBox:       { backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#86efac", borderRadius: 6, padding: "10 12", marginBottom: 12 },
-  indicativaBox:{ backgroundColor: "#fef3c7", borderWidth: 1, borderColor: "#fde68a", borderRadius: 6, padding: "8 12", marginBottom: 12 },
+  paymentBox:   { backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: "#059669", borderRadius: 2, padding: "10 14", marginBottom: 18 },
+  paymentText:  { fontSize: 8.5, color: "#1e3a5f", lineHeight: 1.6 },
+  spaBox:       { backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: "#1B2A4A", borderRadius: 2, padding: "10 14", marginBottom: 14 },
+  indicativaBox:{ backgroundColor: "#FFFBEB", borderWidth: 0.5, borderColor: "#FDE68A", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 },
   firmeBox:     { backgroundColor: "#dcfce7", borderWidth: 1, borderColor: "#86efac", borderRadius: 6, padding: "8 12", marginBottom: 12 },
-  sigBlock:     { borderTopWidth: 1, borderTopColor: "#e2e8f0", paddingTop: 16, marginTop: 20 },
+  sigBlock:     { borderTopWidth: 0.5, borderTopColor: "#E8ECF1", paddingTop: 16, marginTop: 20 },
   buyerSigBlock:{ borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 8, padding: "14 16", marginTop: 16, minHeight: 80 },
   footer:       { marginTop: 16, paddingTop: 10, borderTopWidth: 0.5, borderTopColor: "#e2e8f0", flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: "#94a3b8" },
-  tcBox:        { backgroundColor: "#f8fafc", borderRadius: 6, padding: "10 12", marginBottom: 12, borderWidth: 0.5, borderColor: "#e2e8f0" },
-  tcText:       { fontSize: 7.5, color: "#374151", lineHeight: 1.5 },
+  tcBox:        { backgroundColor: "#FAFBFC", borderRadius: 2, padding: "10 14", marginBottom: 16, borderWidth: 0.5, borderColor: "#EEF1F5" },
+  tcText:       { fontSize: 7.5, color: "#374151", lineHeight: 1.65 },
   // Language indicator bar
   langBar:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "5 10", marginBottom: 20 },
   langBarTxt:   { fontSize: 8, color: "rgba(255,255,255,0.7)" },
 });
+
+// ─── Executive V2 styles — Enterprise Visual Dominance ───────────────────────
+const execS = StyleSheet.create({
+
+  // ── Identity bar (top of cover) ────────────────────────────────────────────
+  identityBar:       { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 14, borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.14)" },
+  identityLeft:      { flex: 1 },
+  identityPlatform:  { color: "#FFFFFF", fontSize: 13, fontWeight: "bold", letterSpacing: 2.5, marginBottom: 4 },
+  identityGroup:     { color: "rgba(255,255,255,0.48)", fontSize: 7, letterSpacing: 1.2 },
+  identityRight:     { alignItems: "flex-end" },
+  identityTag:       { fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 0.8, marginBottom: 2 },
+
+  // ── Gold rules ─────────────────────────────────────────────────────────────
+  goldRule:          { height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginVertical: 16 },
+  goldRuleThin:      { height: 0.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginBottom: 10, width: 48 },
+
+  // ── Section heading (Page 2) — gold left bar + gold bottom rule ────────────
+  execSectionTitle:  { fontSize: 8.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1.3, textTransform: "uppercase" },
+
+  // ── Operation summary table (cover Zone 4) ─────────────────────────────────
+  summaryTable:      { marginBottom: 18, marginTop: 12 },
+  summaryTableHdr:   { fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 10, paddingBottom: 6, borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.09)" },
+  summaryRow:        { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.07)", paddingVertical: 6 },
+  summaryLabel:      { width: "40%", fontSize: 7, color: "rgba(255,255,255,0.48)", letterSpacing: 0.6, textTransform: "uppercase", paddingRight: 4 },
+  summaryValue:      { flex: 1, fontSize: 9, color: "#FFFFFF", fontWeight: "bold", letterSpacing: 0.2 },
+
+  // ── Trust badges (cover Zone 5) ────────────────────────────────────────────
+  trustRow:          { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  trustBadge:        { paddingHorizontal: 10, paddingVertical: 4, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.45)", borderRadius: 1, backgroundColor: "rgba(201,168,76,0.05)" },
+  trustBadgeTxt:     { fontSize: 6.5, fontWeight: "bold", color: "rgba(201,168,76,0.82)", letterSpacing: 0.9, textTransform: "uppercase" },
+
+  // ── Timeline strip (Page 2 Section 6) ─────────────────────────────────────
+  timelineWrap:      { marginBottom: 16, paddingVertical: 12, paddingHorizontal: 10, backgroundColor: "#F7F9FC", borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2 },
+  timelineHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  timelineRow:       { flexDirection: "row", alignItems: "center" },
+  timelineNode:      { width: 10, height: 10, borderRadius: 5, justifyContent: "center", alignItems: "center" },
+  timelineNodeInner: { width: 4, height: 4, borderRadius: 2 },
+  timelineConnector: { flex: 1, height: 1, marginHorizontal: 2 },
+  timelineLabels:    { flexDirection: "row", marginTop: 7 },
+  timelineLabel:     { fontSize: 6, textAlign: "center", letterSpacing: 0.2 },
+  timelineProgress:  { fontSize: 6.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.4 },
+
+  // ── Audit footer (absolute bottom bar on every page) ──────────────────────
+  execFooter:        { position: "absolute", bottom: 0, left: 0, right: 0, height: 30, backgroundColor: "#162340", flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18 },
+  execFooterAccent:  { position: "absolute", top: 0, left: 0, right: 0, height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD },
+  execFooterText:    { fontSize: 6.5, color: "rgba(255,255,255,0.52)", letterSpacing: 0.3 },
+  execFooterRef:     { fontSize: 7.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.3 },
+  execFooterConf:    { fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 1.1 },
+
+  // ── Contract value hero (cover) ────────────────────────────────────────────
+  coverValue:        { fontSize: 24, fontWeight: "bold", color: "#FFFFFF", marginTop: 8, letterSpacing: 0.8 },
+  coverValueSub:     { fontSize: 7.5, color: "rgba(255,255,255,0.48)", marginTop: 2, letterSpacing: 0.4 },
+  coverValueCurrency:{ fontSize: 11, color: "rgba(255,255,255,0.58)" },
+});
+
+// ─── Executive helper components ─────────────────────────────────────────────
+
+function GoldRule() {
+  return <View style={execS.goldRule} />;
+}
+
+function ExecSectionTitle({ text }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12 }}>
+      <View style={{ width: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginRight: 8, marginTop: 1, height: 11 }} />
+      <View style={{ flex: 1, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7", paddingBottom: 5 }}>
+        <Text style={execS.execSectionTitle}>{text}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ExecIdentityBar({ lang, tag }) {
+  const tagLabel = tag || (lang === "en" ? "ENTERPRISE EXPORT" : "EXPORTACIÓN ENTERPRISE");
+  return (
+    <View style={execS.identityBar}>
+      <View style={execS.identityLeft}>
+        <Text style={execS.identityPlatform}>GLV GLOBAL OPERATING SYSTEM</Text>
+        <Text style={execS.identityGroup}>GLV Holding Group  ·  Global Export & Operations  ·  Multi-Country</Text>
+      </View>
+      <Text style={execS.identityTag}>{tagLabel}</Text>
+    </View>
+  );
+}
+
+function ExecOperationSummaryTable({ product, origin, destination, incoterm, totalValue, currency, validityDays, date, containerType, lang, rowOrder, programLabel }) {
+  const labels = {
+    es: { product:"PRODUCTO", origin:"ORIGEN", dest:"DESTINO", incoterm:"INCOTERM", value:"VALOR TOTAL", validity:"VALIDEZ", container:"CONTENEDOR" },
+    en: { product:"PRODUCT",  origin:"ORIGIN", dest:"DESTINATION", incoterm:"INCOTERM", value:"TOTAL VALUE", validity:"VALIDITY", container:"CONTAINER" },
+  };
+  const L = labels[lang === "en" ? "en" : "es"];
+
+  const fmt = (n) => n ? `${currency || "USD"} ${Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}` : null;
+  const validStr = validityDays ? `${validityDays} ${lang === "en" ? "days" : "días"}` : null;
+
+  const rowMap = {
+    product:     product       ? { label: L.product,   value: product }          : null,
+    origin:      origin        ? { label: L.origin,    value: origin }            : null,
+    destination: destination   ? { label: L.dest,      value: destination }       : null,
+    incoterm:    incoterm      ? { label: L.incoterm,  value: incoterm }          : null,
+    container:   containerType ? { label: L.container, value: containerType }     : null,
+    value:       totalValue    ? { label: L.value,     value: fmt(totalValue) }   : null,
+    validity:    validStr      ? { label: L.validity,  value: validStr }          : null,
+  };
+  const defaultOrder = ["product","origin","destination","incoterm","container","value","validity"];
+  const rows = (rowOrder || defaultOrder).map(k => rowMap[k]).filter(Boolean);
+
+  return (
+    <View style={execS.summaryTable}>
+      <Text style={execS.summaryTableHdr}>
+        {programLabel || (lang === "en" ? "OPERATION BRIEF" : "RESUMEN DE OPERACIÓN")}
+      </Text>
+      {rows.map((row, i) => (
+        <View key={i} style={execS.summaryRow}>
+          <Text style={execS.summaryLabel}>{row.label}</Text>
+          <Text style={execS.summaryValue}>{row.value}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ExecTrustRow({ lang }) {
+  const badges = getTrustBadges(lang === "en" ? "en" : "es");
+  return (
+    <View style={execS.trustRow}>
+      {badges.map(b => (
+        <View key={b.id} style={execS.trustBadge}>
+          <Text style={execS.trustBadgeTxt}>· {b.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ExecTimelineStrip({ workflowState, lang, lifecycleLabel }) {
+  try {
+    const tl     = buildTimelineData(workflowState || "QUOTED", lang === "en" ? "en" : "es");
+    const stages = tl.stages || [];
+    const w      = 100 / Math.max(stages.length, 1);
+    const stageLabel = lang === "en" ? `STAGE ${tl.currentOrder}/${tl.totalStages}` : `ETAPA ${tl.currentOrder}/${tl.totalStages}`;
+    return (
+      <View style={execS.timelineWrap}>
+        <View style={execS.timelineHeader}>
+          <Text style={{ fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1.1, textTransform: "uppercase" }}>
+            {lifecycleLabel || (lang === "en" ? "OPERATION LIFECYCLE" : "CICLO OPERATIVO")}
+          </Text>
+          <Text style={execS.timelineProgress}>
+            {stageLabel} · {tl.progressPercent}%
+          </Text>
+        </View>
+        <View style={execS.timelineRow}>
+          {stages.map((stage, idx) => (
+            <React.Fragment key={stage.id}>
+              <View style={[execS.timelineNode, {
+                backgroundColor: stage.isCompleted ? "#059669"
+                               : stage.isCurrent   ? EXECUTIVE_COLORS.ACCENT_GOLD
+                               :                     "#E2E8F0",
+              }]}>
+                <View style={[execS.timelineNodeInner, {
+                  backgroundColor: stage.isCompleted ? "#FFFFFF"
+                                 : stage.isCurrent   ? "#FFFFFF"
+                                 :                     "#CBD5E1",
+                }]} />
+              </View>
+              {idx < stages.length - 1 && (
+                <View style={[execS.timelineConnector, {
+                  backgroundColor: stage.isCompleted ? EXECUTIVE_COLORS.ACCENT_GOLD : "#E2E8F0",
+                }]} />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+        <View style={execS.timelineLabels}>
+          {stages.map(stage => (
+            <View key={stage.id} style={{ width: `${w}%` }}>
+              <Text style={[execS.timelineLabel, {
+                color: stage.isCurrent   ? EXECUTIVE_COLORS.PRIMARY_DARK
+                     : stage.isCompleted ? "#059669"
+                     :                     "#94A3B8",
+                fontWeight: stage.isCurrent ? "bold" : "normal",
+              }]}>{stage.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  } catch (_) { return null; }
+}
+
+// Subtle grey cadence line between major sections — adds rhythm without weight
+function SectionSep() {
+  return <View style={{ height: 0.5, backgroundColor: "#E8ECF1", marginVertical: 10 }} />;
+}
+// Larger narrative break — used between major reading zone transitions (PRODUCT→VALUE, VALUE→COMPLIANCE)
+function NarrativeSep() {
+  return <View style={{ height: 0.5, backgroundColor: "#E2E8F0", marginTop: 18, marginBottom: 16 }} />;
+}
+// Pure breathing room — no line — used before financial and compliance zones
+function SilentPause() {
+  return <View style={{ height: 12 }} />;
+}
+
+function ExecAuditFooter({ documentRef, date, lang }) {
+  const confLabel = lang === "en" ? "CONFIDENTIAL" : "CONFIDENCIAL";
+  return (
+    <View style={execS.execFooter}>
+      <View style={execS.execFooterAccent} />
+      <Text style={execS.execFooterRef}>{documentRef}</Text>
+      <Text style={execS.execFooterText}>GLV GOS  ·  GLV Holding Group  ·  {date}</Text>
+      <Text style={execS.execFooterConf}>{confLabel}</Text>
+    </View>
+  );
+}
 
 const PRICE_TABLE = {
   "UAE":                 { port: "Jebel Ali / Port Rashid, Dubai",   price: 5.70, transit: "25–28" },
@@ -326,9 +552,9 @@ function SectionTitle({ text }) {
 // ─── InfoBox ──────────────────────────────────────────────────────────────────
 function BiInfoBox({ esLabel, secLabel, value, style, highlight }) {
   return (
-    <View style={[s.infoBox, style]}>
-      <Text style={s.infoLabel}>{esLabel}</Text>
-      <Text style={[s.infoValue, highlight ? s.highlight : {}]}>{value}</Text>
+    <View style={[{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E8ECF1", borderRadius: 2, padding: "7 10" }, style]}>
+      <Text style={{ fontSize: 6.5, color: "#94A3B8", fontWeight: "bold", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 3 }}>{esLabel}</Text>
+      <Text style={[{ fontSize: 9.5, color: "#0F172A", fontWeight: "bold" }, highlight ? s.highlight : {}]}>{value}</Text>
     </View>
   );
 }
@@ -373,6 +599,26 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   // V8: Oils Export Engine configuration — only used when category === "OILS"
   const oilsConfig       = firstCdRow.oilsConfig       || {};
   const isOilsRow        = firstCdRow.category === "OILS" && !isLiveAnimalRow;
+  // Category atmosphere helpers — READ-ONLY derivations from firstCdRow.category
+  const isGrainRow = !isLiveAnimalRow && !isOilsRow &&
+    ["GRAINS","BEANS","LENTILS","CHICKPEAS","COMMODITIES","ANIMAL_FEED"].includes(firstCdRow.category);
+  const isFrozenRow = !isLiveAnimalRow && !isOilsRow &&
+    ["FROZEN_MEAT","FROZEN_POULTRY"].includes(firstCdRow.category);
+  // Fresh produce — cold-chain aware container export, NOT bulk commodity
+  const isFreshProduceRow = !isLiveAnimalRow && !isOilsRow && !isGrainRow && !isFrozenRow &&
+    ["FRESH_PRODUCE","FRESH_FRUITS","AVOCADO","AVOCADOS","CITRUS","BANANAS","BANANA",
+     "PINEAPPLE","MANGO","FRESH_VEGETABLES","PRODUCE","TROPICAL_FRUITS","PAPAYA",
+     "BERRIES","TOMATO","ONION","GARLIC","FRESH_PULP"].includes(firstCdRow.category);
+
+  // Document Intelligence Mode — drives all executive content selection
+  const docMode = resolveDocumentMode(firstCdRow, doc);
+  // Media isolation audit — log only, never blocks PDF
+  const mediaAudit = auditBoundMediaForMode(boundMedia, docMode);
+  if (mediaAudit.issues.length > 0) {
+    console.warn("[PDF_MEDIA_ISOLATION]", mediaAudit.issues);
+  }
+  const maxSecImages = getMaxSecondaryImages(docMode);
+
   const COMMERCIAL_UNIT_LABELS = { perKg:"/kg", perMT:"/MT", perLiter:"/L", perBox:"/box", perCarton:"/carton", perPouch:"/pouch", perUnit:"/unit", perContainer:"/container", perDrum:"/drum", perJerrycan:"/jerrycan", perBottle:"/bottle", perPallet:"/pallet", perIBC:"/IBC", perFlexitank:"/flexitank" };
   // Dynamic price label: "Precio CFR /pouch" instead of always "Precio CFR (USD/kg)"
   const cuAbbr = COMMERCIAL_UNIT_LABELS[commercialUnit] || null;
@@ -440,6 +686,116 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     })();
 
   const validityDays = doc.validityDays || doc.validity_days || 15;
+
+  // TRADE_SCALE_INTELLIGENCE_V1 — READ-ONLY scale and program derivations.
+  // Uses already-computed totalKgDisplay. Zero pricing changes.
+  const totalMT = totalKgDisplay > 0
+    ? totalKgDisplay / 1000
+    : isMT ? engineQty : engineQty / 1000;
+
+  const scaleTier = totalMT >= 80000 ? "MEGA"
+    : totalMT >= 25000 ? "STRATEGIC"
+    : totalMT >= 5000  ? "PROGRAM"
+    : totalMT >= 26    ? "CONTAINER"
+    : totalMT > 0      ? "MICRO"
+    : null;
+
+  // Container program: containerType declared. Bulk vessel: large grain/agri, no container.
+  const tradeProgram = (() => {
+    if (!scaleTier) return null;
+    if (containerType) return "CONTAINER";
+    if ((isGrainRow || isFreshProduceRow) &&
+        (scaleTier === "PROGRAM" || scaleTier === "STRATEGIC" || scaleTier === "MEGA"))
+      return "BULK_VESSEL";
+    if (isOilsRow) return "CONTAINER";
+    return "CONTAINER";
+  })();
+
+  const scaleLabel = (() => {
+    if (!scaleTier) return null;
+    const map = {
+      MICRO:     { en: "Commercial Shipment",              es: "Embarque Comercial" },
+      CONTAINER: { en: "Container Export Program",         es: "Programa de Exportación" },
+      PROGRAM:   { en: "Supply Program",                   es: "Programa de Suministro" },
+      STRATEGIC: { en: "Strategic Supply Program",         es: "Programa de Suministro Estratégico" },
+      MEGA:      { en: "International Commodity Program",  es: "Programa Internacional de Commodities" },
+    };
+    return map[scaleTier]?.[docLang === "en" ? "en" : "es"] || null;
+  })();
+
+  // Vessel class — informational only, no calculation. Bulk grain/agri at PROGRAM+ scale.
+  // Prepared for future Handysize / Handymax / Supramax / Ultramax / Panamax / Post-Panamax support.
+  const vesselClass = (() => {
+    if (tradeProgram !== "BULK_VESSEL") return null;
+    if (scaleTier === "MEGA")      return "Panamax";
+    if (scaleTier === "STRATEGIC") return "Supramax";
+    if (scaleTier === "PROGRAM")   return "Handymax";
+    return null;
+  })();
+
+  // programLabel — adapts cover operation summary header to operational scale
+  const programLabel = (() => {
+    if (!scaleTier || scaleTier === "MICRO" || scaleTier === "CONTAINER") return null;
+    if (scaleTier === "MEGA")      return docLang === "en" ? "COMMODITY MOVEMENT PROGRAM"        : "PROGRAMA DE MOVIMIENTO COMMODITIES";
+    if (scaleTier === "STRATEGIC") return docLang === "en" ? "STRATEGIC SUPPLY PROGRAM"          : "PROGRAMA ESTRATÉGICO DE SUMINISTRO";
+    if (scaleTier === "PROGRAM")   return docLang === "en" ? "SUPPLY PROGRAM"                    : "PROGRAMA DE SUMINISTRO";
+    return null;
+  })();
+
+  // catAtmosphere — READ-ONLY visual atmosphere config derived from category booleans.
+  // Drives: identity tag, lifecycle label, hero framing, summary row order, certs accent, regulated marker.
+  // Zero business logic. No formula changes.
+  const catAtmosphere = (() => {
+    if (isLiveAnimalRow) return {
+      tag:             docLang === "en" ? "LIVESTOCK EXPORT"          : "EXPORTACIÓN GANADO",
+      lifecycleLabel:  docLang === "en" ? "LIVESTOCK OPERATION LIFECYCLE" : "CICLO OPERACIÓN PECUARIA",
+      heroHeight: 140, heroOpacity: 0.92,
+      summaryOrder:    ["product","origin","destination","incoterm","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.PRIMARY_DARK,
+      regulatedMarker: true,
+    };
+    if (isOilsRow) return {
+      tag:             docLang === "en" ? "OILS EXPORT"               : "EXPORTACIÓN ACEITES",
+      lifecycleLabel:  docLang === "en" ? "OILS OPERATION LIFECYCLE"  : "CICLO OPERACIÓN ACEITES",
+      heroHeight: 155, heroOpacity: 0.88,
+      summaryOrder:    ["product","incoterm","container","value","origin","destination","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    if (isGrainRow) return {
+      tag:             docLang === "en" ? "AGRICULTURAL EXPORT"            : "EXPORTACIÓN AGRÍCOLA",
+      lifecycleLabel:  docLang === "en" ? "AGRICULTURAL EXPORT LIFECYCLE"  : "CICLO DE EXPORTACIÓN AGRÍCOLA",
+      heroHeight: 150, heroOpacity: 0.84,
+      summaryOrder:    ["product","origin","incoterm","destination","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    if (isFrozenRow) return {
+      tag:             docLang === "en" ? "REEFER CARGO EXPORT"          : "EXPORTACIÓN CARGA REEFER",
+      lifecycleLabel:  docLang === "en" ? "COLD CHAIN EXPORT LIFECYCLE"  : "CICLO EXPORTACIÓN CADENA FRÍO",
+      heroHeight: 148, heroOpacity: 0.86,
+      summaryOrder:    ["product","incoterm","container","origin","destination","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    if (isFreshProduceRow) return {
+      tag:             docLang === "en" ? "FRESH PRODUCE EXPORT"             : "EXPORTACIÓN PRODUCE FRESCO",
+      lifecycleLabel:  docLang === "en" ? "FRESH PRODUCE EXPORT LIFECYCLE"   : "CICLO EXPORTACIÓN PRODUCE FRESCO",
+      heroHeight: 152, heroOpacity: 0.90,
+      summaryOrder:    ["product","origin","incoterm","container","destination","value","validity"],
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+    return {
+      tag:             docLang === "en" ? "ENTERPRISE EXPORT"         : "EXPORTACIÓN ENTERPRISE",
+      lifecycleLabel:  docLang === "en" ? "OPERATION LIFECYCLE"       : "CICLO OPERATIVO",
+      heroHeight: 150, heroOpacity: 0.86,
+      summaryOrder:    null,
+      certsAccentColor: EXECUTIVE_COLORS.ACCENT_GOLD,
+      regulatedMarker: false,
+    };
+  })();
+
   const productCategory = doc.product || "";
   const pdfTextKey = firstCdRow?.category
     ? getPDFTextKey(firstCdRow.category)
@@ -463,56 +819,18 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     bankName,
   });
 
-  let productDesc = "";
-  if (doc.product === "Otro" || doc.custom_product_name) {
-    productDesc = doc.custom_product_desc || doc.customProductDesc || "";
-  } else if (pdfTextKey === "livestock") {
-    productDesc = docLang === "en"
-      ? `Live animals sourced from registered, export-certified facilities. All animals meet international sanitary requirements and are certified by competent zoo-sanitary authorities in the country of origin.`
-      : `Animales vivos procedentes de establecimientos registrados y habilitados para exportación. Los animales cumplen con todos los requisitos sanitarios internacionales y son certificados por autoridades zoosanitarias competentes del país de origen.`;
-  } else if (pdfTextKey === "grain") {
-    productDesc = docLang === "en"
-      ? `High-quality bulk agricultural commodity with moisture, protein and aflatoxin analysis within international export standards.`
-      : `Producto agrícola a granel de alta calidad, con análisis de humedad, proteína y aflatoxinas dentro de los estándares internacionales de exportación.`;
-  } else {
-    productDesc = docLang === "en"
-      ? `Export food product meeting international quality standards established by GLV Global Food Services LLC.`
-      : `Producto alimenticio de exportación que cumple con los estándares de calidad internacional establecidos por GLV Global Food Services LLC.`;
-  }
+  // Executive product description — mode-aware, never generic template text
+  const productDesc = (doc.product === "Otro" || doc.custom_product_name)
+    ? (doc.custom_product_desc || doc.customProductDesc || getModeProductDescription(docMode, firstCdRow, doc, docLang))
+    : getModeProductDescription(docMode, firstCdRow, doc, docLang);
 
   const exporter = doc.exporter || "GLV Global Food Services LLC (Miami, FL)";
   const domain = doc.domain || "glvglobalfoodservices.com";
 
-  let certifications = docLang === "en"
-    ? "• Official certificate of origin\n• Sanitary / phytosanitary export certificate\n• SGS inspection (or agreed equivalent)\n• Lot traceability documentation"
-    : "• Certificado de origen oficial\n• Certificado sanitario/fitosanitario de exportación\n• Inspección SGS (o equivalente acordado)\n• Documentación de trazabilidad del lote";
-  if (pdfTextKey === "livestock") {
-    certifications = docLang === "en"
-      ? "• Official zoo-sanitary certificate from the exporting country\n• Halal certificate (internationally recognized authority)\n• SGS live weight and quantity certificate\n• Official veterinary health declaration for the lot\n• Quarantine period approval certificate\n• Lot vaccination certificate"
-      : "• Certificado zoosanitario oficial del país exportador\n• Certificado Halal (autoridad reconocida internacionalmente)\n• Certificado SGS de peso vivo y cantidad\n• Declaración de salud del lote por médico veterinario oficial\n• Aprobación del período de cuarentena\n• Certificado de vacunación del lote";
-  }
+  const certifications = getModeCertifications(docMode, docLang);
 
-  let timeline = "";
-  if (pdfTextKey === "livestock") {
-    timeline = docLang === "en"
-      ? "Week 1–2: Contract signing (SPA) and advance payment\nWeek 3–6: Lot selection and concentration at origin\nWeek 7–10: Official quarantine period (minimum 21 days)\nWeek 11: SGS inspection, certification and SBLC activation\nWeek 12: Loading on specialized livestock vessel\nWeek 13–16: Maritime transit to CFR destination\nWeek 16+: Port delivery and final settlement"
-      : "Semana 1–2: Firma de contrato (SPA) y pago del anticipo\nSemana 3–6: Selección y concentración del lote en origen\nSemana 7–10: Período de cuarentena oficial (mínimo 21 días)\nSemana 11: Inspección SGS, certificación y activación de SBLC\nSemana 12: Embarque en buque ganadero especializado\nSemana 13–16: Tránsito marítimo hacia destino CFR\nSemana 16+: Entrega en puerto y liquidación final";
-  } else {
-    timeline = docLang === "en"
-      ? "Week 1: Contract signing and advance payment\nWeek 2–3: Lot preparation and consolidation\nWeek 4: Quality inspection and certifications\nWeek 5: Loading and dispatch at origin\nWeek 6+: Maritime transit and CFR delivery at destination"
-      : "Semana 1: Firma de contrato y pago del anticipo\nSemana 2–3: Preparación y consolidación del lote\nSemana 4: Inspección de calidad y certificaciones\nSemana 5: Carga y despacho en origen\nSemana 6+: Tránsito marítimo y entrega CFR en destino";
-  }
-
-  let mandatoryInfo = null;
-  if (pdfTextKey === "livestock") {
-    mandatoryInfo = docLang === "en"
-      ? "MANDATORY INFORMATION — LIVE ANIMALS:\n• All shipments comply with the OIE Terrestrial Animal Health Code\n• Vessels used are specialized livestock carriers with certified ventilation systems\n• Sexual composition of the lot shall be certified by an official veterinarian\n• The buyer is responsible for obtaining import permits in the destination country\n• Animals are certified free of notifiable diseases\n• TRANSIT MORTALITY: Invoicing is based on the certified loaded quantity at origin. Any mortality during transport is the buyer's sole responsibility and must be covered by their live cargo insurance policy. The seller applies no commercial deduction for transit mortality."
-      : "INFORMACIÓN MANDATORIA — ANIMALES VIVOS:\n• Todos los embarques cumplen con el Código Sanitario para los Animales Terrestres de la OIE\n• Los buques utilizados son especializados en transporte de ganado vivo con sistema de ventilación certificado\n• La composición sexual del lote será certificada por veterinario oficial\n• El comprador es responsable de gestionar los permisos de importación en el país destino\n• Los animales son certificados libres de enfermedades de declaración obligatoria\n• MORTALIDAD EN TRÁNSITO: La facturación se realiza sobre la cantidad cargada certificada en origen. Cualquier mortalidad durante el transporte es responsabilidad exclusiva del comprador y deberá estar cubierta por su póliza de seguro de carga viva. El vendedor no aplica deducción comercial por mortalidad en tránsito.";
-  } else if (pdfTextKey === "grain") {
-    mandatoryInfo = docLang === "en"
-      ? "MANDATORY INFORMATION — GRAINS AND CEREALS:\n• Product free of GMOs not authorized at destination\n• Maximum moisture content guaranteed per contract\n• Free of pests and contaminants per Codex Alimentarius standards\n• Fumigation and phytosanitary treatment included in CFR price"
-      : "INFORMACIÓN MANDATORIA — GRANOS Y CEREALES:\n• Producto libre de organismos genéticamente modificados no autorizados en destino\n• Humedad máxima garantizada según contrato\n• Libre de plagas y contaminantes según normativa Codex Alimentarius\n• Fumigación y tratamiento fitosanitario incluidos en el precio CFR";
-  }
+  const timeline      = getModeTimeline(docMode, docLang);
+  const mandatoryInfo = getModeMandatoryInfo(docMode, docLang);
 
   const tcText = docLang === "en"
     ? `GENERAL TERMS AND CONDITIONS:\n1. This offer is issued by ${exporter} in its capacity as a certified international exporter.\n2. Prices are per the agreed Incoterm(s) in accordance with Incoterms 2020, at the indicated destination port.\n3. Formal acceptance of this offer activates the SPA (Sales Purchase Agreement) process.\n4. All prices are denominated in the currency stated in the offer.\n5. Any dispute shall be resolved by international arbitration under ICC rules (Paris).\n6. The applicable law shall be as established in the definitive contract (SPA).\n7. GLV Global Food Services LLC reserves the right to modify prices due to force majeure or changes in international sanitary regulations.`
@@ -522,128 +840,215 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   return (
     <Document>
-      {/* PAGE 1 — COVER */}
+      {/* PAGE 1 — EXECUTIVE COVER */}
       <Page size="A4" style={s.coverPage}>
-        <View style={[s.coverBg, { backgroundColor: coverBg }]}>
-          <View>
-            {/* Logo */}
-            <View style={s.coverLogo}>
-              <Text style={s.coverLogoTxt}>G</Text>
-            </View>
-            <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, marginBottom: 4 }}>
-              GLV Global Food Services LLC — {domain}
+        <View style={[s.coverBg, { backgroundColor: coverBg, paddingTop: 32, paddingBottom: 28, paddingHorizontal: 40 }]}>
+
+          {/* Zone 1 — Corporate Identity Bar */}
+          <ExecIdentityBar lang={docLang} tag={catAtmosphere.tag} />
+          <GoldRule />
+
+          {/* Zone 2 — Document title + reference */}
+          <View style={{ marginBottom: 6 }}>
+            {/* Document type title */}
+            <Text style={{ color: "#FFFFFF", fontSize: 26, fontWeight: "bold", letterSpacing: 0.8, lineHeight: 1.2, marginBottom: 5 }}>
+              {isSCO
+                ? (docLang === "en" ? "Soft Corporate Offer" : "Oferta Corporativa Blanda")
+                : isFCO
+                  ? (docLang === "en" ? "Full Corporate Offer" : "Oferta Corporativa Completa")
+                  : (docLang === "en" ? "International Supply Agreement" : "Contrato Internacional de Suministro")}
             </Text>
 
-            {/* Language indicator */}
-            <View style={s.langBar}>
-              <Text style={s.langBarTxt}>{docLang === "en" ? "Document in English" : "Documento en Español"}</Text>
-              <Text style={s.langBarTxt}>{doc.type}</Text>
-            </View>
-
-            {/* Status badge */}
-            {(isSCO || isFCO) && (
-              <View style={[s.badge, {
-                backgroundColor: isSCO ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.2)",
-                borderWidth: 1, borderColor: "rgba(255,255,255,0.4)"
-              }]}>
-                <Text style={{ color: "#fff", fontSize: 9, fontWeight: "bold" }}>
+            {/* Reference + metadata — single quiet line, no competing badge boxes */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <Text style={{ fontSize: 9.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.5 }}>{doc.id}</Text>
+              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", letterSpacing: 0.3 }}>·</Text>
+              {(isSCO || isFCO) && (
+                <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase" }}>
                   {isSCO ? L.indicative : L.firm}
                 </Text>
+              )}
+              {(() => {
+                const modeLabel = getModeCoverLabel(docMode, docLang);
+                return modeLabel ? (
+                  <>
+                    <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.3)" }}>·</Text>
+                    <Text style={{ fontSize: 7, color: "rgba(201,168,76,0.7)", letterSpacing: 0.5 }}>{modeLabel}</Text>
+                  </>
+                ) : null;
+              })()}
+              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.28)", letterSpacing: 0.5 }}>{docLang === "en" ? "EN" : "ES"}</Text>
+            </View>
+
+            {/* Scale / trade program — quiet institutional context line */}
+            {scaleLabel && scaleTier !== "MICRO" && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <Text style={{ fontSize: 6.5, color: "rgba(201,168,76,0.60)", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                  {scaleLabel}
+                </Text>
+                {tradeProgram === "BULK_VESSEL" && (
+                  <>
+                    <Text style={{ fontSize: 6, color: "rgba(255,255,255,0.2)" }}>·</Text>
+                    <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.38)", letterSpacing: 0.5 }}>
+                      {docLang === "en" ? "Bulk Vessel" : "Buque Granel"}
+                      {vesselClass ? `  (${vesselClass})` : ""}
+                    </Text>
+                  </>
+                )}
+                {tradeProgram === "CONTAINER" && (scaleTier === "PROGRAM" || scaleTier === "STRATEGIC" || scaleTier === "MEGA") && (
+                  <>
+                    <Text style={{ fontSize: 6, color: "rgba(255,255,255,0.2)" }}>·</Text>
+                    <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.38)", letterSpacing: 0.5 }}>
+                      {docLang === "en" ? "Container Program" : "Programa Contenedor"}
+                    </Text>
+                  </>
+                )}
               </View>
             )}
 
-            <Text style={s.coverTitle}>{doc.id}</Text>
-            <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "bold", marginBottom: 3 }}>
-              {isSCO ? "Soft Corporate Offer" : isFCO ? "Full Corporate Offer" : "Sales Purchase Agreement"}
+            {/* Client + date */}
+            <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.8)", marginBottom: 2 }}>
+              {docLang === "en" ? "Prepared for:" : "Elaborado para:"}{" "}
+              <Text style={{ fontWeight: "bold", color: "#FFFFFF" }}>{doc.client}</Text>
             </Text>
+            <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>
+              {docLang === "en" ? "Date:" : "Fecha:"} {doc.date}{"  "}·{"  "}{exporter}
+            </Text>
+          </View>
 
-            <Text style={s.coverSub}>Cliente / Client: {doc.client}</Text>
-            <Text style={s.coverSub}>Producto / Product: {doc.product}</Text>
-            <Text style={s.coverSub}>Destino / Destination: {doc.destination}{(() => { const p = doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port; return p ? ` — ${p}` : ""; })()}</Text>
-            <Text style={s.coverSub}>Fecha / Date: {doc.date}</Text>
-            {totalValue && (
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginTop: 12 }}>
-                {fmtCurrency(totalValue)} USD
+          {/* Zone 3 — Hero product image (category-isolated, max 1) */}
+          {boundMedia?.main && (
+            <View style={{ marginVertical: 12, marginHorizontal: 0 }}>
+              <Image
+                src={boundMedia.main}
+                style={{ width: "100%", height: catAtmosphere.heroHeight, objectFit: "cover", opacity: catAtmosphere.heroOpacity }}
+              />
+              <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, opacity: 0.6 }} />
+            </View>
+          )}
+
+          {/* Zone 4 — Executive Operation Summary Table */}
+          <ExecOperationSummaryTable
+            product={doc.custom_product_name || doc.customProductName || doc.product}
+            origin={doc.origin || "Brazil"}
+            destination={doc.destination}
+            incoterm={cdInc}
+            totalValue={totalValue}
+            currency={resolvedCurrency}
+            validityDays={validityDays}
+            date={doc.date}
+            containerType={containerType ? (CONTAINER_LABELS[containerType] || containerType) : null}
+            lang={docLang}
+            rowOrder={catAtmosphere.summaryOrder}
+            programLabel={programLabel}
+          />
+
+          {/* Financial Dominance Zone — stops the eye, communicates transaction scale */}
+          {totalValue > 0 && (
+            <View style={{ marginTop: 14, marginBottom: 14, paddingVertical: 14, paddingHorizontal: 18, backgroundColor: "rgba(0,0,0,0.24)", borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.07)", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.07)" }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.35)", letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 7 }}>
+                {docLang === "en" ? "ESTIMATED CONTRACT VALUE" : "VALOR ESTIMADO DEL CONTRATO"}
               </Text>
-            )}
+              <Text style={{ fontSize: 28, fontWeight: "bold", color: "#FFFFFF", letterSpacing: 0.5 }}>
+                {fmtCurrency(totalValue)}{" "}
+                <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.42)" }}>{resolvedCurrency}</Text>
+              </Text>
+            </View>
+          )}
+
+          {/* Zone 5 — Enterprise Trust Indicators — quiet footer of cover */}
+          <ExecTrustRow lang={docLang} />
+
+          {/* Legal note — quiet, supporting, not competing with financial zone */}
+          {isSCO && (
+            <View style={{ marginTop: 12, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(201,168,76,0.3)" }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.55 }}>{L.sco_note}</Text>
+            </View>
+          )}
+          {isFCO && (
+            <View style={{ marginTop: 12, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(5,150,105,0.4)" }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.55 }}>{fcoNote}</Text>
+            </View>
+          )}
+
+          {/* Footer line */}
+          <View style={{ marginTop: "auto", paddingTop: 10, borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.12)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>{domain}</Text>
+            <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>GLV Holding Group © 2026</Text>
           </View>
 
-          <View>
-            {isSCO && (
-              <View style={[s.indicativaBox, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.3)" }]}>
-                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{L.sco_note}</Text>
-              </View>
-            )}
-            {isFCO && (
-              <View style={[s.firmeBox, { backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.3)" }]}>
-                <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{fcoNote}</Text>
-              </View>
-            )}
-            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 8 }}>
-              GLV Holding Group © 2026 | {exporter}
-            </Text>
-          </View>
         </View>
       </Page>
 
       {/* PAGE 2 — MAIN CONTENT */}
       <Page size="A4" style={s.page}>
 
-        {/* Bound media images */}
+        {/* Quiet document continuation context — ties Page 2 narrative to Page 1 */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
+        {/* Commercial product imagery — max 2 images per MediaCategoryIsolationEngine rules */}
         {boundMedia?.main && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={s.sectionTitle}>Producto / Product</Text>
-            <View style={{ flexDirection: "row", marginTop: 6 }}>
-              <Image src={boundMedia.main} style={{ width: 190, height: 130, objectFit: "cover", borderRadius: 4, marginRight: 8 }} />
-              {boundMedia.secondary?.[0] && (
-                <Image src={boundMedia.secondary[0]} style={{ width: 110, height: 130, objectFit: "cover", borderRadius: 4, marginRight: 8 }} />
+          <View style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2, overflow: "hidden" }}>
+            <View style={{ flexDirection: "row" }}>
+              <Image src={boundMedia.main} style={{ width: 206, height: 138, objectFit: "cover" }} />
+              {boundMedia.secondary?.[0] && maxSecImages >= 1 && (
+                <Image src={boundMedia.secondary[0]} style={{ width: 116, height: 138, objectFit: "cover", marginLeft: 1 }} />
               )}
               {boundMedia.branding && (
-                <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "flex-end" }}>
-                  <Image src={boundMedia.branding} style={{ width: 80, height: 45, objectFit: "contain" }} />
+                <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "flex-end", padding: 8 }}>
+                  <Image src={boundMedia.branding} style={{ width: 80, height: 44, objectFit: "contain" }} />
                 </View>
               )}
             </View>
+            <View style={{ height: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, opacity: 0.55 }} />
           </View>
         )}
 
         {/* Section 1: Parties */}
-        <SectionTitle text={L.parties} />
-        <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-          <View style={[s.infoBox, { width: "48%", backgroundColor: "#f0f4ff" }]}>
-            <Text style={[s.infoLabel, { color: "#1e3a5f" }]}>{L.seller}</Text>
-            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{exporter}</Text>
-            <Text style={{ fontSize: 8, color: "#374151" }}>19790 W Dixie Hwy, Unit 1115{"\n"}Miami, FL 33180, USA</Text>
-            <Text style={{ fontSize: 8, color: "#374151", marginTop: 2 }}>{domain}</Text>
-            {isChina && <Text style={{ fontSize: 8, color: "#d97706", fontWeight: "bold", marginTop: 3 }}>GACC No. YA11000PDY110K805</Text>}
+        <ExecSectionTitle text={L.parties} />
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 0 }}>
+          <View style={{ width: "48%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 12", borderRadius: 2 }}>
+            <Text style={[s.infoLabel, { color: "#1e3a5f", marginBottom: 4 }]}>{L.seller}</Text>
+            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 3 }}>{exporter}</Text>
+            <Text style={{ fontSize: 7.5, color: "#475569" }}>19790 W Dixie Hwy, Unit 1115{"\n"}Miami, FL 33180, USA</Text>
+            <Text style={{ fontSize: 7.5, color: "#475569", marginTop: 2 }}>{domain}</Text>
+            {isChina && <Text style={{ fontSize: 7.5, color: "#D97706", fontWeight: "bold", marginTop: 3 }}>GACC No. YA11000PDY110K805</Text>}
           </View>
-          <View style={[s.infoBox, { width: "48%", backgroundColor: "#f8fafc" }]}>
-            <Text style={s.infoLabel}>{L.buyer}</Text>
-            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 2 }}>{doc.client}</Text>
-            {doc.clientCountry && <Text style={{ fontSize: 8, color: "#374151" }}>{docLang === "en" ? "Country:" : "País:"} {doc.clientCountry}</Text>}
+          <View style={{ width: "48%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD, padding: "10 12", borderRadius: 2 }}>
+            <Text style={[s.infoLabel, { marginBottom: 4 }]}>{L.buyer}</Text>
+            <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 3 }}>{doc.client}</Text>
+            {doc.clientCountry && <Text style={{ fontSize: 7.5, color: "#475569" }}>{docLang === "en" ? "Country:" : "País:"} {doc.clientCountry}</Text>}
             {(doc.clientRepresentative || doc.client_representative) && (
-              <Text style={{ fontSize: 8, color: "#374151" }}>Rep: {doc.clientRepresentative || doc.client_representative}</Text>
+              <Text style={{ fontSize: 7.5, color: "#475569" }}>Rep: {doc.clientRepresentative || doc.client_representative}</Text>
             )}
             {(doc.clientEmail || doc.client_email) && (
-              <Text style={{ fontSize: 8, color: "#374151" }}>{doc.clientEmail || doc.client_email}</Text>
+              <Text style={{ fontSize: 7.5, color: "#475569" }}>{doc.clientEmail || doc.client_email}</Text>
             )}
             {(doc.clientPhone || doc.client_phone) && (
-              <Text style={{ fontSize: 8, color: "#374151" }}>Tel: {doc.clientPhone || doc.client_phone}</Text>
+              <Text style={{ fontSize: 7.5, color: "#475569" }}>Tel: {doc.clientPhone || doc.client_phone}</Text>
             )}
           </View>
         </View>
+        <SectionSep />
 
         {/* Section 2: Product */}
-        <SectionTitle text={L.product} />
-        <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
-          <Text style={{ fontSize: 9, fontWeight: "bold", color: "#1B2A4A", marginBottom: 4 }}>
+        <ExecSectionTitle text={L.product} />
+        <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 14", marginBottom: 0, borderRadius: 2 }}>
+          <Text style={{ fontSize: 9.5, fontWeight: "bold", color: "#1B2A4A", marginBottom: 5, letterSpacing: 0.2 }}>
             {doc.custom_product_name || doc.customProductName || doc.product}
           </Text>
-          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.5 }}>{productDesc}</Text>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+          <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.6 }}>{productDesc}</Text>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#E8ECF1" }}>
             <View style={{ flex: 1 }}>
               <Text style={s.infoLabel}>{L.origin_lbl}</Text>
-              <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{doc.origin || "Brazil"}</Text>
+              <Text style={{ fontSize: 9.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{doc.origin || "Brazil"}</Text>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.infoLabel}>{L.port_lbl}</Text>
@@ -665,41 +1070,71 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             )}
           </View>
 
-          {/* V6/V7: Export Logistics line — shown when exportFormat or containerType is set */}
-          {(exportFormat || containerType) && !isLiveAnimalRow && (
+          {/* Logistics movement flow — GRAINS / LIVE_ANIMALS / FROZEN only */}
+          {(isGrainRow || isLiveAnimalRow || isFrozenRow) && (doc.origin || doc.destination) && (
+            <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#EEF2F7" }}>
+              <Text style={{ fontSize: 6, color: "#94A3B8", letterSpacing: 1.0, textTransform: "uppercase", marginBottom: 7 }}>
+                {docLang === "en" ? "OPERATION MOVEMENT" : "MOVIMIENTO DE OPERACIÓN"}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={{ alignItems: "center", minWidth: 40 }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK }} />
+                  <Text style={{ fontSize: 6, color: "#475569", marginTop: 3, textAlign: "center" }}>{doc.origin || "—"}</Text>
+                </View>
+                <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
+                <View style={{ alignItems: "center", minWidth: 44 }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 1.5, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD }} />
+                  <Text style={{ fontSize: 6, color: "#475569", marginTop: 3, textAlign: "center" }}>
+                    {isLiveAnimalRow
+                      ? (docLang === "en" ? "Livestock\nVessel" : "Buque\nGanado")
+                      : isFrozenRow
+                        ? (docLang === "en" ? "Reefer\nCont." : "Cont.\nRefrig.")
+                        : vesselClass
+                          ? vesselClass
+                          : (docLang === "en" ? "Bulk\nVessel" : "Buque\nGranel")}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
+                <View style={{ alignItems: "center", minWidth: 50 }}>
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#334155" }} />
+                  <Text style={{ fontSize: 6, color: "#475569", marginTop: 3, textAlign: "center" }}>
+                    {doc.commercialData?.destinationPort || doc.commercial_data?.destinationPort || portInfo?.port || doc.destination || "—"}
+                  </Text>
+                </View>
+                {portInfo?.transit && (
+                  <>
+                    <View style={{ flex: 1, height: 0.5, backgroundColor: "#CBD5E1", marginHorizontal: 5 }} />
+                    <View style={{ alignItems: "center" }}>
+                      <Text style={{ fontSize: 7.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold" }}>{portInfo.transit}d</Text>
+                      <Text style={{ fontSize: 5.5, color: "#94A3B8", marginTop: 2 }}>{docLang === "en" ? "transit" : "tránsito"}</Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Export format — only shown for non-OILS liquid packaging modes (OILS has its own dedicated section) */}
+          {exportFormat && !isLiveAnimalRow && !isOilsRow && (
             <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#e2e8f0", flexDirection: "row", gap: 8 }}>
-              {exportFormat && (
-                <View style={{ flex: 1 }}>
-                  <Text style={s.infoLabel}>{docLang === "en" ? "Export Format" : "Formato de exportación"}</Text>
-                  <Text style={{ fontSize: 9, color: isPouchFormat ? "#6d28d9" : "#1e40af", fontWeight: "bold" }}>{exportFormatLabel}</Text>
-                </View>
-              )}
-              {containerType && (
-                <View style={{ flex: 1 }}>
-                  <Text style={s.infoLabel}>{docLang === "en" ? "Export Logistics" : "Logística de exportación"}</Text>
-                  <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{CONTAINER_LABELS[containerType] || containerType}</Text>
-                </View>
-              )}
-              {commercialUnit && (
-                <View style={{ flex: 1 }}>
-                  <Text style={s.infoLabel}>{docLang === "en" ? "Commercial Basis" : "Base comercial"}</Text>
-                  <Text style={{ fontSize: 9, color: "#059669", fontWeight: "bold" }}>USD {cuAbbr || "/unit"}</Text>
-                </View>
-              )}
+              <View style={{ flex: 1 }}>
+                <Text style={s.infoLabel}>{docLang === "en" ? "Export Format" : "Formato de Exportación"}</Text>
+                <Text style={{ fontSize: 9, color: isPouchFormat ? "#6d28d9" : "#1e40af", fontWeight: "bold" }}>{exportFormatLabel}</Text>
+              </View>
             </View>
           )}
 
           {/* V7: Pouch Packaging Details — shown when a POUCH export format is active */}
           {isPouchFormat && !isLiveAnimalRow && (
-            <View style={{ marginTop: 8, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: "#ddd6fe", background: "#faf5ff" }}>
-              <Text style={{ fontSize: 8, fontWeight: "bold", color: "#5b21b6", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                {docLang === "en" ? "Pouch Packaging Specification" : "Especificación de Empaque Flexible"}
+            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#E8ECF1" }}>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.9 }}>
+                {docLang === "en" ? "PACKAGING SPECIFICATION" : "ESPECIFICACIÓN DE EMPAQUE"}
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
                 {pouchConfig.filmStructure && (
                   <View style={{ flex: 1, minWidth: "45%" }}>
                     <Text style={s.infoLabel}>{docLang === "en" ? "Film Structure" : "Estructura de Film"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#1e40af", fontWeight: "bold" }}>
+                    <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
                       {FILM_STRUCTURE_LABELS[pouchConfig.filmStructure] || pouchConfig.filmStructure}
                     </Text>
                   </View>
@@ -707,7 +1142,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 {pouchConfig.pouchType && (
                   <View style={{ flex: 1, minWidth: "45%" }}>
                     <Text style={s.infoLabel}>{docLang === "en" ? "Pouch Type" : "Tipo de Pouch"}</Text>
-                    <Text style={{ fontSize: 8.5, color: "#5b21b6", fontWeight: "bold" }}>
+                    <Text style={{ fontSize: 8.5, color: "#334155", fontWeight: "bold" }}>
                       {PACKAGING_TYPE_LABELS[pouchConfig.pouchType] || pouchConfig.pouchType}
                     </Text>
                   </View>
@@ -806,14 +1241,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             return (
               <>
                 {/* OIL TECHNICAL SPECIFICATION */}
-                <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#f5f3ff", borderRadius: 6 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "bold", color: "#4c1d95", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                    {docLang === "en" ? "Oil Technical Specification" : "Especificación Técnica — Aceite"}
+                <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
+                  <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.1 }}>
+                    {docLang === "en" ? "PRODUCT SPECIFICATION" : "ESPECIFICACIÓN DE PRODUCTO"}
                   </Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {oProductId && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Oil Type" : "Tipo de Aceite"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oProductId.replace(/_/g," ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{oProductId.replace(/_/g," ")}</Text>
                     </View>}
                     {oGrade && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>Grade</Text>
@@ -833,7 +1268,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>}
                     {oPackaging && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Format" : "Formato"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#4c1d95", fontWeight: "bold" }}>{oPackaging.replace(/_/g," ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{oPackaging.replace(/_/g," ")}</Text>
                     </View>}
                     {oSizeId && <View style={{ flex: 1, minWidth: "28%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Presentation Size" : "Tamaño"}</Text>
@@ -845,29 +1280,29 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>}
                     {oFoodGrade.length > 0 && <View style={{ flex: 1, minWidth: "55%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Food Grade / Certs" : "Grado Alimenticio"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oFoodGrade.join(" · ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#059669", fontWeight: "bold" }}>{oFoodGrade.join(" · ")}</Text>
                     </View>}
                     {oCerts.length > 0 && <View style={{ flex: 1, minWidth: "55%" }}>
                       <Text style={s.infoLabel}>{docLang === "en" ? "Certifications" : "Certificaciones"}</Text>
-                      <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oCerts.join(" · ")}</Text>
+                      <Text style={{ fontSize: 8.5, color: "#059669", fontWeight: "bold" }}>{oCerts.join(" · ")}</Text>
                     </View>}
                   </View>
 
                   {/* Packaging-type specific technical fields */}
                   {oGroupLabel === "Pouch" && (oPouchType || oFilm || oSeal) && (
-                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#ede9fe", borderRadius: 4 }}>
-                      <Text style={{ fontSize: 8, color: "#4c1d95", fontWeight: "bold" }}>
-                        {[oPouchType, oFilm, oSeal].filter(Boolean).map(v => v.replace(/_/g," ")).join(" · ")}
+                    <View style={{ marginTop: 8, padding: "5 8", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+                      <Text style={{ fontSize: 8, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold", marginBottom: 2 }}>
+                        {[oPouchType, oFilm, oSeal].filter(Boolean).map(v => v.replace(/_/g," ")).join("  ·  ")}
                       </Text>
-                      <Text style={{ fontSize: 7.5, color: "#6d28d9", marginTop: 2 }}>
+                      <Text style={{ fontSize: 7, color: "#64748B" }}>
                         {docLang === "en" ? "Multilayer flexible packaging — food grade, grease-resistant, export ready"
                           : "Empaque flexible multicapa — grado alimenticio, resistente a grasas, apto exportación"}
                       </Text>
                     </View>
                   )}
                   {oGroupLabel === "PET" && oSizeId && (
-                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#e0f2fe", borderRadius: 4 }}>
-                      <Text style={{ fontSize: 7.5, color: "#0369a1" }}>
+                    <View style={{ marginTop: 8, padding: "5 8", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+                      <Text style={{ fontSize: 7, color: "#334155" }}>
                         {docLang === "en"
                           ? `PET bottle ${oSizeId} — food grade, tamper-evident cap, export carton structure`
                           : `Botella PET ${oSizeId} — grado alimenticio, tapa inviolable, estructura cartón exportación`}
@@ -875,8 +1310,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>
                   )}
                   {oGroupLabel === "Industrial" && (
-                    <View style={{ marginTop: 6, padding: "4px 8px", backgroundColor: "#f0fdf4", borderRadius: 4 }}>
-                      <Text style={{ fontSize: 7.5, color: "#065f46" }}>
+                    <View style={{ marginTop: 8, padding: "5 8", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+                      <Text style={{ fontSize: 7, color: "#334155" }}>
                         {docLang === "en"
                           ? `Industrial grade — stackable, horeca compatible, bulk foodservice supply`
                           : `Grado industrial — apilable, compatible horeca, suministro a granel`}
@@ -884,22 +1319,22 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     </View>
                   )}
                   {oOemCaps.length > 0 && (
-                    <Text style={{ fontSize: 8, color: "#7c3aed", marginTop: 4 }}>
-                      {oOemCaps.join(" · ")}
+                    <Text style={{ fontSize: 7.5, color: "#334155", marginTop: 6 }}>
+                      {oOemCaps.join("  ·  ")}
                     </Text>
                   )}
                 </View>
 
                 {/* EXPORT LOGISTICS SUMMARY */}
                 {(oContainerType || oUnits > 0 || oBasePrice > 0 || oMoq) && (
-                  <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#f0fdf4", borderRadius: 6 }}>
-                    <Text style={{ fontSize: 10, fontWeight: "bold", color: "#065f46", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {docLang === "en" ? "Export Logistics Summary" : "Resumen Logístico de Exportación"}
+                  <View style={{ marginBottom: 8, padding: 10, backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2 }}>
+                    <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.1 }}>
+                      {docLang === "en" ? "EXPORT LOGISTICS" : "LOGÍSTICA DE EXPORTACIÓN"}
                     </Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                       {oContainerType && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Container Type" : "Tipo Contenedor"}</Text>
-                        <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>{oContainerType}</Text>
+                        <Text style={{ fontSize: 8.5, color: "#334155", fontWeight: "bold" }}>{oContainerType}</Text>
                       </View>}
                       {oPackaging && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Packaging Format" : "Formato Empaque"}</Text>
@@ -915,7 +1350,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                       </View>}
                       {oBasePrice > 0 && oUnits > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Shipment FOB Value" : "Valor FOB Embarque"}</Text>
-                        <Text style={{ fontSize: 8.5, color: "#065f46", fontWeight: "bold" }}>${(oBasePrice * oUnits).toFixed(0)} USD</Text>
+                        <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>${(oBasePrice * oUnits).toFixed(0)} USD</Text>
                       </View>}
                       {oFreight > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
                         <Text style={s.infoLabel}>{docLang === "en" ? "Freight / Container" : "Flete / Contenedor"}</Text>
@@ -989,8 +1424,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 </View>
                 {/* Layer 3: Box engine carton summary — e.g. "20 PET Bottles × 900 ml per export carton" */}
                 {hasBoxEngine && (
-                  <View style={{ marginTop: 4, backgroundColor: "#eff6ff", borderRadius: 4, padding: "5 8" }}>
-                    <Text style={{ fontSize: 8.5, color: "#1e40af", fontWeight: "bold" }}>
+                  <View style={{ marginTop: 6, backgroundColor: "#F8FAFC", borderRadius: 2, padding: "5 8", borderWidth: 0.5, borderColor: "#E2E8F0" }}>
+                    <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
                       {`${unitsPerBox} ${ptLabel}${presentationSize ? ` × ${sizeLabel}` : ""} ${docLang === "en" ? "per export carton" : "por caja de exportación"}`}
                     </Text>
                     {netKgPerCarton && (
@@ -1000,12 +1435,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     )}
                   </View>
                 )}
-                {/* Layer 4: Commercial basis line */}
+                {/* Layer 4: Sale basis */}
                 {commercialUnit && (
-                  <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
-                    <Text style={{ fontSize: 8, color: "#78350f", fontWeight: "bold" }}>
-                      {docLang === "en" ? "Commercial basis:" : "Base comercial:"} {resolvedCurrency} {docLang === "en" ? cuLabelEn : cuLabelEs}
-                      {containerType ? ` — ${CONTAINER_LABELS[containerType] || containerType}` : ""}
+                  <View style={{ marginTop: 4, backgroundColor: "#F8FAFC", borderRadius: 2, padding: "4 8", borderWidth: 0.5, borderColor: "#E2E8F0" }}>
+                    <Text style={{ fontSize: 8, color: "#334155", fontWeight: "bold" }}>
+                      {docLang === "en" ? "Sale basis:" : "Base de venta:"} {resolvedCurrency} {docLang === "en" ? cuLabelEn : cuLabelEs}
                     </Text>
                   </View>
                 )}
@@ -1035,7 +1469,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   {docLang === "en" ? `SKU Breakdown — ${rowSkus.length} Presentation${rowSkus.length > 1 ? "s" : ""}` : `Desglose SKU — ${rowSkus.length} Presentación${rowSkus.length > 1 ? "es" : ""}`}
                 </Text>
                 {/* Column headers */}
-                <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", borderRadius: 4, padding: "4 6", marginBottom: 2 }}>
+                <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 0, padding: "5 8", marginBottom: 0 }}>
                   {["SKU", docLang === "en" ? "Packaging" : "Empaque", docLang === "en" ? "Size" : "Tamaño", docLang === "en" ? "Units/Carton" : "Unid/Caja", docLang === "en" ? "Qty" : "Cant.", docLang === "en" ? "Price" : "Precio", docLang === "en" ? "Shipment Value" : "Valor Embarque"].map((h, i) => (
                     <Text key={i} style={{ flex: i === 0 ? 0.4 : i >= 4 ? 1 : 1.2, fontSize: 6.5, color: "#fff", fontWeight: "bold", textAlign: i >= 4 ? "right" : "left" }}>{h}</Text>
                   ))}
@@ -1049,7 +1483,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   const cuAbbr    = CU_ABBR[sk.commercialUnit] || sk.commercialUnit || "";
                   const upb       = parseFloat(sk.unitsPerCarton) || 0;
                   return (
-                    <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "4 6", borderRadius: 3 }}>
+                    <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "5 8", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
                       <Text style={{ flex: 0.4, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{i + 1}</Text>
                       <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{pkgLabel}</Text>
                       <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{sizeLabel}</Text>
@@ -1062,20 +1496,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 })}
                 {/* Total shipment value row */}
                 {totalShipV > 0 && (
-                  <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "5 6", borderRadius: 4, marginTop: 2 }}>
+                  <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "6 8", borderTopWidth: 1.5, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
                     <Text style={{ flex: 5, fontSize: 7.5, color: "#fff", fontWeight: "bold" }}>
                       {docLang === "en" ? "TOTAL SHIPMENT VALUE" : "VALOR TOTAL POR EMBARQUE"}
                     </Text>
                     <Text style={{ flex: 1, fontSize: 8, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(totalShipV, resolvedCurrency)}</Text>
-                  </View>
-                )}
-                {/* Export format indicator */}
-                {exportFormat && (
-                  <View style={{ marginTop: 4, backgroundColor: "#fefce8", borderRadius: 4, padding: "4 8" }}>
-                    <Text style={{ fontSize: 7.5, color: "#78350f" }}>
-                      {docLang === "en" ? "Export Format:" : "Formato de exportación:"} {exportFormat.replace(/_/g, " ")}
-                      {containerType ? ` — ${CONTAINER_LABELS[containerType] || containerType}` : ""}
-                    </Text>
                   </View>
                 )}
               </View>
@@ -1086,12 +1511,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           }})()}
 
           {(doc.custom_unit || doc.customUnit) && (
-            <View style={{ marginTop: 6 }}>
+            <View style={{ marginTop: 8 }}>
               <Text style={s.infoLabel}>{L.unit_lbl}</Text>
               <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "bold" }}>{doc.custom_unit || doc.customUnit}</Text>
             </View>
           )}
         </View>
+        <NarrativeSep />
 
         {/* Commercial data table — multi-product rows from CommercialEngine */}
         {(() => { try {
@@ -1100,19 +1526,19 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           const rows = cd?.rows?.filter(r => r.category && (r.quantity || (Array.isArray(r.skus) && r.skus.length > 0))) || [];
           if (rows.length === 0) return null;
           return (
-            <View style={{ marginBottom: 16 }}>
-              <View style={{ backgroundColor: "#1B2A4A", borderRadius: 6, padding: "6 10", marginBottom: 4 }}>
+            <View style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+              <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "7 10", marginBottom: 0 }}>
                 <View style={{ flexDirection: "row" }}>
                   {(docLang === "en"
-                    ? ["Product", "Origin", "Quantity", "Unit", "Incoterm", "Price/U", "Shipment Value", "Contract Value"]
-                    : ["Producto", "Origen", "Cantidad", "Unidad", "Incoterm", "Precio/U", "Valor Embarque", "Valor Contrato"]
-                  ).map(h => (
-                    <Text key={h} style={{ flex: 1, fontSize: 7, color: "#fff", fontWeight: "bold", textAlign: "center" }}>{h}</Text>
+                    ? ["Product", "Origin", "Qty", "Unit", "Incoterm", "Price/U", "Shipment", "Contract"]
+                    : ["Producto", "Origen", "Cant.", "Unidad", "Incoterm", "Precio/U", "Embarque", "Contrato"]
+                  ).map((h, i) => (
+                    <Text key={h} style={{ flex: 1, fontSize: 6.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", textAlign: i < 2 ? "left" : "right", letterSpacing: 0.3 }}>{h}</Text>
                   ))}
                 </View>
               </View>
               {rows.map((row, i) => {
-                const catLabel = row.category || "—";
+                const catLabel = getCategoryDisplayLabel(row.category || "", docLang);
                 const inc = (row.incoterms || ["CFR"])[0];
                 const price = parseFloat(row.incotermPrices?.[inc] || row.unitPrice || 0);
                 const isSkuRow = Array.isArray(row.skus) && row.skus.length > 0;
@@ -1142,7 +1568,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 const rowCurrency = safeCurrencyResolver(row.currency);
                 const fmtV = (v) => fmtPdfCurrency(v, rowCurrency);
                 return (
-                  <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#f8fafc" : "#fff", padding: "5 10", borderRadius: 4 }}>
+                  <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "6 10", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{catLabel}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151" }}>{row.origin || "—"}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? `${row.skus.length} SKU` : (row.quantity || "—")}</Text>
@@ -1160,11 +1586,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 const totalCV = rows.reduce((s, r) => s + (r.summary?.contractValue || 0), 0);
                 const fmtV = (v) => fmtPdfCurrency(v, totalsCurrency);
                 return (
-                  <View style={{ flexDirection: "row", backgroundColor: "#1B2A4A", padding: "6 10", borderRadius: 4, marginTop: 2 }}>
-                    <Text style={{ flex: 6, fontSize: 8, color: "#fff", fontWeight: "bold" }}>
-                      {docLang === "en" ? `TOTAL EXPORT PROGRAM (${rows.length} products)` : `TOTAL PROGRAMA EXPORTACIÓN (${rows.length} productos)`}
+                  <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "7 10", borderRadius: 0, marginTop: 0, borderTopWidth: 1.5, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+                    <Text style={{ flex: 6, fontSize: 7.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", letterSpacing: 0.5 }}>
+                      {docLang === "en" ? `TOTAL EXPORT PROGRAM — ${rows.length} PRODUCTS` : `TOTAL PROGRAMA DE EXPORTACIÓN — ${rows.length} PRODUCTOS`}
                     </Text>
-                    <Text style={{ flex: 1, fontSize: 8.5, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
+                    <Text style={{ flex: 1, fontSize: 9, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
                   </View>
                 );
               })()}
@@ -1178,27 +1604,29 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         }})()}
 
         {/* Section 3: Price */}
-        <SectionTitle text={L.price} />
+        <SilentPause />
+        <ExecSectionTitle text={L.price} />
 
-        {/* Shipment value — primary operational figure, displayed prominently above the grid */}
+        {/* Shipment value — DOMINANT financial card, no left accent needed: dark bg IS the emphasis */}
         {engineShipmentValue > 0 && (
-          <View style={{ backgroundColor: "#1e3a5f", borderRadius: 8, padding: "12 14", marginBottom: 10 }}>
-            <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.65)", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+          <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "14 18", marginTop: 12, marginBottom: 12 }}>
+            <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.35)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.shipment_val_lbl}
             </Text>
-            <Text style={{ fontSize: 18, color: "#ffffff", fontWeight: "bold" }}>
+            <Text style={{ fontSize: 22, color: "#FFFFFF", fontWeight: "bold", letterSpacing: 0.5 }}>
               {fmtCurrency(engineShipmentValue)}
             </Text>
+            <View style={{ height: 1, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginTop: 10, width: 36 }} />
           </View>
         )}
 
         {/* Total contract value — full-width secondary card when shipment value is also shown */}
         {totalValue && totalValue > 0 && (engineShipmentValue <= 0 || Math.abs(totalValue - engineShipmentValue) > 1) && (
-          <View style={{ backgroundColor: "#f0fdf4", borderRadius: 8, padding: "10 12", marginBottom: 10, borderWidth: 0.5, borderColor: "#86efac" }}>
-            <Text style={{ fontSize: 7.5, color: "#166534", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "12 18", marginBottom: 12, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 3, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK }}>
+            <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.total_val_lbl}
             </Text>
-            <Text style={{ fontSize: 14, color: "#059669", fontWeight: "bold" }}>
+            <Text style={{ fontSize: 18, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold", letterSpacing: 0.5 }}>
               {fmtCurrency(totalValue)}
             </Text>
           </View>
@@ -1234,39 +1662,54 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               value={doc.guaranteeBank || doc.guarantee_bank || "Por confirmar en contrato"} />
           )}
         </View>
+        <SectionSep />
+        <SilentPause />
 
         {/* Section 4: Certifications */}
-        <SectionTitle text={L.certs} />
-        <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
-          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{certifications}</Text>
+        {catAtmosphere.regulatedMarker && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: "#EEF2F7", borderWidth: 0.5, borderColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
+              <Text style={{ fontSize: 6.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                {docLang === "en" ? "REGULATED OPERATION" : "OPERACIÓN REGULADA"}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 0.3 }}>
+              {docLang === "en" ? "Veterinary  ·  Sanitary  ·  International Standards" : "Veterinario  ·  Sanitario  ·  Normas Internacionales"}
+            </Text>
+          </View>
+        )}
+        <ExecSectionTitle text={L.certs} />
+        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: catAtmosphere.certsAccentColor }}>
+          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{certifications}</Text>
         </View>
+        <SectionSep />
 
         {/* Section 5: Payment */}
-        <SectionTitle text={L.payment} />
+        <ExecSectionTitle text={L.payment} />
         <View style={s.paymentBox}>
           <Text style={s.paymentText}>{paymentText}</Text>
         </View>
+        <NarrativeSep />
 
         {/* Section 6: Timeline */}
-        <SectionTitle text={L.timeline} />
-        <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
-          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.6 }}>{timeline}</Text>
-        </View>
+        <ExecSectionTitle text={L.timeline} />
+        <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} lifecycleLabel={catAtmosphere.lifecycleLabel} />
+        <SectionSep />
 
         {/* Section 7: Mandatory */}
         {mandatoryInfo && (
           <>
             <SectionTitle text={L.mandatory} />
-            <View style={[s.chinaBox, { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }]}>
-              <Text style={{ fontSize: 8.5, color: "#7c2d12", lineHeight: 1.5 }}>{mandatoryInfo}</Text>
+            <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+              <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{mandatoryInfo}</Text>
             </View>
           </>
         )}
 
         {/* China alert box */}
         {isChina && (
-          <View style={s.chinaBox}>
-            <Text style={s.chinaText}>FILTRO CHINA — Entidad: GLV Services SAS (Colombia) | GACC No. YA11000PDY110K805</Text>
+          <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+            <Text style={{ fontSize: 8, color: "#374151", fontWeight: "bold" }}>FILTRO CHINA — Entidad: GLV Services SAS (Colombia) | GACC No. YA11000PDY110K805</Text>
             {docLang === "zh" && (
               <Text style={{ fontSize: 8, color: "#92400e", marginTop: 4 }}>
                 中国过滤器已激活 — 实体: GLV Services SAS (哥伦比亚) | GACC编号: YA11000PDY110K805
@@ -1294,19 +1737,22 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         {doc.observations && (
           <>
             <SectionTitle text={L.observations} />
-            <View style={{ backgroundColor: "#f8fafc", borderRadius: 6, padding: "8 10", marginBottom: 16, borderWidth: 0.5, borderColor: "#e2e8f0" }}>
-              <Text style={{ fontSize: 8.5, color: "#374151" }}>{doc.observations}</Text>
+            <View style={{ backgroundColor: "#FAFBFC", borderRadius: 2, padding: "8 12", marginBottom: 14, borderWidth: 0.5, borderColor: "#EEF1F5" }}>
+              <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.6 }}>{doc.observations}</Text>
             </View>
+            <SectionSep />
           </>
         )}
 
         {/* Section 9: T&C */}
+        <SectionSep />
         <SectionTitle text={L.tc} />
         <View style={s.tcBox}>
           <Text style={s.tcText}>{tcText}</Text>
         </View>
 
         {/* Section 10: Agent signature */}
+        <SilentPause />
         <View style={s.sigBlock}>
           <SectionTitle text={L.agent_sig} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -1376,11 +1822,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </View>
         )}
 
-        {/* Footer — keep Latin text only to avoid bidirectional rendering issues */}
-        <View style={s.footer}>
-          <Text>Agente: {doc.agent} | {PDF_T.en.footer_copy}</Text>
-          <Text>GLV Holding Group © 2026</Text>
-        </View>
+        {/* Footer — executive audit footer */}
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
       </Page>
     </Document>
   );
