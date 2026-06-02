@@ -434,7 +434,7 @@ function ExecTimelineStrip({ workflowState, lang, lifecycleLabel }) {
     const w      = 100 / Math.max(stages.length, 1);
     const stageLabel = lang === "en" ? `STAGE ${tl.currentOrder}/${tl.totalStages}` : `ETAPA ${tl.currentOrder}/${tl.totalStages}`;
     return (
-      <View style={execS.timelineWrap}>
+      <View wrap={false} style={execS.timelineWrap}>
         <View style={execS.timelineHeader}>
           <Text style={{ fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1.1, textTransform: "uppercase" }}>
             {lifecycleLabel || (lang === "en" ? "OPERATION LIFECYCLE" : "CICLO OPERATIVO")}
@@ -1379,7 +1379,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                         <Text style={{ fontSize: 8.5, color: "#1B2A4A", fontWeight: "bold" }}>{oUnits.toLocaleString()}</Text>
                       </View>}
                       {oBasePrice > 0 && oUnits > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
-                        <Text style={s.infoLabel}>{docLang === "en" ? "Shipment FOB Value" : "Valor FOB Embarque"}</Text>
+                        <Text style={s.infoLabel}>{docLang === "en" ? `Shipment ${oIncoterm} Value` : `Valor ${oIncoterm} Embarque`}</Text>
                         <Text style={{ fontSize: 8.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>${(oBasePrice * oUnits).toFixed(0)} USD</Text>
                       </View>}
                       {oFreight > 0 && <View style={{ flex: 1, minWidth: "28%" }}>
@@ -1556,7 +1556,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           const rows = cd?.rows?.filter(r => r.category && (r.quantity || (Array.isArray(r.skus) && r.skus.length > 0))) || [];
           if (rows.length === 0) return null;
           return (
-            <View style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+            <View wrap={false} style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
               <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "7 10", marginBottom: 0 }}>
                 <View style={{ flexDirection: "row" }}>
                   {(docLang === "en"
@@ -1597,12 +1597,24 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 // VAL-045: use safeCurrencyResolver for per-row currency — never raw row.currency
                 const rowCurrency = safeCurrencyResolver(row.currency);
                 const fmtV = (v) => fmtPdfCurrency(v, rowCurrency);
+                // LIVE_ANIMALS: commercial unit is heads, NOT kg/live-weight
+                const isLiveRow = row.category === "LIVE_ANIMALS";
+                const qtyDisplay = isSkuRow
+                  ? `${row.skus.length} SKU`
+                  : isLiveRow
+                    ? new Intl.NumberFormat().format(parseFloat(row.specs?.headCount || row.quantity || 0) || 0)
+                    : (row.quantity || "—");
+                const unitDisplay = isSkuRow
+                  ? "Multi-SKU"
+                  : isLiveRow
+                    ? (docLang === "en" ? "Heads" : "Cabezas")
+                    : (row.unitType || "").split("/")[0].trim();
                 return (
                   <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "6 10", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{catLabel}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151" }}>{row.origin || "—"}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? `${row.skus.length} SKU` : (row.quantity || "—")}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{isSkuRow ? "Multi-SKU" : (row.unitType || "").split("/")[0].trim()}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{qtyDisplay}</Text>
+                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{unitDisplay}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{inc}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{isSkuRow ? "—" : (price ? `${rowCurrency} ${price}` : "—")}</Text>
                     <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv)}</Text>
@@ -1639,7 +1651,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Shipment value — DOMINANT financial card, no left accent needed: dark bg IS the emphasis */}
         {engineShipmentValue > 0 && (
-          <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "14 18", marginTop: 12, marginBottom: 12 }}>
+          <View wrap={false} style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "14 18", marginTop: 12, marginBottom: 12 }}>
             <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.35)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.shipment_val_lbl}
             </Text>
@@ -1652,7 +1664,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Total contract value — full-width secondary card when shipment value is also shown */}
         {totalValue && totalValue > 0 && (engineShipmentValue <= 0 || Math.abs(totalValue - engineShipmentValue) > 1) && (
-          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "12 18", marginBottom: 12, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 3, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK }}>
+          <View wrap={false} style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "12 18", marginBottom: 12, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 3, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK }}>
             <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>
               {L.total_val_lbl}
             </Text>
@@ -1832,8 +1844,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </Text>
             <Text style={{ fontSize: 8, color: "#14532d" }}>
               {docLang === "en"
-                ? "43 active legal clauses: Subject matter, Entities, Addresses, Constitutive documents, Product, Lot, Sexual composition, Volume, Invoicing basis, CFR Price, Currency, Destinations, Payment/SBLC (Clauses 13–15), SGS inspection, Halal, Quarantine, Maritime transport, Lot documents, Responsibilities, Insurance, Force majeure, Default, Penalties, Arbitration (ICC Paris), Applicable law."
-                : "43 cláusulas legales activas: Objeto, Entidades, Domicilios, Documentos constitutivos, Producto, Lote, Composición sexual, Volumen, Base de facturación, Precio CFR, Moneda, Destinos, Pago/SBLC (Cláusulas 13–15), Inspección SGS, Halal, Cuarentena, Transporte marítimo, Documentos de lote, Responsabilidades, Seguros, Fuerza mayor, Incumplimiento, Penalidades, Arbitraje (CCI Paris), Ley aplicable."
+                ? `43 active legal clauses: Subject matter, Entities, Addresses, Constitutive documents, Product, Lot, Sexual composition, Volume, Invoicing basis, ${cdInc} Price, Currency, Destinations, Payment/SBLC (Clauses 13–15), SGS inspection, Halal, Quarantine, Maritime transport, Lot documents, Responsibilities, Insurance, Force majeure, Default, Penalties, Arbitration (ICC Paris), Applicable law.`
+                : `43 cláusulas legales activas: Objeto, Entidades, Domicilios, Documentos constitutivos, Producto, Lote, Composición sexual, Volumen, Base de facturación, Precio ${cdInc}, Moneda, Destinos, Pago/SBLC (Cláusulas 13–15), Inspección SGS, Halal, Cuarentena, Transporte marítimo, Documentos de lote, Responsabilidades, Seguros, Fuerza mayor, Incumplimiento, Penalidades, Arbitraje (CCI Paris), Ley aplicable.`
               }
             </Text>
           </View>
@@ -1859,7 +1871,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 10: Agent signature */}
         <SilentPause />
-        <View style={s.sigBlock}>
+        <View wrap={false} style={s.sigBlock}>
           <SectionTitle text={L.agent_sig} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             <View style={{ flex: 1 }}>
