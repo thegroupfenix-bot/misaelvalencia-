@@ -1,0 +1,360 @@
+/**
+ * categoryProfiles.js — GLV Commercial Engine V4 Category Profile System.
+ *
+ * Each category profile defines the full behavioral contract:
+ * packaging support, pricing modes, unit layers, container rules,
+ * transport modes, media categories, and PDF layout profile.
+ *
+ * Import pattern:
+ *   import { getCategoryProfile, getAllProfiles } from "../engines/categoryProfiles.js";
+ */
+
+import { PRODUCT_CATEGORIES } from "../config/productCategories.js";
+
+// ─── Category Engine Types ────────────────────────────────────────────────────
+
+export const ENGINE_TYPES = {
+  LIVE_ANIMALS_ENGINE:   "LIVE_ANIMALS_ENGINE",
+  FRUIT_EXPORT_ENGINE:   "FRUIT_EXPORT_ENGINE",
+  FROZEN_PRODUCTS_ENGINE:"FROZEN_PRODUCTS_ENGINE",
+  OILS_ENGINE:           "OILS_ENGINE",
+  PULP_ENGINE:           "PULP_ENGINE",
+  BEVERAGE_ENGINE:       "BEVERAGE_ENGINE",
+  BULK_COMMODITIES_ENGINE:"BULK_COMMODITIES_ENGINE",
+  PACKAGED_FOODS_ENGINE: "PACKAGED_FOODS_ENGINE",
+};
+
+// ─── V4 Profile Map ───────────────────────────────────────────────────────────
+
+export const CATEGORY_V4_PROFILES = {
+  LIVE_ANIMALS: {
+    categoryType:               ENGINE_TYPES.LIVE_ANIMALS_ENGINE,
+    supportsPackaging:          false,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    false,
+    supportsLivestock:          true,
+    supportsBulk:               false,
+    supportsContainers:         false,
+    supportsReefer:             false,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          true,
+    supportsPresentationFormats:false,
+    pricingModes:               ["perKg", "perHead"],
+    allowedUnits:               ["KG", "MT", "Head"],
+    defaultUnit:                "KG",
+    allowedContainers:          ["LIVESTOCK_VESSEL"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["livestock", "sheep", "cattle", "vessel"],
+    pdfLayoutProfile:           "livestock",
+  },
+  FROZEN_MEAT: {
+    categoryType:               ENGINE_TYPES.FROZEN_PRODUCTS_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             true,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBox", "perPallet", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Box", "Pallet", "Container"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["REEFER_20", "REEFER_40", "AIR_CARGO"],
+    transportModes:             ["sea", "air"],
+    mediaCategories:            ["meat", "frozen", "reefer", "beef", "lamb"],
+    pdfLayoutProfile:           "frozen",
+  },
+  FROZEN_POULTRY: {
+    categoryType:               ENGINE_TYPES.FROZEN_PRODUCTS_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             true,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBox", "perPallet", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Box", "Pallet", "Container"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["REEFER_20", "REEFER_40"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["poultry", "chicken", "frozen", "reefer"],
+    pdfLayoutProfile:           "frozen",
+  },
+  CANNED_MEAT: {
+    categoryType:               ENGINE_TYPES.PACKAGED_FOODS_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             false,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perUnit", "perBox", "perMT", "perContainer"],
+    allowedUnits:               ["Unit", "Box", "MT", "Container"],
+    defaultUnit:                "Box",
+    allowedContainers:          ["20FT", "40FT", "40HC"],
+    transportModes:             ["sea", "air"],
+    mediaCategories:            ["canned", "processed", "meat"],
+    pdfLayoutProfile:           "food",
+  },
+  COMMODITIES: {
+    categoryType:               ENGINE_TYPES.BULK_COMMODITIES_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               true,
+    supportsContainers:         true,
+    supportsReefer:             false,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBag", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Bag", "Container", "BulkVessel"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["20FT", "40FT", "40HC", "BULK_VESSEL"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["grain", "commodity", "bulk", "soy", "corn"],
+    pdfLayoutProfile:           "grain",
+  },
+  BEANS: {
+    categoryType:               ENGINE_TYPES.BULK_COMMODITIES_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             false,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBag", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Bag", "Container"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["20FT", "40FT", "40HC"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["legume", "bean", "bag"],
+    pdfLayoutProfile:           "grain",
+  },
+  LENTILS: {
+    categoryType:               ENGINE_TYPES.BULK_COMMODITIES_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             false,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBag", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Bag", "Container"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["20FT", "40FT", "40HC"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["legume", "lentil", "bag"],
+    pdfLayoutProfile:           "grain",
+  },
+  CHICKPEAS: {
+    categoryType:               ENGINE_TYPES.BULK_COMMODITIES_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             false,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBag", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Bag", "Container"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["20FT", "40FT", "40HC"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["legume", "chickpea", "garbanzo", "bag"],
+    pdfLayoutProfile:           "grain",
+  },
+  ANIMAL_FEED: {
+    categoryType:               ENGINE_TYPES.BULK_COMMODITIES_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               true,
+    supportsContainers:         true,
+    supportsReefer:             false,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBag", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Bag", "Container", "BulkVessel"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["20FT", "40FT", "40HC", "BULK_VESSEL"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["feed", "grain", "alfalfa"],
+    pdfLayoutProfile:           "grain",
+  },
+  OILS: {
+    categoryType:               ENGINE_TYPES.OILS_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    true,
+    supportsWeightPackaging:    false,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             false,
+    supportsVolume:             true,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perLiter", "perMT", "perDrum", "perJerrycan", "perContainer"],
+    allowedUnits:               ["Liter", "MT", "Drum", "Jerrycan", "Container", "ISOTank", "Flexitank"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["FLEXITANK", "ISO_TANK", "20FT"],
+    transportModes:             ["sea"],
+    mediaCategories:            ["oil", "liquid", "palm", "soy", "sunflower"],
+    pdfLayoutProfile:           "food",
+  },
+  FRUIT_PRODUCTS: {
+    categoryType:               ENGINE_TYPES.FRUIT_EXPORT_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             true,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBox", "perPallet", "perContainer"],
+    allowedUnits:               ["KG", "MT", "Box", "Pallet", "Container"],
+    defaultUnit:                "MT",
+    allowedContainers:          ["REEFER_20", "REEFER_40", "AIR_CARGO"],
+    transportModes:             ["sea", "air"],
+    mediaCategories:            ["fruit", "fresh", "reefer", "avocado", "mango", "banana"],
+    pdfLayoutProfile:           "fruit",
+  },
+  COLOMBIAN_EXOTIC_FRUITS: {
+    categoryType:               ENGINE_TYPES.FRUIT_EXPORT_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             true,
+    supportsVolume:             false,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perBox", "perPallet"],
+    allowedUnits:               ["KG", "MT", "Box", "Pallet", "Container"],
+    defaultUnit:                "KG",
+    allowedContainers:          ["REEFER_20", "REEFER_40", "AIR_CARGO"],
+    transportModes:             ["sea", "air"],
+    mediaCategories:            ["fruit", "exotic", "tropical", "colombia", "uchuva", "pitahaya"],
+    pdfLayoutProfile:           "fruit",
+  },
+  EGGS: {
+    categoryType:               ENGINE_TYPES.PACKAGED_FOODS_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    false,
+    supportsWeightPackaging:    false,
+    supportsLivestock:          false,
+    supportsBulk:               false,
+    supportsContainers:         true,
+    supportsReefer:             true,
+    supportsVolume:             false,
+    supportsWeight:             false,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perUnit", "perBox", "perPallet"],
+    allowedUnits:               ["Unit", "Box", "Pallet", "Container"],
+    defaultUnit:                "Box",
+    allowedContainers:          ["REEFER_20", "REEFER_40"],
+    transportModes:             ["sea", "air"],
+    mediaCategories:            ["egg", "huevo", "poultry"],
+    pdfLayoutProfile:           "food",
+  },
+  CUSTOM: {
+    categoryType:               ENGINE_TYPES.PACKAGED_FOODS_ENGINE,
+    supportsPackaging:          true,
+    supportsLiquidPackaging:    true,
+    supportsWeightPackaging:    true,
+    supportsLivestock:          false,
+    supportsBulk:               true,
+    supportsContainers:         true,
+    supportsReefer:             true,
+    supportsVolume:             true,
+    supportsWeight:             true,
+    supportsHeadCount:          false,
+    supportsPresentationFormats:true,
+    pricingModes:               ["perKg", "perMT", "perUnit", "perBox", "perPallet", "perContainer", "perLiter"],
+    allowedUnits:               ["KG", "MT", "Unit", "Box", "Liter", "Container"],
+    defaultUnit:                "KG",
+    allowedContainers:          ["20FT", "40FT", "40HC", "REEFER_20", "REEFER_40", "FLEXITANK", "ISO_TANK", "BULK_VESSEL", "AIR_CARGO"],
+    transportModes:             ["sea", "air", "land"],
+    mediaCategories:            [],
+    pdfLayoutProfile:           "food",
+  },
+};
+
+// ─── Accessors ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns a merged profile: base PRODUCT_CATEGORIES config + V4 extension fields.
+ */
+export function getCategoryProfile(category) {
+  const base = PRODUCT_CATEGORIES[category] || null;
+  const v4   = CATEGORY_V4_PROFILES[category] || null;
+  if (!base && !v4) return null;
+  return { category, ...(base || {}), ...(v4 || {}) };
+}
+
+export function getAllProfiles() {
+  return Object.keys(CATEGORY_V4_PROFILES).map(k => getCategoryProfile(k));
+}
+
+export function getCategoryType(category) {
+  return CATEGORY_V4_PROFILES[category]?.categoryType || null;
+}
+
+export function supportsHeadCount(category) {
+  return CATEGORY_V4_PROFILES[category]?.supportsHeadCount === true;
+}
+
+export function supportsReefer(category) {
+  return CATEGORY_V4_PROFILES[category]?.supportsReefer === true;
+}
+
+export function supportsLiquid(category) {
+  return CATEGORY_V4_PROFILES[category]?.supportsLiquidPackaging === true;
+}
+
+export function supportsBulkTransport(category) {
+  return CATEGORY_V4_PROFILES[category]?.supportsBulk === true;
+}

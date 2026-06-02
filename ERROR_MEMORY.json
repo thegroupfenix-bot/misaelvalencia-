@@ -1,0 +1,154 @@
+{
+  "schema_version": "2.0",
+  "last_updated": "2026-05-22",
+  "description": "GLV-Connect Enterprise Error Memory — permanent record of resolved bugs, root causes, and prevention rules. CI reads this file to validate that all prevention patterns are in place before merge.",
+  "errors": [
+    {
+      "id": "ERR-001",
+      "name": "Cross-document state contamination (Nigeria → Turkey)",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "resolved_in_pr": 45,
+      "root_cause": "setView('new-sco') while already on 'new-sco' is a React no-op — useEffect never fires, newDocKey not incremented, CommercialEngine not remounted. Stale Turkey state saved to Nigeria document.",
+      "affected_files": [
+        "glv-connect/frontend/src/App.jsx"
+      ],
+      "resolution": "Replaced useEffect with safeSetView() that unconditionally increments newDocKey before any new-* navigation. CountrySearch input synced via useEffect on value prop.",
+      "prevention_pattern": "safeSetView",
+      "ci_check": "grep -n 'safeSetView' glv-connect/frontend/src/App.jsx | grep -q 'setNewDocKey'",
+      "validation_rule": "App.jsx must contain safeSetView function that increments newDocKey before setting new-* views."
+    },
+    {
+      "id": "ERR-002",
+      "name": "PDF Price Contamination (PRICE_TABLE override)",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "resolved_in_pr": 47,
+      "root_cause": "pricePerKg in GlvPDF.jsx had fallback: engineUnitPrice || parseFloat(doc.pricePerKg). doc.pricePerKg is written at save time from PRICE_TABLE lookup (e.g. UAE = 5.70), overriding the user-entered price (e.g. 3.50).",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "resolution": "pricePerKg = engineUnitPrice || null — no PRICE_TABLE fallback. CommercialEngine incotermPrices is the sole source.",
+      "prevention_pattern": "pricePerKg = engineUnitPrice || null",
+      "ci_check": "grep -n 'pricePerKg\\s*=.*doc\\.pricePerKg' GlvPDF.jsx | grep -v '//'",
+      "validation_rule": "GlvPDF.jsx must never assign pricePerKg using doc.pricePerKg as a fallback."
+    },
+    {
+      "id": "ERR-003",
+      "name": "Category Formula Contamination (LIVE_ANIMALS formula leaking)",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "resolved_in_pr": 47,
+      "root_cause": "GlvPDF.jsx used engineHeads = firstCdRow.quantity for ALL categories, and engineAvgW defaulted to 45. For FROZEN_MEAT with quantity=25000: 25000 × 45 = 1,125,000 kg — wrong by factor of 45.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "resolution": "Added isLiveAnimalRow guard. LIVE_ANIMALS: totalKg = heads × avgWeight. All other categories: totalKg = direct quantity. engineHeads and engineAvgW are zero for non-livestock rows.",
+      "prevention_pattern": "isLiveAnimalRow",
+      "ci_check": "grep -q 'isLiveAnimalRow' glv-connect/frontend/src/components/GlvPDF.jsx",
+      "validation_rule": "GlvPDF.jsx must contain isLiveAnimalRow category isolation guard."
+    },
+    {
+      "id": "ERR-004",
+      "name": "Media proxy authentication (401 on PDF image fetch)",
+      "status": "RESOLVED",
+      "severity": "HIGH",
+      "resolved_in_pr": 44,
+      "root_cause": "fetchAsBase64 in mediaAutoBinding.js called /media/proxy without Authorization header. Proxy is behind authenticate() middleware. Returns 401 silently, images fail to load.",
+      "affected_files": [
+        "glv-connect/frontend/src/services/mediaAutoBinding.js"
+      ],
+      "resolution": "Added getAuthHeader() reading glv_token from localStorage, injected into all fetch calls to /media/proxy.",
+      "prevention_pattern": "getAuthHeader",
+      "ci_check": "grep -q 'getAuthHeader\\|Authorization.*Bearer' glv-connect/frontend/src/services/mediaAutoBinding.js",
+      "validation_rule": "mediaAutoBinding.js must include JWT auth header in all proxy requests."
+    },
+    {
+      "id": "ERR-005",
+      "name": "Category resolution snake_case/camelCase mismatch",
+      "status": "RESOLVED",
+      "severity": "HIGH",
+      "resolved_in_pr": 44,
+      "root_cause": "mediaAutoBinding.js read doc.product_category but API returns doc.productCategory (camelCase). category was always null → wrong media category sent to /media/bind.",
+      "affected_files": [
+        "glv-connect/frontend/src/services/mediaAutoBinding.js"
+      ],
+      "resolution": "Category resolution reads both: doc.productCategory || doc.product_category || firstRow?.category.",
+      "prevention_pattern": "productCategory.*product_category",
+      "ci_check": "grep -q 'productCategory.*product_category\\|product_category.*productCategory' glv-connect/frontend/src/services/mediaAutoBinding.js",
+      "validation_rule": "mediaAutoBinding.js must check both camelCase and snake_case for category resolution."
+    },
+    {
+      "id": "ERR-006",
+      "name": "AVOCAVIVA/fruit branding appearing in LIVE_ANIMALS SCO",
+      "status": "RESOLVED",
+      "severity": "MEDIUM",
+      "resolved_in_pr": 46,
+      "root_cause": "Branding asset scoring had no category awareness. AVOCAVIVA logo scored high on 'brand' keywords and appeared in livestock documents.",
+      "affected_files": [
+        "glv-connect/backend/services/mediaBinding.js"
+      ],
+      "resolution": "Added BRANDING_EXCLUSION_KEYWORDS per category and isBrandingCompatible() filter. Branding assets with product-specific keywords incompatible with document category are excluded.",
+      "prevention_pattern": "isBrandingCompatible",
+      "ci_check": "grep -q 'isBrandingCompatible\\|BRANDING_EXCLUSION_KEYWORDS' glv-connect/backend/services/mediaBinding.js",
+      "validation_rule": "mediaBinding.js must contain isBrandingCompatible() category filter."
+    },
+    {
+      "id": "ERR-007",
+      "name": "FRUIT_PRODUCTS SCO renders sheep/livestock images",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "resolved_in_pr": 48,
+      "root_cause": "mediaBinding.js only filtered branding assets by category, but product (non-branding) assets had no category compatibility check. Sheep images tagged with 'livestock' could score into FRUIT_PRODUCTS documents.",
+      "affected_files": [
+        "glv-connect/backend/services/mediaBinding.js"
+      ],
+      "resolution": "Added PRODUCT_CATEGORY_EXCLUSIONS and isProductCategoryCompatible() hard filter applied to all product assets before scoring. FRUIT_PRODUCTS cannot load LIVE_ANIMALS assets.",
+      "prevention_pattern": "isProductCategoryCompatible",
+      "ci_check": "grep -q 'isProductCategoryCompatible\\|PRODUCT_CATEGORY_EXCLUSIONS' glv-connect/backend/services/mediaBinding.js",
+      "validation_rule": "mediaBinding.js must contain isProductCategoryCompatible() for non-branding product assets."
+    },
+    {
+      "id": "ERR-008",
+      "name": "Agent profile validation loop (cargo blocks SCO/FCO forever)",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "resolved_in_pr": 48,
+      "root_cause": "validateDocForm checked agentProfile.cargo which is SUPER ADMIN managed. If SUPER ADMIN never set cargo, agent is permanently blocked. Also: completed=1 flag in backend required cargo+phone+country+signature — agents could never self-complete.",
+      "affected_files": [
+        "glv-connect/frontend/src/utils/validateDoc.js",
+        "glv-connect/backend/routes/profile.js"
+      ],
+      "resolution": "1) validateDoc: short-circuit on agentProfile.completed===1 (never re-ask if profile complete). Cargo removed from requirements. 2) Backend completed flag: requires only phone + signature_b64. 3) NewDocForm refreshes agentProfile on mount. 4) Profile banner warns user when incomplete.",
+      "prevention_pattern": "agentProfile?.completed !== 1",
+      "ci_check": "grep -q 'completed.*!==.*1\\|completed === 1' glv-connect/frontend/src/utils/validateDoc.js",
+      "validation_rule": "validateDoc.js must short-circuit profile checks when agentProfile.completed === 1."
+    },
+    {
+      "id": "ERR-009",
+      "name": "Destination port contamination (stale portInfo from doc.destination fallback)",
+      "status": "RESOLVED",
+      "severity": "HIGH",
+      "resolved_in_pr": 39,
+      "root_cause": "PDF used findPortInfo(doc.destination) as fallback when commercialData.destinationPort was empty. If doc.destination was stale, wrong port appeared.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "resolution": "Port display priority: commercialData.destinationPort > portInfo.port > doc.destination. commercialData is always authoritative.",
+      "prevention_pattern": "commercialData.*destinationPort",
+      "ci_check": "grep -q 'commercialData.*destinationPort\\|commercial_data.*destinationPort' glv-connect/frontend/src/components/GlvPDF.jsx",
+      "validation_rule": "GlvPDF.jsx must prioritize commercialData.destinationPort over doc-level port fields."
+    }
+  ],
+  "prevention_ci_manifest": {
+    "description": "All patterns below are verified by the CI formula-isolation-check job before merge.",
+    "patterns": [
+      { "id": "ERR-002", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",               "must_contain": "pricePerKg = engineUnitPrice" },
+      { "id": "ERR-003", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",               "must_contain": "isLiveAnimalRow" },
+      { "id": "ERR-004", "file": "glv-connect/frontend/src/services/mediaAutoBinding.js",        "must_contain": "getAuthHeader" },
+      { "id": "ERR-006", "file": "glv-connect/backend/services/mediaBinding.js",                 "must_contain": "isBrandingCompatible" },
+      { "id": "ERR-007", "file": "glv-connect/backend/services/mediaBinding.js",                 "must_contain": "isProductCategoryCompatible" },
+      { "id": "ERR-008", "file": "glv-connect/frontend/src/utils/validateDoc.js",                "must_contain": "completed" }
+    ]
+  }
+}

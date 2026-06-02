@@ -1,0 +1,35 @@
+# GLV-Connect CODEOWNERS — Protection Phase v1
+#
+# Files listed here require explicit review before any PR can merge.
+# GitHub will automatically request review from the listed owner
+# when these paths are modified in a pull request.
+#
+# To bypass: owner must approve the PR before merge is allowed.
+
+# ── Commercial calculation engine ─────────────────────────────────────────────
+glv-connect/frontend/src/utils/calculations.js              @thegroupfenix-bot
+glv-connect/frontend/src/components/CommercialEngine.jsx    @thegroupfenix-bot
+
+# ── PDF renderer ──────────────────────────────────────────────────────────────
+glv-connect/frontend/src/components/GlvPDF.jsx              @thegroupfenix-bot
+
+# ── Media and destination logic ───────────────────────────────────────────────
+glv-connect/frontend/src/services/mediaAutoBinding.js       @thegroupfenix-bot
+glv-connect/frontend/src/config/destinationPorts.js         @thegroupfenix-bot
+
+# ── Main app state (destination, port, form flow) ─────────────────────────────
+glv-connect/frontend/src/App.jsx                            @thegroupfenix-bot
+
+# ── Backend core ──────────────────────────────────────────────────────────────
+glv-connect/backend/server.js                               @thegroupfenix-bot
+glv-connect/backend/db/database.js                          @thegroupfenix-bot
+glv-connect/backend/routes/documents.js                     @thegroupfenix-bot
+glv-connect/backend/routes/auth.js                          @thegroupfenix-bot
+glv-connect/backend/routes/media.js                         @thegroupfenix-bot
+
+# ── Railway deployment config ─────────────────────────────────────────────────
+glv-connect/backend/nixpacks.toml                           @thegroupfenix-bot
+glv-connect/backend/railway.toml                            @thegroupfenix-bot
+
+# ── CI/CD and protection infrastructure ───────────────────────────────────────
+.github/                                                    @thegroupfenix-bot

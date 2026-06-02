@@ -1,0 +1,516 @@
+{
+  "registry_version": "9.2.0",
+  "last_updated": "2026-05-27",
+  "description": "Permanent record of commercial logic bugs resolved in GLV SAT. CI reads this file to prevent regressions.",
+  "errors": [
+    {
+      "id": "ERR-001",
+      "title": "PRICE_TABLE fallback contaminating PDF price",
+      "status": "resolved",
+      "resolved_in": "PR #47",
+      "root_cause": "GlvPDF.jsx read doc.pricePerKg as fallback; doc.pricePerKg is written at save time from PRICE_TABLE lookup, not from CommercialEngine unit price",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "pricePerKg = engineUnitPrice only — CommercialEngine is sole source. doc.pricePerKg never used in PDF rendering.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_not_contain": "pricePerKg.*doc\\.pricePerKg|doc\\.pricePerKg.*pricePerKg"
+      }
+    },
+    {
+      "id": "ERR-002",
+      "title": "LIVE_ANIMALS formula (head×avgWeight) contaminating FROZEN_MEAT",
+      "status": "resolved",
+      "resolved_in": "PR #47",
+      "root_cause": "avgWeight default (45 kg) was injected into non-livestock quantity calculations when category was not isolated",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx", "glv-connect/frontend/src/utils/calculations.js"],
+      "fix": "isLiveAnimalRow guard isolates head×weight formula to LIVE_ANIMALS only. engineQty = 0 for live animals.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "isLiveAnimalRow"
+      }
+    },
+    {
+      "id": "ERR-003",
+      "title": "Container type hardcoded to Reefer 20FT",
+      "status": "resolved",
+      "resolved_in": "PR #47",
+      "root_cause": "Container type was hardcoded; no selector available to agents",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "ContainerTypeSelector added with 10 options. Default per category from CATEGORY_DEFAULT_CONTAINER.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_contain": "containerType"
+      }
+    },
+    {
+      "id": "ERR-004",
+      "title": "FRUIT_PRODUCTS media binding showing sheep/livestock images",
+      "status": "resolved",
+      "resolved_in": "PR #48 + PR #50",
+      "root_cause": "mediaBinding.js had no product-level exclusion layer; only branding exclusions existed",
+      "affected_files": ["glv-connect/backend/services/mediaBinding.js"],
+      "fix": "isProductCategoryCompatible() added with PRODUCT_CATEGORY_EXCLUSIONS per category",
+      "prevention_ci": {
+        "file": "glv-connect/backend/services/mediaBinding.js",
+        "must_contain": "isProductCategoryCompatible"
+      }
+    },
+    {
+      "id": "ERR-005",
+      "title": "Profile validation loop blocking agents (cargo required but SUPER_ADMIN controlled)",
+      "status": "resolved",
+      "resolved_in": "PR #48",
+      "root_cause": "completed flag required cargo+phone+country+signature, but cargo is set by SUPER_ADMIN — agents could never reach completed=1",
+      "affected_files": ["glv-connect/backend/routes/profile.js", "glv-connect/frontend/src/utils/validateDoc.js"],
+      "fix": "completed = (phone && signature_b64) only. validateDoc.js short-circuits all profile checks when completed===1.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/utils/validateDoc.js",
+        "must_contain": "completed"
+      }
+    },
+    {
+      "id": "ERR-006",
+      "title": "MT unit quantity showing raw value in PDF (54 MT displayed as 54 kg)",
+      "status": "resolved",
+      "resolved_in": "PR #49",
+      "root_cause": "totalKg in GlvPDF.jsx used engineQty directly without MT→kg conversion",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "totalKgDisplay = isMT ? engineQty * 1000 : engineQty. Added Cantidad box for raw unit display.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "totalKgDisplay"
+      }
+    },
+    {
+      "id": "ERR-007",
+      "title": "FROZEN_MEAT showing Número de Cabezas / Peso Promedio from LIVE_ANIMALS",
+      "status": "resolved",
+      "resolved_in": "PR #49",
+      "root_cause": "Grid guards used isLivestock(doc.product) string-match — matched legacy product names like 'Animales Bovinos Vivos' when category was actually FROZEN_MEAT",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "Grid guards replaced with isLiveAnimalRow (CommercialEngine category check). Never uses doc.product string.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_not_contain_grid": "isLivestock.*engineHeads|isLivestock.*engineAvgW"
+      }
+    },
+    {
+      "id": "ERR-008",
+      "title": "Scattered category conditionals causing repeated cross-category contamination",
+      "status": "resolved",
+      "resolved_in": "PR #50 + PR #51",
+      "root_cause": "Category-specific logic was hardcoded in multiple files (CommercialEngine, GlvPDF, mediaBinding) with no shared source of truth — each fix required touching multiple files",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/backend/services/mediaBinding.js"
+      ],
+      "fix": "DynamicCommercialEngine created at src/engines/categoryEngine.js. All category predicates, container defaults, cargo types, PDF text routing, and media config centralized there.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/categoryEngine.js",
+        "must_contain": "getCategoryEngine"
+      }
+    },
+    {
+      "id": "ERR-009",
+      "title": "isLivestock / isGrain string-match functions controlling PDF text blocks",
+      "status": "resolved",
+      "resolved_in": "PR #51",
+      "root_cause": "isLivestock() checked doc.product string for 'ovino','bovino','animal','vivo' — fragile against product name changes and missed new categories like FROZEN_POULTRY",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "PDF text routing replaced by pdfTextKey derived from getCategoryEngine(firstCdRow.category).pdfTextKey — category enum drives text selection, not product name strings.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "pdfTextKey"
+      }
+    },
+    {
+      "id": "ERR-010",
+      "title": "Missing categories in mediaBinding (LENTILS, CHICKPEAS, ANIMAL_FEED, OILS, EGGS)",
+      "status": "resolved",
+      "resolved_in": "PR #51",
+      "root_cause": "CATEGORY_RULES and PRODUCT_CATEGORY_EXCLUSIONS in mediaBinding.js only covered 8 of 13 product categories — new categories fell through to generic matching",
+      "affected_files": ["glv-connect/backend/services/mediaBinding.js"],
+      "fix": "Added CATEGORY_RULES and PRODUCT_CATEGORY_EXCLUSIONS for LENTILS, CHICKPEAS, ANIMAL_FEED, OILS, EGGS. All 13 categories now covered.",
+      "prevention_ci": {
+        "file": "glv-connect/backend/services/mediaBinding.js",
+        "must_contain": "ANIMAL_FEED"
+      }
+    },
+    {
+      "id": "ERR-011",
+      "title": "Container types hardcoded as inline array in CommercialEngine.jsx",
+      "status": "resolved",
+      "resolved_in": "PR #52",
+      "root_cause": "CONTAINER_TYPES array was defined inline in CommercialEngine.jsx with no specs (payload, volume, classification). Changes to container definitions required editing component files.",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "containerEngine.js created as single source of truth. CommercialEngine imports CONTAINER_TYPES from containerEngine. Specs (maxPayloadMT, volumeCBM, liquid, livestock, bulk) now available to all consumers.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/containerEngine.js",
+        "must_contain": "CONTAINER_SPECS"
+      }
+    },
+    {
+      "id": "ERR-012",
+      "title": "No category behavioral profile — V4 unit layers and pricing modes scattered across components",
+      "status": "resolved",
+      "resolved_in": "PR #52",
+      "root_cause": "No single file defined which pricing modes, packaging types, container types, or unit layers apply per category — each component had its own interpretation",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "categoryProfiles.js created. Each category now has a full V4 profile: categoryType, supportsPackaging, supportsLivestock, pricingModes, allowedUnits, allowedContainers, transportModes, pdfLayoutProfile.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/categoryProfiles.js",
+        "must_contain": "getCategoryProfile"
+      }
+    },
+    {
+      "id": "ERR-013",
+      "title": "No isolated PDF context — stale document state contaminating successive PDF renders",
+      "status": "resolved",
+      "resolved_in": "PR #52",
+      "root_cause": "GlvPDF.jsx computed context inline from mutable doc prop with no isolation boundary — rapid successive renders could carry over previous document's country, port, or media selection",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "pdfContextResolver.js created. resolvePDFContext(doc, cdRows) returns a frozen snapshot — no globals, no stale props, deterministic output.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/pdfContextResolver.js",
+        "must_contain": "resolvePDFContext"
+      }
+    },
+    {
+      "id": "ERR-014",
+      "title": "Container label hardcoded as '× 20'' in CommercialSummaryPanel and AggregateSummary",
+      "status": "resolved",
+      "resolved_in": "PR #53",
+      "root_cause": "CommercialSummaryPanel displayed '${containers} × 20'' regardless of selected container type. AggregateSummary also used hardcoded '× 20''. Users selecting Reefer 40FT, ISO Tank, etc. still saw '20'' in the commercial summary output.",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "getContainerLabel(containerType) from containerEngine used in CommercialSummaryPanel. AggregateSummary displays 'contenedores' (generic plural). Hardcoded '20'' string eliminated.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_not_contain": "× 20'"
+      }
+    },
+    {
+      "id": "ERR-015",
+      "title": "Liquid/packaged products forced into kg-only pricing with no sale unit selector",
+      "status": "resolved",
+      "resolved_in": "PR #53",
+      "root_cause": "OILS, FRUIT_PRODUCTS, COLOMBIAN_EXOTIC_FRUITS had no way to declare pricing per liter, per box, per jerrycan, or per container. All products defaulted to perKg formula with no UI path to change it. PDF always showed 'Price/kg' regardless of actual commercial agreement.",
+      "affected_files": [
+        "glv-connect/frontend/src/engines/packagingEngine.js",
+        "glv-connect/frontend/src/utils/calculations.js",
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "LiquidPackagingEngine V5: BULK_INDUSTRIAL_OPTIONS, RETAIL_CONSUMER_OPTIONS, COMMERCIAL_SALE_UNITS added. calcShipmentValue extended with commercialUnit switch (perKg/perMT/perLiter/perBox/perUnit/perDrum/perJerrycan/perBottle/perPallet/perContainer). Box Engine added (qty×unitsPerBox×netWeightPerUnit×price). PDF Section 2 shows packaging type, presentation size, units per box, commercial sale unit. LIVE_ANIMALS formula completely isolated and untouched.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/packagingEngine.js",
+        "must_contain": "COMMERCIAL_SALE_UNITS"
+      }
+    },
+    {
+      "id": "ERR-016",
+      "title": "IncotermSelector price label hardcoded '/kg' regardless of commercial sale unit",
+      "status": "resolved",
+      "resolved_in": "PR #54",
+      "root_cause": "IncotermSelector showed 'Precio CFR / kg' hardcoded. When commercialUnit was perBox or perLiter, the price label was still '/kg', confusing agents about which unit the entered price corresponds to.",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "IncotermSelector accepts commercialUnit prop. Price label dynamically shows COMMERCIAL_SALE_UNITS.find(u=>u.id===commercialUnit)?.abbr. Defaults to '/kg' only when no commercialUnit is selected.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_contain": "commercialUnit"
+      }
+    },
+    {
+      "id": "ERR-017",
+      "title": "LiquidPackagingEngine layers mixed — presentation, size and sale basis shown without visual separation",
+      "status": "resolved",
+      "resolved_in": "PR #54",
+      "root_cause": "LiquidPackagingEngine V5 displayed packaging mode, type, size, and commercial sale unit in a flat sequential layout with no visual separation. Agents could not distinguish which layer they were configuring: 'Litro/Liter' appeared in the wrong layer context, creating commercial logic confusion.",
+      "affected_files": ["glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "LiquidPackagingEngine restructured into 4 numbered visual layers with distinct backgrounds: Layer 1 (Presentation/Packaging Type), Layer 2 (Presentation Size — retail only), Layer 3 (Box/Carton Engine — conditional), Layer 4 (Commercial Sale Basis). Added perIBC and perFlexitank to COMMERCIAL_SALE_UNITS. Retail bottle types use button grid instead of dropdown. Auto-calculates netWeightPerUnit from presentation size selection.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/validationSupervisor.js",
+        "must_contain": "VAL-013"
+      }
+    }
+  ],
+  "prevention_ci_manifest": {
+    "description": "Patterns that CI checks on every PR. Failures block merge.",
+    "patterns": [
+      { "id": "ERR-001", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",            "must_contain": "engineUnitPrice" },
+      { "id": "ERR-002", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",            "must_contain": "isLiveAnimalRow" },
+      { "id": "ERR-003", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "containerType" },
+      { "id": "ERR-004", "file": "glv-connect/backend/services/mediaBinding.js",              "must_contain": "isProductCategoryCompatible" },
+      { "id": "ERR-005", "file": "glv-connect/frontend/src/utils/validateDoc.js",             "must_contain": "completed" },
+      { "id": "ERR-006", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",            "must_contain": "totalKgDisplay" },
+      { "id": "ERR-007", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",            "must_contain": "isLiveAnimalRow" },
+      { "id": "ERR-008", "file": "glv-connect/frontend/src/engines/categoryEngine.js",        "must_contain": "getCategoryEngine" },
+      { "id": "ERR-009", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",            "must_contain": "pdfTextKey" },
+      { "id": "ERR-010", "file": "glv-connect/backend/services/mediaBinding.js",              "must_contain": "ANIMAL_FEED" },
+      { "id": "ERR-011", "file": "glv-connect/frontend/src/engines/containerEngine.js",       "must_contain": "CONTAINER_SPECS" },
+      { "id": "ERR-012", "file": "glv-connect/frontend/src/engines/categoryProfiles.js",      "must_contain": "getCategoryProfile" },
+      { "id": "ERR-013", "file": "glv-connect/frontend/src/engines/pdfContextResolver.js",    "must_contain": "resolvePDFContext" },
+      { "id": "ERR-014", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "getContainerLabel" },
+      { "id": "ERR-015", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "COMMERCIAL_SALE_UNITS" },
+      { "id": "ERR-016", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "commercialUnit" },
+      { "id": "ERR-017", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-013" },
+      { "id": "ERR-018", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "EXPORT_FORMAT_OPTIONS" },
+      { "id": "ERR-019", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "calcMultiSkuSummary" },
+      { "id": "ERR-020", "file": "glv-connect/frontend/src/engines/PouchPackagingEngine.js",  "must_contain": "POUCH_TYPES" },
+      { "id": "ERR-021", "file": "glv-connect/frontend/src/engines/PouchPackagingEngine.js",  "must_contain": "FILM_STRUCTURES" },
+      { "id": "ERR-022", "file": "glv-connect/frontend/src/engines/PouchPackagingEngine.js",  "must_contain": "MASTER_CARTON_CONFIG" },
+      { "id": "ERR-023", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "isPouchExportFormat" },
+      { "id": "ERR-024", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-019" },
+      { "id": "ERR-025", "file": "glv-connect/frontend/src/utils/calculations.js",            "must_contain": "perPouch" },
+      { "id": "ERR-026", "file": "glv-connect/frontend/src/engines/packagingEngine.js",       "must_contain": "resolveNormalizedPresentationSize" },
+      { "id": "ERR-027", "file": "glv-connect/frontend/src/engines/validationSupervisor.js",  "must_contain": "VAL-025" },
+      { "id": "ERR-028", "file": "glv-connect/frontend/src/components/GlvPDF.jsx",            "must_contain": "normalizedPresentationSize" },
+      { "id": "ERR-029", "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",  "must_contain": "normalizedPresentationSize" }
+    ]
+  },
+  "errors_v7_1": [
+    {
+      "id": "ERR-026",
+      "title": "PRESENTATION SIZE MISMATCH — pouchConfig.presentationSize and sku.presentationSize are independent states, causing divergence between Pouch Spec block and SKU breakdown table in PDF",
+      "status": "resolved",
+      "resolved_in": "V7.1",
+      "root_cause": "PouchConfigPanel sets pouchConfig.presentationSize; each SkuCard sets sku.presentationSize independently. Two separate React state trees with no synchronization. PDF reads pouchConfig.presentationSize for spec block header and sku.presentationSize for SKU rows — can show different values (e.g. 1000ml vs 900ml).",
+      "affected_files": [
+        "glv-connect/frontend/src/engines/packagingEngine.js",
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/frontend/src/engines/validationSupervisor.js"
+      ],
+      "fix": "resolveNormalizedPresentationSize(pouchConfig, skus) added to packagingEngine.js — single canonical source. When PouchConfigPanel selects a size, all SKUs sync via onPouchSizeChange propagation. ProductRowPanel computes normalizedPresentationSize and includes it in onChange payload. GlvPDF reads firstCdRow.normalizedPresentationSize for spec block. VAL-025 blocks PDF if mismatch is detected.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/packagingEngine.js",
+        "must_contain": "resolveNormalizedPresentationSize"
+      }
+    }
+  ],
+  "errors_v7": [
+    {
+      "id": "ERR-020",
+      "title": "No flexible pouch export format — Doypack/Stand Up Pouch not addressable as export route",
+      "status": "resolved",
+      "resolved_in": "PR V7",
+      "root_cause": "EXPORT_FORMAT_OPTIONS had RETAIL_DOYPACK but no granular pouch types (Pillow, Stand Up, Spout, Gusset, Side Seal, Bag In Box). Film structure, seal type, certifications, and carton config had no dedicated engine.",
+      "affected_files": ["glv-connect/frontend/src/engines/PouchPackagingEngine.js","glv-connect/frontend/src/engines/packagingEngine.js","glv-connect/frontend/src/components/CommercialEngine.jsx"],
+      "fix": "PouchPackagingEngine.js created with POUCH_TYPES, FILM_STRUCTURES, POUCH_SIZES, MASTER_CARTON_CONFIG, PALLET_CONFIG, CONTAINER_UTILIZATION, OEM_CAPABILITIES. 7 new POUCH group entries in EXPORT_FORMAT_OPTIONS. PouchConfigPanel added to ExportFormatEngine. perPouch/perCarton added to COMMERCIAL_SALE_UNITS."
+    },
+    {
+      "id": "ERR-021",
+      "title": "No freight efficiency comparison between pouch and PET — agents could not quantify logistics advantage",
+      "status": "resolved",
+      "resolved_in": "PR V7",
+      "root_cause": "No container utilization data per format/size combination existed. Agents had no data to present CIF competitiveness or pouch density advantages to buyers.",
+      "affected_files": ["glv-connect/frontend/src/engines/PouchPackagingEngine.js"],
+      "fix": "CONTAINER_UTILIZATION table and calcFreightEfficiencyRatio() added. Pouch density ~30k–60k units/40HQ vs ~22k PET. calcPouchLogistics() computes totalUnits, totalLiters, pallets, estimatedContainers per SKU."
+    },
+    {
+      "id": "ERR-022",
+      "title": "Media engine had no pouch/flexible packaging category tags — liquid categories showed generic oil images for pouch documents",
+      "status": "resolved",
+      "resolved_in": "PR V7",
+      "root_cause": "resolveMediaContext() had no awareness of export format. OILS category showed generic oil barrel/drum imagery even when the product was a flexible stand-up pouch for retail.",
+      "affected_files": ["glv-connect/frontend/src/engines/mediaContextResolver.js"],
+      "fix": "resolveMediaContext() accepts exportFormat opt. POUCH_MEDIA_TAGS merged into context when isPouchFmt. POUCH_MEDIA_EXCLUSIONS prevent livestock/grain/frozen contamination."
+    }
+  ],
+  "errors_v6": [
+    {
+      "id": "ERR-018",
+      "title": "Single-SKU limitation — no way to quote multiple presentation sizes in one product row",
+      "status": "resolved",
+      "resolved_in": "PR #55",
+      "root_cause": "Each product row had one presentation size, one packaging type, one price field. Exporters offering 900ml + 1L + 2L in the same shipment had to create multiple documents or use incorrect quantities.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/utils/calculations.js",
+        "glv-connect/frontend/src/engines/packagingEngine.js",
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "Multi-SKU engine V6: 1–5 SKU cards per product row, each with independent packaging type, presentation size, units/carton, carton weight, sale basis, price, qty. calcMultiSkuSummary aggregates all SKUs. PDF Section 2 shows professional SKU breakdown table. CommercialSummaryPanel shows unit context (BOXES, UNITS, KG NET).",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/packagingEngine.js",
+        "must_contain": "EXPORT_FORMAT_OPTIONS"
+      }
+    },
+    {
+      "id": "ERR-019",
+      "title": "Export Format field absent — presentation was conflated with loading format",
+      "status": "resolved",
+      "resolved_in": "PR #55",
+      "root_cause": "Presentación field described both the bottle/carton size AND the loading format (Flexitank, Retail PET, etc.) in the same field. Industrial routes (Flexitank, ISO Tank) had no explicit export format selector — agents had to infer from packaging type.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "glv-connect/frontend/src/engines/packagingEngine.js"
+      ],
+      "fix": "Export Format field introduced. EXPORT_FORMAT_OPTIONS: FLEXITANK, ISO_TANK, IBC_1000L, DRUM_200L, JERRYCAN_20L, RETAIL_MIXED, RETAIL_PET, RETAIL_TETRA, RETAIL_DOYPACK, CUSTOM. isRetailExportFormat() gates MultiSkuEngine vs industrial fields. INDUSTRIAL_SALE_UNITS + SKU_SALE_UNITS separate the two pricing paths.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/utils/calculations.js",
+        "must_contain": "calcMultiSkuSummary"
+      }
+    },
+    {
+      "id": "ERR-030",
+      "title": "V9: No normalized PDF payload — each category built its own ad-hoc PDF data",
+      "status": "resolved",
+      "resolved_in": "PR #60",
+      "root_cause": "GlvPDF.jsx consumed raw row fields directly for each category with no shared abstraction. Adding a new category required modifying GlvPDF.jsx directly, risking cross-contamination.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "V9 introduces pdfPayloadNormalizer.js + per-category adapters (oilsPdfAdapter, livestockPdfAdapter, fruitsPdfAdapter). GlvPDF consumes normalized payload via adapters. PdfErrorBoundary wraps GlvPDF to prevent PDF crashes from reaching the host app.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/core/pdf/pdfPayloadNormalizer.js",
+        "must_contain": "normalizePdfPayload"
+      }
+    },
+    {
+      "id": "ERR-031",
+      "title": "V9: Section 4 Logistics in OilsExportPanel was editable — duplicate state with Section 3",
+      "status": "resolved",
+      "resolved_in": "PR #60",
+      "root_cause": "Section 4 had an editable Container Type selector (setContainer). Container logistics are auto-derived from packagingType + sizeId in Section 3 via logisticsCapacityEngine. Allowing manual override created conflicting state.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/OilsExportPanel.jsx"
+      ],
+      "fix": "Section 4 is now strictly read-only. Container type fixed to 40HQ (industry standard for oils export). All logistics stats (unitsMin–unitsMax, cartonsPerPallet, pallets) are derived from capacity preset. No editable inputs in Section 4.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/OilsExportPanel.jsx",
+        "must_contain": "Auto-Resolved"
+      }
+    },
+    {
+      "id": "ERR-032",
+      "title": "V9: Legacy COMMERCIAL_SALE_UNITS dropdown appeared for OILS — conflicted with OilsExportPanel price engine",
+      "status": "resolved",
+      "resolved_in": "PR #60",
+      "root_cause": "ExportFormatEngine rendered for all non-LIVE_ANIMALS categories, including OILS. For OILS, this showed the old industrial Commercial Sale Basis selector which conflicted with oilsPricingEngine's FOB/CFR/CIF matrix.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/CommercialEngine.jsx"
+      ],
+      "fix": "ExportFormatEngine returns null when category === 'OILS'. OilsExportPanel is the sole configuration source for OILS format, sizing, pricing, and commercial terms.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/CommercialEngine.jsx",
+        "must_contain": "category === \"OILS\""
+      }
+    }
+  ],
+  "errors_v9_1": [
+    {
+      "id": "ERR-033",
+      "title": "V9.1: TDZ crash in GlvPDF.jsx — isOilsRow referenced isLiveAnimalRow before its const declaration",
+      "status": "resolved",
+      "resolved_in": "V9.1 hotfix",
+      "root_cause": "const isOilsRow at line 369 contained the expression !isLiveAnimalRow, but isLiveAnimalRow was declared with const at line 386. JavaScript const has a temporal dead zone — any access before the declaration throws ReferenceError: Cannot access 'isLiveAnimalRow' before initialization. This crashed every PDF render silently: the react-pdf BlobProvider promise rejected, the UI showed nothing, no error surfaced to the user.",
+      "affected_files": ["glv-connect/frontend/src/components/GlvPDF.jsx"],
+      "fix": "Moved isLiveAnimalRow declaration to line 369, before isOilsRow at line 372. Removed duplicate isLiveAnimalRow declaration that previously existed at old line 389. Added CI guard V9.1 to enforce this ordering on every PR.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "guard": "isLiveAnimalRow line number must be strictly less than isOilsRow line number"
+      }
+    },
+    {
+      "id": "ERR-034",
+      "title": "V9.1: Container math inconsistency — min/max average diverged from canonical carton × pallet formula",
+      "status": "resolved",
+      "resolved_in": "V9.1 hotfix",
+      "root_cause": "Section 4 (OilsExportPanel) derived unitsPerContainer from (unitsMin + unitsMax) / 2, sourced from logisticsCapacityEngine's range estimates. Section 6 summary used different local logic. For 900ml PET: old engine reported 22,500 units but the canonical formula (20 upc × 60 cpp × 20 pallets = 24,000) gives 24,000 — a 6.7% discrepancy. The two sections could silently diverge, producing PDF summaries that did not match section 4 logistics.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/OilsExportPanel.jsx",
+        "glv-connect/frontend/src/engines/core/containerMathEngine.js"
+      ],
+      "fix": "containerMathEngine.js created as the single source of truth. CANONICAL_CARTON_CONFIG table encodes exact upc × cpp × p values per packaging group × size. OilsExportPanel imports calcCanonicalContainerLogistics and validateUnitConsistency. Section 6 consumes the same canonical result — no local recalculation. Auto-validation guard blocks PDF if divergence > 5%.",
+      "canonical_formula": "unitsPerContainer = unitsPerCarton × cartonsPerPallet × palletsPerContainer",
+      "test_cases": {
+        "900ml_PET":  "20 upc × 60 cpp × 20 p = 24,000 units",
+        "1000ml_PET": "20 upc × 56 cpp × 20 p = 22,400 units",
+        "5000ml_PET": "6 upc × 40 cpp × 20 p = 4,800 units",
+        "1000ml_POUCH": "24 upc × 64 cpp × 20 p = 30,720 units",
+        "20L_JERRY": "1 upc × 56 cpp × 20 p = 1,120 units"
+      },
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/core/containerMathEngine.js",
+        "must_contain": "calcCanonicalContainerLogistics"
+      }
+    },
+    {
+      "id": "ERR-035",
+      "title": "V9.1: Global destination selector limited to 29 hardcoded Caribbean countries",
+      "status": "resolved",
+      "resolved_in": "V9.1 hotfix",
+      "root_cause": "globalDestinationEngine.js (V8.1) contained a PRESET_DESTINATIONS list of 29 Caribbean/Latin American countries. Buyers from Europe, Africa, Asia, or other regions could not be represented in the commercial document. OilsExportPanel showed no search capability — agents had to pick from the fixed list or use 'Custom Destination' with no freight estimation.",
+      "affected_files": [
+        "glv-connect/frontend/src/engines/core/globalCountryEngine.js"
+      ],
+      "fix": "globalCountryEngine.js created in engines/core/. Imports WORLD_COUNTRIES from existing worldCountries.js config (complete UN country list). REGION_FREIGHT_ESTIMATES provides freight bands for 9 world regions (Caribbean, South America, Central America, Africa, Middle East, Europe, North America, Asia, Oceania). PRESET_FREIGHT map has exact freight+port+transit for 27 high-priority destinations. resolveExportDestination falls back to region estimate for unlisted countries. getAllCountryOptions exposes full world list for searchable dropdown.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/core/globalCountryEngine.js",
+        "must_contain": "getAllCountryOptions"
+      }
+    },
+    {
+      "id": "ERR-036",
+      "title": "V9.2: Font.register('Helvetica') overrides react-pdf v3 built-in and crashes PDF silently",
+      "status": "resolved",
+      "resolved_in": "PR #62 (feat/pdf-runtime-debug-v9.2)",
+      "root_cause": "GlvPDF.jsx registered a custom font named 'Helvetica' via Font.register(), which overrides the react-pdf v3 built-in Helvetica Type 1. This forced an external Google Fonts CDN woff2 fetch during pdf().toBlob(). If the fetch failed (network issue, CORS, Railway cold start), the entire PDF crashed silently. App.jsx catch block only called console.error and never called setGenError, so the error was invisible to the user.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/frontend/src/App.jsx"
+      ],
+      "fix": "Removed Font.register call entirely. react-pdf v3 has Helvetica built in as Type 1 — no registration needed. Added setGenError in App.jsx catch block and rendered genError in modal JSX. Added full [PDF_RENDER]/[PDF_FATAL] try/catch pipeline in downloadPDF.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_not_contain": "Font\\.register.*Helvetica"
+      }
+    },
+    {
+      "id": "ERR-037",
+      "title": "V9.2 Hotfix 1: currency ReferenceError in V5 liquid/packaged IIFE",
+      "status": "resolved",
+      "resolved_in": "PR #62 (feat/pdf-runtime-debug-v9.2)",
+      "root_cause": "GlvPDF.jsx V5 'Liquid/Packaged packaging' IIFE referenced {currency} at the JSX return but the variable was never declared in that IIFE's closure. The variable was declared in the V6 Multi-SKU IIFE (a completely different closure) and was therefore out of scope for V5.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx"
+      ],
+      "fix": "Added 'const currency = firstCdRow.currency || USD' inside V5 IIFE (VAL-044). Also added VAL-044 validatePdfCurrency() to validationSupervisor.js.",
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/engines/validationSupervisor.js",
+        "must_contain": "VAL-044"
+      }
+    },
+    {
+      "id": "ERR-038",
+      "title": "V9.2 Hotfix 2: currency ReferenceError persisting for OILS documents — scope leak across IIFEs",
+      "status": "resolved",
+      "resolved_in": "PR #62 (feat/pdf-runtime-debug-v9.2)",
+      "root_cause": "After ERR-037 fix, OILS PDFs still crashed with 'currency is not defined'. Root analysis: (1) OILS rows may have packagingType or commercialUnit set at row level (not only inside oilsConfig), causing V5 IIFE to execute for OILS. (2) V5 IIFE had no try/catch, so any scope error propagated to react-pdf and crashed the full render. (3) ERR-037 fix added 'const currency = firstCdRow.currency' but if firstCdRow.currency is undefined for an OILS row, the declaration exists but the value is still undefined — the subsequent {currency} renders nothing and cannot be used as an Intl.NumberFormat currency code without defaulting. The correct architectural fix is to declare resolvedCurrency at DocPDF function scope (not inside IIFEs) so it is available to ALL closures.",
+      "affected_files": [
+        "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "glv-connect/frontend/src/engines/validationSupervisor.js",
+        "glv-connect/frontend/src/agents/PdfCurrencyAuditAgent.js"
+      ],
+      "fix": "Declared 'const resolvedCurrency = firstCdRow?.currency || USD' at DocPDF function scope level (available to all closures). V5/V6 IIFEs now use resolvedCurrency. Added try/catch to V5 IIFE (it was the only section without one). Added VAL-045 PDF_CURRENCY_SCOPE_LEAK to validationSupervisor.js. Created PdfCurrencyAuditAgent.js. Added [PDF_CURRENCY_AUDIT]/[PDF_SCOPE_CHECK]/[PDF_RENDER_SUCCESS] console diagnostics.",
+      "smoke_tests": {
+        "OILS_PET_ES":      "OILS PET bottle document — ES — must render and download",
+        "OILS_PET_EN":      "OILS PET bottle document — EN — must render and download",
+        "OILS_POUCH_ES":    "OILS Pouch document — ES — must render and download",
+        "OILS_POUCH_EN":    "OILS Pouch document — EN — must render and download",
+        "OILS_JERRYCAN_ES": "OILS Jerrycan document — ES — must render and download",
+        "OILS_JERRYCAN_EN": "OILS Jerrycan document — EN — must render and download",
+        "OILS_MULTISKু_ES": "OILS Multi-SKU document — ES — must render and download",
+        "OILS_MULTISKU_EN": "OILS Multi-SKU document — EN — must render and download"
+      },
+      "prevention_ci": {
+        "file": "glv-connect/frontend/src/components/GlvPDF.jsx",
+        "must_contain": "resolvedCurrency"
+      }
+    }
+  ]
+}
