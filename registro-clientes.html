@@ -232,25 +232,25 @@ video.hero-video {
 
     <div class="section-sep"><span lang-es>01 — Información de la Empresa</span><span lang-en>01 — Company Information</span><span lang-ar>01 — معلومات الشركة</span><span lang-zh>01 — 公司信息</span></div>
     <div class="frow">
-      <div class="fg"><label><span lang-es>Razón social / Nombre empresa *</span><span lang-en>Company legal name *</span></label><input type="text" id="k_empresa" placeholder="Nombre legal completo"></div>
-      <div class="fg"><label><span lang-es>Nombre comercial</span><span lang-en>Trade name</span></label><input type="text" id="k_comercial" placeholder="Nombre comercial si difiere"></div>
-      <div class="fg"><label><span lang-es>Número de identificación fiscal / RUC / NIT / EIN *</span><span lang-en">Tax ID / RUC / NIT / EIN *</span></label><input type="text" id="k_nit" placeholder="Número de identificación fiscal"></div>
-      <div class="fg"><label><span lang-es>País de constitución *</span><span lang-en>Country of incorporation *</span></label><input type="text" id="k_pais" placeholder="País"></div>
-      <div class="fg"><label><span lang-es>Ciudad / Estado</span><span lang-en>City / State</span></label><input type="text" id="k_ciudad" placeholder="Ciudad principal"></div>
-      <div class="fg"><label><span lang-es>Año de fundación</span><span lang-en>Year founded</span></label><input type="number" id="k_fundacion" placeholder="Ej: 2015" min="1900" max="2025"></div>
-      <div class="fg"><label><span lang-es>Dirección física *</span><span lang-en">Physical address *</span></label><input type="text" id="k_direccion" placeholder="Dirección completa"></div>
-      <div class="fg"><label><span lang-es>Sitio web</span><span lang-en>Website</span></label><input type="url" id="k_web" placeholder="https://www.empresa.com"></div>
+      <div class="fg"><label><span lang-es>Razón social / Nombre empresa *</span><span lang-en>Company legal name *</span><span lang-ar>الاسم القانوني للشركة *</span><span lang-zh>公司法定名称 *</span></label><input type="text" id="k_empresa" data-ph-es="Nombre legal completo" data-ph-en="Full legal name" data-ph-ar="الاسم القانوني الكامل" data-ph-zh="完整法定名称" placeholder="Nombre legal completo"></div>
+      <div class="fg"><label><span lang-es>Nombre comercial</span><span lang-en>Trade name</span><span lang-ar>الاسم التجاري</span><span lang-zh>商业名称</span></label><input type="text" id="k_comercial" data-ph-es="Nombre comercial si difiere" data-ph-en="Trade name if different" data-ph-ar="الاسم التجاري إذا كان مختلفاً" data-ph-zh="商业名称（如有不同）" placeholder="Nombre comercial si difiere"></div>
+      <div class="fg"><label><span lang-es>Número de identificación fiscal / RUC / NIT / EIN *</span><span lang-en>Tax ID / RUC / NIT / EIN *</span><span lang-ar>رقم التعريف الضريبي / RUC / NIT / EIN *</span><span lang-zh>税务识别号 / RUC / NIT / EIN *</span></label><input type="text" id="k_nit" data-ph-es="Número de identificación fiscal" data-ph-en="Tax identification number" data-ph-ar="رقم التعريف الضريبي" data-ph-zh="税务识别号" placeholder="Número de identificación fiscal"></div>
+      <div class="fg"><label><span lang-es>País de constitución *</span><span lang-en>Country of incorporation *</span><span lang-ar>بلد التأسيس *</span><span lang-zh>注册国家 *</span></label><input type="text" id="k_pais" data-ph-es="País" data-ph-en="Country" data-ph-ar="البلد" data-ph-zh="国家" placeholder="País"></div>
+      <div class="fg"><label><span lang-es>Ciudad / Estado</span><span lang-en>City / State</span><span lang-ar>المدينة / الولاية</span><span lang-zh>城市/州</span></label><input type="text" id="k_ciudad" data-ph-es="Ciudad principal" data-ph-en="Main city" data-ph-ar="المدينة الرئيسية" data-ph-zh="主要城市" placeholder="Ciudad principal"></div>
+      <div class="fg"><label><span lang-es>Año de fundación</span><span lang-en>Year founded</span><span lang-ar>سنة التأسيس</span><span lang-zh>成立年份</span></label><input type="number" id="k_fundacion" data-ph-es="Ej: 2015" data-ph-en="E.g.: 2015" data-ph-ar="مثلاً: 2015" data-ph-zh="例：2015" placeholder="Ej: 2015" min="1900" max="2025"></div>
+      <div class="fg"><label><span lang-es>Dirección física *</span><span lang-en>Physical address *</span><span lang-ar>العنوان الفعلي *</span><span lang-zh>实际地址 *</span></label><input type="text" id="k_direccion" data-ph-es="Dirección completa" data-ph-en="Full address" data-ph-ar="العنوان الكامل" data-ph-zh="完整地址" placeholder="Dirección completa"></div>
+      <div class="fg"><label><span lang-es>Sitio web</span><span lang-en>Website</span><span lang-ar>الموقع الإلكتروني</span><span lang-zh>网站</span></label><input type="url" id="k_web" placeholder="https://www.empresa.com"></div>
     </div>
-    <div class="fg"><label><span lang-es>Descripción de la actividad comercial *</span><span lang-en>Business activity description *</span></label><textarea id="k_actividad" placeholder="Describa el giro principal de su empresa: importación, distribución, retail, food service, procesamiento industrial..."></textarea></div>
+    <div class="fg"><label><span lang-es>Descripción de la actividad comercial *</span><span lang-en>Business activity description *</span><span lang-ar>وصف النشاط التجاري *</span><span lang-zh>业务活动描述 *</span></label><textarea id="k_actividad" data-ph-es="Describa el giro principal de su empresa: importación, distribución, retail, food service, procesamiento industrial..." data-ph-en="Describe your company's main activity: importing, distribution, retail, food service, industrial processing..." data-ph-ar="صف النشاط الرئيسي لشركتك: استيراد، توزيع، تجزئة، خدمة غذائية، معالجة صناعية..." data-ph-zh="描述公司主要业务：进口、分销、零售、餐饮服务、工业加工..." placeholder="Describa el giro principal de su empresa: importación, distribución, retail, food service, procesamiento industrial..."></textarea></div>
 
     <div class="section-sep"><span lang-es>02 — Representante Legal / Contacto Principal</span><span lang-en>02 — Legal Representative / Main Contact</span><span lang-ar>02 — الممثل القانوني</span><span lang-zh>02 — 法定代表人</span></div>
     <div class="frow">
-      <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span></label><input type="text" id="k_rep" placeholder="Nombre del representante legal"></div>
-      <div class="fg"><label><span lang-es>Cargo / Posición *</span><span lang-en">Title / Position *</span></label><input type="text" id="k_cargo" placeholder="CEO, Director, Gerente..."></div>
+      <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span><span lang-ar>الاسم الكامل *</span><span lang-zh>全名 *</span></label><input type="text" id="k_rep" data-ph-es="Nombre del representante legal" data-ph-en="Legal representative name" data-ph-ar="اسم الممثل القانوني" data-ph-zh="法定代表人姓名" placeholder="Nombre del representante legal"></div>
+      <div class="fg"><label><span lang-es>Cargo / Posición *</span><span lang-en>Title / Position *</span><span lang-ar>المنصب / الوظيفة *</span><span lang-zh>职位 *</span></label><input type="text" id="k_cargo" data-ph-es="CEO, Director, Gerente..." data-ph-en="CEO, Director, Manager..." data-ph-ar="الرئيس التنفيذي، المدير..." data-ph-zh="首席执行官、总监、经理..." placeholder="CEO, Director, Gerente..."></div>
       <div class="fg"><label>Email *</label><input type="email" id="k_email" placeholder="correo@empresa.com"></div>
-      <div class="fg"><label>WhatsApp / <span lang-es>Teléfono directo *</span><span lang-en>Direct phone *</span></label><input type="tel" id="k_tel" placeholder="+000 000 0000"></div>
-      <div class="fg"><label><span lang-es>Documento de identidad (tipo)</span><span lang-en>Identity document (type)</span></label><select id="k_doc_tipo"><option>Pasaporte</option><option>Cédula Nacional</option><option>DNI</option><option>Driver License</option><option>Otro</option></select></div>
-      <div class="fg"><label><span lang-es>Número de documento</span><span lang-en">Document number</span></label><input type="text" id="k_doc_num" placeholder="Número del documento"></div>
+      <div class="fg"><label>WhatsApp / <span lang-es>Teléfono directo *</span><span lang-en>Direct phone *</span><span lang-ar>هاتف مباشر *</span><span lang-zh>直拨电话 *</span></label><input type="tel" id="k_tel" placeholder="+000 000 0000"></div>
+      <div class="fg"><label><span lang-es>Documento de identidad (tipo)</span><span lang-en>Identity document (type)</span><span lang-ar>وثيقة الهوية (النوع)</span><span lang-zh>身份证件（类型）</span></label><select id="k_doc_tipo"><option>Pasaporte</option><option>Cédula Nacional</option><option>DNI</option><option>Driver License</option><option>Otro</option></select></div>
+      <div class="fg"><label><span lang-es>Número de documento</span><span lang-en>Document number</span><span lang-ar>رقم الوثيقة</span><span lang-zh>证件号码</span></label><input type="text" id="k_doc_num" data-ph-es="Número del documento" data-ph-en="Document number" data-ph-ar="رقم الوثيقة" data-ph-zh="证件号码" placeholder="Número del documento"></div>
     </div>
 
     <div class="section-sep"><span lang-es>03 — Perfil Comercial</span><span lang-en>03 — Commercial Profile</span><span lang-ar>03 — الملف التجاري</span><span lang-zh>03 — 商业档案</span></div>
@@ -258,40 +258,40 @@ video.hero-video {
       <div class="fg">
         <label><span lang-es>Tipo de comprador *</span><span lang-en">Buyer type *</span></label>
         <select id="k_tipo_comprador">
-          <option value=""><span lang-es>Seleccionar</span><span lang-en>Select</span></option>
-          <option><span lang-es>Importador directo</span><span lang-en>Direct importer</span></option>
-          <option><span lang-es>Distribuidor</span><span lang-en>Distributor</span></option>
-          <option><span lang-es>Supermercado / Retail</span><span lang-en>Supermarket / Retail</span></option>
-          <option><span lang-es>Food Service / Restaurantes</span><span lang-en>Food Service / Restaurants</span></option>
-          <option><span lang-es>Procesador industrial</span><span lang-en>Industrial processor</span></option>
-          <option><span lang-es>Gobierno / Institucional</span><span lang-en>Government / Institutional</span></option>
-          <option><span lang-es>Broker / Trader</span><span lang-en>Broker / Trader</span></option>
-          <option><span lang-es>Otro</span><span lang-en">Other</span></option>
+          <option value=""></option>
+          <option>Importador directo</option>
+          <option>Distribuidor</option>
+          <option>Supermercado / Retail</option>
+          <option>Food Service / Restaurantes</option>
+          <option>Procesador industrial</option>
+          <option>Gobierno / Institucional</option>
+          <option>Broker / Trader</option>
+          <option>Otro</option>
         </select>
       </div>
       <div class="fg">
         <label><span lang-es>Volumen anual estimado de compra</span><span lang-en>Estimated annual purchase volume</span></label>
         <select id="k_volumen">
-          <option value=""><span lang-es>Seleccionar</span><span lang-en>Select</span></option>
+          <option value=""></option>
           <option>1–5 FCL / año</option><option>5–20 FCL / año</option>
           <option>20–50 FCL / año</option><option>50–200 FCL / año</option>
           <option>+200 FCL / año</option>
-          <option><span lang-es>Barco completo +</span><span lang-en>Full vessel +</span></option>
+          <option>Barco completo +</option>
         </select>
       </div>
       <div class="fg">
-        <label><span lang-es>Mercados de destino donde distribuye</span><span lang-en>Destination markets where you distribute</span></label>
-        <input type="text" id="k_mercados" placeholder="Países o regiones donde distribuye">
+        <label><span lang-es>Mercados de destino donde distribuye</span><span lang-en>Destination markets where you distribute</span><span lang-ar>أسواق الوجهة التي توزع فيها</span><span lang-zh>您分销的目标市场</span></label>
+        <input type="text" id="k_mercados" data-ph-es="Países o regiones donde distribuye" data-ph-en="Countries or regions where you distribute" data-ph-ar="البلدان أو المناطق التي توزع فيها" data-ph-zh="您分销的国家或地区" placeholder="Países o regiones donde distribuye">
       </div>
       <div class="fg">
         <label><span lang-es>¿Trabaja actualmente con proveedores similares?</span><span lang-en">Currently working with similar suppliers?</span></label>
         <select id="k_proveedores">
-          <option><span lang-es>Sí, tengo proveedores actuales</span><span lang-en>Yes, I have current suppliers</span></option>
-          <option><span lang-es>No, es primera vez</span><span lang-en>No, first time</span></option>
+          <option>Sí, tengo proveedores actuales</option>
+          <option>No, es primera vez</option>
         </select>
       </div>
     </div>
-    <div class="fg"><label><span lang-es>Productos GLV de interés *</span><span lang-en>GLV products of interest *</span></label><textarea id="k_productos" placeholder="Indique los productos, divisiones y volúmenes aproximados de interés: ej. Arroz Basmati 10 FCL/mes, Huevo 5 FCL/mes, Ovinos 25.000 animales/semestre..."></textarea></div>
+    <div class="fg"><label><span lang-es>Productos GLV de interés *</span><span lang-en>GLV products of interest *</span><span lang-ar>منتجات GLV المطلوبة *</span><span lang-zh>感兴趣的GLV产品 *</span></label><textarea id="k_productos" data-ph-es="Indique los productos, divisiones y volúmenes aproximados de interés: ej. Arroz Basmati 10 FCL/mes, Huevo 5 FCL/mes, Ovinos 25.000 animales/semestre..." data-ph-en="Indicate products, divisions and approximate volumes of interest: e.g. Basmati Rice 10 FCL/month, Egg 5 FCL/month, Ovine 25,000 animals/semester..." data-ph-ar="حدد المنتجات والأقسام والكميات التقريبية المطلوبة: مثلاً أرز بسمتي 10 FCL/شهر، بيض 5 FCL/شهر، أغنام 25,000 رأس/فصل..." data-ph-zh="注明感兴趣的产品、部门和大致数量：如巴斯马蒂大米10 FCL/月，鸡蛋5 FCL/月，绵羊25,000头/学期..." placeholder="Indique los productos, divisiones y volúmenes aproximados de interés: ej. Arroz Basmati 10 FCL/mes, Huevo 5 FCL/mes, Ovinos 25.000 animales/semestre..."></textarea></div>
 
     <div class="section-sep"><span lang-es>04 — Referencias Comerciales</span><span lang-en>04 — Commercial References</span><span lang-ar>04 — المراجع التجارية</span><span lang-zh>04 — 商业参考</span></div>
     <div class="alert ag">
@@ -300,27 +300,33 @@ video.hero-video {
       <span lang-en>References are for GLV team internal verification only. Your current suppliers will not be contacted without your authorization.</span>
     </div>
     <div class="frow">
-      <div class="fg"><label><span lang-es>Referencia 1 — Proveedor / Banco</span><span lang-en">Reference 1 — Supplier / Bank</span></label><input type="text" id="k_ref1" placeholder="Nombre empresa y contacto"></div>
-      <div class="fg"><label><span lang-es>Referencia 2 — Proveedor / Banco</span><span lang-en">Reference 2 — Supplier / Bank</span></label><input type="text" id="k_ref2" placeholder="Nombre empresa y contacto"></div>
+      <div class="fg"><label><span lang-es>Referencia 1 — Proveedor / Banco</span><span lang-en>Reference 1 — Supplier / Bank</span><span lang-ar>المرجع 1 — مورد / بنك</span><span lang-zh>参考1 — 供应商/银行</span></label><input type="text" id="k_ref1" data-ph-es="Nombre empresa y contacto" data-ph-en="Company name and contact" data-ph-ar="اسم الشركة وجهة الاتصال" data-ph-zh="公司名称和联系方式" placeholder="Nombre empresa y contacto"></div>
+      <div class="fg"><label><span lang-es>Referencia 2 — Proveedor / Banco</span><span lang-en>Reference 2 — Supplier / Bank</span><span lang-ar>المرجع 2 — مورد / بنك</span><span lang-zh>参考2 — 供应商/银行</span></label><input type="text" id="k_ref2" data-ph-es="Nombre empresa y contacto" data-ph-en="Company name and contact" data-ph-ar="اسم الشركة وجهة الاتصال" data-ph-zh="公司名称和联系方式" placeholder="Nombre empresa y contacto"></div>
     </div>
-    <div class="fg"><label><span lang-es>Banco principal con el que opera</span><span lang-en">Primary bank you operate with</span></label><input type="text" id="k_banco" placeholder="Nombre del banco y país"></div>
+    <div class="fg"><label><span lang-es>Banco principal con el que opera</span><span lang-en>Primary bank you operate with</span><span lang-ar>البنك الرئيسي الذي تتعامل معه</span><span lang-zh>您主要往来银行</span></label><input type="text" id="k_banco" data-ph-es="Nombre del banco y país" data-ph-en="Bank name and country" data-ph-ar="اسم البنك والبلد" data-ph-zh="银行名称和国家" placeholder="Nombre del banco y país"></div>
 
-    <div class="section-sep"><span lang-es>05 — Declaraciones KYC · Cumplimiento</span><span lang-en">05 — KYC Declarations · Compliance</span></div>
+    <div class="section-sep"><span lang-es>05 — Declaraciones KYC · Cumplimiento</span><span lang-en>05 — KYC Declarations · Compliance</span><span lang-ar>05 — إقرارات KYC · الامتثال</span><span lang-zh>05 — KYC声明 · 合规</span></div>
     <div class="fg" style="gap:0.8rem;">
       <label style="flex-direction:row;align-items:flex-start;gap:0.8rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.92rem;color:var(--text);">
         <input type="checkbox" id="k_check1" style="width:18px;height:18px;flex-shrink:0;margin-top:0.1rem;accent-color:var(--gold)">
         <span lang-es>Declaro que la información proporcionada es veraz y completa. Entiendo que datos falsos pueden resultar en cancelación inmediata de la cuenta.</span>
         <span lang-en>I declare that the information provided is truthful and complete. I understand that false data may result in immediate account cancellation.</span>
+        <span lang-ar>أعلن أن المعلومات المقدمة صحيحة وكاملة. أفهم أن البيانات الكاذبة قد تؤدي إلى إلغاء الحساب فوراً.</span>
+        <span lang-zh>我声明所提供的信息真实完整。我理解虚假数据可能导致账户立即取消。</span>
       </label>
       <label style="flex-direction:row;align-items:flex-start;gap:0.8rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.92rem;color:var(--text);margin-top:0.5rem;">
         <input type="checkbox" id="k_check2" style="width:18px;height:18px;flex-shrink:0;margin-top:0.1rem;accent-color:var(--gold)">
         <span lang-es>Confirmo que mi empresa no se encuentra en listas de sanciones OFAC, ONU o FATF y que los fondos utilizados provienen de actividades lícitas.</span>
         <span lang-en>I confirm that my company is not on OFAC, UN or FATF sanctions lists and that funds used come from lawful activities.</span>
+        <span lang-ar>أؤكد أن شركتي غير مدرجة في قوائم العقوبات OFAC أو الأمم المتحدة أو FATF وأن الأموال المستخدمة تأتي من أنشطة مشروعة.</span>
+        <span lang-zh>我确认我的公司不在OFAC、联合国或FATF制裁名单上，且所使用的资金来自合法活动。</span>
       </label>
       <label style="flex-direction:row;align-items:flex-start;gap:0.8rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.92rem;color:var(--text);margin-top:0.5rem;">
         <input type="checkbox" id="k_check3" style="width:18px;height:18px;flex-shrink:0;margin-top:0.1rem;accent-color:var(--gold)">
         <span lang-es>Acepto que GLV Services SAS puede solicitar documentación adicional durante el proceso de verificación y que la aprobación no es automática.</span>
         <span lang-en>I accept that GLV Services SAS may request additional documentation during verification and that approval is not automatic.</span>
+        <span lang-ar>أقبل أن GLV Services SAS قد تطلب وثائق إضافية خلال عملية التحقق وأن الموافقة ليست تلقائية.</span>
+        <span lang-zh>我接受GLV Services SAS在验证过程中可能要求提供额外文件，且批准不是自动的。</span>
       </label>
     </div>
 
@@ -328,7 +334,7 @@ video.hero-video {
       <button class="bg" onclick="submitKYC()">🔐 <span lang-es>Enviar Registro KYC</span><span lang-en>Submit KYC Registration</span><span lang-ar>إرسال تسجيل KYC</span><span lang-zh>提交KYC注册</span></button>
       <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20quiero%20registrarme%20como%20cliente%20importador." target="_blank" class="bb wa-green">💬 WhatsApp</a>
     </div>
-    <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;line-height:1.5;">🔒 <span lang-es>Información estrictamente confidencial. Procesamiento en 2–5 días hábiles.</span><span lang-en>Strictly confidential information. Processing in 2–5 business days.</span></p>
+    <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;line-height:1.5;">🔒 <span lang-es>Información estrictamente confidencial. Procesamiento en 2–5 días hábiles.</span><span lang-en>Strictly confidential information. Processing in 2–5 business days.</span><span lang-ar>معلومات سرية للغاية. المعالجة في 2–5 أيام عمل.</span><span lang-zh>严格保密信息。处理需2–5个工作日。</span></p>
   </div>
 </div>
 
@@ -358,13 +364,82 @@ video.hero-video {
 </div>
 <script>
 
+// \u2500\u2500 MSG DICTIONARY \u2500\u2500
+var MSG = {
+  es: {
+    required:     'Por favor complete los campos obligatorios (marcados con *).',
+    declarations: 'Por favor acepte todas las declaraciones KYC antes de enviar.'
+  },
+  en: {
+    required:     'Please complete all required fields (marked with *).',
+    declarations: 'Please accept all KYC declarations before submitting.'
+  },
+  ar: {
+    required:     '\u064a\u0631\u062c\u0649 \u0627\u0633\u062a\u0643\u0645\u0627\u0644 \u062c\u0645\u064a\u0639 \u0627\u0644\u062d\u0642\u0648\u0644 \u0627\u0644\u0645\u0637\u0644\u0648\u0628\u0629 (\u0627\u0644\u0645\u062d\u062f\u062f\u0629 \u0628\u0640 *).',
+    declarations: '\u064a\u0631\u062c\u0649 \u0642\u0628\u0648\u0644 \u062c\u0645\u064a\u0639 \u0625\u0642\u0631\u0627\u0631\u0627\u062a KYC \u0642\u0628\u0644 \u0627\u0644\u0625\u0631\u0633\u0627\u0644.'
+  },
+  zh: {
+    required:     '\u8bf7\u586b\u5199\u6240\u6709\u5fc5\u586b\u5b57\u6bb5\uff08\u6807\u6709 *\uff09\u3002',
+    declarations: '\u8bf7\u5728\u63d0\u4ea4\u524d\u63a5\u53d7\u6240\u6709KYC\u58f0\u660e\u3002'
+  }
+};
+function currentLang(){ return localStorage.getItem("glv-lang") || "es"; }
+
+// \u2500\u2500 SELECT OPTIONS DICTIONARY \u2500\u2500
+var SELECT_OPTS = {
+  k_doc_tipo: {
+    es: ['Pasaporte','C\u00e9dula Nacional','DNI','Driver License','Otro'],
+    en: ['Passport','National ID','DNI','Driver License','Other'],
+    ar: ['\u062c\u0648\u0627\u0632 \u0633\u0641\u0631','\u0628\u0637\u0627\u0642\u0629 \u0647\u0648\u064a\u0629 \u0648\u0637\u0646\u064a\u0629','DNI','\u0631\u062e\u0635\u0629 \u0642\u064a\u0627\u062f\u0629','\u0623\u062e\u0631\u0649'],
+    zh: ['\u62a4\u7167','\u8eab\u4efd\u8bc1','DNI','\u9a7e\u9a76\u8bc1','\u5176\u4ed6']
+  },
+  k_tipo_comprador: {
+    es: ['','Importador directo','Distribuidor','Supermercado / Retail','Food Service / Restaurantes','Procesador industrial','Gobierno / Institucional','Broker / Trader','Otro'],
+    en: ['','Direct importer','Distributor','Supermarket / Retail','Food Service / Restaurants','Industrial processor','Government / Institutional','Broker / Trader','Other'],
+    ar: ['','\u0645\u0633\u062a\u0648\u0631\u062f \u0645\u0628\u0627\u0634\u0631','\u0645\u0648\u0632\u0639','\u0633\u0648\u0628\u0631\u0645\u0627\u0631\u0643\u062a / \u062a\u062c\u0632\u0626\u0629','\u062e\u062f\u0645\u0629 \u063a\u0630\u0627\u0626\u064a\u0629 / \u0645\u0637\u0627\u0639\u0645','\u0645\u0639\u0627\u0644\u062c \u0635\u0646\u0627\u0639\u064a','\u062d\u0643\u0648\u0645\u064a / \u0645\u0624\u0633\u0633\u064a','\u0648\u0633\u064a\u0637 / \u062a\u0627\u062c\u0631','\u0623\u062e\u0631\u0649'],
+    zh: ['','\u76f4\u63a5\u8fdb\u53e3\u5546','\u5206\u9500\u5546','\u8d85\u5e02/\u96f6\u552e','\u9910\u996e\u670d\u52a1/\u9910\u5385','\u5de5\u4e1a\u52a0\u5de5\u5546','\u653f\u5e9c/\u673a\u6784','\u7ecf\u7eaa\u4eba/\u8d38\u6613\u5546','\u5176\u4ed6']
+  },
+  k_volumen: {
+    es: ['','1\u20135 FCL / a\u00f1o','5\u201320 FCL / a\u00f1o','20\u201350 FCL / a\u00f1o','50\u2013200 FCL / a\u00f1o','+200 FCL / a\u00f1o','Barco completo +'],
+    en: ['','1\u20135 FCL / year','5\u201320 FCL / year','20\u201350 FCL / year','50\u2013200 FCL / year','+200 FCL / year','Full vessel +'],
+    ar: ['','1\u20135 FCL / \u0633\u0646\u0629','5\u201320 FCL / \u0633\u0646\u0629','20\u201350 FCL / \u0633\u0646\u0629','50\u2013200 FCL / \u0633\u0646\u0629','+200 FCL / \u0633\u0646\u0629','\u0633\u0641\u064a\u0646\u0629 \u0643\u0627\u0645\u0644\u0629 +'],
+    zh: ['','\u6bcf\u5e741\u20135\u4e2aFCL','\u6bcf\u5e745\u201320\u4e2aFCL','\u6bcf\u5e7420\u201350\u4e2aFCL','\u6bcf\u5e7450\u2013200\u4e2aFCL','\u6bcf\u5e74+200\u4e2aFCL','\u6574\u8239+']
+  },
+  k_proveedores: {
+    es: ['S\u00ed, tengo proveedores actuales','No, es primera vez'],
+    en: ['Yes, I have current suppliers','No, first time'],
+    ar: ['\u0646\u0639\u0645\u060c \u0644\u062f\u064a \u0645\u0648\u0631\u062f\u0648\u0646 \u062d\u0627\u0644\u064a\u0648\u0646','\u0644\u0627\u060c \u0623\u0648\u0644 \u0645\u0631\u0629'],
+    zh: ['\u662f\uff0c\u6211\u6709\u5f53\u524d\u4f9b\u5e94\u5546','\u5426\uff0c\u7b2c\u4e00\u6b21']
+  }
+};
+
+function updateSelects(l) {
+  Object.keys(SELECT_OPTS).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var opts = SELECT_OPTS[id][l] || SELECT_OPTS[id]['es'];
+    Array.from(el.options).forEach(function(opt, i) {
+      if (opts[i] !== undefined) opt.textContent = opts[i];
+    });
+  });
+}
+
 function setLang(l){
   document.body.className="lang-"+l;
   document.querySelectorAll(".lb").forEach(function(b){
-    b.classList.toggle("on",b.textContent.trim()===l||(l==="ar"&&b.textContent.includes("\u0639\u0631\u0628\u064a"))||(l==="zh"&&b.textContent.includes("\u4e2d\u6587")));
+    var t = b.textContent.trim().toLowerCase();
+    b.classList.toggle("on",
+      t === l ||
+      (l==="ar" && b.textContent.includes("\u0639\u0631\u0628\u064a")) ||
+      (l==="zh" && b.textContent.includes("\u4e2d\u6587"))
+    );
   });
   localStorage.setItem("glv-lang",l);
   document.documentElement.lang=l;
+  document.querySelectorAll('[data-ph-'+l+']').forEach(function(el){
+    el.placeholder = el.getAttribute('data-ph-'+l);
+  });
+  updateSelects(l);
 }
 setLang(localStorage.getItem("glv-lang")||"es");
 
@@ -436,11 +511,11 @@ function glvGenCode(prefix) {
 // ────────────────────────────────────────────────────────────
 function submitKYC(){
   var empresa=gv("k_empresa"),email=gv("k_email"),tel=gv("k_tel"),nit=gv("k_nit");
-  if(!empresa||!email||!tel||!nit){alert("Por favor complete los campos obligatorios (marcados con *).");return;}
+  if(!empresa||!email||!tel||!nit){alert(MSG[currentLang()].required);return;}
   var c1=document.getElementById("k_check1").checked;
   var c2=document.getElementById("k_check2").checked;
   var c3=document.getElementById("k_check3").checked;
-  if(!c1||!c2||!c3){alert("Por favor acepte todas las declaraciones KYC antes de enviar.");return;}
+  if(!c1||!c2||!c3){alert(MSG[currentLang()].declarations);return;}
   var msg="GLV - REGISTRO KYC CLIENTE\n\n"
     +"EMPRESA: "+empresa+"\nNombre comercial: "+gv("k_comercial")
     +"\nNIT/Tax ID: "+nit+"\nPais: "+gv("k_pais")+"\nCiudad: "+gv("k_ciudad")

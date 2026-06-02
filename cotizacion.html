@@ -373,7 +373,7 @@ video.hero-video {
     <div class="frow">
       <div class="fg">
         <label><span lang-es>Número de animales *</span><span lang-en>Number of animals *</span><span lang-ar>عدد الحيوانات *</span><span lang-zh>动物数量 *</span></label>
-        <input type="number" id="ov_a" min="25000" step="500" placeholder="Mínimo 25.000">
+        <input type="number" id="ov_a" min="25000" step="500" data-ph-es="Mínimo 25.000" data-ph-en="Minimum 25,000" data-ph-ar="الحد الأدنى 25,000" data-ph-zh="最少25,000" placeholder="Mínimo 25.000">
         <span class="fhint"><span lang-es>Mínimo 25.000 animales por operación</span><span lang-en>Minimum 25,000 animals per operation</span></span>
       </div>
       <div class="fg">
@@ -383,7 +383,7 @@ video.hero-video {
       </div>
       <div class="fg">
         <label><span lang-es>Puerto / ciudad destino</span><span lang-en>Destination port / city</span><span lang-ar>ميناء / مدينة الوجهة</span><span lang-zh>目的港/城市</span></label>
-        <input type="text" id="ov_d" placeholder="Jeddah, Dubai, Kuwait, Muscat, Argel...">
+        <input type="text" id="ov_d" data-ph-es="Jeddah, Dubai, Kuwait, Muscat, Argel..." data-ph-en="Jeddah, Dubai, Kuwait, Muscat, Algiers..." data-ph-ar="جدة، دبي، الكويت، مسقط، الجزائر..." data-ph-zh="吉达、迪拜、科威特、马斯喀特、阿尔及尔..." placeholder="Jeddah, Dubai, Kuwait, Muscat, Argel...">
       </div>
       <div class="fg">
         <label><span lang-es>Raza solicitada</span><span lang-en>Requested breed</span><span lang-ar>السلالة المطلوبة</span><span lang-zh>所需品种</span></label>
@@ -399,11 +399,11 @@ video.hero-video {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem;">
       <div class="fg">
         <label><span lang-es>Su nombre completo *</span><span lang-en>Your full name *</span><span lang-ar>اسمك الكامل *</span><span lang-zh>您的姓名 *</span></label>
-        <input type="text" id="ov_nombre" placeholder="Nombre · Name · الاسم · 姓名">
+        <input type="text" id="ov_nombre" data-ph-es="Nombre · Name · الاسم · 姓名" data-ph-en="Name · Nombre · الاسم · 姓名" data-ph-ar="الاسم · Name · Nombre · 姓名" data-ph-zh="姓名 · Name · Nombre · الاسم" placeholder="Nombre · Name · الاسم · 姓名">
       </div>
       <div class="fg">
         <label><span lang-es>Empresa / Organización *</span><span lang-en>Company / Organization *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label>
-        <input type="text" id="ov_empresa" placeholder="Nombre de la empresa">
+        <input type="text" id="ov_empresa" data-ph-es="Nombre de la empresa" data-ph-en="Company name" data-ph-ar="اسم الشركة" data-ph-zh="公司名称" placeholder="Nombre de la empresa">
       </div>
       <div class="fg">
         <label>Email *</label>
@@ -532,7 +532,7 @@ video.hero-video {
     <div class="frow">
       <div class="fg">
         <label><span lang-es>Número de FCL *</span><span lang-en>Number of FCL *</span><span lang-ar>عدد FCL *</span><span lang-zh>FCL数 *</span></label>
-        <input type="number" id="eg_fcl" min="1" step="1" placeholder="Ej: 1, 5, 10, 20...">
+        <input type="number" id="eg_fcl" min="1" step="1" data-ph-es="Ej: 1, 5, 10, 20..." data-ph-en="E.g.: 1, 5, 10, 20..." data-ph-ar="مثلاً: 1، 5، 10، 20..." data-ph-zh="例：1, 5, 10, 20..." placeholder="Ej: 1, 5, 10, 20...">
         <span class="fhint"><span lang-es>Mínimo 1 FCL · 40' HC refrigerado</span><span lang-en>Minimum 1 FCL · 40' HC refrigerated</span></span>
       </div>
       <div class="fg">
@@ -567,11 +567,11 @@ video.hero-video {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem;">
       <div class="fg">
         <label><span lang-es>Su nombre completo *</span><span lang-en>Your full name *</span><span lang-ar>اسمك الكامل *</span><span lang-zh>您的姓名 *</span></label>
-        <input type="text" id="eg_nombre" placeholder="Nombre · Name · الاسم · 姓名">
+        <input type="text" id="eg_nombre" data-ph-es="Nombre · Name · الاسم · 姓名" data-ph-en="Name · Nombre" data-ph-ar="الاسم · Name" data-ph-zh="姓名 · Name" placeholder="Nombre · Name · الاسم · 姓名">
       </div>
       <div class="fg">
         <label><span lang-es>Empresa / Organización *</span><span lang-en>Company / Organization *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label>
-        <input type="text" id="eg_empresa" placeholder="Nombre de la empresa">
+        <input type="text" id="eg_empresa" data-ph-es="Nombre de la empresa" data-ph-en="Company name" data-ph-ar="اسم الشركة" data-ph-zh="公司名称" placeholder="Nombre de la empresa">
       </div>
       <div class="fg">
         <label>Email *</label>
@@ -698,10 +698,10 @@ video.hero-video {
 
     <div id="genForm">
       <div class="frow">
-        <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span><span lang-ar>الاسم الكامل *</span><span lang-zh>全名 *</span></label><input type="text" id="gn_n" placeholder="Su nombre"></div>
-        <div class="fg"><label><span lang-es>Cargo</span><span lang-en>Title</span><span lang-ar>المسمى</span><span lang-zh>职位</span></label><input type="text" id="gn_ca" placeholder="CEO, Director de Compras..."></div>
-        <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label><input type="text" id="gn_e" placeholder="Su empresa"></div>
-        <div class="fg"><label><span lang-es>País *</span><span lang-en>Country *</span><span lang-ar>البلد *</span><span lang-zh>国家 *</span></label><input type="text" id="gn_pa" placeholder="País"></div>
+        <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span><span lang-ar>الاسم الكامل *</span><span lang-zh>全名 *</span></label><input type="text" id="gn_n" data-ph-es="Su nombre" data-ph-en="Your name" data-ph-ar="اسمك" data-ph-zh="您的姓名" placeholder="Su nombre"></div>
+        <div class="fg"><label><span lang-es>Cargo</span><span lang-en>Title</span><span lang-ar>المسمى</span><span lang-zh>职位</span></label><input type="text" id="gn_ca" data-ph-es="CEO, Director de Compras..." data-ph-en="CEO, Purchasing Director..." data-ph-ar="الرئيس التنفيذي، مدير المشتريات..." data-ph-zh="首席执行官、采购总监..." placeholder="CEO, Director de Compras..."></div>
+        <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label><input type="text" id="gn_e" data-ph-es="Su empresa" data-ph-en="Your company" data-ph-ar="شركتك" data-ph-zh="您的公司" placeholder="Su empresa"></div>
+        <div class="fg"><label><span lang-es>País *</span><span lang-en>Country *</span><span lang-ar>البلد *</span><span lang-zh>国家 *</span></label><input type="text" id="gn_pa" data-ph-es="País" data-ph-en="Country" data-ph-ar="البلد" data-ph-zh="国家" placeholder="País"></div>
         <div class="fg"><label>Email *</label><input type="email" id="gn_em" placeholder="correo@empresa.com"></div>
         <div class="fg"><label>WhatsApp / <span lang-es>Teléfono</span><span lang-en>Phone</span></label><input type="tel" id="gn_t" placeholder="+000 000 0000"></div>
       </div>
@@ -785,8 +785,8 @@ video.hero-video {
     <p class="modal-sub"><span lang-es>Complete los datos y un agente GLV le responderá en menos de 24 horas con precio, specs técnicas y documentación disponible.</span><span lang-en>Fill in the data and a GLV agent will respond in under 24 hours with price, technical specs and available documentation.</span></p>
 
     <div class="frow">
-      <div class="fg"><label><span lang-es>Su nombre *</span><span lang-en>Your name *</span></label><input type="text" id="m_n" placeholder="Nombre completo"></div>
-      <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span></label><input type="text" id="m_e" placeholder="Su empresa"></div>
+      <div class="fg"><label><span lang-es>Su nombre *</span><span lang-en>Your name *</span></label><input type="text" id="m_n" data-ph-es="Nombre completo" data-ph-en="Full name" data-ph-ar="الاسم الكامل" data-ph-zh="全名" placeholder="Nombre completo"></div>
+      <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span></label><input type="text" id="m_e" data-ph-es="Su empresa" data-ph-en="Your company" data-ph-ar="شركتك" data-ph-zh="您的公司" placeholder="Su empresa"></div>
     </div>
     <div class="frow">
       <div class="fg"><label>Email *</label><input type="email" id="m_em" placeholder="correo@empresa.com"></div>
@@ -794,7 +794,7 @@ video.hero-video {
     </div>
     <div class="fg">
       <label><span lang-es>País destino / Cantidad estimada</span><span lang-en>Destination country / Est. quantity</span></label>
-      <input type="text" id="m_d" placeholder="País · Ej: 2 FCL, 500 MT...">
+      <input type="text" id="m_d" data-ph-es="País · Ej: 2 FCL, 500 MT..." data-ph-en="Country · E.g.: 2 FCL, 500 MT..." data-ph-ar="البلد · مثلاً: 2 FCL، 500 طن..." data-ph-zh="国家 · 例：2个FCL、500吨..." placeholder="País · Ej: 2 FCL, 500 MT...">
     </div>
     <div class="fg">
       <label><span lang-es>Observaciones (Halal, private label, incoterm...)</span><span lang-en>Notes (Halal, private label, incoterm...)</span></label>
@@ -927,19 +927,118 @@ function sendW3F(subject, body, replyEmail) {
 })();
 
 // ════════════════════════════════════════════
+// MSG DICTIONARY
+// ════════════════════════════════════════════
+var MSG = {
+  es: {
+    selectTier:    'Seleccione primero el plazo de la operación (Paso 1).',
+    minAnimals:    'El mínimo de animales por operación es 25.000.',
+    selectMarket:  'Seleccione primero el mercado destino (Paso 1).',
+    minFCL:        'Ingrese al menos 1 contenedor FCL.',
+    customPrice:   'Para precio personalizado, ingrese el valor de la oferta GLV.',
+    selectAgent:   'Por favor seleccione un agente GLV antes de enviar.',
+    wechatCopied:  function(id){ return 'ID de WeChat copiado: ' + id + '\nBusque este contacto en WeChat y envíe el mensaje.'; },
+    wechatManual:  function(id){ return 'Agente WeChat: ' + id + '\nAbra WeChat, busque este ID y envíe su mensaje.'; },
+    noTierPDF:     'Seleccione un plazo primero.',
+    ovContactReq:  'Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).',
+    noTierWA:      'Seleccione un plazo primero.',
+    noMarketPDF:   'Seleccione mercado primero.',
+    eggContactReq: 'Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).',
+    noMarketWA:    'Seleccione mercado y complete los datos.',
+    noMarketEmail: 'Seleccione mercado y complete los datos.',
+    required:      'Complete los campos obligatorios (*).',
+    modalName:     'Por favor ingrese su nombre.',
+    ovWarnHtml:    '<strong>Operación urgente:</strong> Costos logísticos más altos. CFR USD 6,00/kg incluye flete urgente y documentación express.',
+    sblcHtml:      '<strong>SBLC únicamente (90 días):</strong> GLV acepta solo SBLC emitido por banco de primer orden internacional.',
+    ttHtml:        '<strong>Solo T/T Directo (&lt;60 días):</strong> No se aceptan L/C ni SBLC en operaciones urgentes.'
+  },
+  en: {
+    selectTier:    'Please select the operation timeline first (Step 1).',
+    minAnimals:    'Minimum 25,000 animals per operation.',
+    selectMarket:  'Please select the destination market first (Step 1).',
+    minFCL:        'Please enter at least 1 FCL container.',
+    customPrice:   'For custom price, enter the GLV offer value.',
+    selectAgent:   'Please select a GLV agent before submitting.',
+    wechatCopied:  function(id){ return 'WeChat ID copied: ' + id + '\nSearch this contact in WeChat and send your message.'; },
+    wechatManual:  function(id){ return 'WeChat agent: ' + id + '\nOpen WeChat, search this ID and send your message.'; },
+    noTierPDF:     'Please select a timeline first.',
+    ovContactReq:  'Please enter your name and company before submitting (Step 2B).',
+    noTierWA:      'Please select a timeline first.',
+    noMarketPDF:   'Please select a market first.',
+    eggContactReq: 'Please enter your name and company before submitting (Step 2B).',
+    noMarketWA:    'Please select a market and complete the data.',
+    noMarketEmail: 'Please select a market and complete the data.',
+    required:      'Please complete all required fields (*).',
+    modalName:     'Please enter your name.',
+    ovWarnHtml:    '<strong>Urgent operation:</strong> Higher logistics costs. CFR USD 6.00/kg includes urgent freight and express documentation.',
+    sblcHtml:      '<strong>SBLC only (90 days):</strong> GLV accepts only SBLC issued by a top-tier international bank.',
+    ttHtml:        '<strong>T/T Direct only (&lt;60 days):</strong> L/C and SBLC not accepted for urgent operations.'
+  },
+  ar: {
+    selectTier:    'يرجى اختيار المدة الزمنية للعملية أولاً (الخطوة 1).',
+    minAnimals:    'الحد الأدنى للعملية 25,000 حيوان.',
+    selectMarket:  'يرجى اختيار سوق الوجهة أولاً (الخطوة 1).',
+    minFCL:        'يرجى إدخال حاوية FCL واحدة على الأقل.',
+    customPrice:   'للسعر المخصص، أدخل قيمة عرض GLV.',
+    selectAgent:   'يرجى اختيار وكيل GLV قبل الإرسال.',
+    wechatCopied:  function(id){ return 'تم نسخ معرف WeChat: ' + id + '\nابحث عن هذا الاتصال في WeChat وأرسل رسالتك.'; },
+    wechatManual:  function(id){ return 'وكيل WeChat: ' + id + '\nافتح WeChat وابحث عن هذا المعرف وأرسل رسالتك.'; },
+    noTierPDF:     'يرجى اختيار مدة زمنية أولاً.',
+    ovContactReq:  'يرجى إدخال اسمك وشركتك قبل الإرسال (الخطوة 2B).',
+    noTierWA:      'يرجى اختيار مدة زمنية أولاً.',
+    noMarketPDF:   'يرجى اختيار السوق أولاً.',
+    eggContactReq: 'يرجى إدخال اسمك وشركتك قبل الإرسال (الخطوة 2B).',
+    noMarketWA:    'يرجى اختيار السوق وإكمال البيانات.',
+    noMarketEmail: 'يرجى اختيار السوق وإكمال البيانات.',
+    required:      'يرجى استكمال الحقول المطلوبة (*).',
+    modalName:     'يرجى إدخال اسمك.',
+    ovWarnHtml:    '<strong>عملية عاجلة:</strong> تكاليف لوجستية أعلى. CFR USD 6.00/كغ يشمل الشحن العاجل والوثائق السريعة.',
+    sblcHtml:      '<strong>SBLC فقط (90 يوماً):</strong> تقبل GLV فقط SBLC صادراً عن بنك دولي من الدرجة الأولى.',
+    ttHtml:        '<strong>T/T مباشر فقط (&lt;60 يوماً):</strong> لا تُقبل خطابات الاعتماد أو SBLC في العمليات العاجلة.'
+  },
+  zh: {
+    selectTier:    '请先选择操作时间表（第1步）。',
+    minAnimals:    '每次操作最少需要25,000头动物。',
+    selectMarket:  '请先选择目标市场（第1步）。',
+    minFCL:        '请至少输入1个FCL集装箱。',
+    customPrice:   '如需自定义价格，请输入GLV报价值。',
+    selectAgent:   '请在提交前选择GLV代理。',
+    wechatCopied:  function(id){ return '微信ID已复制：' + id + '\n在微信中搜索此联系人并发送消息。'; },
+    wechatManual:  function(id){ return '微信代理：' + id + '\n打开微信，搜索此ID并发送消息。'; },
+    noTierPDF:     '请先选择时间表。',
+    ovContactReq:  '请在提交前输入您的姓名和公司（第2B步）。',
+    noTierWA:      '请先选择时间表。',
+    noMarketPDF:   '请先选择市场。',
+    eggContactReq: '请在提交前输入您的姓名和公司（第2B步）。',
+    noMarketWA:    '请选择市场并填写完整数据。',
+    noMarketEmail: '请选择市场并填写完整数据。',
+    required:      '请填写所有必填字段 (*)。',
+    modalName:     '请输入您的姓名。',
+    ovWarnHtml:    '<strong>紧急操作：</strong>物流成本较高。CFR USD 6.00/公斤包含紧急运费和快递文件。',
+    sblcHtml:      '<strong>仅SBLC（90天）：</strong>GLV仅接受国际一流银行开具的SBLC。',
+    ttHtml:        '<strong>仅限T/T直接付款（&lt;60天）：</strong>紧急操作不接受信用证或SBLC。'
+  }
+};
+function currentLang() { return localStorage.getItem('glv-lang') || 'es'; }
+
+// ════════════════════════════════════════════
 // LANGUAGE
 // ════════════════════════════════════════════
 function setLang(l) {
   document.body.className = 'lang-' + l;
   document.querySelectorAll('.lb').forEach(function(b) {
+    var t = b.textContent.trim().toLowerCase();
     b.classList.toggle('on',
-      b.textContent.trim() === l ||
+      t === l ||
       (l === 'ar' && b.textContent.includes('\u0639\u0631\u0628\u064a')) ||
       (l === 'zh' && b.textContent.includes('\u4e2d\u6587'))
     );
   });
   localStorage.setItem('glv-lang', l);
   document.documentElement.lang = l;
+  document.querySelectorAll('[data-ph-' + l + ']').forEach(function(el) {
+    el.placeholder = el.getAttribute('data-ph-' + l);
+  });
   // Rebuild agent selector if visible
   buildAgentSelector();
 }
@@ -968,10 +1067,11 @@ function gv(id) { var e = document.getElementById(id); return e ? e.value : ''; 
 // ════════════════════════════════════════════
 function buildAgentSelector() {
   var lang = localStorage.getItem('glv-lang') || 'es';
+  var placeholders = {es:'Seleccione su agente GLV',en:'Select your GLV agent',ar:'اختر وكيل GLV',zh:'选择您的GLV代理'};
   var selectors = document.querySelectorAll('.agent-selector');
   selectors.forEach(function(sel) {
     var current = sel.value;
-    sel.innerHTML = '<option value="">— ' + (lang === 'es' ? 'Seleccione su agente GLV' : 'Select your GLV agent') + ' —</option>';
+    sel.innerHTML = '<option value="">— ' + (placeholders[lang] || placeholders.es) + ' —</option>';
     AGENTS.forEach(function(a) {
       var opt = document.createElement('option');
       opt.value = a.id;
@@ -990,7 +1090,7 @@ function getSelectedAgent(selectorId) {
 }
 
 function sendToAgent(agent, subject, msg) {
-  if (!agent) { alert('Por favor seleccione un agente GLV antes de enviar.'); return false; }
+  if (!agent) { alert(MSG[currentLang()].selectAgent); return false; }
   sendW3F(subject, msg);
   if (agent.wa) {
     window.open('https://wa.me/' + agent.wa + '?text=' + encodeURIComponent(msg), '_blank');
@@ -998,10 +1098,10 @@ function sendToAgent(agent, subject, msg) {
     // WeChat — copy ID to clipboard
     if (navigator.clipboard) {
       navigator.clipboard.writeText(agent.wechat).then(function() {
-        alert('ID de WeChat copiado: ' + agent.wechat + '\nBusque este contacto en WeChat y envíe el mensaje.');
+        alert(MSG[currentLang()].wechatCopied(agent.wechat));
       });
     } else {
-      alert('Agente WeChat: ' + agent.wechat + '\nAbra WeChat, busque este ID y envíe su mensaje.');
+      alert(MSG[currentLang()].wechatManual(agent.wechat));
     }
   }
   return true;
@@ -1029,10 +1129,10 @@ function selT(t) {
 }
 
 function calcOv() {
-  if (!ST) { alert('Seleccione primero el plazo de la operación (Paso 1).'); return; }
+  if (!ST) { alert(MSG[currentLang()].selectTier); return; }
   var a = parseInt(gv('ov_a')) || 0;
   var p = parseFloat(gv('ov_p')) || 45;
-  if (a < 25000) { alert('El mínimo de animales por operación es 25.000.'); return; }
+  if (a < 25000) { alert(MSG[currentLang()].minAnimals); return; }
   var tier = TIERS[ST];
   var pt   = a * p;
   var tf   = pt * tier.fob;
@@ -1050,9 +1150,9 @@ function calcOv() {
   if (w)  w.style.display  = tier.warn ? 'block' : 'none';
   if (s)  s.style.display  = tier.sblc ? 'block' : 'none';
   if (tt) tt.style.display = tier.tt   ? 'block' : 'none';
-  if (tier.warn && w)  w.innerHTML  = '<strong>Operación urgente:</strong> Costos logísticos más altos. CFR USD 6,00/kg incluye flete urgente y documentación express.';
-  if (tier.sblc && s)  s.innerHTML  = '<strong>SBLC únicamente (90 días):</strong> GLV acepta solo SBLC emitido por banco de primer orden internacional.';
-  if (tier.tt   && tt) tt.innerHTML = '<strong>Solo T/T Directo (&lt;60 días):</strong> No se aceptan L/C ni SBLC en operaciones urgentes.';
+  if (tier.warn && w)  w.innerHTML  = MSG[currentLang()].ovWarnHtml;
+  if (tier.sblc && s)  s.innerHTML  = MSG[currentLang()].sblcHtml;
+  if (tier.tt   && tt) tt.innerHTML = MSG[currentLang()].ttHtml;
   var res = document.getElementById('ov_res');
   if (res) { res.classList.add('show'); res.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 }
@@ -1091,7 +1191,7 @@ function buildOvMsg() {
 }
 
 function genPDF() {
-  if (!ST) { alert('Seleccione un plazo primero.'); return; }
+  if (!ST) { alert(MSG[currentLang()].noTierPDF); return; }
   var a    = gv('ov_a') || '0';
   var p    = gv('ov_p') || '45';
   var d    = gv('ov_d') || 'Por confirmar';
@@ -1166,12 +1266,12 @@ function genPDF() {
 
 function ovWA() {
   if (!gv('ov_nombre') || !gv('ov_empresa')) {
-    alert('Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).');
+    alert(MSG[currentLang()].ovContactReq);
     document.getElementById('ov_nombre').focus();
     return;
   }
   var msg = buildOvMsg();
-  if (!msg) { alert('Seleccione un plazo primero.'); return; }
+  if (!msg) { alert(MSG[currentLang()].noTierWA); return; }
   var agent = getSelectedAgent('ov_agent');
   sendToAgent(agent, 'Cotizacion Ovinos Vivos', msg);
   sendW3F('Cotizacion Ovinos Vivos', msg, gv('ov_email'));
@@ -1224,11 +1324,11 @@ function getPayCond(fcl) {
 }
 
 function calcEgg() {
-  if (!selEggM) { alert('Seleccione primero el mercado destino (Paso 1).'); return; }
+  if (!selEggM) { alert(MSG[currentLang()].selectMarket); return; }
   var fcl = parseInt(gv('eg_fcl')) || 0;
-  if (fcl < 1) { alert('Ingrese al menos 1 contenedor FCL.'); return; }
+  if (fcl < 1) { alert(MSG[currentLang()].minFCL); return; }
   var ep = getEP();
-  if (!ep) { alert('Para precio personalizado, ingrese el valor de la oferta GLV.'); return; }
+  if (!ep) { alert(MSG[currentLang()].customPrice); return; }
   var tipo   = gv('eg_tipo');
   var pago   = getPayCond(fcl);
   var totalC = fcl * CUBETAS_FCL;
@@ -1288,7 +1388,7 @@ function buildEggMsg() {
 
 function genEggPDF() {
   var ep = getEP();
-  if (!ep) { alert('Seleccione mercado primero.'); return; }
+  if (!ep) { alert(MSG[currentLang()].noMarketPDF); return; }
   var fcl    = gv('eg_fcl')  || '1';
   var tipo   = gv('eg_tipo') || 'Tipo A';
   var nombre  = gv('eg_nombre')  || 'No indicado';
@@ -1344,12 +1444,12 @@ function genEggPDF() {
 
 function eggWA() {
   if (!gv('eg_nombre') || !gv('eg_empresa')) {
-    alert('Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).');
+    alert(MSG[currentLang()].eggContactReq);
     document.getElementById('eg_nombre').focus();
     return;
   }
   var msg = buildEggMsg();
-  if (!msg) { alert('Seleccione mercado y complete los datos.'); return; }
+  if (!msg) { alert(MSG[currentLang()].noMarketWA); return; }
   var agent = getSelectedAgent('eg_agent');
   sendToAgent(agent, 'Cotizacion Huevo FCL', msg);
   sendW3F('Cotizacion Huevo FCL', msg, gv('eg_email'));
@@ -1357,7 +1457,7 @@ function eggWA() {
 
 function eggEmail() {
   var msg = buildEggMsg();
-  if (!msg) { alert('Seleccione mercado y complete los datos.'); return; }
+  if (!msg) { alert(MSG[currentLang()].noMarketEmail); return; }
   var ref = 'GLV-HV-' + Date.now().toString().slice(-6);
   sendW3F('Cotizacion Huevo ' + ref, msg, gv('eg_email'));
   window.location.href = 'mailto:info@glvservicesexp.com'
@@ -1476,7 +1576,7 @@ function modalMsg() {
     + '\n\nPor favor enviar precio CIF, specs tecnicas y condiciones de pago.';
 }
 function modalSendWA() {
-  if (!gv('m_n')) { alert('Por favor ingrese su nombre.'); return; }
+  if (!gv('m_n')) { alert(MSG[currentLang()].modalName); return; }
   sendW3F('Catalogo - ' + mProdName, modalMsg(), gv('m_em'));
   window.open('https://wa.me/573160865294?text=' + encodeURIComponent(modalMsg()), '_blank');
   closeModal();
@@ -1497,7 +1597,7 @@ function gnSend(via) {
   var e  = gv('gn_e');
   var em = gv('gn_em');
   var d  = gv('gn_d');
-  if (!n || !e || !em || !d) { alert('Complete los campos obligatorios (*).'); return; }
+  if (!n || !e || !em || !d) { alert(MSG[currentLang()].required); return; }
   var agent = getSelectedAgent('gn_agent');
   var aName = agent ? agent.name : 'No seleccionado';
   var msg   = 'GLV - Cotizacion General\n\n'
