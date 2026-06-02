@@ -12,5 +12,6 @@ export default defineConfig({
       "/users":     { target: "http://localhost:3001", changeOrigin: true },
     },
   },
+  base: "/connect/",
   build: { outDir: "dist" },
 });

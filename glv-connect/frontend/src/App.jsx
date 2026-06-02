@@ -144,6 +144,7 @@ function LoginScreen() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -180,9 +181,15 @@ function LoginScreen() {
         </div>
         <div style={{ marginBottom: 20 }}>
           <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Contraseña</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-            style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }}
-            onKeyDown={e => e.key === "Enter" && handleLogin()} />
+          <div style={{ position: "relative" }}>
+            <input type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+              style={{ width: "100%", padding: "10px 40px 10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }}
+              onKeyDown={e => e.key === "Enter" && handleLogin()} />
+            <button type="button" onClick={() => setShowPass(p => !p)}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 16, padding: 0 }}>
+              <i className={`ti ${showPass ? "ti-eye-off" : "ti-eye"}`} />
+            </button>
+          </div>
         </div>
         {error && <p style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: "8px 12px", borderRadius: 8, marginBottom: 16 }}>{error}</p>}
         <button onClick={handleLogin} disabled={loading}

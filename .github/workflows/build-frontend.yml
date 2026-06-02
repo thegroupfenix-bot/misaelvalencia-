@@ -1,0 +1,36 @@
+name: Build GLV-Connect Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "glv-connect/frontend/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: glv-connect/frontend/package.json
+
+      - name: Install dependencies
+        working-directory: glv-connect/frontend
+        run: npm install
+
+      - name: Build
+        working-directory: glv-connect/frontend
+        env:
+          VITE_API_URL: https://misaelvalencia-production.up.railway.app
+        run: npm run build
+
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: glv-connect-frontend-dist
+          path: glv-connect/frontend/dist/
+          retention-days: 30
