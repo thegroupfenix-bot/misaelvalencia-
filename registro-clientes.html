@@ -533,8 +533,7 @@ function submitKYC(){
     +"\nBanco: "+gv("k_banco")
     +"\n\nDECLARACIONES KYC: Todas aceptadas.";
     var codCLI = glvGenCode('CLI');
-  msg += '
-CODIGO ASIGNADO: ' + codCLI;
+  msg += '\nCODIGO ASIGNADO: ' + codCLI;
   sendW3F('Registro Cliente KYC ' + codCLI + ' — ' + empresa, msg, email);
   window.open('https://wa.me/573160865294?text=' + encodeURIComponent(msg), '_blank');
   document.getElementById('cliCodeDisplay').textContent = '🏷 ' + codCLI;
