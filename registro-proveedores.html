@@ -328,7 +328,7 @@ video.hero-video {
       <div class="fg">
         <label><span lang-es>Tipo de servicio *</span><span lang-en>Service type *</span><span lang-ar>نوع الخدمة *</span><span lang-zh>服务类型 *</span></label>
         <select id="svcType" onchange="showSvcFields()">
-          <option value="">— <span lang-es>Seleccione</span><span lang-en>Select</span><span lang-ar>اختر</span><span lang-zh>请选择</span> —</option>
+          <option value="">— Seleccione —</option>
           <option value="freight">🚢 Freight Forwarder / Agente de Carga</option>
           <option value="aduanas">📋 Agente de Aduanas / Customs Broker</option>
           <option value="naviera">🛳️ Naviera / Shipping Line</option>
@@ -415,7 +415,7 @@ video.hero-video {
       <div class="fg">
         <label><span lang-es>Categoría de su servicio o producto *</span><span lang-en>Your service / product category *</span><span lang-ar>فئة خدمتك أو منتجك *</span><span lang-zh>您的服务/产品类别 *</span></label>
         <select id="otroType">
-          <option value="">— <span lang-es>Seleccione la más cercana</span><span lang-en>Select the closest one</span> —</option>
+          <option value="">— Seleccione la más cercana —</option>
           <optgroup label="🎪 Eventos">
             <option value="stands">🎪 Stands / Exhibidores / Display</option>
             <option value="eventos">🎭 Organización de Eventos</option>
@@ -467,7 +467,7 @@ video.hero-video {
         <div class="fg"><label><span lang-es>Su nombre *</span><span lang-en>Your name *</span><span lang-ar>اسمك *</span><span lang-zh>您的姓名 *</span></label><input type="text" id="ot_rep" data-ph-es="Nombre completo" data-ph-en="Full name" data-ph-ar="الاسم الكامل" data-ph-zh="全名" placeholder="Nombre completo"></div>
         <div class="fg"><label>Email *</label><input type="email" id="ot_email" placeholder="correo@email.com"></div>
         <div class="fg">
-          <label>📱 WhatsApp / <span lang-es>Teléfono *</span><span lang-en>Phone *</span></label>
+          <label>📱 WhatsApp / <span lang-es>Teléfono *</span><span lang-en>Phone *</span><span lang-ar>هاتف *</span><span lang-zh>电话 *</span></label>
           <input type="text"
                  id="ot_tel"
                  name="ot_tel"
@@ -479,6 +479,8 @@ video.hero-video {
           <span style="font-size:0.85rem;color:#888;margin-top:0.3rem;display:block;">
             <span lang-es>Ingrese su número con el código de país. Ej: +57 316 086 5294 · +1 555 123 4567 · +971 50 123 4567</span>
             <span lang-en>Enter your number with country code. Ex: +57 316 086 5294 · +1 555 123 4567</span>
+            <span lang-ar>أدخل رقمك مع رمز الدولة. مثال: +971 50 123 4567</span>
+            <span lang-zh>请输入含国家区号的号码。例：+86 138 0000 0000</span>
           </span>
         </div>
         <div class="fg"><label><span lang-es>País / Ciudad</span><span lang-en>Country / City</span><span lang-ar>البلد / المدينة</span><span lang-zh>国家 / 城市</span></label><input type="text" id="ot_pais" data-ph-es="País y ciudad principal" data-ph-en="Country and main city" data-ph-ar="البلد والمدينة الرئيسية" data-ph-zh="国家和主要城市" placeholder="País y ciudad principal"></div>
@@ -587,6 +589,27 @@ var SELECT_OPTS = {
     en: ['Yes, currently exporting','Yes, exported before','No, first export'],
     ar: ['نعم، أصدّر حالياً','نعم، صدّرت من قبل','لا، أول تصدير'],
     zh: ['是，目前出口中','是，曾经出口过','否，首次出口']
+  },
+  svcType: {
+    es: ['— Seleccione —','🚢 Freight Forwarder / Agente de Carga','📋 Agente de Aduanas / Customs Broker','🛳️ Naviera / Shipping Line','🔬 Laboratorio de Calidad','🐾 Veterinaria / Médico Veterinario','🛡️ Seguros de Carga','☪️ Certificadora Halal / Kosher','🚛 Transporte Terrestre','🏭 Bodega / Almacén','📦 Otro servicio logístico'],
+    en: ['— Select —','🚢 Freight Forwarder','📋 Customs Agent / Broker','🛳️ Shipping Line','🔬 Quality Laboratory','🐾 Veterinary Services','🛡️ Cargo Insurance','☪️ Halal / Kosher Certifier','🚛 Land Transport','🏭 Warehouse / Storage','📦 Other logistics service'],
+    ar: ['— اختر —','🚢 وكيل شحن','📋 وكيل جمارك','🛳️ شركة ملاحة','🔬 مختبر جودة','🐾 خدمات بيطرية','🛡️ تأمين الشحن','☪️ جهة تصديق حلال/كوشير','🚛 نقل بري','🏭 مستودع/تخزين','📦 خدمة لوجستية أخرى'],
+    zh: ['— 请选择 —','🚢 货运代理','📋 报关行','🛳️ 船运公司','🔬 质量实验室','🐾 兽医服务','🛡️ 货运保险','☪️ 清真/洁食认证','🚛 陆运','🏭 仓库/储存','📦 其他物流服务']
+  },
+  otroType: {
+    es: ['— Seleccione la más cercana —','🎪 Stands / Exhibidores / Display','🎭 Organización de Eventos','🎥 Audiovisual / Fotografía / Video','🖨️ Impresos / Pendones / Banners','🍽️ Catering / Alimentación para Eventos','🥘 Comidas Preparadas / Restaurante','🥤 Bebidas / Snacks / Provisiones','🚐 Transporte de Personal / Camionetas','📦 Mensajería / Paquetería / Courier','🔒 Prescintos / Sellos / Seguridad de Carga','📦 Empaques / Cajas / Materiales','👔 Dotación / Uniformes / EPP','📋 Papelería / Útiles de Oficina','💻 Equipos Tecnológicos / Computadores','🔧 Mantenimiento / Plomería / Electricidad','🧹 Aseo y Limpieza de Instalaciones','💻 Desarrollo Web / Software / IT','📣 Marketing / Publicidad / Diseño','📊 Consultoría / Asesoría','🎓 Capacitación / Formación','👤 Selección de Personal / RRHH','🔒 Vigilancia / Seguridad','💳 Contabilidad / Finanzas','🏨 Hospedaje / Hotel Corporativo','🎁 Obsequios / Merchandising','✨ Otro — no está en la lista'],
+    en: ['— Select closest —','🎪 Stands / Exhibitors / Display','🎭 Event Organization','🎥 Audiovisual / Photography / Video','🖨️ Print / Banners / Signage','🍽️ Catering / Event Food','🥘 Prepared Meals / Restaurant','🥤 Beverages / Snacks / Provisions','🚐 Staff Transport / Vans','📦 Courier / Parcel / Delivery','🔒 Seals / Security / Cargo Safety','📦 Packaging / Boxes / Materials','👔 Uniforms / Workwear / PPE','📋 Stationery / Office Supplies','💻 Tech Equipment / Computers','🔧 Maintenance / Plumbing / Electrical','🧹 Cleaning / Facility Services','💻 Web Dev / Software / IT','📣 Marketing / Advertising / Design','📊 Consulting / Advisory','🎓 Training / Education','👤 HR / Recruitment','🔒 Security / Surveillance','💳 Accounting / Finance','🏨 Accommodation / Corporate Hotel','🎁 Gifts / Merchandising','✨ Other — not in the list'],
+    ar: ['— اختر الأقرب —','🎪 أكشاك / عارضون','🎭 تنظيم فعاليات','🎥 سمعي بصري / تصوير','🖨️ مطبوعات / لافتات','🍽️ تقديم طعام للفعاليات','🥘 وجبات جاهزة / مطعم','🥤 مشروبات / وجبات خفيفة','🚐 نقل موظفين / حافلات','📦 بريد سريع / توصيل','🔒 أختام / أمن الشحن','📦 تغليف / صناديق / مواد','👔 زي موحد / معدات حماية','📋 قرطاسية / مستلزمات مكتب','💻 أجهزة تقنية / حواسيب','🔧 صيانة / سباكة / كهرباء','🧹 تنظيف / خدمات المنشأة','💻 تطوير ويب / برمجيات','📣 تسويق / إعلان / تصميم','📊 استشارات','🎓 تدريب / تعليم','👤 موارد بشرية / توظيف','🔒 أمن / حراسة','💳 محاسبة / مالية','🏨 إقامة / فندق مؤسسي','🎁 هدايا / ترويجية','✨ أخرى — غير موجودة'],
+    zh: ['— 选择最近的 —','🎪 展台/展示','🎭 活动策划','🎥 视听/摄影/视频','🖨️ 印刷/横幅','🍽️ 餐饮/活动食品','🥘 成品餐/餐厅','🥤 饮料/零食','🚐 员工运输/面包车','📦 快递/包裹','🔒 铅封/安保','📦 包装/材料','👔 制服/防护设备','📋 文具/办公用品','💻 技术设备/电脑','🔧 维护/水电','🧹 清洁服务','💻 网络开发/软件','📣 营销/广告/设计','📊 咨询','🎓 培训/教育','👤 人力资源','🔒 安保/监控','💳 会计/财务','🏨 住宿/企业酒店','🎁 礼品/周边','✨ 其他——不在列表中']
+  }
+};
+
+var OPTGROUP_LABELS = {
+  otroType: {
+    es: ['🎪 Eventos','🍽️ Alimentación','🚐 Transporte','🔧 Insumos y Suministros','🏗️ Mantenimiento','💻 Tecnología y Marketing','📊 Servicios Profesionales','🏨 Otros'],
+    en: ['🎪 Events','🍽️ Food & Catering','🚐 Transport','🔧 Supplies','🏗️ Maintenance','💻 Technology & Marketing','📊 Professional Services','🏨 Other'],
+    ar: ['🎪 الفعاليات','🍽️ الطعام والتموين','🚐 النقل','🔧 اللوازم','🏗️ الصيانة','💻 التكنولوجيا والتسويق','📊 الخدمات المهنية','🏨 أخرى'],
+    zh: ['🎪 活动','🍽️ 餐饮','🚐 运输','🔧 物资','🏗️ 维护','💻 技术与营销','📊 专业服务','🏨 其他']
   }
 };
 
@@ -597,6 +620,15 @@ function updateSelects(l) {
     var opts = SELECT_OPTS[id][l] || SELECT_OPTS[id]['es'];
     Array.from(el.options).forEach(function(opt, i) {
       if (opts[i] !== undefined) opt.textContent = opts[i];
+    });
+  });
+  Object.keys(OPTGROUP_LABELS).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var groups = el.querySelectorAll('optgroup');
+    var labels = OPTGROUP_LABELS[id][l] || OPTGROUP_LABELS[id]['es'];
+    groups.forEach(function(grp, i) {
+      if (labels[i] !== undefined) grp.label = labels[i];
     });
   });
 }
