@@ -53,8 +53,9 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{background:var(--dark);color:var(--text);font-family:"Barlow",sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
-[lang-es],[lang-en]{display:none;}
-body.lang-es [lang-es],body.lang-en [lang-en]{display:inline;}
+[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+body.lang-ar{direction:rtl;}
 nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.97);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
 .nlogo{font-family:"Playfair Display",serif;font-size:1.2rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
 .nsub{font-family:"Barlow Condensed",sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--dim);line-height:1.3;}
@@ -188,21 +189,25 @@ video.hero-video {
 <nav>
   <a href="/" class="nlogo">GLV<span class="nsub">Services SAS<br>Registro de Proveedores</span></a>
   <div class="nright">
-    <a href="/" class="nback">← <span lang-es>Inicio</span><span lang-en>Home</span></a>
+    <a href="/" class="nback">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
     <div class="lsw">
       <button class="lb on" onclick="setLang('es')">ES</button>
       <button class="lb" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('ar')">عربي</button>
+      <button class="lb" onclick="setLang('zh')">中文</button>
     </div>
   </div>
 </nav>
 
 <div class="ph">
   <div class="ph-in">
-    <div class="htag"><span lang-es>Red de Proveedores · GLV Services SAS</span><span lang-en>Supplier Network · GLV Services SAS</span></div>
-    <h1 class="htitle"><span lang-es>Únase como<br><em>proveedor GLV.</em></span><span lang-en">Join as a<br><em>GLV supplier.</em></span></h1>
+    <div class="htag"><span lang-es>Red de Proveedores · GLV Services SAS</span><span lang-en>Supplier Network · GLV Services SAS</span><span lang-ar>شبكة الموردين · GLV Services SAS</span><span lang-zh>供应商网络 · GLV Services SAS</span></div>
+    <h1 class="htitle"><span lang-es>Únase como<br><em>proveedor GLV.</em></span><span lang-en>Join as a<br><em>GLV supplier.</em></span><span lang-ar>انضم كـ<br><em>مورد GLV.</em></span><span lang-zh>成为<br><em>GLV供应商。</em></span></h1>
     <p class="hsub">
       <span lang-es>GLV trabaja con proveedores verificados en todo el mundo. Seleccione su categoría y complete el formulario. El área financiera y legal revisará su perfil en 3–7 días hábiles.</span>
       <span lang-en>GLV works with verified suppliers worldwide. Select your category and complete the form. The financial and legal team will review your profile in 3–7 business days.</span>
+      <span lang-ar>تعمل GLV مع موردين موثّقين حول العالم. اختر فئتك وأكمل النموذج. سيراجع الفريق المالي والقانوني ملفك في غضون 3–7 أيام عمل.</span>
+      <span lang-zh>GLV与全球认证供应商合作。选择您的类别并填写表格。财务和法律团队将在3–7个工作日内审核您的资料。</span>
     </p>
   </div>
 </div>
@@ -211,9 +216,9 @@ video.hero-video {
 
   <!-- TABS -->
   <div class="tabs">
-    <button class="tab on" onclick="showTab('productos',this)">🏭 <span lang-es>Proveedor de Productos</span><span lang-en>Product Supplier</span></button>
-    <button class="tab" onclick="showTab('servicios',this)">🔧 <span lang-es>Servicios Logísticos</span><span lang-en>Logistics Services</span></button>
-    <button class="tab" onclick="showTab('otros',this)">🌐 <span lang-es>Otros Proveedores</span><span lang-en>Other Suppliers</span></button>
+    <button class="tab on" onclick="showTab('productos',this)">🏭 <span lang-es>Proveedor de Productos</span><span lang-en>Product Supplier</span><span lang-ar>مورد منتجات</span><span lang-zh>产品供应商</span></button>
+    <button class="tab" onclick="showTab('servicios',this)">🔧 <span lang-es>Servicios Logísticos</span><span lang-en>Logistics Services</span><span lang-ar>خدمات لوجستية</span><span lang-zh>物流服务</span></button>
+    <button class="tab" onclick="showTab('otros',this)">🌐 <span lang-es>Otros Proveedores</span><span lang-en>Other Suppliers</span><span lang-ar>موردون آخرون</span><span lang-zh>其他供应商</span></button>
   </div>
 
   <!-- ══════════════════════════════════
@@ -222,44 +227,44 @@ video.hero-video {
   <div class="panel on" id="tab-productos">
 
     <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-lbl"><span lang-es>Registro</span><span lang-en>Register</span></div><div class="step-desc"><span lang-es>Formulario completo</span><span lang-en>Full form</span></div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-lbl"><span lang-es>Revisión</span><span lang-en>Review</span></div><div class="step-desc"><span lang-es>3–7 días hábiles</span><span lang-en>3–7 business days</span></div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-lbl"><span lang-es>Código</span><span lang-en>Code</span></div><div class="step-desc"><span lang-es>Generado al enviar</span><span lang-en>Generated on submit</span></div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-lbl"><span lang-es>Activación</span><span lang-en>Activation</span></div><div class="step-desc"><span lang-es>Portal proveedores</span><span lang-en>Supplier portal</span></div></div>
+      <div class="step"><div class="step-num">1</div><div class="step-lbl"><span lang-es>Registro</span><span lang-en>Register</span><span lang-ar>تسجيل</span><span lang-zh>注册</span></div><div class="step-desc"><span lang-es>Formulario completo</span><span lang-en>Full form</span><span lang-ar>نموذج كامل</span><span lang-zh>完整表格</span></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-lbl"><span lang-es>Revisión</span><span lang-en>Review</span><span lang-ar>مراجعة</span><span lang-zh>审查</span></div><div class="step-desc"><span lang-es>3–7 días hábiles</span><span lang-en>3–7 business days</span><span lang-ar>3–7 أيام عمل</span><span lang-zh>3–7个工作日</span></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-lbl"><span lang-es>Código</span><span lang-en>Code</span><span lang-ar>الرمز</span><span lang-zh>代码</span></div><div class="step-desc"><span lang-es>Generado al enviar</span><span lang-en>Generated on submit</span><span lang-ar>يُنشأ عند الإرسال</span><span lang-zh>提交时生成</span></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-lbl"><span lang-es>Activación</span><span lang-en>Activation</span><span lang-ar>تفعيل</span><span lang-zh>激活</span></div><div class="step-desc"><span lang-es>Portal proveedores</span><span lang-en>Supplier portal</span><span lang-ar>بوابة الموردين</span><span lang-zh>供应商门户</span></div></div>
     </div>
 
     <div id="prvSuccess" class="success-box">
-      <h3>✅ <span lang-es>Registro enviado</span><span lang-en>Registration submitted</span></h3>
+      <h3>✅ <span lang-es>Registro enviado</span><span lang-en>Registration submitted</span><span lang-ar>تم إرسال التسجيل</span><span lang-zh>注册已提交</span></h3>
       <p id="prvCodeDisplay" style="font-size:1.3rem;font-weight:700;color:var(--gold);letter-spacing:0.08em;margin:0.8rem 0;">—</p>
-      <p><span lang-es>Guarde este código. El equipo GLV revisará su información en 3–7 días hábiles y confirmará la activación.</span><span lang-en>Save this code. The GLV team will review your information within 3–7 business days and confirm activation.</span></p>
+      <p><span lang-es>Guarde este código. El equipo GLV revisará su información en 3–7 días hábiles y confirmará la activación.</span><span lang-en>Save this code. The GLV team will review your information within 3–7 business days and confirm activation.</span><span lang-ar>احتفظ بهذا الرمز. سيراجع فريق GLV معلوماتك خلال 3–7 أيام عمل ويؤكد التفعيل.</span><span lang-zh>请保存此代码。GLV团队将在3–7个工作日内审核您的信息并确认激活。</span></p>
     </div>
 
     <div id="prvForm">
-      <div class="sep"><span lang-es>01 — Datos de la Empresa</span><span lang-en>01 — Company Data</span></div>
+      <div class="sep"><span lang-es>01 — Datos de la Empresa</span><span lang-en>01 — Company Data</span><span lang-ar>01 — بيانات الشركة</span><span lang-zh>01 — 公司资料</span></div>
       <div class="frow">
-        <div class="fg"><label><span lang-es>Razón social *</span><span lang-en>Legal name *</span></label><input type="text" id="p_empresa" placeholder="Nombre legal completo"></div>
-        <div class="fg"><label><span lang-es>País de operación *</span><span lang-en>Country *</span></label><input type="text" id="p_pais" placeholder="País principal"></div>
-        <div class="fg"><label>NIT / Tax ID *</label><input type="text" id="p_nit" placeholder="Identificación fiscal"></div>
-        <div class="fg"><label><span lang-es>Año de fundación</span><span lang-en>Year founded</span></label><input type="number" id="p_fundacion" placeholder="Ej: 2010" min="1900" max="2025"></div>
-        <div class="fg"><label><span lang-es>Dirección principal</span><span lang-en>Main address</span></label><input type="text" id="p_direccion" placeholder="Dirección completa"></div>
-        <div class="fg"><label><span lang-es>Sitio web</span><span lang-en>Website</span></label><input type="url" id="p_web" placeholder="https://"></div>
+        <div class="fg"><label><span lang-es>Razón social *</span><span lang-en>Legal name *</span><span lang-ar>الاسم القانوني *</span><span lang-zh>法定名称 *</span></label><input type="text" id="p_empresa" data-ph-es="Nombre legal completo" data-ph-en="Full legal name" data-ph-ar="الاسم القانوني الكامل" data-ph-zh="完整法定名称" placeholder="Nombre legal completo"></div>
+        <div class="fg"><label><span lang-es>País de operación *</span><span lang-en>Country *</span><span lang-ar>بلد العمليات *</span><span lang-zh>业务国家 *</span></label><input type="text" id="p_pais" data-ph-es="País principal" data-ph-en="Main country" data-ph-ar="البلد الرئيسي" data-ph-zh="主要国家" placeholder="País principal"></div>
+        <div class="fg"><label>NIT / Tax ID *</label><input type="text" id="p_nit" data-ph-es="Identificación fiscal" data-ph-en="Tax identification" data-ph-ar="الرقم الضريبي" data-ph-zh="税务标识号" placeholder="Identificación fiscal"></div>
+        <div class="fg"><label><span lang-es>Año de fundación</span><span lang-en>Year founded</span><span lang-ar>سنة التأسيس</span><span lang-zh>成立年份</span></label><input type="number" id="p_fundacion" data-ph-es="Ej: 2010" data-ph-en="E.g.: 2010" data-ph-ar="مثلاً: 2010" data-ph-zh="例：2010" placeholder="Ej: 2010" min="1900" max="2025"></div>
+        <div class="fg"><label><span lang-es>Dirección principal</span><span lang-en>Main address</span><span lang-ar>العنوان الرئيسي</span><span lang-zh>主要地址</span></label><input type="text" id="p_direccion" data-ph-es="Dirección completa" data-ph-en="Full address" data-ph-ar="العنوان الكامل" data-ph-zh="完整地址" placeholder="Dirección completa"></div>
+        <div class="fg"><label><span lang-es>Sitio web</span><span lang-en>Website</span><span lang-ar>الموقع الإلكتروني</span><span lang-zh>网站</span></label><input type="url" id="p_web" placeholder="https://"></div>
       </div>
-      <div class="fg"><label><span lang-es>Descripción de sus productos *</span><span lang-en>Product description *</span></label><textarea id="p_productos" placeholder="Productos, variedades, capacidad de producción, certificaciones..."></textarea></div>
+      <div class="fg"><label><span lang-es>Descripción de sus productos *</span><span lang-en>Product description *</span><span lang-ar>وصف المنتجات *</span><span lang-zh>产品描述 *</span></label><textarea id="p_productos" data-ph-es="Productos, variedades, capacidad de producción, certificaciones..." data-ph-en="Products, varieties, production capacity, certifications..." data-ph-ar="المنتجات، الأصناف، طاقة الإنتاج، الشهادات..." data-ph-zh="产品、品种、产能、认证..." placeholder="Productos, variedades, capacidad de producción, certificaciones..."></textarea></div>
 
-      <div class="sep"><span lang-es>02 — Representante Comercial</span><span lang-en>02 — Commercial Representative</span></div>
+      <div class="sep"><span lang-es>02 — Representante Comercial</span><span lang-en>02 — Commercial Representative</span><span lang-ar>02 — الممثل التجاري</span><span lang-zh>02 — 商务代表</span></div>
       <div class="frow">
-        <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span></label><input type="text" id="p_rep" placeholder="Nombre del representante"></div>
-        <div class="fg"><label><span lang-es>Cargo</span><span lang-en>Title</span></label><input type="text" id="p_cargo" placeholder="Director Comercial, Export Manager..."></div>
+        <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span><span lang-ar>الاسم الكامل *</span><span lang-zh>全名 *</span></label><input type="text" id="p_rep" data-ph-es="Nombre del representante" data-ph-en="Representative name" data-ph-ar="اسم الممثل" data-ph-zh="代表姓名" placeholder="Nombre del representante"></div>
+        <div class="fg"><label><span lang-es>Cargo</span><span lang-en>Title</span><span lang-ar>المنصب</span><span lang-zh>职位</span></label><input type="text" id="p_cargo" data-ph-es="Director Comercial, Export Manager..." data-ph-en="Commercial Director, Export Manager..." data-ph-ar="المدير التجاري، مدير التصدير..." data-ph-zh="商务总监、出口经理..." placeholder="Director Comercial, Export Manager..."></div>
         <div class="fg"><label>Email *</label><input type="email" id="p_email" placeholder="correo@empresa.com"></div>
-        <div class="fg"><label>WhatsApp / <span lang-es>Teléfono *</span><span lang-en>Phone *</span></label><input type="text" id="p_tel" style="background:var(--dark2);border:1px solid rgba(201,168,76,0.22);color:#E8E8E8;font-family:'Barlow',sans-serif;font-size:1rem;padding:0.9rem 1rem;outline:none;width:100%;-webkit-user-select:text;user-select:text;pointer-events:auto;cursor:text;" placeholder="+57 316 086 5294"><span class="fhint"><span lang-es>Incluya el indicativo de su país</span><span lang-en>Include your country code</span></span></div>
+        <div class="fg"><label>WhatsApp / <span lang-es>Teléfono *</span><span lang-en>Phone *</span><span lang-ar>هاتف *</span><span lang-zh>电话 *</span></label><input type="text" id="p_tel" style="background:var(--dark2);border:1px solid rgba(201,168,76,0.22);color:#E8E8E8;font-family:'Barlow',sans-serif;font-size:1rem;padding:0.9rem 1rem;outline:none;width:100%;-webkit-user-select:text;user-select:text;pointer-events:auto;cursor:text;" placeholder="+57 316 086 5294"><span class="fhint"><span lang-es>Incluya el indicativo de su país</span><span lang-en>Include your country code</span><span lang-ar>أدخل رمز دولتك</span><span lang-zh>请包含国家区号</span></span></div>
       </div>
 
-      <div class="sep"><span lang-es>03 — Capacidad y Certificaciones</span><span lang-en>03 — Capacity & Certifications</span></div>
+      <div class="sep"><span lang-es>03 — Capacidad y Certificaciones</span><span lang-en>03 — Capacity & Certifications</span><span lang-ar>03 — الطاقة والشهادات</span><span lang-zh>03 — 产能与认证</span></div>
       <div class="frow">
-        <div class="fg"><label><span lang-es>Capacidad de producción mensual</span></label><input type="text" id="p_capacidad" placeholder="Ej: 500 MT/mes"></div>
-        <div class="fg"><label><span lang-es>Experiencia en exportación</span><span lang-en">Export experience</span></label><select id="p_export"><option>Sí, exporto actualmente</option><option>Sí, he exportado antes</option><option>No, primera exportación</option></select></div>
+        <div class="fg"><label><span lang-es>Capacidad de producción mensual</span><span lang-en>Monthly production capacity</span><span lang-ar>طاقة الإنتاج الشهرية</span><span lang-zh>月产能</span></label><input type="text" id="p_capacidad" data-ph-es="Ej: 500 MT/mes" data-ph-en="E.g.: 500 MT/month" data-ph-ar="مثلاً: 500 طن/شهر" data-ph-zh="例：500吨/月" placeholder="Ej: 500 MT/mes"></div>
+        <div class="fg"><label><span lang-es>Experiencia en exportación</span><span lang-en>Export experience</span><span lang-ar>خبرة التصدير</span><span lang-zh>出口经验</span></label><select id="p_export"><option>Sí, exporto actualmente</option><option>Sí, he exportado antes</option><option>No, primera exportación</option></select></div>
       </div>
-      <div class="fg"><label><span lang-es>Certificaciones (marque las que aplican)</span></label>
+      <div class="fg"><label><span lang-es>Certificaciones (marque las que aplican)</span><span lang-en>Certifications (check all that apply)</span><span lang-ar>الشهادات (ضع علامة على ما ينطبق)</span><span lang-zh>认证（勾选适用项）</span></label>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem;margin-top:0.5rem;">
           <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;color:var(--text);cursor:pointer;text-transform:none;letter-spacing:0;"><input type="checkbox" id="c_ica" style="accent-color:var(--gold)"> ICA Colombia</label>
           <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;color:var(--text);cursor:pointer;text-transform:none;letter-spacing:0;"><input type="checkbox" id="c_mapa" style="accent-color:var(--gold)"> MAPA Brasil</label>
@@ -269,27 +274,31 @@ video.hero-video {
           <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.95rem;color:var(--text);cursor:pointer;text-transform:none;letter-spacing:0;"><input type="checkbox" id="c_usda" style="accent-color:var(--gold)"> USDA</label>
         </div>
       </div>
-      <div class="fg"><label><span lang-es>Condiciones comerciales propuestas</span></label><textarea id="p_condiciones" placeholder="Incoterms, plazos, MOQ, monedas..."></textarea></div>
+      <div class="fg"><label><span lang-es>Condiciones comerciales propuestas</span><span lang-en>Proposed commercial terms</span><span lang-ar>الشروط التجارية المقترحة</span><span lang-zh>建议商业条款</span></label><textarea id="p_condiciones" data-ph-es="Incoterms, plazos, MOQ, monedas..." data-ph-en="Incoterms, terms, MOQ, currencies..." data-ph-ar="إنكوترمز، مواعيد، الحد الأدنى للطلب، العملات..." data-ph-zh="贸易条款、期限、最小起订量、货币..." placeholder="Incoterms, plazos, MOQ, monedas..."></textarea></div>
 
-      <div class="sep"><span lang-es>04 — Declaraciones</span><span lang-en">04 — Declarations</span></div>
+      <div class="sep"><span lang-es>04 — Declaraciones</span><span lang-en>04 — Declarations</span><span lang-ar>04 — الإقرارات</span><span lang-zh>04 — 声明</span></div>
       <div style="display:flex;flex-direction:column;gap:0.8rem;margin-bottom:1.5rem;">
         <label style="display:flex;align-items:flex-start;gap:0.8rem;cursor:pointer;font-size:0.95rem;color:var(--text);">
           <input type="checkbox" id="p_check1" style="width:18px;height:18px;flex-shrink:0;margin-top:0.1rem;accent-color:var(--gold)">
           <span lang-es>Declaro que la información es veraz y que mi empresa opera conforme a las leyes de su país.</span>
           <span lang-en>I declare the information is truthful and my company operates in compliance with its country's laws.</span>
+          <span lang-ar>أعلن أن المعلومات صحيحة وأن شركتي تعمل وفقاً لقوانين بلدها.</span>
+          <span lang-zh>我声明所提供的信息真实，我的公司依照本国法律合规经营。</span>
         </label>
         <label style="display:flex;align-items:flex-start;gap:0.8rem;cursor:pointer;font-size:0.95rem;color:var(--text);">
           <input type="checkbox" id="p_check2" style="width:18px;height:18px;flex-shrink:0;margin-top:0.1rem;accent-color:var(--gold)">
           <span lang-es>Acepto que GLV puede verificar referencias y documentación antes de aprobar la relación comercial.</span>
           <span lang-en>I accept that GLV may verify references and documentation before approving the business relationship.</span>
+          <span lang-ar>أوافق على أن GLV يمكنها التحقق من المراجع والوثائق قبل الموافقة على العلاقة التجارية.</span>
+          <span lang-zh>我同意GLV可在批准商业关系前核实参考资料和文件。</span>
         </label>
       </div>
 
       <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
-        <button class="bg" onclick="submitPRV()">🏭 <span lang-es>Enviar Registro</span><span lang-en>Submit Registration</span></button>
+        <button class="bg" onclick="submitPRV()">🏭 <span lang-es>Enviar Registro</span><span lang-en>Submit Registration</span><span lang-ar>إرسال التسجيل</span><span lang-zh>提交注册</span></button>
         <a href="https://wa.me/573160865294" target="_blank" class="bb">💬 🇨🇴 WhatsApp</a>
       </div>
-      <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Revisión en 3–7 días hábiles.</span><span lang-en>Confidential. Review in 3–7 business days.</span></p>
+      <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Revisión en 3–7 días hábiles.</span><span lang-en>Confidential. Review in 3–7 business days.</span><span lang-ar>سري. مراجعة في 3–7 أيام عمل.</span><span lang-zh>保密。审查需3–7个工作日。</span></p>
     </div>
   </div>
 
@@ -301,23 +310,25 @@ video.hero-video {
     <div class="badge">
       <span class="badge-icon">🔧</span>
       <div class="badge-text">
-        <strong><span lang-es>Servicios Logísticos y de Exportación</span><span lang-en>Logistics and Export Services</span></strong><br>
+        <strong><span lang-es>Servicios Logísticos y de Exportación</span><span lang-en>Logistics and Export Services</span><span lang-ar>الخدمات اللوجستية وخدمات التصدير</span><span lang-zh>物流与出口服务</span></strong><br>
         <span lang-es>Seleccione el tipo de servicio. El formulario mostrará solo los campos relevantes para su categoría.</span>
         <span lang-en>Select the service type. The form will show only the fields relevant to your category.</span>
+        <span lang-ar>اختر نوع الخدمة. سيعرض النموذج الحقول ذات الصلة بفئتك فقط.</span>
+        <span lang-zh>选择服务类型。表格将仅显示与您类别相关的字段。</span>
       </div>
     </div>
 
     <div id="svcSuccess" class="success-box">
-      <h3>✅ <span lang-es>Solicitud enviada</span><span lang-en>Request submitted</span></h3>
+      <h3>✅ <span lang-es>Solicitud enviada</span><span lang-en>Request submitted</span><span lang-ar>تم إرسال الطلب</span><span lang-zh>申请已提交</span></h3>
       <p id="svcCodeDisplay" style="font-size:1.3rem;font-weight:700;color:var(--gold);letter-spacing:0.08em;margin:0.8rem 0;">—</p>
-      <p><span lang-es>Guarde este código. El equipo GLV revisará su perfil en 3–7 días hábiles y confirmará la activación.</span><span lang-en>Save this code. The GLV team will review your profile within 3–7 business days and confirm activation.</span></p>
+      <p><span lang-es>Guarde este código. El equipo GLV revisará su perfil en 3–7 días hábiles y confirmará la activación.</span><span lang-en>Save this code. The GLV team will review your profile within 3–7 business days and confirm activation.</span><span lang-ar>احتفظ بهذا الرمز. سيراجع فريق GLV ملفك خلال 3–7 أيام عمل ويؤكد التفعيل.</span><span lang-zh>请保存此代码。GLV团队将在3–7个工作日内审核您的资料并确认激活。</span></p>
     </div>
 
     <div id="svcForm">
       <div class="fg">
-        <label><span lang-es>Tipo de servicio *</span><span lang-en>Service type *</span></label>
+        <label><span lang-es>Tipo de servicio *</span><span lang-en>Service type *</span><span lang-ar>نوع الخدمة *</span><span lang-zh>服务类型 *</span></label>
         <select id="svcType" onchange="showSvcFields()">
-          <option value="">— <span lang-es>Seleccione</span><span lang-en>Select</span> —</option>
+          <option value="">— Seleccione —</option>
           <option value="freight">🚢 Freight Forwarder / Agente de Carga</option>
           <option value="aduanas">📋 Agente de Aduanas / Customs Broker</option>
           <option value="naviera">🛳️ Naviera / Shipping Line</option>
@@ -333,47 +344,47 @@ video.hero-video {
 
       <!-- COMMON -->
       <div class="svc-fields" id="svc-common">
-        <div class="sep"><span lang-es>Datos de su empresa</span><span lang-en>Your company data</span></div>
+        <div class="sep"><span lang-es>Datos de su empresa</span><span lang-en>Your company data</span><span lang-ar>بيانات شركتك</span><span lang-zh>公司资料</span></div>
         <div class="frow">
-          <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span></label><input type="text" id="sv_empresa" placeholder="Nombre legal"></div>
-          <div class="fg"><label><span lang-es>País *</span><span lang-en>Country *</span></label><input type="text" id="sv_pais" placeholder="País principal"></div>
+          <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label><input type="text" id="sv_empresa" data-ph-es="Nombre legal" data-ph-en="Legal name" data-ph-ar="الاسم القانوني" data-ph-zh="法定名称" placeholder="Nombre legal"></div>
+          <div class="fg"><label><span lang-es>País *</span><span lang-en>Country *</span><span lang-ar>البلد *</span><span lang-zh>国家 *</span></label><input type="text" id="sv_pais" data-ph-es="País principal" data-ph-en="Main country" data-ph-ar="البلد الرئيسي" data-ph-zh="主要国家" placeholder="País principal"></div>
           <div class="fg"><label>Email *</label><input type="email" id="sv_email" placeholder="correo@empresa.com"></div>
-          <div class="fg"><label>WhatsApp / <span lang-es>Teléfono</span><span lang-en>Phone</span></label><input type="text" id="sv_tel" style="background:var(--dark2);border:1px solid rgba(201,168,76,0.22);color:#E8E8E8;font-family:'Barlow',sans-serif;font-size:1rem;padding:0.9rem 1rem;outline:none;width:100%;-webkit-user-select:text;user-select:text;pointer-events:auto;cursor:text;" placeholder="+57 316 086 5294"><span class="fhint"><span lang-es>Incluya el indicativo de su país</span></span></div>
-          <div class="fg"><label><span lang-es>Representante *</span><span lang-en>Representative *</span></label><input type="text" id="sv_rep" placeholder="Nombre y cargo"></div>
-          <div class="fg"><label><span lang-es>Sitio web</span><span lang-en>Website</span></label><input type="url" id="sv_web" placeholder="https://"></div>
+          <div class="fg"><label>WhatsApp / <span lang-es>Teléfono</span><span lang-en>Phone</span><span lang-ar>هاتف</span><span lang-zh>电话</span></label><input type="text" id="sv_tel" style="background:var(--dark2);border:1px solid rgba(201,168,76,0.22);color:#E8E8E8;font-family:'Barlow',sans-serif;font-size:1rem;padding:0.9rem 1rem;outline:none;width:100%;-webkit-user-select:text;user-select:text;pointer-events:auto;cursor:text;" placeholder="+57 316 086 5294"><span class="fhint"><span lang-es>Incluya el indicativo de su país</span><span lang-en>Include your country code</span><span lang-ar>أدخل رمز دولتك</span><span lang-zh>请包含国家区号</span></span></div>
+          <div class="fg"><label><span lang-es>Representante *</span><span lang-en>Representative *</span><span lang-ar>الممثل *</span><span lang-zh>代表 *</span></label><input type="text" id="sv_rep" data-ph-es="Nombre y cargo" data-ph-en="Name and title" data-ph-ar="الاسم والمنصب" data-ph-zh="姓名和职位" placeholder="Nombre y cargo"></div>
+          <div class="fg"><label><span lang-es>Sitio web</span><span lang-en>Website</span><span lang-ar>الموقع الإلكتروني</span><span lang-zh>网站</span></label><input type="url" id="sv_web" placeholder="https://"></div>
         </div>
-        <div class="fg"><label><span lang-es>Descripción del servicio y experiencia *</span><span lang-en>Service description and experience *</span></label><textarea id="sv_desc" placeholder="Describa su servicio, experiencia, rutas, certificaciones relevantes..."></textarea></div>
+        <div class="fg"><label><span lang-es>Descripción del servicio y experiencia *</span><span lang-en>Service description and experience *</span><span lang-ar>وصف الخدمة والخبرة *</span><span lang-zh>服务描述和经验 *</span></label><textarea id="sv_desc" data-ph-es="Describa su servicio, experiencia, rutas, certificaciones relevantes..." data-ph-en="Describe your service, experience, routes, relevant certifications..." data-ph-ar="صف خدمتك وخبرتك والمسارات والشهادات ذات الصلة..." data-ph-zh="描述您的服务、经验、路线、相关认证..." placeholder="Describa su servicio, experiencia, rutas, certificaciones relevantes..."></textarea></div>
       </div>
 
       <!-- FREIGHT -->
       <div class="svc-fields" id="svc-freight">
-        <div class="sep">🚢 <span lang-es>Freight Forwarder — Detalles</span></div>
+        <div class="sep">🚢 <span lang-es>Freight Forwarder — Detalles</span><span lang-en>Freight Forwarder — Details</span><span lang-ar>شركة الشحن — التفاصيل</span><span lang-zh>货运代理 — 详情</span></div>
         <div class="frow">
-          <div class="fg"><label><span lang-es>Rutas principales</span></label><input type="text" id="ff_rutas" placeholder="Colombia, Brasil, India..."></div>
-          <div class="fg"><label><span lang-es>Destinos frecuentes</span></label><input type="text" id="ff_dest" placeholder="Dubai, Jeddah, Shanghai..."></div>
-          <div class="fg"><label><span lang-es>Navieras con las que trabaja</span></label><input type="text" id="ff_navieras" placeholder="MSC, Maersk, CMA CGM..."></div>
-          <div class="fg"><label><span lang-es>Licencia / Número habilitante</span></label><input type="text" id="ff_licencia" placeholder="IATA / habilitación"></div>
+          <div class="fg"><label><span lang-es>Rutas principales</span><span lang-en>Main routes</span><span lang-ar>المسارات الرئيسية</span><span lang-zh>主要航线</span></label><input type="text" id="ff_rutas" data-ph-es="Colombia, Brasil, India..." data-ph-en="Colombia, Brazil, India..." data-ph-ar="كولومبيا، البرازيل، الهند..." data-ph-zh="哥伦比亚、巴西、印度..." placeholder="Colombia, Brasil, India..."></div>
+          <div class="fg"><label><span lang-es>Destinos frecuentes</span><span lang-en>Frequent destinations</span><span lang-ar>الوجهات المتكررة</span><span lang-zh>常见目的地</span></label><input type="text" id="ff_dest" placeholder="Dubai, Jeddah, Shanghai..."></div>
+          <div class="fg"><label><span lang-es>Navieras con las que trabaja</span><span lang-en>Shipping lines you work with</span><span lang-ar>شركات الملاحة التي تعمل معها</span><span lang-zh>合作船运公司</span></label><input type="text" id="ff_navieras" placeholder="MSC, Maersk, CMA CGM..."></div>
+          <div class="fg"><label><span lang-es>Licencia / Número habilitante</span><span lang-en>License / Authorization number</span><span lang-ar>الترخيص / رقم التفويض</span><span lang-zh>执照 / 授权号</span></label><input type="text" id="ff_licencia" data-ph-es="IATA / habilitación" data-ph-en="IATA / authorization" data-ph-ar="IATA / تفويض" data-ph-zh="IATA / 授权" placeholder="IATA / habilitación"></div>
         </div>
       </div>
 
       <!-- ADUANAS -->
       <div class="svc-fields" id="svc-aduanas">
-        <div class="sep">📋 <span lang-es>Agente de Aduanas — Detalles</span></div>
+        <div class="sep">📋 <span lang-es>Agente de Aduanas — Detalles</span><span lang-en>Customs Agent — Details</span><span lang-ar>وكيل الجمارك — التفاصيل</span><span lang-zh>报关行 — 详情</span></div>
         <div class="frow">
-          <div class="fg"><label><span lang-es>Licencia / habilitación *</span></label><input type="text" id="ad_licencia" placeholder="DIAN, SUNAT, etc."></div>
-          <div class="fg"><label><span lang-es>Puertos donde opera</span></label><input type="text" id="ad_puertos" placeholder="Cartagena, Buenaventura..."></div>
-          <div class="fg"><label><span lang-es>Sistemas que utiliza</span></label><input type="text" id="ad_sistemas" placeholder="MUISCA, VUCE, SYGA..."></div>
-          <div class="fg"><label><span lang-es>País(es) de operación</span></label><input type="text" id="ad_paises" placeholder="Colombia, Perú..."></div>
+          <div class="fg"><label><span lang-es>Licencia / habilitación *</span><span lang-en>License / authorization *</span><span lang-ar>الترخيص / التفويض *</span><span lang-zh>执照 / 授权 *</span></label><input type="text" id="ad_licencia" placeholder="DIAN, SUNAT, etc."></div>
+          <div class="fg"><label><span lang-es>Puertos donde opera</span><span lang-en>Ports where you operate</span><span lang-ar>الموانئ التي تعمل بها</span><span lang-zh>运营港口</span></label><input type="text" id="ad_puertos" placeholder="Cartagena, Buenaventura..."></div>
+          <div class="fg"><label><span lang-es>Sistemas que utiliza</span><span lang-en>Systems you use</span><span lang-ar>الأنظمة التي تستخدمها</span><span lang-zh>使用的系统</span></label><input type="text" id="ad_sistemas" placeholder="MUISCA, VUCE, SYGA..."></div>
+          <div class="fg"><label><span lang-es>País(es) de operación</span><span lang-en>Country(ies) of operation</span><span lang-ar>بلد/بلدان العمليات</span><span lang-zh>运营国家</span></label><input type="text" id="ad_paises" placeholder="Colombia, Perú..."></div>
         </div>
       </div>
 
       <!-- SUBMIT SVC -->
       <div class="svc-fields" id="svc-submit">
         <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-top:1.5rem;">
-          <button class="bg" onclick="submitSVC()">🔧 <span lang-es>Enviar Registro</span><span lang-en>Submit Registration</span></button>
+          <button class="bg" onclick="submitSVC()">🔧 <span lang-es>Enviar Registro</span><span lang-en>Submit Registration</span><span lang-ar>إرسال التسجيل</span><span lang-zh>提交注册</span></button>
           <a href="https://wa.me/573160865294" target="_blank" class="bb">💬 🇨🇴 WhatsApp</a>
         </div>
-        <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Revisión en 3–7 días. Código GLV-SVC asignado al enviar.</span></p>
+        <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Revisión en 3–7 días. Código GLV-SVC asignado al enviar.</span><span lang-en>Confidential. Review in 3–7 days. GLV-SVC code assigned on submit.</span><span lang-ar>سري. مراجعة في 3–7 أيام. رمز GLV-SVC يُعيَّن عند الإرسال.</span><span lang-zh>保密。3–7天审查。提交时分配GLV-SVC代码。</span></p>
       </div>
     </div>
   </div>
@@ -386,23 +397,25 @@ video.hero-video {
     <div class="badge">
       <span class="badge-icon">🌐</span>
       <div class="badge-text">
-        <strong><span lang-es>Cualquier servicio o producto que GLV pueda necesitar</span><span lang-en>Any service or product GLV may need</span></strong><br>
+        <strong><span lang-es>Cualquier servicio o producto que GLV pueda necesitar</span><span lang-en>Any service or product GLV may need</span><span lang-ar>أي خدمة أو منتج قد تحتاجه GLV</span><span lang-zh>GLV可能需要的任何服务或产品</span></strong><br>
         <span lang-es>Stands, catering, transporte de personal, prescintos, dotación, marketing, tecnología y más. <strong>Sin certificaciones requeridas.</strong> Solo cuéntenos qué ofrece.</span>
         <span lang-en>Stands, catering, staff transport, seals, uniforms, marketing, technology and more. <strong>No certifications required.</strong> Just tell us what you offer.</span>
+        <span lang-ar>أكشاك، تقديم طعام، نقل موظفين، أختام، زي موحد، تسويق، تقنية والمزيد. <strong>لا شهادات مطلوبة.</strong> فقط أخبرنا بما تقدمه.</span>
+        <span lang-zh>展台、餐饮、员工运输、封条、制服、营销、技术等。<strong>无需认证。</strong>只需告诉我们您提供什么。</span>
       </div>
     </div>
 
     <div id="otroSuccess" class="success-box">
-      <h3>✅ <span lang-es>Solicitud enviada</span><span lang-en>Request submitted</span></h3>
+      <h3>✅ <span lang-es>Solicitud enviada</span><span lang-en>Request submitted</span><span lang-ar>تم إرسال الطلب</span><span lang-zh>申请已提交</span></h3>
       <p id="otrCodeDisplay" style="font-size:1.3rem;font-weight:700;color:var(--gold);letter-spacing:0.08em;margin:0.8rem 0;">—</p>
-      <p><span lang-es>Guarde este código. El equipo GLV revisará su perfil y lo contactará si hay compatibilidad.</span><span lang-en>Save this code. The GLV team will review your profile and contact you if there is compatibility.</span></p>
+      <p><span lang-es>Guarde este código. El equipo GLV revisará su perfil y lo contactará si hay compatibilidad.</span><span lang-en>Save this code. The GLV team will review your profile and contact you if there is compatibility.</span><span lang-ar>احتفظ بهذا الرمز. سيراجع فريق GLV ملفك ويتصل بك إذا كان هناك توافق.</span><span lang-zh>请保存此代码。GLV团队将审核您的资料，如有匹配将与您联系。</span></p>
     </div>
 
     <div id="otroForm">
       <div class="fg">
-        <label><span lang-es>Categoría de su servicio o producto *</span><span lang-en>Your service / product category *</span></label>
+        <label><span lang-es>Categoría de su servicio o producto *</span><span lang-en>Your service / product category *</span><span lang-ar>فئة خدمتك أو منتجك *</span><span lang-zh>您的服务/产品类别 *</span></label>
         <select id="otroType">
-          <option value="">— <span lang-es>Seleccione la más cercana</span><span lang-en>Select the closest one</span> —</option>
+          <option value="">— Seleccione la más cercana —</option>
           <optgroup label="🎪 Eventos">
             <option value="stands">🎪 Stands / Exhibidores / Display</option>
             <option value="eventos">🎭 Organización de Eventos</option>
@@ -448,13 +461,13 @@ video.hero-video {
         </select>
       </div>
 
-      <div class="sep"><span lang-es>Sus datos de contacto</span><span lang-en>Your contact details</span></div>
+      <div class="sep"><span lang-es>Sus datos de contacto</span><span lang-en>Your contact details</span><span lang-ar>بيانات الاتصال</span><span lang-zh>联系方式</span></div>
       <div class="frow">
-        <div class="fg"><label><span lang-es>Nombre empresa o negocio *</span><span lang-en>Company / business name *</span></label><input type="text" id="ot_empresa" placeholder="Nombre con el que lo conocen"></div>
-        <div class="fg"><label><span lang-es>Su nombre *</span><span lang-en>Your name *</span></label><input type="text" id="ot_rep" placeholder="Nombre completo"></div>
+        <div class="fg"><label><span lang-es>Nombre empresa o negocio *</span><span lang-en>Company / business name *</span><span lang-ar>اسم الشركة أو النشاط *</span><span lang-zh>公司/业务名称 *</span></label><input type="text" id="ot_empresa" data-ph-es="Nombre con el que lo conocen" data-ph-en="Name you're known by" data-ph-ar="الاسم المعروف به" data-ph-zh="常用名称" placeholder="Nombre con el que lo conocen"></div>
+        <div class="fg"><label><span lang-es>Su nombre *</span><span lang-en>Your name *</span><span lang-ar>اسمك *</span><span lang-zh>您的姓名 *</span></label><input type="text" id="ot_rep" data-ph-es="Nombre completo" data-ph-en="Full name" data-ph-ar="الاسم الكامل" data-ph-zh="全名" placeholder="Nombre completo"></div>
         <div class="fg"><label>Email *</label><input type="email" id="ot_email" placeholder="correo@email.com"></div>
         <div class="fg">
-          <label>📱 WhatsApp / <span lang-es>Teléfono *</span><span lang-en>Phone *</span></label>
+          <label>📱 WhatsApp / <span lang-es>Teléfono *</span><span lang-en>Phone *</span><span lang-ar>هاتف *</span><span lang-zh>电话 *</span></label>
           <input type="text"
                  id="ot_tel"
                  name="ot_tel"
@@ -466,34 +479,38 @@ video.hero-video {
           <span style="font-size:0.85rem;color:#888;margin-top:0.3rem;display:block;">
             <span lang-es>Ingrese su número con el código de país. Ej: +57 316 086 5294 · +1 555 123 4567 · +971 50 123 4567</span>
             <span lang-en>Enter your number with country code. Ex: +57 316 086 5294 · +1 555 123 4567</span>
+            <span lang-ar>أدخل رقمك مع رمز الدولة. مثال: +971 50 123 4567</span>
+            <span lang-zh>请输入含国家区号的号码。例：+86 138 0000 0000</span>
           </span>
         </div>
-        <div class="fg"><label><span lang-es>País / Ciudad</span><span lang-en>Country / City</span></label><input type="text" id="ot_pais" placeholder="País y ciudad principal"></div>
-        <div class="fg"><label><span lang-es>Sitio web o redes (opcional)</span><span lang-en>Website or social (optional)</span></label><input type="text" id="ot_web" placeholder="www.empresa.com · @empresa"></div>
+        <div class="fg"><label><span lang-es>País / Ciudad</span><span lang-en>Country / City</span><span lang-ar>البلد / المدينة</span><span lang-zh>国家 / 城市</span></label><input type="text" id="ot_pais" data-ph-es="País y ciudad principal" data-ph-en="Country and main city" data-ph-ar="البلد والمدينة الرئيسية" data-ph-zh="国家和主要城市" placeholder="País y ciudad principal"></div>
+        <div class="fg"><label><span lang-es>Sitio web o redes (opcional)</span><span lang-en>Website or social (optional)</span><span lang-ar>الموقع أو الشبكات (اختياري)</span><span lang-zh>网站或社交媒体（选填）</span></label><input type="text" id="ot_web" placeholder="www.empresa.com · @empresa"></div>
       </div>
 
-      <div class="sep"><span lang-es>¿Qué ofrece?</span><span lang-en>What do you offer?</span></div>
-      <div class="fg"><label><span lang-es>Descripción de su servicio o producto *</span><span lang-en>Service / product description *</span></label><textarea id="ot_descripcion" style="min-height:110px;" placeholder="Cuéntenos qué hace, cómo funciona, qué productos o servicios específicos ofrece..."></textarea></div>
+      <div class="sep"><span lang-es>¿Qué ofrece?</span><span lang-en>What do you offer?</span><span lang-ar>ماذا تقدم؟</span><span lang-zh>您提供什么？</span></div>
+      <div class="fg"><label><span lang-es>Descripción de su servicio o producto *</span><span lang-en>Service / product description *</span><span lang-ar>وصف الخدمة أو المنتج *</span><span lang-zh>服务/产品描述 *</span></label><textarea id="ot_descripcion" style="min-height:110px;" data-ph-es="Cuéntenos qué hace, cómo funciona, qué productos o servicios específicos ofrece..." data-ph-en="Tell us what you do, how it works, what specific products or services you offer..." data-ph-ar="أخبرنا ماذا تفعل، وكيف يعمل، وما المنتجات أو الخدمات المحددة التي تقدمها..." data-ph-zh="告诉我们您做什么、如何运作、提供哪些具体产品或服务..." placeholder="Cuéntenos qué hace, cómo funciona, qué productos o servicios específicos ofrece..."></textarea></div>
       <div class="frow">
-        <div class="fg"><label><span lang-es>Precio o tarifa referencial</span><span lang-en>Reference price / rate</span></label><input type="text" id="ot_tarifa" placeholder="Ej: desde $50.000 COP · $200 USD"></div>
-        <div class="fg"><label><span lang-es>Tiempo de entrega / disponibilidad</span><span lang-en>Delivery time / availability</span></label><input type="text" id="ot_tiempo" placeholder="Ej: 24–48 horas · inmediato"></div>
+        <div class="fg"><label><span lang-es>Precio o tarifa referencial</span><span lang-en>Reference price / rate</span><span lang-ar>السعر أو التعرفة المرجعية</span><span lang-zh>参考价格/费率</span></label><input type="text" id="ot_tarifa" placeholder="Ej: desde $50.000 COP · $200 USD"></div>
+        <div class="fg"><label><span lang-es>Tiempo de entrega / disponibilidad</span><span lang-en>Delivery time / availability</span><span lang-ar>وقت التسليم / التوفر</span><span lang-zh>交货时间/可用性</span></label><input type="text" id="ot_tiempo" data-ph-es="Ej: 24–48 horas · inmediato" data-ph-en="E.g.: 24–48 hours · immediate" data-ph-ar="مثلاً: 24-48 ساعة · فوري" data-ph-zh="例：24-48小时·即时" placeholder="Ej: 24–48 horas · inmediato"></div>
       </div>
-      <div class="fg"><label><span lang-es>¿Por qué debería GLV trabajar con usted?</span><span lang-en>Why should GLV work with you?</span></label><textarea id="ot_valor" style="min-height:80px;" placeholder="Experiencia, referencias, diferenciadores..."></textarea></div>
+      <div class="fg"><label><span lang-es>¿Por qué debería GLV trabajar con usted?</span><span lang-en>Why should GLV work with you?</span><span lang-ar>لماذا يجب على GLV العمل معك؟</span><span lang-zh>为什么GLV应该与您合作？</span></label><textarea id="ot_valor" style="min-height:80px;" data-ph-es="Experiencia, referencias, diferenciadores..." data-ph-en="Experience, references, differentiators..." data-ph-ar="الخبرة والمراجع والمميزات..." data-ph-zh="经验、参考资料、差异化优势..." placeholder="Experiencia, referencias, diferenciadores..."></textarea></div>
 
       <div style="background:rgba(201,168,76,0.06);border-left:3px solid var(--gold);padding:1rem 1.2rem;margin:1.5rem 0;">
         <label style="display:flex;align-items:flex-start;gap:0.8rem;cursor:pointer;font-size:0.95rem;color:var(--text);">
           <input type="checkbox" id="ot_check" style="width:18px;height:18px;flex-shrink:0;margin-top:0.1rem;accent-color:var(--gold)">
           <span lang-es>Confirmo que la información es correcta y autorizo a GLV a contactarme para evaluar una posible relación comercial.</span>
           <span lang-en>I confirm the information is correct and authorize GLV to contact me to evaluate a possible business relationship.</span>
+          <span lang-ar>أؤكد صحة المعلومات وأفوض GLV بالتواصل معي لتقييم علاقة تجارية محتملة.</span>
+          <span lang-zh>我确认信息正确，并授权GLV联系我以评估潜在的商业关系。</span>
         </label>
       </div>
 
       <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
-        <button class="bg" onclick="submitOtro()">🌐 <span lang-es>Enviar Registro</span><span lang-en>Submit Registration</span></button>
+        <button class="bg" onclick="submitOtro()">🌐 <span lang-es>Enviar Registro</span><span lang-en>Submit Registration</span><span lang-ar>إرسال التسجيل</span><span lang-zh>提交注册</span></button>
         <a href="https://wa.me/573160865294" target="_blank" class="bb">💬 🇨🇴 WhatsApp</a>
         <a href="https://wa.me/5511946610038" target="_blank" class="bb">💬 🇧🇷 WhatsApp</a>
       </div>
-      <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Lo contactaremos si su servicio encaja con las necesidades de GLV. Código <strong>GLV-OTR-######</strong> generado al enviar.</span></p>
+      <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Lo contactaremos si su servicio encaja con las necesidades de GLV. Código <strong>GLV-OTR-######</strong> generado al enviar.</span><span lang-en>Confidential. We will contact you if your service fits GLV's needs. Code <strong>GLV-OTR-######</strong> generated on submit.</span><span lang-ar>سري. سنتواصل معك إذا كانت خدمتك تتوافق مع احتياجات GLV. يُنشأ رمز <strong>GLV-OTR-######</strong> عند الإرسال.</span><span lang-zh>保密。如您的服务符合GLV需求，我们将与您联系。提交时生成代码<strong>GLV-OTR-######</strong>。</span></p>
     </div>
   </div>
 
@@ -532,13 +549,107 @@ function sendW3F(subject, body, replyEmail) {
     .catch(function(e){ console.warn('W3F error:', e); });
 }
 
+// ── MSG DICTIONARY ──
+var MSG = {
+  es: {
+    required:         'Complete los campos obligatorios (*).',
+    declarations:     'Acepte las declaraciones antes de enviar.',
+    requiredSVC:      'Complete empresa y email.',
+    requiredOtro:     'Complete nombre de empresa y email.',
+    declarationsOtro: 'Confirme la declaración antes de enviar.'
+  },
+  en: {
+    required:         'Please complete all required fields (*).',
+    declarations:     'Please accept all declarations before submitting.',
+    requiredSVC:      'Please complete company name and email.',
+    requiredOtro:     'Please complete company name and email.',
+    declarationsOtro: 'Please confirm the declaration before submitting.'
+  },
+  ar: {
+    required:         'يرجى استكمال الحقول المطلوبة (*).',
+    declarations:     'يرجى قبول جميع الإقرارات قبل الإرسال.',
+    requiredSVC:      'يرجى إكمال اسم الشركة والبريد الإلكتروني.',
+    requiredOtro:     'يرجى إكمال اسم الشركة والبريد الإلكتروني.',
+    declarationsOtro: 'يرجى تأكيد الإقرار قبل الإرسال.'
+  },
+  zh: {
+    required:         '请填写所有必填字段 (*)。',
+    declarations:     '请在提交前接受所有声明。',
+    requiredSVC:      '请填写公司名称和电子邮件。',
+    requiredOtro:     '请填写公司名称和电子邮件。',
+    declarationsOtro: '请在提交前确认声明。'
+  }
+};
+function currentLang(){ return localStorage.getItem('glv-lang') || 'es'; }
+
+// ── SELECT OPTIONS DICTIONARY ──
+var SELECT_OPTS = {
+  p_export: {
+    es: ['Sí, exporto actualmente','Sí, he exportado antes','No, primera exportación'],
+    en: ['Yes, currently exporting','Yes, exported before','No, first export'],
+    ar: ['نعم، أصدّر حالياً','نعم، صدّرت من قبل','لا، أول تصدير'],
+    zh: ['是，目前出口中','是，曾经出口过','否，首次出口']
+  },
+  svcType: {
+    es: ['— Seleccione —','🚢 Freight Forwarder / Agente de Carga','📋 Agente de Aduanas / Customs Broker','🛳️ Naviera / Shipping Line','🔬 Laboratorio de Calidad','🐾 Veterinaria / Médico Veterinario','🛡️ Seguros de Carga','☪️ Certificadora Halal / Kosher','🚛 Transporte Terrestre','🏭 Bodega / Almacén','📦 Otro servicio logístico'],
+    en: ['— Select —','🚢 Freight Forwarder','📋 Customs Agent / Broker','🛳️ Shipping Line','🔬 Quality Laboratory','🐾 Veterinary Services','🛡️ Cargo Insurance','☪️ Halal / Kosher Certifier','🚛 Land Transport','🏭 Warehouse / Storage','📦 Other logistics service'],
+    ar: ['— اختر —','🚢 وكيل شحن','📋 وكيل جمارك','🛳️ شركة ملاحة','🔬 مختبر جودة','🐾 خدمات بيطرية','🛡️ تأمين الشحن','☪️ جهة تصديق حلال/كوشير','🚛 نقل بري','🏭 مستودع/تخزين','📦 خدمة لوجستية أخرى'],
+    zh: ['— 请选择 —','🚢 货运代理','📋 报关行','🛳️ 船运公司','🔬 质量实验室','🐾 兽医服务','🛡️ 货运保险','☪️ 清真/洁食认证','🚛 陆运','🏭 仓库/储存','📦 其他物流服务']
+  },
+  otroType: {
+    es: ['— Seleccione la más cercana —','🎪 Stands / Exhibidores / Display','🎭 Organización de Eventos','🎥 Audiovisual / Fotografía / Video','🖨️ Impresos / Pendones / Banners','🍽️ Catering / Alimentación para Eventos','🥘 Comidas Preparadas / Restaurante','🥤 Bebidas / Snacks / Provisiones','🚐 Transporte de Personal / Camionetas','📦 Mensajería / Paquetería / Courier','🔒 Prescintos / Sellos / Seguridad de Carga','📦 Empaques / Cajas / Materiales','👔 Dotación / Uniformes / EPP','📋 Papelería / Útiles de Oficina','💻 Equipos Tecnológicos / Computadores','🔧 Mantenimiento / Plomería / Electricidad','🧹 Aseo y Limpieza de Instalaciones','💻 Desarrollo Web / Software / IT','📣 Marketing / Publicidad / Diseño','📊 Consultoría / Asesoría','🎓 Capacitación / Formación','👤 Selección de Personal / RRHH','🔒 Vigilancia / Seguridad','💳 Contabilidad / Finanzas','🏨 Hospedaje / Hotel Corporativo','🎁 Obsequios / Merchandising','✨ Otro — no está en la lista'],
+    en: ['— Select closest —','🎪 Stands / Exhibitors / Display','🎭 Event Organization','🎥 Audiovisual / Photography / Video','🖨️ Print / Banners / Signage','🍽️ Catering / Event Food','🥘 Prepared Meals / Restaurant','🥤 Beverages / Snacks / Provisions','🚐 Staff Transport / Vans','📦 Courier / Parcel / Delivery','🔒 Seals / Security / Cargo Safety','📦 Packaging / Boxes / Materials','👔 Uniforms / Workwear / PPE','📋 Stationery / Office Supplies','💻 Tech Equipment / Computers','🔧 Maintenance / Plumbing / Electrical','🧹 Cleaning / Facility Services','💻 Web Dev / Software / IT','📣 Marketing / Advertising / Design','📊 Consulting / Advisory','🎓 Training / Education','👤 HR / Recruitment','🔒 Security / Surveillance','💳 Accounting / Finance','🏨 Accommodation / Corporate Hotel','🎁 Gifts / Merchandising','✨ Other — not in the list'],
+    ar: ['— اختر الأقرب —','🎪 أكشاك / عارضون','🎭 تنظيم فعاليات','🎥 سمعي بصري / تصوير','🖨️ مطبوعات / لافتات','🍽️ تقديم طعام للفعاليات','🥘 وجبات جاهزة / مطعم','🥤 مشروبات / وجبات خفيفة','🚐 نقل موظفين / حافلات','📦 بريد سريع / توصيل','🔒 أختام / أمن الشحن','📦 تغليف / صناديق / مواد','👔 زي موحد / معدات حماية','📋 قرطاسية / مستلزمات مكتب','💻 أجهزة تقنية / حواسيب','🔧 صيانة / سباكة / كهرباء','🧹 تنظيف / خدمات المنشأة','💻 تطوير ويب / برمجيات','📣 تسويق / إعلان / تصميم','📊 استشارات','🎓 تدريب / تعليم','👤 موارد بشرية / توظيف','🔒 أمن / حراسة','💳 محاسبة / مالية','🏨 إقامة / فندق مؤسسي','🎁 هدايا / ترويجية','✨ أخرى — غير موجودة'],
+    zh: ['— 选择最近的 —','🎪 展台/展示','🎭 活动策划','🎥 视听/摄影/视频','🖨️ 印刷/横幅','🍽️ 餐饮/活动食品','🥘 成品餐/餐厅','🥤 饮料/零食','🚐 员工运输/面包车','📦 快递/包裹','🔒 铅封/安保','📦 包装/材料','👔 制服/防护设备','📋 文具/办公用品','💻 技术设备/电脑','🔧 维护/水电','🧹 清洁服务','💻 网络开发/软件','📣 营销/广告/设计','📊 咨询','🎓 培训/教育','👤 人力资源','🔒 安保/监控','💳 会计/财务','🏨 住宿/企业酒店','🎁 礼品/周边','✨ 其他——不在列表中']
+  }
+};
+
+var OPTGROUP_LABELS = {
+  otroType: {
+    es: ['🎪 Eventos','🍽️ Alimentación','🚐 Transporte','🔧 Insumos y Suministros','🏗️ Mantenimiento','💻 Tecnología y Marketing','📊 Servicios Profesionales','🏨 Otros'],
+    en: ['🎪 Events','🍽️ Food & Catering','🚐 Transport','🔧 Supplies','🏗️ Maintenance','💻 Technology & Marketing','📊 Professional Services','🏨 Other'],
+    ar: ['🎪 الفعاليات','🍽️ الطعام والتموين','🚐 النقل','🔧 اللوازم','🏗️ الصيانة','💻 التكنولوجيا والتسويق','📊 الخدمات المهنية','🏨 أخرى'],
+    zh: ['🎪 活动','🍽️ 餐饮','🚐 运输','🔧 物资','🏗️ 维护','💻 技术与营销','📊 专业服务','🏨 其他']
+  }
+};
+
+function updateSelects(l) {
+  Object.keys(SELECT_OPTS).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var opts = SELECT_OPTS[id][l] || SELECT_OPTS[id]['es'];
+    Array.from(el.options).forEach(function(opt, i) {
+      if (opts[i] !== undefined) opt.textContent = opts[i];
+    });
+  });
+  Object.keys(OPTGROUP_LABELS).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var groups = el.querySelectorAll('optgroup');
+    var labels = OPTGROUP_LABELS[id][l] || OPTGROUP_LABELS[id]['es'];
+    groups.forEach(function(grp, i) {
+      if (labels[i] !== undefined) grp.label = labels[i];
+    });
+  });
+}
+
 // ── LANGUAGE ──
 function setLang(l){
   document.body.className = 'lang-' + l;
   document.querySelectorAll('.lb').forEach(function(b){
-    b.classList.toggle('on', b.textContent.trim() === l);
+    var t = b.textContent.trim().toLowerCase();
+    b.classList.toggle('on',
+      t === l ||
+      (l === 'ar' && b.textContent.includes('عربي')) ||
+      (l === 'zh' && b.textContent.includes('中文'))
+    );
   });
   localStorage.setItem('glv-lang', l);
+  document.documentElement.lang = l;
+  document.querySelectorAll('[data-ph-' + l + ']').forEach(function(el){
+    el.placeholder = el.getAttribute('data-ph-' + l);
+  });
+  updateSelects(l);
 }
 setLang(localStorage.getItem('glv-lang') || 'es');
 
@@ -586,9 +697,9 @@ function glvGenCode(prefix) {
 // ── SUBMIT PRODUCTS ──
 function submitPRV(){
   var empresa = gv('p_empresa'), email = gv('p_email'), nit = gv('p_nit');
-  if(!empresa || !email || !nit){ alert('Complete los campos obligatorios (*).'); return; }
+  if(!empresa || !email || !nit){ alert(MSG[currentLang()].required); return; }
   if(!document.getElementById('p_check1').checked || !document.getElementById('p_check2').checked){
-    alert('Acepte las declaraciones antes de enviar.'); return;
+    alert(MSG[currentLang()].declarations); return;
   }
   var certs = [];
   ['ica','mapa','haccp','ifs','halal','usda'].forEach(function(c){
@@ -618,7 +729,7 @@ function submitPRV(){
 // ── SUBMIT LOGISTICS SERVICE ──
 function submitSVC(){
   var empresa = gv('sv_empresa'), email = gv('sv_email');
-  if(!empresa || !email){ alert('Complete empresa y email.'); return; }
+  if(!empresa || !email){ alert(MSG[currentLang()].requiredSVC); return; }
   var sel  = document.getElementById('svcType');
   var tipo = sel ? sel.options[sel.selectedIndex].text : '—';
   var msg  = 'GLV - REGISTRO PROVEEDOR SERVICIOS LOGISTICOS\n\n'
@@ -640,8 +751,8 @@ function submitSVC(){
 // ── SUBMIT OTROS ──
 function submitOtro(){
   var empresa = gv('ot_empresa'), email = gv('ot_email');
-  if(!empresa || !email){ alert('Complete nombre de empresa y email.'); return; }
-  if(!document.getElementById('ot_check').checked){ alert('Confirme la declaración antes de enviar.'); return; }
+  if(!empresa || !email){ alert(MSG[currentLang()].requiredOtro); return; }
+  if(!document.getElementById('ot_check').checked){ alert(MSG[currentLang()].declarationsOtro); return; }
   var sel  = document.getElementById('otroType');
   var tipo = sel ? sel.options[sel.selectedIndex].text : 'No especificado';
   var msg  = 'GLV - REGISTRO PROVEEDOR GENERAL\n\n'

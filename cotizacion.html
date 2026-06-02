@@ -373,7 +373,7 @@ video.hero-video {
     <div class="frow">
       <div class="fg">
         <label><span lang-es>Número de animales *</span><span lang-en>Number of animals *</span><span lang-ar>عدد الحيوانات *</span><span lang-zh>动物数量 *</span></label>
-        <input type="number" id="ov_a" min="25000" step="500" placeholder="Mínimo 25.000">
+        <input type="number" id="ov_a" min="25000" step="500" data-ph-es="Mínimo 25.000" data-ph-en="Minimum 25,000" data-ph-ar="الحد الأدنى 25,000" data-ph-zh="最少25,000" placeholder="Mínimo 25.000">
         <span class="fhint"><span lang-es>Mínimo 25.000 animales por operación</span><span lang-en>Minimum 25,000 animals per operation</span></span>
       </div>
       <div class="fg">
@@ -383,27 +383,27 @@ video.hero-video {
       </div>
       <div class="fg">
         <label><span lang-es>Puerto / ciudad destino</span><span lang-en>Destination port / city</span><span lang-ar>ميناء / مدينة الوجهة</span><span lang-zh>目的港/城市</span></label>
-        <input type="text" id="ov_d" placeholder="Jeddah, Dubai, Kuwait, Muscat, Argel...">
+        <input type="text" id="ov_d" data-ph-es="Jeddah, Dubai, Kuwait, Muscat, Argel..." data-ph-en="Jeddah, Dubai, Kuwait, Muscat, Algiers..." data-ph-ar="جدة، دبي، الكويت، مسقط، الجزائر..." data-ph-zh="吉达、迪拜、科威特、马斯喀特、阿尔及尔..." placeholder="Jeddah, Dubai, Kuwait, Muscat, Argel...">
       </div>
       <div class="fg">
         <label><span lang-es>Raza solicitada</span><span lang-en>Requested breed</span><span lang-ar>السلالة المطلوبة</span><span lang-zh>所需品种</span></label>
         <select id="ov_r">
-          <option value=""><span lang-es>Cualquier raza disponible</span><span lang-en>Any available breed</span></option>
+          <option value="">Cualquier raza disponible</option>
           <option>Dorper</option><option>Suffolk</option><option>Merino</option>
           <option>Corriedale</option><option>Santa Inês (BR)</option><option>Hampshire Down</option>
-          <option><span lang-es>A definir con agente</span><span lang-en>To define with agent</span></option>
+          <option>A definir con agente</option>
         </select>
       </div>
     </div>
-        <p class="slbl"><span lang-es>Paso 2B — Sus datos de contacto</span><span lang-en">Step 2B — Your contact details</span><span lang-ar>الخطوة 2B — بيانات الاتصال</span><span lang-zh>第2B步 — 联系方式</span></p>
+        <p class="slbl"><span lang-es>Paso 2B — Sus datos de contacto</span><span lang-en>Step 2B — Your contact details</span><span lang-ar>الخطوة 2B — بيانات الاتصال</span><span lang-zh>第2B步 — 联系方式</span></p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem;">
       <div class="fg">
         <label><span lang-es>Su nombre completo *</span><span lang-en>Your full name *</span><span lang-ar>اسمك الكامل *</span><span lang-zh>您的姓名 *</span></label>
-        <input type="text" id="ov_nombre" placeholder="Nombre · Name · الاسم · 姓名">
+        <input type="text" id="ov_nombre" data-ph-es="Nombre · Name · الاسم · 姓名" data-ph-en="Name · Nombre · الاسم · 姓名" data-ph-ar="الاسم · Name · Nombre · 姓名" data-ph-zh="姓名 · Name · Nombre · الاسم" placeholder="Nombre · Name · الاسم · 姓名">
       </div>
       <div class="fg">
         <label><span lang-es>Empresa / Organización *</span><span lang-en>Company / Organization *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label>
-        <input type="text" id="ov_empresa" placeholder="Nombre de la empresa">
+        <input type="text" id="ov_empresa" data-ph-es="Nombre de la empresa" data-ph-en="Company name" data-ph-ar="اسم الشركة" data-ph-zh="公司名称" placeholder="Nombre de la empresa">
       </div>
       <div class="fg">
         <label>Email *</label>
@@ -422,6 +422,8 @@ video.hero-video {
         <label style="font-size:0.75rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);">
           <span lang-es>🤝 Seleccione su Agente GLV *</span>
           <span lang-en>🤝 Select your GLV Agent *</span>
+          <span lang-ar>🤝 اختر وكيل GLV *</span>
+          <span lang-zh>🤝 选择您的GLV代理 *</span>
         </label>
         <select class="agent-selector" id="ov_agent" style="background:var(--dark2);border:1px solid rgba(201,168,76,0.25);color:var(--text);font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.85rem 2.5rem 0.85rem 1rem;width:100%;outline:none;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27%3E%3Cpath fill=%27%23C9A84C%27 d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 1rem center;">
           <option value="">— Seleccione su agente —</option>
@@ -429,6 +431,8 @@ video.hero-video {
         <span style="font-size:0.82rem;color:var(--dim);">
           <span lang-es>El agente recibirá su cotización directamente por WhatsApp o WeChat</span>
           <span lang-en>The agent will receive your quote directly via WhatsApp or WeChat</span>
+          <span lang-ar>سيتلقى الوكيل عرض سعرك مباشرةً عبر واتساب أو ويتشات</span>
+          <span lang-zh>代理将直接通过WhatsApp或微信收到您的报价</span>
         </span>
       </div>
       <button class="bg" onclick="calcOv()" style="width:100%;justify-content:center;font-size:1rem;padding:1rem;">
@@ -505,7 +509,7 @@ video.hero-video {
         <div class="tdays" style="font-size:1.1rem;margin:0.6rem 0">FOB · CFR Caribe</div>
         <div class="tfob">FOB Cartagena/Bventura: <strong>USD 3,15</strong></div>
         <div class="tcfr">CFR Caribe: <strong>USD 3,55</strong></div>
-        <div class="tpay" style="font-size:0.8rem"><span lang-es>por cubeta × 30 huevos · Tipo A</span><span lang-en">per tray × 30 eggs · Grade A</span></div>
+        <div class="tpay" style="font-size:0.8rem"><span lang-es>por cubeta × 30 huevos · Tipo A</span><span lang-en>per tray × 30 eggs · Grade A</span><span lang-ar>لكل علبة × 30 بيضة · فئة A</span><span lang-zh>每托 × 30个 · A级</span></div>
       </div>
       <div class="tier" id="eg_t_mena" onclick="selEM('mena')">
         <div class="tbadge">🇦🇪 MENA · África</div>
@@ -532,11 +536,11 @@ video.hero-video {
     <div class="frow">
       <div class="fg">
         <label><span lang-es>Número de FCL *</span><span lang-en>Number of FCL *</span><span lang-ar>عدد FCL *</span><span lang-zh>FCL数 *</span></label>
-        <input type="number" id="eg_fcl" min="1" step="1" placeholder="Ej: 1, 5, 10, 20...">
+        <input type="number" id="eg_fcl" min="1" step="1" data-ph-es="Ej: 1, 5, 10, 20..." data-ph-en="E.g.: 1, 5, 10, 20..." data-ph-ar="مثلاً: 1، 5، 10، 20..." data-ph-zh="例：1, 5, 10, 20..." placeholder="Ej: 1, 5, 10, 20...">
         <span class="fhint"><span lang-es>Mínimo 1 FCL · 40' HC refrigerado</span><span lang-en>Minimum 1 FCL · 40' HC refrigerated</span></span>
       </div>
       <div class="fg">
-        <label><span lang-es>Tipo de huevo</span><span lang-en>Egg type</span></label>
+        <label><span lang-es>Tipo de huevo</span><span lang-en>Egg type</span><span lang-ar>نوع البيض</span><span lang-zh>鸡蛋类型</span></label>
         <select id="eg_tipo">
           <option value="Tipo A (50-60g)">Tipo A · 50–60g</option>
           <option value="Doble AA Premium">Doble AA · Premium</option>
@@ -545,15 +549,15 @@ video.hero-video {
         </select>
       </div>
       <div class="fg">
-        <label><span lang-es>Empaque</span><span lang-en>Packaging</span></label>
+        <label><span lang-es>Empaque</span><span lang-en>Packaging</span><span lang-ar>التغليف</span><span lang-zh>包装</span></label>
         <select id="eg_pack">
-          <option><span lang-es>Cubeta plástica 30 huevos (exportación)</span><span lang-en">30-egg plastic tray (export)</span></option>
-          <option><span lang-es>Cubeta transparente con tapa</span><span lang-en>Transparent tray with lid</span></option>
-          <option><span lang-es>Marca propia cliente</span><span lang-en>Client private label</span></option>
+          <option>Cubeta plástica 30 huevos (exportación)</option>
+          <option>Cubeta transparente con tapa</option>
+          <option>Marca propia cliente</option>
         </select>
       </div>
       <div class="fg">
-        <label><span lang-es>Certificación</span><span lang-en>Certification</span></label>
+        <label><span lang-es>Certificación</span><span lang-en>Certification</span><span lang-ar>الشهادة</span><span lang-zh>认证</span></label>
         <select id="eg_cert">
           <option>ICA Colombia</option>
           <option>MAPA Brasil</option>
@@ -563,15 +567,15 @@ video.hero-video {
       </div>
     </div>
 
-        <p class="slbl"><span lang-es>Paso 2B — Sus datos de contacto</span><span lang-en">Step 2B — Your contact details</span><span lang-ar>الخطوة 2B — بيانات الاتصال</span><span lang-zh>第2B步 — 联系方式</span></p>
+        <p class="slbl"><span lang-es>Paso 2B — Sus datos de contacto</span><span lang-en>Step 2B — Your contact details</span><span lang-ar>الخطوة 2B — بيانات الاتصال</span><span lang-zh>第2B步 — 联系方式</span></p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:0.5rem;">
       <div class="fg">
         <label><span lang-es>Su nombre completo *</span><span lang-en>Your full name *</span><span lang-ar>اسمك الكامل *</span><span lang-zh>您的姓名 *</span></label>
-        <input type="text" id="eg_nombre" placeholder="Nombre · Name · الاسم · 姓名">
+        <input type="text" id="eg_nombre" data-ph-es="Nombre · Name · الاسم · 姓名" data-ph-en="Name · Nombre" data-ph-ar="الاسم · Name" data-ph-zh="姓名 · Name" placeholder="Nombre · Name · الاسم · 姓名">
       </div>
       <div class="fg">
         <label><span lang-es>Empresa / Organización *</span><span lang-en>Company / Organization *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label>
-        <input type="text" id="eg_empresa" placeholder="Nombre de la empresa">
+        <input type="text" id="eg_empresa" data-ph-es="Nombre de la empresa" data-ph-en="Company name" data-ph-ar="اسم الشركة" data-ph-zh="公司名称" placeholder="Nombre de la empresa">
       </div>
       <div class="fg">
         <label>Email *</label>
@@ -608,13 +612,15 @@ video.hero-video {
       </span>
     </div>
 
-    <p class="slbl"><span lang-es>Paso 3 — Calcule su operación</span><span lang-en>Step 3 — Calculate your operation</span></p>
+    <p class="slbl"><span lang-es>Paso 3 — Calcule su operación</span><span lang-en>Step 3 — Calculate your operation</span><span lang-ar>الخطوة 3 — احسب عمليتك</span><span lang-zh>第3步 — 计算您的操作</span></p>
 
     <
       <div class="fg" style="margin-top:0.5rem;">
         <label style="font-size:0.75rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);">
           <span lang-es>🤝 Seleccione su Agente GLV *</span>
           <span lang-en>🤝 Select your GLV Agent *</span>
+          <span lang-ar>🤝 اختر وكيل GLV *</span>
+          <span lang-zh>🤝 选择您的GLV代理 *</span>
         </label>
         <select class="agent-selector" id="eg_agent" style="background:var(--dark2);border:1px solid rgba(201,168,76,0.25);color:var(--text);font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.85rem 2.5rem 0.85rem 1rem;width:100%;outline:none;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27%3E%3Cpath fill=%27%23C9A84C%27 d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 1rem center;">
           <option value="">— Seleccione su agente —</option>
@@ -693,30 +699,30 @@ video.hero-video {
 
     <div id="genSuccess" class="success-msg">
       <h3>✅ <span lang-es>¡Solicitud enviada!</span><span lang-en>Request sent!</span><span lang-ar>تم الإرسال!</span><span lang-zh>申请已发送！</span></h3>
-      <p><span lang-es>Su solicitud fue enviada. Un agente GLV le contactará en menos de 24 horas a su email y/o WhatsApp con cotización formal.</span><span lang-en>Your request was sent. A GLV agent will contact you in under 24 hours at your email and/or WhatsApp with a formal quote.</span></p>
+      <p><span lang-es>Su solicitud fue enviada. Un agente GLV le contactará en menos de 24 horas a su email y/o WhatsApp con cotización formal.</span><span lang-en>Your request was sent. A GLV agent will contact you in under 24 hours at your email and/or WhatsApp with a formal quote.</span><span lang-ar>تم إرسال طلبك. سيتواصل معك وكيل GLV في أقل من 24 ساعة.</span><span lang-zh>您的申请已发送。GLV代理将在24小时内通过电子邮件和/或WhatsApp联系您，提供正式报价。</span></p>
     </div>
 
     <div id="genForm">
       <div class="frow">
-        <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span><span lang-ar>الاسم الكامل *</span><span lang-zh>全名 *</span></label><input type="text" id="gn_n" placeholder="Su nombre"></div>
-        <div class="fg"><label><span lang-es>Cargo</span><span lang-en>Title</span><span lang-ar>المسمى</span><span lang-zh>职位</span></label><input type="text" id="gn_ca" placeholder="CEO, Director de Compras..."></div>
-        <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label><input type="text" id="gn_e" placeholder="Su empresa"></div>
-        <div class="fg"><label><span lang-es>País *</span><span lang-en>Country *</span><span lang-ar>البلد *</span><span lang-zh>国家 *</span></label><input type="text" id="gn_pa" placeholder="País"></div>
+        <div class="fg"><label><span lang-es>Nombre completo *</span><span lang-en>Full name *</span><span lang-ar>الاسم الكامل *</span><span lang-zh>全名 *</span></label><input type="text" id="gn_n" data-ph-es="Su nombre" data-ph-en="Your name" data-ph-ar="اسمك" data-ph-zh="您的姓名" placeholder="Su nombre"></div>
+        <div class="fg"><label><span lang-es>Cargo</span><span lang-en>Title</span><span lang-ar>المسمى</span><span lang-zh>职位</span></label><input type="text" id="gn_ca" data-ph-es="CEO, Director de Compras..." data-ph-en="CEO, Purchasing Director..." data-ph-ar="الرئيس التنفيذي، مدير المشتريات..." data-ph-zh="首席执行官、采购总监..." placeholder="CEO, Director de Compras..."></div>
+        <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span><span lang-ar>الشركة *</span><span lang-zh>公司 *</span></label><input type="text" id="gn_e" data-ph-es="Su empresa" data-ph-en="Your company" data-ph-ar="شركتك" data-ph-zh="您的公司" placeholder="Su empresa"></div>
+        <div class="fg"><label><span lang-es>País *</span><span lang-en>Country *</span><span lang-ar>البلد *</span><span lang-zh>国家 *</span></label><input type="text" id="gn_pa" data-ph-es="País" data-ph-en="Country" data-ph-ar="البلد" data-ph-zh="国家" placeholder="País"></div>
         <div class="fg"><label>Email *</label><input type="email" id="gn_em" placeholder="correo@empresa.com"></div>
         <div class="fg"><label>WhatsApp / <span lang-es>Teléfono</span><span lang-en>Phone</span></label><input type="tel" id="gn_t" placeholder="+000 000 0000"></div>
       </div>
       <div class="fg">
         <label><span lang-es>Producto(s), cantidad(es) y destino(s) *</span><span lang-en>Product(s), quantity(ies) and destination(s) *</span><span lang-ar>المنتج(ات) والكمية والوجهة *</span><span lang-zh>产品、数量和目的地 *</span></label>
-        <textarea id="gn_d" style="min-height:110px" placeholder="Describa: productos, cantidades, destinos, plazos, incoterms, requisitos Halal/Kosher, private label, etc..."></textarea>
+        <textarea id="gn_d" style="min-height:110px" data-ph-es="Describa: productos, cantidades, destinos, plazos, incoterms, requisitos Halal/Kosher, private label, etc..." data-ph-en="Describe: products, quantities, destinations, terms, incoterms, Halal/Kosher requirements, private label, etc..." data-ph-ar="صف: المنتجات، الكميات، الوجهات، الشروط، إنكوترمز، متطلبات حلال/كوشير، العلامة الخاصة..." data-ph-zh="请描述：产品、数量、目的地、条款、贸易条件、清真/洁食要求、自有品牌等..." placeholder="Describa: productos, cantidades, destinos, plazos, incoterms, requisitos Halal/Kosher, private label, etc..."></textarea>
       </div>
       <div class="frow">
         <div class="fg">
           <label>Incoterm</label>
-          <select id="gn_i"><option>CFR</option><option>CIF</option><option>FOB</option><option>DAP</option><option><span lang-es>Por definir</span><span lang-en>TBD</span></option></select>
+          <select id="gn_i"><option>CFR</option><option>CIF</option><option>FOB</option><option>DAP</option><option>Por definir</option></select>
         </div>
         <div class="fg">
           <label><span lang-es>Forma de pago preferida</span><span lang-en>Preferred payment</span></label>
-          <select id="gn_pm"><option>L/C</option><option>T/T</option><option>SBLC</option><option>CAD</option><option>D/P</option><option><span lang-es>Por definir</span><span lang-en>TBD</span></option></select>
+          <select id="gn_pm"><option>L/C</option><option>T/T</option><option>SBLC</option><option>CAD</option><option>D/P</option><option>Por definir</option></select>
         </div>
       </div>
       
@@ -724,6 +730,8 @@ video.hero-video {
         <label style="font-size:0.75rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);">
           <span lang-es>🤝 Seleccione su Agente GLV *</span>
           <span lang-en>🤝 Select your GLV Agent *</span>
+          <span lang-ar>🤝 اختر وكيل GLV *</span>
+          <span lang-zh>🤝 选择您的GLV代理 *</span>
         </label>
         <select class="agent-selector" id="gn_agent" style="background:var(--dark2);border:1px solid rgba(201,168,76,0.25);color:var(--text);font-family:'Barlow',sans-serif;font-size:0.95rem;padding:0.85rem 2.5rem 0.85rem 1rem;width:100%;outline:none;cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27%3E%3Cpath fill=%27%23C9A84C%27 d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 1rem center;">
           <option value="">— Seleccione su agente —</option>
@@ -762,7 +770,7 @@ video.hero-video {
     <a href="/aceites-derivados" class="di"><div class="di-n">II</div><div><div class="di-nm"><span lang-es>Aceites & Coco</span><span lang-en>Oils & Coconut</span></div><div class="di-s">Soja · Girasol · Coco</div></div></a>
   </div>
   <div class="sc">
-    <div class="sc-t"><span lang-es>7 Entidades Globales</span><span lang-en">7 Global Entities</span></div>
+    <div class="sc-t"><span lang-es>7 Entidades Globales</span><span lang-en>7 Global Entities</span><span lang-ar>7 كيانات عالمية</span><span lang-zh>7个全球实体</span></div>
     <div style="display:flex;flex-direction:column;gap:0.5rem;font-size:1rem;color:var(--dim)">
       <div>🇨🇴 GLV Services SAS · Colombia</div>
       <div>🇺🇸 GLV Food Services LLC · Florida</div>
@@ -785,8 +793,8 @@ video.hero-video {
     <p class="modal-sub"><span lang-es>Complete los datos y un agente GLV le responderá en menos de 24 horas con precio, specs técnicas y documentación disponible.</span><span lang-en>Fill in the data and a GLV agent will respond in under 24 hours with price, technical specs and available documentation.</span></p>
 
     <div class="frow">
-      <div class="fg"><label><span lang-es>Su nombre *</span><span lang-en>Your name *</span></label><input type="text" id="m_n" placeholder="Nombre completo"></div>
-      <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span></label><input type="text" id="m_e" placeholder="Su empresa"></div>
+      <div class="fg"><label><span lang-es>Su nombre *</span><span lang-en>Your name *</span></label><input type="text" id="m_n" data-ph-es="Nombre completo" data-ph-en="Full name" data-ph-ar="الاسم الكامل" data-ph-zh="全名" placeholder="Nombre completo"></div>
+      <div class="fg"><label><span lang-es>Empresa *</span><span lang-en>Company *</span></label><input type="text" id="m_e" data-ph-es="Su empresa" data-ph-en="Your company" data-ph-ar="شركتك" data-ph-zh="您的公司" placeholder="Su empresa"></div>
     </div>
     <div class="frow">
       <div class="fg"><label>Email *</label><input type="email" id="m_em" placeholder="correo@empresa.com"></div>
@@ -794,7 +802,7 @@ video.hero-video {
     </div>
     <div class="fg">
       <label><span lang-es>País destino / Cantidad estimada</span><span lang-en>Destination country / Est. quantity</span></label>
-      <input type="text" id="m_d" placeholder="País · Ej: 2 FCL, 500 MT...">
+      <input type="text" id="m_d" data-ph-es="País · Ej: 2 FCL, 500 MT..." data-ph-en="Country · E.g.: 2 FCL, 500 MT..." data-ph-ar="البلد · مثلاً: 2 FCL، 500 طن..." data-ph-zh="国家 · 例：2个FCL、500吨..." placeholder="País · Ej: 2 FCL, 500 MT...">
     </div>
     <div class="fg">
       <label><span lang-es>Observaciones (Halal, private label, incoterm...)</span><span lang-en>Notes (Halal, private label, incoterm...)</span></label>
@@ -849,7 +857,9 @@ var AGENTS = [
     wa: '573160865294',
     display: '+57 316 086 5294',
     zone_es: 'Colombia · Asia · China · GACC',
-    zone_en: 'Colombia · Asia · China · GACC'
+    zone_en: 'Colombia · Asia · China · GACC',
+    zone_ar: 'كولومبيا · آسيا · الصين · GACC',
+    zone_zh: '哥伦比亚 · 亚洲 · 中国 · GACC'
   },
   {
     id: 'a2',
@@ -858,7 +868,9 @@ var AGENTS = [
     wa: '5511946610038',
     display: '+55 11 9466 10038',
     zone_es: 'MENA · Europa · China',
-    zone_en: 'MENA · Europe · China'
+    zone_en: 'MENA · Europe · China',
+    zone_ar: 'الشرق الأوسط وشمال أفريقيا · أوروبا · الصين',
+    zone_zh: '中东北非 · 欧洲 · 中国'
   },
   {
     id: 'a3',
@@ -867,7 +879,9 @@ var AGENTS = [
     wa: '573204937827',
     display: '+57 320 4937827',
     zone_es: 'USA · MENA · África Norte · Europa · Corea del Sur · Singapur · India · China · Asia',
-    zone_en: 'USA · MENA · North Africa · Europe · South Korea · Singapore · India · China · Asia'
+    zone_en: 'USA · MENA · North Africa · Europe · South Korea · Singapore · India · China · Asia',
+    zone_ar: 'الولايات المتحدة · الشرق الأوسط · شمال أفريقيا · أوروبا · آسيا',
+    zone_zh: '美国 · 中东北非 · 北非 · 欧洲 · 亚洲'
   },
   {
     id: 'a4',
@@ -876,7 +890,9 @@ var AGENTS = [
     wa: '18683676961',
     display: '+1 868 367-6961',
     zone_es: 'Caribe · Otros',
-    zone_en: 'Caribbean · Others'
+    zone_en: 'Caribbean · Others',
+    zone_ar: 'البحر الكاريبي · أخرى',
+    zone_zh: '加勒比 · 其他'
   },
   {
     id: 'a5',
@@ -886,7 +902,9 @@ var AGENTS = [
     wechat: 'TerraDavid',
     display: 'WeChat: TerraDavid',
     zone_es: 'Asia · China · Zona Asiática',
-    zone_en: 'Asia · China · Asian Zone'
+    zone_en: 'Asia · China · Asian Zone',
+    zone_ar: 'آسيا · الصين · المنطقة الآسيوية',
+    zone_zh: '亚洲 · 中国 · 亚洲区'
   }
 ];
 
@@ -927,21 +945,180 @@ function sendW3F(subject, body, replyEmail) {
 })();
 
 // ════════════════════════════════════════════
+// MSG DICTIONARY
+// ════════════════════════════════════════════
+var MSG = {
+  es: {
+    selectTier:    'Seleccione primero el plazo de la operación (Paso 1).',
+    minAnimals:    'El mínimo de animales por operación es 25.000.',
+    selectMarket:  'Seleccione primero el mercado destino (Paso 1).',
+    minFCL:        'Ingrese al menos 1 contenedor FCL.',
+    customPrice:   'Para precio personalizado, ingrese el valor de la oferta GLV.',
+    selectAgent:   'Por favor seleccione un agente GLV antes de enviar.',
+    wechatCopied:  function(id){ return 'ID de WeChat copiado: ' + id + '\nBusque este contacto en WeChat y envíe el mensaje.'; },
+    wechatManual:  function(id){ return 'Agente WeChat: ' + id + '\nAbra WeChat, busque este ID y envíe su mensaje.'; },
+    noTierPDF:     'Seleccione un plazo primero.',
+    ovContactReq:  'Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).',
+    noTierWA:      'Seleccione un plazo primero.',
+    noMarketPDF:   'Seleccione mercado primero.',
+    eggContactReq: 'Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).',
+    noMarketWA:    'Seleccione mercado y complete los datos.',
+    noMarketEmail: 'Seleccione mercado y complete los datos.',
+    required:      'Complete los campos obligatorios (*).',
+    modalName:     'Por favor ingrese su nombre.',
+    ovWarnHtml:    '<strong>Operación urgente:</strong> Costos logísticos más altos. CFR USD 6,00/kg incluye flete urgente y documentación express.',
+    sblcHtml:      '<strong>SBLC únicamente (90 días):</strong> GLV acepta solo SBLC emitido por banco de primer orden internacional.',
+    ttHtml:        '<strong>Solo T/T Directo (&lt;60 días):</strong> No se aceptan L/C ni SBLC en operaciones urgentes.',
+    catQuoteWA:    '💬 Cotizar por WA',
+    catFormBtn:    '📋 Formulario',
+    catNoProducts: 'No se encontraron productos.'
+  },
+  en: {
+    selectTier:    'Please select the operation timeline first (Step 1).',
+    minAnimals:    'Minimum 25,000 animals per operation.',
+    selectMarket:  'Please select the destination market first (Step 1).',
+    minFCL:        'Please enter at least 1 FCL container.',
+    customPrice:   'For custom price, enter the GLV offer value.',
+    selectAgent:   'Please select a GLV agent before submitting.',
+    wechatCopied:  function(id){ return 'WeChat ID copied: ' + id + '\nSearch this contact in WeChat and send your message.'; },
+    wechatManual:  function(id){ return 'WeChat agent: ' + id + '\nOpen WeChat, search this ID and send your message.'; },
+    noTierPDF:     'Please select a timeline first.',
+    ovContactReq:  'Please enter your name and company before submitting (Step 2B).',
+    noTierWA:      'Please select a timeline first.',
+    noMarketPDF:   'Please select a market first.',
+    eggContactReq: 'Please enter your name and company before submitting (Step 2B).',
+    noMarketWA:    'Please select a market and complete the data.',
+    noMarketEmail: 'Please select a market and complete the data.',
+    required:      'Please complete all required fields (*).',
+    modalName:     'Please enter your name.',
+    ovWarnHtml:    '<strong>Urgent operation:</strong> Higher logistics costs. CFR USD 6.00/kg includes urgent freight and express documentation.',
+    sblcHtml:      '<strong>SBLC only (90 days):</strong> GLV accepts only SBLC issued by a top-tier international bank.',
+    ttHtml:        '<strong>T/T Direct only (&lt;60 days):</strong> L/C and SBLC not accepted for urgent operations.',
+    catQuoteWA:    '💬 Quote via WhatsApp',
+    catFormBtn:    '📋 Form',
+    catNoProducts: 'No products found.'
+  },
+  ar: {
+    selectTier:    'يرجى اختيار المدة الزمنية للعملية أولاً (الخطوة 1).',
+    minAnimals:    'الحد الأدنى للعملية 25,000 حيوان.',
+    selectMarket:  'يرجى اختيار سوق الوجهة أولاً (الخطوة 1).',
+    minFCL:        'يرجى إدخال حاوية FCL واحدة على الأقل.',
+    customPrice:   'للسعر المخصص، أدخل قيمة عرض GLV.',
+    selectAgent:   'يرجى اختيار وكيل GLV قبل الإرسال.',
+    wechatCopied:  function(id){ return 'تم نسخ معرف WeChat: ' + id + '\nابحث عن هذا الاتصال في WeChat وأرسل رسالتك.'; },
+    wechatManual:  function(id){ return 'وكيل WeChat: ' + id + '\nافتح WeChat وابحث عن هذا المعرف وأرسل رسالتك.'; },
+    noTierPDF:     'يرجى اختيار مدة زمنية أولاً.',
+    ovContactReq:  'يرجى إدخال اسمك وشركتك قبل الإرسال (الخطوة 2B).',
+    noTierWA:      'يرجى اختيار مدة زمنية أولاً.',
+    noMarketPDF:   'يرجى اختيار السوق أولاً.',
+    eggContactReq: 'يرجى إدخال اسمك وشركتك قبل الإرسال (الخطوة 2B).',
+    noMarketWA:    'يرجى اختيار السوق وإكمال البيانات.',
+    noMarketEmail: 'يرجى اختيار السوق وإكمال البيانات.',
+    required:      'يرجى استكمال الحقول المطلوبة (*).',
+    modalName:     'يرجى إدخال اسمك.',
+    ovWarnHtml:    '<strong>عملية عاجلة:</strong> تكاليف لوجستية أعلى. CFR USD 6.00/كغ يشمل الشحن العاجل والوثائق السريعة.',
+    sblcHtml:      '<strong>SBLC فقط (90 يوماً):</strong> تقبل GLV فقط SBLC صادراً عن بنك دولي من الدرجة الأولى.',
+    ttHtml:        '<strong>T/T مباشر فقط (&lt;60 يوماً):</strong> لا تُقبل خطابات الاعتماد أو SBLC في العمليات العاجلة.',
+    catQuoteWA:    '💬 اطلب عبر واتساب',
+    catFormBtn:    '📋 نموذج',
+    catNoProducts: 'لم يتم العثور على منتجات.'
+  },
+  zh: {
+    selectTier:    '请先选择操作时间表（第1步）。',
+    minAnimals:    '每次操作最少需要25,000头动物。',
+    selectMarket:  '请先选择目标市场（第1步）。',
+    minFCL:        '请至少输入1个FCL集装箱。',
+    customPrice:   '如需自定义价格，请输入GLV报价值。',
+    selectAgent:   '请在提交前选择GLV代理。',
+    wechatCopied:  function(id){ return '微信ID已复制：' + id + '\n在微信中搜索此联系人并发送消息。'; },
+    wechatManual:  function(id){ return '微信代理：' + id + '\n打开微信，搜索此ID并发送消息。'; },
+    noTierPDF:     '请先选择时间表。',
+    ovContactReq:  '请在提交前输入您的姓名和公司（第2B步）。',
+    noTierWA:      '请先选择时间表。',
+    noMarketPDF:   '请先选择市场。',
+    eggContactReq: '请在提交前输入您的姓名和公司（第2B步）。',
+    noMarketWA:    '请选择市场并填写完整数据。',
+    noMarketEmail: '请选择市场并填写完整数据。',
+    required:      '请填写所有必填字段 (*)。',
+    modalName:     '请输入您的姓名。',
+    ovWarnHtml:    '<strong>紧急操作：</strong>物流成本较高。CFR USD 6.00/公斤包含紧急运费和快递文件。',
+    sblcHtml:      '<strong>仅SBLC（90天）：</strong>GLV仅接受国际一流银行开具的SBLC。',
+    ttHtml:        '<strong>仅限T/T直接付款（&lt;60天）：</strong>紧急操作不接受信用证或SBLC。',
+    catQuoteWA:    '💬 WhatsApp询价',
+    catFormBtn:    '📋 表格',
+    catNoProducts: '未找到产品。'
+  }
+};
+function currentLang() { return localStorage.getItem('glv-lang') || 'es'; }
+
+// ════════════════════════════════════════════
+// SELECT OPTIONS
+// ════════════════════════════════════════════
+var SELECT_OPTS = {
+  ov_r: {
+    es: ['Cualquier raza disponible','Dorper','Suffolk','Merino','Corriedale','Santa Inês (BR)','Hampshire Down','A definir con agente'],
+    en: ['Any available breed','Dorper','Suffolk','Merino','Corriedale','Santa Inês (BR)','Hampshire Down','To define with agent'],
+    ar: ['أي سلالة متاحة','Dorper','Suffolk','Merino','Corriedale','Santa Inês (BR)','Hampshire Down','يحدده الوكيل'],
+    zh: ['任何可用品种','Dorper','Suffolk','Merino','Corriedale','Santa Inês (BR)','Hampshire Down','待与代理确定']
+  },
+  eg_tipo: {
+    es: ['Tipo A · 50–60g','Doble AA · Premium','Blanco · Tipo A','Marrón · Tipo A'],
+    en: ['Grade A · 50–60g','Double AA · Premium','White · Grade A','Brown · Grade A'],
+    ar: ['فئة A · 50-60غ','فئة AA مزدوجة · فاخر','أبيض · فئة A','بني · فئة A'],
+    zh: ['A级 · 50–60g','AA级双料 · 优质','白壳 · A级','褐壳 · A级']
+  },
+  eg_pack: {
+    es: ['Cubeta plástica 30 huevos (exportación)','Cubeta transparente con tapa','Marca propia cliente'],
+    en: ['30-egg plastic tray (export)','Transparent tray with lid','Client private label'],
+    ar: ['علبة بلاستيكية 30 بيضة (تصدير)','علبة شفافة مع غطاء','علامة العميل الخاصة'],
+    zh: ['30个鸡蛋塑料托盘（出口）','透明托盘带盖','客户自有品牌']
+  },
+  gn_i: {
+    es: ['CFR','CIF','FOB','DAP','Por definir'],
+    en: ['CFR','CIF','FOB','DAP','TBD'],
+    ar: ['CFR','CIF','FOB','DAP','يحدد لاحقاً'],
+    zh: ['CFR','CIF','FOB','DAP','待定']
+  },
+  gn_pm: {
+    es: ['L/C','T/T','SBLC','CAD','D/P','Por definir'],
+    en: ['L/C','T/T','SBLC','CAD','D/P','TBD'],
+    ar: ['L/C','T/T','SBLC','CAD','D/P','يحدد لاحقاً'],
+    zh: ['L/C','T/T','SBLC','CAD','D/P','待定']
+  }
+};
+
+function updateSelects(l) {
+  Object.keys(SELECT_OPTS).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var opts = SELECT_OPTS[id][l] || SELECT_OPTS[id]['es'];
+    Array.from(el.options).forEach(function(opt, i) {
+      if (opts[i] !== undefined) opt.textContent = opts[i];
+    });
+  });
+}
+
+// ════════════════════════════════════════════
 // LANGUAGE
 // ════════════════════════════════════════════
 function setLang(l) {
   document.body.className = 'lang-' + l;
   document.querySelectorAll('.lb').forEach(function(b) {
+    var t = b.textContent.trim().toLowerCase();
     b.classList.toggle('on',
-      b.textContent.trim() === l ||
+      t === l ||
       (l === 'ar' && b.textContent.includes('\u0639\u0631\u0628\u064a')) ||
       (l === 'zh' && b.textContent.includes('\u4e2d\u6587'))
     );
   });
   localStorage.setItem('glv-lang', l);
   document.documentElement.lang = l;
+  document.querySelectorAll('[data-ph-' + l + ']').forEach(function(el) {
+    el.placeholder = el.getAttribute('data-ph-' + l);
+  });
   // Rebuild agent selector if visible
   buildAgentSelector();
+  updateSelects(l);
 }
 setLang(localStorage.getItem('glv-lang') || 'es');
 
@@ -968,14 +1145,15 @@ function gv(id) { var e = document.getElementById(id); return e ? e.value : ''; 
 // ════════════════════════════════════════════
 function buildAgentSelector() {
   var lang = localStorage.getItem('glv-lang') || 'es';
+  var placeholders = {es:'Seleccione su agente GLV',en:'Select your GLV agent',ar:'اختر وكيل GLV',zh:'选择您的GLV代理'};
   var selectors = document.querySelectorAll('.agent-selector');
   selectors.forEach(function(sel) {
     var current = sel.value;
-    sel.innerHTML = '<option value="">— ' + (lang === 'es' ? 'Seleccione su agente GLV' : 'Select your GLV agent') + ' —</option>';
+    sel.innerHTML = '<option value="">— ' + (placeholders[lang] || placeholders.es) + ' —</option>';
     AGENTS.forEach(function(a) {
       var opt = document.createElement('option');
       opt.value = a.id;
-      var zone = lang === 'es' ? a.zone_es : a.zone_en;
+      var zone = a['zone_' + lang] || a.zone_en || a.zone_es;
       opt.textContent = a.flag + ' ' + a.name + ' · ' + zone;
       sel.appendChild(opt);
     });
@@ -990,7 +1168,7 @@ function getSelectedAgent(selectorId) {
 }
 
 function sendToAgent(agent, subject, msg) {
-  if (!agent) { alert('Por favor seleccione un agente GLV antes de enviar.'); return false; }
+  if (!agent) { alert(MSG[currentLang()].selectAgent); return false; }
   sendW3F(subject, msg);
   if (agent.wa) {
     window.open('https://wa.me/' + agent.wa + '?text=' + encodeURIComponent(msg), '_blank');
@@ -998,10 +1176,10 @@ function sendToAgent(agent, subject, msg) {
     // WeChat — copy ID to clipboard
     if (navigator.clipboard) {
       navigator.clipboard.writeText(agent.wechat).then(function() {
-        alert('ID de WeChat copiado: ' + agent.wechat + '\nBusque este contacto en WeChat y envíe el mensaje.');
+        alert(MSG[currentLang()].wechatCopied(agent.wechat));
       });
     } else {
-      alert('Agente WeChat: ' + agent.wechat + '\nAbra WeChat, busque este ID y envíe su mensaje.');
+      alert(MSG[currentLang()].wechatManual(agent.wechat));
     }
   }
   return true;
@@ -1020,6 +1198,31 @@ var TIERS = {
   '30': { days: '< 60 días',fob: 5.00, cfr: 6.00, payment: 'T/T Directo únicamente',         sblc: false, tt: true,  warn: true  }
 };
 
+var TIERS_I18N = {
+  es: {
+    '90': { days: '90 días',         payment: 'SBLC (Standby Letter of Credit)' },
+    '60': { days: '60 días',         payment: 'L/C · SBLC · T/T Confirmado' },
+    '30': { days: 'Menos de 60 días',payment: 'T/T Directo únicamente' }
+  },
+  en: {
+    '90': { days: '90 days',        payment: 'SBLC (Standby Letter of Credit)' },
+    '60': { days: '60 days',        payment: 'L/C · SBLC · T/T Confirmed' },
+    '30': { days: 'Under 60 days',  payment: 'T/T Direct only' }
+  },
+  ar: {
+    '90': { days: '90 يوماً',          payment: 'SBLC (خطاب اعتماد احتياطي)' },
+    '60': { days: '60 يوماً',          payment: 'L/C · SBLC · T/T مؤكد' },
+    '30': { days: 'أقل من 60 يوماً',  payment: 'T/T مباشر فقط' }
+  },
+  zh: {
+    '90': { days: '90天',       payment: 'SBLC（备用信用证）' },
+    '60': { days: '60天',       payment: 'L/C · SBLC · 确认T/T' },
+    '30': { days: '不足60天',   payment: '仅限T/T直接付款' }
+  }
+};
+
+var UNIT_ANIMALS = { es: '动物', en: 'animals', ar: 'حيوان', zh: '头' };
+
 function selT(t) {
   ST = t;
   ['90','60','30'].forEach(function(k) {
@@ -1029,30 +1232,32 @@ function selT(t) {
 }
 
 function calcOv() {
-  if (!ST) { alert('Seleccione primero el plazo de la operación (Paso 1).'); return; }
+  if (!ST) { alert(MSG[currentLang()].selectTier); return; }
   var a = parseInt(gv('ov_a')) || 0;
   var p = parseFloat(gv('ov_p')) || 45;
-  if (a < 25000) { alert('El mínimo de animales por operación es 25.000.'); return; }
+  if (a < 25000) { alert(MSG[currentLang()].minAnimals); return; }
   var tier = TIERS[ST];
   var pt   = a * p;
   var tf   = pt * tier.fob;
   var tc   = pt * tier.cfr;
-  document.getElementById('r_a').textContent  = fmt(a) + ' animales';
+  var _tl = (TIERS_I18N[currentLang()] || TIERS_I18N['es'])[ST];
+  var _ua = { es: 'animales', en: 'animals', ar: 'حيوانات', zh: '头' };
+  document.getElementById('r_a').textContent  = fmt(a) + ' ' + (_ua[currentLang()] || 'animales');
   document.getElementById('r_pt').textContent = fmt(pt) + ' kg (' + fmt(pt / 1000) + ' MT)';
-  document.getElementById('r_fk').textContent = 'USD ' + tier.fob.toFixed(2) + ' / kg · ' + tier.days;
+  document.getElementById('r_fk').textContent = 'USD ' + tier.fob.toFixed(2) + ' / kg · ' + _tl.days;
   document.getElementById('r_ck').textContent = 'USD ' + tier.cfr.toFixed(2) + ' / kg';
   document.getElementById('r_tf').textContent = fmtU(tf);
   document.getElementById('r_tc').textContent = fmtU(tc);
-  document.getElementById('r_pl').textContent = tier.days + ' · ' + tier.payment;
+  document.getElementById('r_pl').textContent = _tl.days + ' · ' + _tl.payment;
   var w = document.getElementById('r_warn');
   var s = document.getElementById('r_sblc');
   var tt = document.getElementById('r_tt');
   if (w)  w.style.display  = tier.warn ? 'block' : 'none';
   if (s)  s.style.display  = tier.sblc ? 'block' : 'none';
   if (tt) tt.style.display = tier.tt   ? 'block' : 'none';
-  if (tier.warn && w)  w.innerHTML  = '<strong>Operación urgente:</strong> Costos logísticos más altos. CFR USD 6,00/kg incluye flete urgente y documentación express.';
-  if (tier.sblc && s)  s.innerHTML  = '<strong>SBLC únicamente (90 días):</strong> GLV acepta solo SBLC emitido por banco de primer orden internacional.';
-  if (tier.tt   && tt) tt.innerHTML = '<strong>Solo T/T Directo (&lt;60 días):</strong> No se aceptan L/C ni SBLC en operaciones urgentes.';
+  if (tier.warn && w)  w.innerHTML  = MSG[currentLang()].ovWarnHtml;
+  if (tier.sblc && s)  s.innerHTML  = MSG[currentLang()].sblcHtml;
+  if (tier.tt   && tt) tt.innerHTML = MSG[currentLang()].ttHtml;
   var res = document.getElementById('ov_res');
   if (res) { res.classList.add('show'); res.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 }
@@ -1091,7 +1296,7 @@ function buildOvMsg() {
 }
 
 function genPDF() {
-  if (!ST) { alert('Seleccione un plazo primero.'); return; }
+  if (!ST) { alert(MSG[currentLang()].noTierPDF); return; }
   var a    = gv('ov_a') || '0';
   var p    = gv('ov_p') || '45';
   var d    = gv('ov_d') || 'Por confirmar';
@@ -1166,12 +1371,12 @@ function genPDF() {
 
 function ovWA() {
   if (!gv('ov_nombre') || !gv('ov_empresa')) {
-    alert('Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).');
+    alert(MSG[currentLang()].ovContactReq);
     document.getElementById('ov_nombre').focus();
     return;
   }
   var msg = buildOvMsg();
-  if (!msg) { alert('Seleccione un plazo primero.'); return; }
+  if (!msg) { alert(MSG[currentLang()].noTierWA); return; }
   var agent = getSelectedAgent('ov_agent');
   sendToAgent(agent, 'Cotizacion Ovinos Vivos', msg);
   sendW3F('Cotizacion Ovinos Vivos', msg, gv('ov_email'));
@@ -1179,7 +1384,7 @@ function ovWA() {
 
 function ovEmail() {
   var msg = buildOvMsg();
-  if (!msg) { alert('Seleccione un plazo primero.'); return; }
+  if (!msg) { alert(MSG[currentLang()].noTierWA); return; }
   var ref = 'GLV-OV-' + Date.now().toString().slice(-6);
   sendW3F('Cotizacion Ovinos ' + ref, msg, gv('ov_email'));
   window.location.href = 'mailto:info@glvservicesexp.com'
@@ -1191,9 +1396,24 @@ function ovEmail() {
 // EGG CALCULATOR
 // ════════════════════════════════════════════
 var EGG_M = {
-  caribe: { fob: 3.15, cfr: 3.55, les: 'Caribe y Latinoamerica - CFR USD 3.55/cubeta', len: 'Caribbean & LatAm - CFR USD 3.55/tray' },
-  mena:   { fob: 3.15, cfr: 4.45, les: 'Dubai - MENA - Africa - CFR USD 4.45/cubeta',  len: 'Dubai - MENA - Africa - CFR USD 4.45/tray' },
-  custom: { fob: null, cfr: null,  les: 'Precio asignado por agente GLV',               len: 'Price assigned by GLV agent' }
+  caribe: { fob: 3.15, cfr: 3.55,
+    es: 'Caribe y Latinoamerica - CFR USD 3.55/cubeta',
+    en: 'Caribbean & LatAm - CFR USD 3.55/tray',
+    ar: 'الكاريبي وأمريكا اللاتينية - CFR USD 3.55/علبة',
+    zh: '加勒比和拉丁美洲 - CFR USD 3.55/托盘'
+  },
+  mena: { fob: 3.15, cfr: 4.45,
+    es: 'Dubai - MENA - Africa - CFR USD 4.45/cubeta',
+    en: 'Dubai - MENA - Africa - CFR USD 4.45/tray',
+    ar: 'دبي - الشرق الأوسط وشمال أفريقيا - CFR USD 4.45/علبة',
+    zh: '迪拜 - 中东北非 - CFR USD 4.45/托盘'
+  },
+  custom: { fob: null, cfr: null,
+    es: 'Precio asignado por agente GLV',
+    en: 'Price assigned by GLV agent',
+    ar: 'السعر المحدد من قبل وكيل GLV',
+    zh: 'GLV代理指定价格'
+  }
 };
 var CUBETAS_FCL = 920 * 12;
 var HUEVOS_FCL  = CUBETAS_FCL * 30;
@@ -1212,35 +1432,47 @@ function getEP() {
   if (selEggM === 'custom') {
     var v = parseFloat(gv('eg_custom_price'));
     if (isNaN(v) || v <= 0) return null;
-    return { price: v, les: 'Precio oficial GLV - USD ' + v.toFixed(2) + '/cubeta', len: 'Official GLV price', fob: null, cfr: v };
+    var _cl = currentLang();
+    var _cu = { es: 'Precio oficial GLV - USD ' + v.toFixed(2) + '/cubeta', en: 'Official GLV price - USD ' + v.toFixed(2) + '/tray', ar: 'سعر GLV الرسمي - USD ' + v.toFixed(2) + '/علبة', zh: 'GLV官方价格 - USD ' + v.toFixed(2) + '/托盘' };
+    return { price: v, les: _cu.es, len: _cu.en, label: _cu[_cl] || _cu.es, fob: null, cfr: v };
   }
   var d = EGG_M[selEggM];
-  return { price: d.cfr, fob: d.fob, cfr: d.cfr, les: d.les, len: d.len };
+  var _l = currentLang();
+  return { price: d.cfr, fob: d.fob, cfr: d.cfr, label: d[_l] || d.es, les: d.es, len: d.en };
 }
 
 function getPayCond(fcl) {
-  if (fcl < 5) return { es: '100% pago previo al embarque', en: '100% prior to shipment' };
-  return { es: '50% al confirmar + 50% previo al embarque', en: '50% on confirmation + 50% prior to shipment' };
+  var _l = currentLang();
+  if (fcl < 5) {
+    var _v = { es: '100% pago previo al embarque', en: '100% prior to shipment', ar: '100% دفع مسبق قبل الشحن', zh: '100%预付（装运前）' };
+    return _v[_l] || _v.es;
+  }
+  var _v2 = { es: '50% al confirmar + 50% previo al embarque', en: '50% on confirmation + 50% prior to shipment', ar: '50% عند التأكيد + 50% قبل الشحن', zh: '确认时50% + 装运前50%' };
+  return _v2[_l] || _v2.es;
 }
 
 function calcEgg() {
-  if (!selEggM) { alert('Seleccione primero el mercado destino (Paso 1).'); return; }
+  if (!selEggM) { alert(MSG[currentLang()].selectMarket); return; }
   var fcl = parseInt(gv('eg_fcl')) || 0;
-  if (fcl < 1) { alert('Ingrese al menos 1 contenedor FCL.'); return; }
+  if (fcl < 1) { alert(MSG[currentLang()].minFCL); return; }
   var ep = getEP();
-  if (!ep) { alert('Para precio personalizado, ingrese el valor de la oferta GLV.'); return; }
+  if (!ep) { alert(MSG[currentLang()].customPrice); return; }
   var tipo   = gv('eg_tipo');
   var pago   = getPayCond(fcl);
   var totalC = fcl * CUBETAS_FCL;
   var totalH = fcl * HUEVOS_FCL;
   var totalV = totalC * ep.price;
-  var lang   = localStorage.getItem('glv-lang') || 'es';
-  document.getElementById('eg_r_fcl').textContent     = fmt(fcl) + " FCL (40 HC refrigerado)";
-  document.getElementById('eg_r_cubetas').textContent = fmt(totalC) + ' cubetas x 30 huevos';
-  document.getElementById('eg_r_huevos').textContent  = fmt(totalH) + ' huevos total';
-  document.getElementById('eg_r_precio').textContent  = 'USD ' + ep.price.toFixed(2) + '/cubeta (' + tipo + ')';
-  document.getElementById('eg_r_market').textContent  = lang === 'en' ? ep.len : ep.les;
-  document.getElementById('eg_r_pago').textContent    = lang === 'en' ? pago.en : pago.es;
+  var _el = currentLang();
+  var _uFCL  = { es: 'FCL (40 HC refrigerado)', en: 'FCL (40 HC refrigerated)', ar: 'FCL (40 HC مبرد)', zh: 'FCL（40英尺冷藏）' };
+  var _uCub  = { es: 'cubetas x 30 huevos', en: 'trays x 30 eggs', ar: 'علبة × 30 بيضة', zh: '托盘 × 30个鸡蛋' };
+  var _uHuev = { es: 'huevos total', en: 'eggs total', ar: 'بيضة إجمالاً', zh: '个鸡蛋总计' };
+  var _uCuTl = { es: 'cubeta', en: 'tray', ar: 'علبة', zh: '托盘' };
+  document.getElementById('eg_r_fcl').textContent     = fmt(fcl) + ' ' + (_uFCL[_el] || _uFCL.es);
+  document.getElementById('eg_r_cubetas').textContent = fmt(totalC) + ' ' + (_uCub[_el] || _uCub.es);
+  document.getElementById('eg_r_huevos').textContent  = fmt(totalH) + ' ' + (_uHuev[_el] || _uHuev.es);
+  document.getElementById('eg_r_precio').textContent  = 'USD ' + ep.price.toFixed(2) + '/' + (_uCuTl[_el] || 'cubeta') + ' (' + tipo + ')';
+  document.getElementById('eg_r_market').textContent  = ep.label || ep.les;
+  document.getElementById('eg_r_pago').textContent    = pago;
   document.getElementById('eg_r_total').textContent   = fmtU(totalV);
   var res = document.getElementById('eg_res');
   if (res) { res.classList.add('show'); res.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
@@ -1279,7 +1511,7 @@ function buildEggMsg() {
     + 'Certificacion: ' + cert         + '\n'
     + 'Mercado: '       + ep.les       + '\n'
     + 'Precio/cubeta: USD ' + ep.price.toFixed(2) + '\n'
-    + 'Condicion pago: '   + pago.es   + '\n'
+    + 'Condicion pago: '   + pago       + '\n'
     + 'Valor total ref.: ' + fmtU(totalV) + '\n'
     + 'Agente: '           + aName     + '\n\n'
     + 'NOTA: Precio referencial. Solo oferta oficial del agente GLV es precio final.\n'
@@ -1288,7 +1520,7 @@ function buildEggMsg() {
 
 function genEggPDF() {
   var ep = getEP();
-  if (!ep) { alert('Seleccione mercado primero.'); return; }
+  if (!ep) { alert(MSG[currentLang()].noMarketPDF); return; }
   var fcl    = gv('eg_fcl')  || '1';
   var tipo   = gv('eg_tipo') || 'Tipo A';
   var nombre  = gv('eg_nombre')  || 'No indicado';
@@ -1332,7 +1564,7 @@ function genEggPDF() {
     + '<tr><td>Total huevos<\/td><td>' + fmt(totalH) + '<\/td><\/tr>'
     + '<tr><td>Mercado<\/td><td>' + ep.les + '<\/td><\/tr>'
     + '<tr><td>Precio/cubeta<\/td><td>USD ' + ep.price.toFixed(2) + '<\/td><\/tr>'
-    + '<tr><td>Pago<\/td><td>' + pago.es + '<\/td><\/tr><\/table>'
+    + '<tr><td>Pago<\/td><td>' + pago + '<\/td><\/tr><\/table>'
     + '<div class="tots"><div class="tr big"><span>VALOR TOTAL ESTIMADO<\/span><span>' + fmtU(totalV) + '<\/span><\/div><\/div>'
     + '<div class="ft"><div>GLV Services SAS - Where Trust Moves Markets<\/div><div>' + ref + '<\/div><\/div>'
     + '<\/body><\/html>';
@@ -1344,12 +1576,12 @@ function genEggPDF() {
 
 function eggWA() {
   if (!gv('eg_nombre') || !gv('eg_empresa')) {
-    alert('Por favor ingrese su nombre y empresa antes de enviar (Paso 2B).');
+    alert(MSG[currentLang()].eggContactReq);
     document.getElementById('eg_nombre').focus();
     return;
   }
   var msg = buildEggMsg();
-  if (!msg) { alert('Seleccione mercado y complete los datos.'); return; }
+  if (!msg) { alert(MSG[currentLang()].noMarketWA); return; }
   var agent = getSelectedAgent('eg_agent');
   sendToAgent(agent, 'Cotizacion Huevo FCL', msg);
   sendW3F('Cotizacion Huevo FCL', msg, gv('eg_email'));
@@ -1357,7 +1589,7 @@ function eggWA() {
 
 function eggEmail() {
   var msg = buildEggMsg();
-  if (!msg) { alert('Seleccione mercado y complete los datos.'); return; }
+  if (!msg) { alert(MSG[currentLang()].noMarketEmail); return; }
   var ref = 'GLV-HV-' + Date.now().toString().slice(-6);
   sendW3F('Cotizacion Huevo ' + ref, msg, gv('eg_email'));
   window.location.href = 'mailto:info@glvservicesexp.com'
@@ -1431,13 +1663,13 @@ function buildCatalog(cat) {
         + '<p class="prod-detail">' + p.detail + '</p>'
         + '<div class="prod-tags">' + tags + '</div>'
         + '<div class="prod-cta">'
-        + '<a href="https://wa.me/573160865294?text=' + waMsg + '" target="_blank" class="prod-btn">💬 Cotizar por WA</a>'
-        + '<button class="prod-btn-form" onclick="openModal(\'' + p.name.replace(/'/g, '') + '\')">📋 Formulario</button>'
+        + '<a href="https://wa.me/573160865294?text=' + waMsg + '" target="_blank" class="prod-btn">' + MSG[currentLang()].catQuoteWA + '</a>'
+        + '<button class="prod-btn-form" onclick="openModal(\'' + p.name.replace(/'/g, '') + '\')">'+MSG[currentLang()].catFormBtn+'</button>'
         + '</div></div>';
     });
     html += '</div></div>';
   });
-  container.innerHTML = html || '<p style="color:var(--dim);padding:2rem 0">No se encontraron productos.</p>';
+  container.innerHTML = html || '<p style="color:var(--dim);padding:2rem 0">' + MSG[currentLang()].catNoProducts + '</p>';
 }
 
 function filterCat(cat, btn) {
@@ -1476,7 +1708,7 @@ function modalMsg() {
     + '\n\nPor favor enviar precio CIF, specs tecnicas y condiciones de pago.';
 }
 function modalSendWA() {
-  if (!gv('m_n')) { alert('Por favor ingrese su nombre.'); return; }
+  if (!gv('m_n')) { alert(MSG[currentLang()].modalName); return; }
   sendW3F('Catalogo - ' + mProdName, modalMsg(), gv('m_em'));
   window.open('https://wa.me/573160865294?text=' + encodeURIComponent(modalMsg()), '_blank');
   closeModal();
@@ -1497,7 +1729,7 @@ function gnSend(via) {
   var e  = gv('gn_e');
   var em = gv('gn_em');
   var d  = gv('gn_d');
-  if (!n || !e || !em || !d) { alert('Complete los campos obligatorios (*).'); return; }
+  if (!n || !e || !em || !d) { alert(MSG[currentLang()].required); return; }
   var agent = getSelectedAgent('gn_agent');
   var aName = agent ? agent.name : 'No seleccionado';
   var msg   = 'GLV - Cotizacion General\n\n'
