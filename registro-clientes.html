@@ -127,7 +127,33 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .wa-green{background:#25D366!important;}
 .wa-green:hover{background:#1fba58!important;}
 
-
+/* ─── WEB_TO_GOS SUCCESS PANEL ─── */
+#kycSuccess.success-box{background:none;border:none;padding:0;}
+.suc-panel{background:linear-gradient(135deg,rgba(45,122,79,0.07) 0%,rgba(201,168,76,0.05) 100%);border:1px solid rgba(45,122,79,0.3);border-top:3px solid #3da066;padding:3rem 3rem 2.5rem;text-align:center;}
+.suc-received{font-size:0.72rem;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;color:#3da066;margin-bottom:0.8rem;}
+.suc-title{font-family:"Playfair Display",serif;font-size:2rem;font-weight:900;color:var(--white);margin-bottom:0.3rem;line-height:1.1;}
+.suc-sub{font-size:0.95rem;color:var(--dim);margin-bottom:2.5rem;line-height:1.6;}
+.suc-code-wrap{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.28);padding:1.4rem 2.5rem;display:inline-block;margin:0 auto 2.5rem;}
+.suc-code-label{font-size:0.68rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--dim);margin-bottom:0.5rem;}
+.suc-code-value{font-size:1.9rem;font-weight:900;color:var(--gold);letter-spacing:0.14em;font-family:"Playfair Display",serif;}
+.suc-meta{display:flex;gap:2.5rem;justify-content:center;margin-bottom:2.5rem;flex-wrap:wrap;}
+.suc-meta-item{text-align:center;}
+.suc-meta-lbl{font-size:0.68rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--dim);margin-bottom:0.25rem;}
+.suc-meta-val{font-size:0.95rem;font-weight:600;color:var(--text);}
+.suc-steps{background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);padding:1.5rem 2rem;text-align:left;margin-bottom:2rem;}
+.suc-steps-ttl{font-size:0.68rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:0.9rem;}
+.suc-step-row{display:flex;align-items:center;gap:0.9rem;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.suc-step-row:last-child{border-bottom:none;}
+.suc-step-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.75rem;font-weight:700;border:1px solid;}
+.suc-step-icon.done{border-color:rgba(61,160,102,0.6);color:#3da066;background:rgba(61,160,102,0.1);}
+.suc-step-icon.pending{border-color:rgba(201,168,76,0.3);color:rgba(201,168,76,0.5);}
+.suc-step-txt{font-size:0.9rem;color:var(--dim);flex:1;line-height:1.4;}
+.suc-step-st{font-size:0.65rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
+.suc-st-done{color:#3da066;}
+.suc-st-pend{color:rgba(201,168,76,0.6);}
+.suc-actions{display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;margin-top:0.5rem;}
+.suc-email-note{font-size:0.82rem;color:var(--dim);margin-top:1.2rem;line-height:1.6;}
+@media(max-width:768px){.suc-panel{padding:2rem 1.5rem;}.suc-meta{gap:1.5rem;}.suc-code-wrap{padding:1rem 1.5rem;}}
 
 
 /* === GLV VIDEO CONTROLS & RESPONSIVE === */
@@ -224,9 +250,68 @@ video.hero-video {
   </div>
 
   <div id="kycSuccess" class="success-box">
-    <h3>✅ <span lang-es>Registro KYC enviado</span><span lang-en>KYC Registration submitted</span></h3>
-    <p id="cliCodeDisplay" style="font-size:1.4rem;font-weight:700;color:var(--gold);letter-spacing:0.08em;margin:0.8rem 0;">—</p>
-    <p><span lang-es>Guarde este código — es su identificador único GLV. El equipo financiero y legal revisará su información en 3–7 días hábiles y confirmará la activación de su cuenta.</span><span lang-en>Save this code — it is your unique GLV identifier. The financial and legal team will review your information within 3–7 business days and confirm your account activation.</span><span lang-ar>احتفظ بهذا الرمز — إنه معرّفك الفريد في GLV. سيراجع الفريق المالي والقانوني معلوماتك خلال 3–7 أيام عمل.</span><span lang-zh>请保存此代码——这是您的GLV唯一标识符。财务和法律团队将在3-7个工作日内审核您的信息并确认账户激活。</span></p>
+    <div class="suc-panel">
+      <div class="suc-received">✓ Registration Received</div>
+      <h2 class="suc-title"><span lang-es>Pre-Registro completado</span><span lang-en>Pre-Registration complete</span><span lang-ar>اكتمل التسجيل المسبق</span><span lang-zh>预注册完成</span></h2>
+      <p class="suc-sub"><span lang-es>Su solicitud fue recibida. Nuestro equipo iniciará la revisión en las próximas 24–48 horas hábiles.</span><span lang-en>Your application has been received. Our team will begin review within the next 24–48 business hours.</span><span lang-ar>تم استلام طلبكم. سيبدأ فريقنا المراجعة خلال 24–48 ساعة عمل.</span><span lang-zh>您的申请已收到。我们的团队将在24–48个工作小时内开始审核。</span></p>
+      <div class="suc-code-wrap">
+        <div class="suc-code-label">GLV Client Code</div>
+        <div class="suc-code-value" id="cliCodeDisplay">—</div>
+      </div>
+      <div class="suc-meta">
+        <div class="suc-meta-item">
+          <div class="suc-meta-lbl"><span lang-es>Empresa</span><span lang-en>Company</span><span lang-ar>الشركة</span><span lang-zh>公司</span></div>
+          <div class="suc-meta-val" id="sucEmpresa">—</div>
+        </div>
+        <div class="suc-meta-item">
+          <div class="suc-meta-lbl"><span lang-es>País</span><span lang-en>Country</span><span lang-ar>البلد</span><span lang-zh>国家</span></div>
+          <div class="suc-meta-val" id="sucPais">—</div>
+        </div>
+        <div class="suc-meta-item">
+          <div class="suc-meta-lbl">Status</div>
+          <div class="suc-meta-val" style="color:var(--gold)">PRE_REGISTRATION</div>
+        </div>
+        <div class="suc-meta-item">
+          <div class="suc-meta-lbl"><span lang-es>Fecha</span><span lang-en>Date</span><span lang-ar>التاريخ</span><span lang-zh>日期</span></div>
+          <div class="suc-meta-val" id="sucFecha">—</div>
+        </div>
+      </div>
+      <div class="suc-steps">
+        <div class="suc-steps-ttl">Next Steps</div>
+        <div class="suc-step-row">
+          <div class="suc-step-icon done">✓</div>
+          <div class="suc-step-txt"><span lang-es>Registro KYC recibido</span><span lang-en>KYC Registration received</span><span lang-ar>تم استلام تسجيل KYC</span><span lang-zh>KYC注册已收到</span></div>
+          <div class="suc-step-st suc-st-done">DONE</div>
+        </div>
+        <div class="suc-step-row">
+          <div class="suc-step-icon pending">2</div>
+          <div class="suc-step-txt"><span lang-es>Revisión documental</span><span lang-en>Documentary Review</span><span lang-ar>المراجعة الوثائقية</span><span lang-zh>文件审查</span></div>
+          <div class="suc-step-st suc-st-pend">PENDING</div>
+        </div>
+        <div class="suc-step-row">
+          <div class="suc-step-icon pending">3</div>
+          <div class="suc-step-txt"><span lang-es>Validación comercial</span><span lang-en>Commercial Validation</span><span lang-ar>التحقق التجاري</span><span lang-zh>商业验证</span></div>
+          <div class="suc-step-st suc-st-pend">PENDING</div>
+        </div>
+        <div class="suc-step-row">
+          <div class="suc-step-icon pending">4</div>
+          <div class="suc-step-txt"><span lang-es>Activación de cuenta</span><span lang-en>Account Activation</span><span lang-ar>تفعيل الحساب</span><span lang-zh>账户激活</span></div>
+          <div class="suc-step-st suc-st-pend">PENDING</div>
+        </div>
+        <div class="suc-step-row">
+          <div class="suc-step-icon pending">5</div>
+          <div class="suc-step-txt"><span lang-es>Acceso futuro a GOS</span><span lang-en>Future Access to GOS</span><span lang-ar>الوصول المستقبلي إلى GOS</span><span lang-zh>未来访问GOS</span></div>
+          <div class="suc-step-st suc-st-pend">PENDING</div>
+        </div>
+      </div>
+      <div class="suc-actions">
+        <a href="/" class="bg">🌐 <span lang-es>Explorar Productos</span><span lang-en>Explore Products</span><span lang-ar>استكشف المنتجات</span><span lang-zh>探索产品</span></a>
+        <a href="https://wa.me/573160865294" id="sucWaQuote" target="_blank" class="bg">📋 <span lang-es>Solicitar Cotización</span><span lang-en>Request Quotation</span><span lang-ar>طلب عرض سعر</span><span lang-zh>请求报价</span></a>
+        <a href="mailto:info@glvservicesexp.com" class="bb">✉ <span lang-es>Equipo Comercial</span><span lang-en>Commercial Team</span><span lang-ar>الفريق التجاري</span><span lang-zh>商务团队</span></a>
+        <a href="https://wa.me/573160865294" id="sucWaBtn" target="_blank" class="bb wa-green">💬 WhatsApp</a>
+      </div>
+      <p class="suc-email-note">📬 <span lang-es>Correo de bienvenida preparado para</span><span lang-en>Welcome email prepared for</span><span lang-ar>تم إعداد البريد الترحيبي لـ</span><span lang-zh>欢迎邮件已发送至</span> <strong id="sucEmailDisplay">—</strong></p>
+    </div>
   </div>
 
   <div id="kycForm">
@@ -459,11 +544,97 @@ function submitKYC(){
     var codCLI = glvGenCode('CLI');
   msg += '\nCODIGO ASIGNADO: ' + codCLI;
   sendW3F('Registro Cliente KYC ' + codCLI + ' — ' + empresa, msg, email);
-  window.open('https://wa.me/573160865294?text=' + encodeURIComponent(msg), '_blank');
-  document.getElementById('cliCodeDisplay').textContent = '🏷 ' + codCLI;
-  document.getElementById('kycForm').style.display = 'none';
-  document.getElementById('kycSuccess').classList.add('show');
+  var pais = gv("k_pais"), rep = gv("k_rep") || empresa;
+  var fechaReg = new Date().toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'});
+  var clientRec = buildClientRecord(empresa, email, tel, pais, codCLI);
+  console.log('[GLV GOS] Client record:', JSON.stringify(clientRec));
+  sendClientWelcome(empresa, email, codCLI, pais, rep, tel, fechaReg);
+  var elById = function(id){return document.getElementById(id);};
+  elById('cliCodeDisplay').textContent = codCLI;
+  if(elById('sucEmpresa')) elById('sucEmpresa').textContent = empresa;
+  if(elById('sucPais')) elById('sucPais').textContent = pais || '—';
+  if(elById('sucFecha')) elById('sucFecha').textContent = fechaReg;
+  if(elById('sucEmailDisplay')) elById('sucEmailDisplay').textContent = email;
+  var waCtx = encodeURIComponent('Hola GLV, acabo de completar mi registro KYC. Mi código es ' + codCLI + '. Empresa: ' + empresa);
+  if(elById('sucWaBtn')) elById('sucWaBtn').href = 'https://wa.me/573160865294?text=' + waCtx;
+  if(elById('sucWaQuote')) elById('sucWaQuote').href = 'https://wa.me/573160865294?text=' + encodeURIComponent('Hola GLV, soy ' + empresa + ' (código ' + codCLI + '). Quisiera solicitar una cotización formal.');
+  elById('kycForm').style.display = 'none';
+  elById('kycSuccess').classList.add('show');
   window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ─── GOS CLIENT PIPELINE — PRE-REGISTRATION ARCHITECTURE ────
+var GLV_CLIENT_STATUS = Object.freeze({
+  PRE_REGISTRATION:'PRE_REGISTRATION', UNDER_REVIEW:'UNDER_REVIEW',
+  APPROVED:'APPROVED', ACTIVE:'ACTIVE', SUSPENDED:'SUSPENDED', REJECTED:'REJECTED'
+});
+var GLV_LEAD_STATUS = Object.freeze({
+  UNASSIGNED:'UNASSIGNED', ASSIGNED:'ASSIGNED', CONTACTED:'CONTACTED',
+  QUALIFIED:'QUALIFIED', CLOSED_WON:'CLOSED_WON', CLOSED_LOST:'CLOSED_LOST'
+});
+var GLV_REGISTRATION_SOURCE = Object.freeze({
+  WEB_KYC_FORM:'WEB_KYC_FORM', WHATSAPP:'WHATSAPP',
+  REFERRAL:'REFERRAL', DIRECT:'DIRECT'
+});
+function buildClientRecord(empresa, email, tel, pais, codCLI) {
+  return Object.freeze({
+    glvCode: codCLI,
+    companyName: empresa,
+    country: pais,
+    email: email,
+    whatsapp: tel,
+    registrationDate: new Date().toISOString(),
+    status: GLV_CLIENT_STATUS.PRE_REGISTRATION,
+    leadOwner: null,
+    leadStatus: GLV_LEAD_STATUS.UNASSIGNED,
+    registrationSource: GLV_REGISTRATION_SOURCE.WEB_KYC_FORM
+  });
+}
+
+// ─── CLIENT WELCOME EMAIL RELAY ──────────────────────────────
+function sendClientWelcome(empresa, email, codCLI, pais, rep, tel, fechaReg) {
+  var body =
+    '══════════════════════════════════════\n'
+   +'  WELCOME TO GLV SERVICES\n'
+   +'  BIENVENIDO A GLV SERVICES\n'
+   +'══════════════════════════════════════\n\n'
+   +'Dear ' + rep + ' / ' + empresa + ',\n\n'
+   +'Your GLV client pre-registration has been received successfully.\n'
+   +'Su pre-registro de cliente GLV fue recibido exitosamente.\n\n'
+   +'──────────────────────────────────────\n'
+   +'GLV CLIENT CODE:    ' + codCLI + '\n'
+   +'Company / Empresa:  ' + empresa + '\n'
+   +'Country / País:     ' + pais + '\n'
+   +'Contact / Contacto: ' + email + ' | ' + tel + '\n'
+   +'Registration Date:  ' + fechaReg + '\n'
+   +'Account Status:     PRE_REGISTRATION\n'
+   +'──────────────────────────────────────\n\n'
+   +'NEXT STEPS / PRÓXIMOS PASOS:\n\n'
+   +'  1. Documentary Review / Revisión documental     [PENDING]\n'
+   +'  2. Commercial Validation / Validación comercial  [PENDING]\n'
+   +'  3. Account Activation / Activación de cuenta    [PENDING]\n'
+   +'  4. Future Access to GOS / Acceso futuro a GOS   [PENDING]\n\n'
+   +'Processing time / Tiempo de procesamiento: 2–5 business days\n\n'
+   +'──────────────────────────────────────\n'
+   +'CONTACT GLV / CONTACTO GLV:\n\n'
+   +'  Email:        info@glvservicesexp.com\n'
+   +'  WhatsApp CO:  +57 316 086 5294\n'
+   +'  WhatsApp BR:  +55 11 9466 10038\n'
+   +'  Website:      https://glvservicesexp.com\n\n'
+   +'GLV Services SAS · Where Trust Moves Markets\n'
+   +'══════════════════════════════════════\n\n'
+   +'[GLV INTERNO: REENVIAR A ' + email + ']';
+  var fd = new FormData();
+  fd.append('access_key', '9445937b-ca0d-4d86-b2c0-ee992bffdabe');
+  fd.append('subject', 'BIENVENIDA CLIENTE → ' + email + ' | ' + codCLI + ' | ' + empresa);
+  fd.append('message', body);
+  fd.append('from_name', 'GLV Services SAS - Client Onboarding');
+  fd.append('replyto', email);
+  fd.append('botcheck', '');
+  fetch('https://api.web3forms.com/submit', {method:'POST', body:fd})
+    .then(function(r){return r.json();})
+    .then(function(d){console.log('[GLV] Welcome relay:', d.success ? 'OK' : d.message);})
+    .catch(function(e){console.warn('[GLV] Welcome relay error:', e);});
 }
 </script>
 <script>
