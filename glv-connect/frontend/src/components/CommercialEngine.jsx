@@ -106,8 +106,8 @@ function IncotermSelector({ selected, onChange, prices, onPriceChange, commercia
     if (selected.includes(inc)) { if (selected.length === 1) return; onChange(selected.filter(i => i !== inc)); }
     else onChange([...selected, inc]);
   };
-  // Dynamic label driven by commercialUnit — never hardcoded /kg
-  const priceUnitLabel = COMMERCIAL_SALE_UNITS.find(u => u.id === commercialUnit)?.abbr || "/kg";
+  // Dynamic label driven by commercialUnit — empty when no unit selected (no /kg default)
+  const priceUnitLabel = COMMERCIAL_SALE_UNITS.find(u => u.id === commercialUnit)?.abbr || "";
 
   return (
     <div>
