@@ -644,6 +644,90 @@ function updateGosStatusPanel(record) {
 }
 // ════════════════════════════════════════════════════════════
 
+// ── FASE 6: ERP Integration ────────────────────────────────────────────────────
+var GLV_API_BASE = 'https://misaelvalencia-production.up.railway.app';
+
+function sendToERP(record, formBody) {
+  var payload = Object.assign({}, formBody, {
+    glv_code:            record.glvCode,
+    empresa:             record.companyName,
+    rep:                 record.representative,
+    email:               record.email,
+    tel:                 record.phone,
+    pais:                record.country,
+    submission_type:     'CLIENT',
+    lead_status:         record.leadStatus,
+    kyc_status:          record.clientStatus,
+    registration_source: record.registrationSource,
+    version:             record.version
+  });
+
+  fetch(GLV_API_BASE + '/clients/kyc', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data && data.ok) {
+      try {
+        var stored = localStorage.getItem('GLV_PRE_REGISTRATION');
+        if (stored) {
+          var obj = JSON.parse(stored);
+          obj._erpSynced   = true;
+          obj._erpClientId = data.client_id;
+          obj._pendingSync = false;
+          localStorage.setItem('GLV_PRE_REGISTRATION', JSON.stringify(obj));
+        }
+      } catch(_) {}
+      console.log('[GLV ERP] KYC sincronizado:', data.glv_code);
+    } else {
+      markPendingSync(record.glvCode);
+    }
+  })
+  .catch(function() {
+    markPendingSync(record.glvCode);
+    // Reintento automático a los 30 segundos
+    setTimeout(function() {
+      fetch(GLV_API_BASE + '/clients/kyc', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { if (d && d.ok) { markSynced(d); } })
+      .catch(function() {});
+    }, 30000);
+  });
+}
+
+function markPendingSync(code) {
+  try {
+    var stored = localStorage.getItem('GLV_PRE_REGISTRATION');
+    if (stored) {
+      var obj      = JSON.parse(stored);
+      obj._pendingSync = true;
+      obj._syncError   = new Date().toISOString();
+      localStorage.setItem('GLV_PRE_REGISTRATION', JSON.stringify(obj));
+    }
+  } catch(_) {}
+  console.warn('[GLV ERP] Pendiente de sincronización:', code);
+}
+
+function markSynced(data) {
+  try {
+    var stored = localStorage.getItem('GLV_PRE_REGISTRATION');
+    if (stored) {
+      var obj      = JSON.parse(stored);
+      obj._erpSynced   = true;
+      obj._erpClientId = data.client_id;
+      obj._pendingSync = false;
+      localStorage.setItem('GLV_PRE_REGISTRATION', JSON.stringify(obj));
+    }
+  } catch(_) {}
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ────────────────────────────────────────────────────────────
 function submitKYC(){
   var empresa=gv("k_empresa"),email=gv("k_email"),tel=gv("k_tel"),nit=gv("k_nit");
@@ -687,6 +771,29 @@ function submitKYC(){
   });
   saveClientRecord(clientRecord);
   updateGosStatusPanel(clientRecord);
+  // ── FASE 6: Enviar al ERP (con fallback a localStorage) ──
+  var formBody = {
+    nit:           nit,
+    comercial:     gv('k_comercial'),
+    pais:          gv('k_pais'),
+    ciudad:        gv('k_ciudad'),
+    fundacion:     gv('k_fundacion'),
+    direccion:     gv('k_direccion'),
+    web:           gv('k_web'),
+    actividad:     gv('k_actividad'),
+    tipo_comprador: gv('k_tipo_comprador'),
+    volumen:       gv('k_volumen'),
+    mercados:      gv('k_mercados'),
+    proveedores:   gv('k_proveedores'),
+    productos:     gv('k_productos'),
+    cargo:         gv('k_cargo'),
+    doc_tipo:      gv('k_doc_tipo'),
+    doc_num:       gv('k_doc_num'),
+    ref1:          gv('k_ref1'),
+    ref2:          gv('k_ref2'),
+    banco:         gv('k_banco')
+  };
+  sendToERP(clientRecord, formBody);
   // ─────────────────────────────────────────────────────────
 }
 </script>
