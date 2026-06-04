@@ -259,6 +259,39 @@ try {
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 
+// ─── clients GOS / KYC extension (Sprint 1) ──────────────────────────────────
+safeAlter("ALTER TABLE clients ADD COLUMN glv_code TEXT");
+safeAlter("ALTER TABLE clients ADD COLUMN lead_status TEXT DEFAULT 'UNASSIGNED'");
+safeAlter("ALTER TABLE clients ADD COLUMN kyc_status TEXT DEFAULT 'PRE_REGISTRATION'");
+safeAlter("ALTER TABLE clients ADD COLUMN registration_source TEXT DEFAULT 'MANUAL'");
+safeAlter("ALTER TABLE clients ADD COLUMN kyc_data TEXT");
+safeAlter("ALTER TABLE clients ADD COLUMN commercial_score REAL DEFAULT 0");
+safeAlter("ALTER TABLE clients ADD COLUMN compliance_flag INTEGER DEFAULT 0");
+safeAlter("ALTER TABLE clients ADD COLUMN assigned_agent INTEGER");
+safeAlter("ALTER TABLE clients ADD COLUMN kyc_reviewed_by INTEGER");
+safeAlter("ALTER TABLE clients ADD COLUMN kyc_reviewed_at TEXT");
+safeAlter("ALTER TABLE clients ADD COLUMN last_contact_at TEXT");
+safeAlter("ALTER TABLE clients ADD COLUMN onboarding_notes TEXT");
+
+// ─── audit_log client tracking (Sprint 1) ────────────────────────────────────
+safeAlter("ALTER TABLE audit_log ADD COLUMN client_id INTEGER");
+
+// ─── KYC staging table (Sprint 1) ────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS kyc_submissions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_type TEXT    NOT NULL DEFAULT 'CLIENT',
+    glv_code        TEXT,
+    raw_data        TEXT    NOT NULL,
+    submitted_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+    ip_address      TEXT,
+    user_agent      TEXT,
+    status          TEXT    NOT NULL DEFAULT 'PENDING',
+    processed_at    TEXT,
+    mapped_to_id    INTEGER REFERENCES clients(id)
+  );
+`);
+
 // ─── Media Assets table ──────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS media_assets (
