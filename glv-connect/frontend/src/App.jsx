@@ -13,12 +13,14 @@ import MediaCenter from "./components/MediaCenter.jsx";
 import MediaPanel from "./components/MediaPanel.jsx";
 import { FinanceView } from "./components/FinanceView.jsx";
 import { TasksView } from "./components/TasksView.jsx";
+import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
 import { LANGUAGES, t } from "./i18n.js";
 
 const ADMINS    = new Set(["SUPER_ADMIN","CORPORATE_ADMIN"]);
 const DIRECTORS = new Set(["SUPER_ADMIN","CORPORATE_ADMIN","DIRECTOR","DIRECTIVO","CFO","COMMERCIAL_DIRECTOR"]);
+const GOS_ROLES = new Set(["COMPLIANCE","DIRECTOR","DIRECTIVO","CFO","COMMERCIAL_DIRECTOR","CORPORATE_ADMIN","SUPER_ADMIN"]);
 
 // ─── Auth context ────────────────────────────────────────────────────────────
 const AuthContext = createContext(null);
@@ -233,6 +235,7 @@ function Portal() {
         {view === "operations"         && <OperationsView user={user} setView={safeSetView} showNotif={showNotif} />}
         {view?.startsWith?.("op-detail:") && <OperationDetail opId={view.split(":")[1]} user={user} setView={safeSetView} showNotif={showNotif} />}
         {view === "clients"      && <ClientsView user={user} showNotif={showNotif} />}
+        {view === "gos-leads"    && GOS_ROLES.has(user?.role) && <GosLeadsPanel user={user} showNotif={showNotif} />}
         {view === "finance"      && isDirector && <FinanceView showNotif={showNotif} />}
         {view === "price-center"  && <PriceCenterView user={user} />}
         {view === "media-center"  && <MediaCenter user={user} />}
@@ -353,11 +356,15 @@ function OnboardingScreen({ user, onContinue }) {
 function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }) {
   const isDirector = DIRECTORS.has(user?.role);
   const isAdmin    = ADMINS.has(user?.role);
+  const isGosRole  = GOS_ROLES.has(user?.role);
 
   const navItems = [
     { id: "dashboard",    icon: "ti-dashboard",        label: "Dashboard" },
     { id: "operations",   icon: "ti-briefcase",        label: "Operaciones" },
     { id: "clients",      icon: "ti-building",         label: "Clientes" },
+    ...(isGosRole ? [
+      { id: "gos-leads",  icon: "ti-users-group",      label: "GOS Leads / KYC" },
+    ] : []),
     { id: "sco",          icon: "ti-file-description", label: "SCO" },
     { id: "fco",          icon: "ti-file-check",       label: "FCO" },
     { id: "price-center", icon: "ti-database",         label: "Price Center" },

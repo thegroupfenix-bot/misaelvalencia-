@@ -70,6 +70,11 @@ export const api = {
   createClient: (data)   => request("POST", "/clients", data),
   updateClient: (id, data) => request("PUT", `/clients/${id}`, data),
 
+  // GOS Leads (KYC pipeline — Sprint 1.5)
+  getLeads:        (params = {}) => { const q = new URLSearchParams(params).toString(); return request("GET", `/clients/leads${q ? `?${q}` : ""}`); },
+  getClientKycData:(id)          => request("GET",   `/clients/${id}/kyc-data`),
+  updateKycStatus: (id, data)    => request("PATCH", `/clients/${id}/kyc-status`, data),
+
   // Operations
   getOperations:   (params = {}) => {
     const q = new URLSearchParams(params).toString();
