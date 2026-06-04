@@ -16,6 +16,7 @@ const LEAD_STATUS_CONFIG = {
   ASSIGNED:   { label: "Asignado",    bg: "#ede9fe", text: "#5b21b6" },
   CONTACTED:  { label: "Contactado",  bg: "#fef3c7", text: "#92400e" },
   QUALIFIED:  { label: "Calificado",  bg: "#dcfce7", text: "#14532d" },
+  ARCHIVED:   { label: "Archivado",   bg: "#f3f4f6", text: "#374151", border: "#9ca3af" },
 };
 
 const KYC_FLOW = [
@@ -25,6 +26,11 @@ const KYC_FLOW = [
   "COMMERCIAL_APPROVED",
   "ACTIVE_CLIENT",
 ];
+
+// Roles that can delete leads (CORPORATE_ADMIN=90, SUPER_ADMIN=100)
+const ADMIN_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN"]);
+// Roles that can archive clients (DIRECTOR+=75)
+const DIRECTOR_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTOR", "DIRECTIVO", "CFO", "COMMERCIAL_DIRECTOR"]);
 
 function StatusBadge({ status, map }) {
   const cfg = map[status] || { label: status, bg: "#f3f4f6", text: "#6b7280" };
@@ -47,8 +53,8 @@ export function GosLeadsPanel({ user, showNotif }) {
   const [countryFilter, setCountryFilter] = useState("");
   const [agentFilter, setAgentFilter]   = useState("");
   const [agents, setAgents]             = useState([]);
-  const [selected, setSelected]         = useState(null);  // lead row
-  const [kycDetail, setKycDetail]       = useState(null);  // full kyc-data
+  const [selected, setSelected]         = useState(null);
+  const [kycDetail, setKycDetail]       = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [editMode, setEditMode]         = useState(false);
   const [saving, setSaving]             = useState(false);
@@ -59,8 +65,8 @@ export function GosLeadsPanel({ user, showNotif }) {
   const load = useCallback(() => {
     setLoading(true);
     const params = {};
-    if (kycFilter)    params.kyc_status = kycFilter;
-    if (agentFilter)  params.assigned_agent = agentFilter;
+    if (kycFilter)   params.kyc_status = kycFilter;
+    if (agentFilter) params.assigned_agent = agentFilter;
     api.getLeads(params)
       .then(setLeads)
       .catch(e => showNotif(e.message, "error"))
@@ -69,10 +75,12 @@ export function GosLeadsPanel({ user, showNotif }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Load agent list (for assign dropdown) ──────────────────────────────────
+  // ── Load agent list ─────────────────────────────────────────────────────────
   useEffect(() => {
     api.adminGetUsers()
-      .then(users => setAgents(users.filter(u => ["AGENTE","COMMERCIAL_DIRECTOR","DIRECTOR","DIRECTIVO"].includes(u.role) && u.active)))
+      .then(users => setAgents(users.filter(u =>
+        ["AGENTE","COMMERCIAL_DIRECTOR","DIRECTOR","DIRECTIVO"].includes(u.role) && u.active
+      )))
       .catch(() => {});
   }, []);
 
@@ -96,10 +104,16 @@ export function GosLeadsPanel({ user, showNotif }) {
     if (!selected) return;
     setStatusChanging(true);
     try {
-      const updated = await api.updateKycStatus(selected.id, { kyc_status, ...(lead_status ? { lead_status } : {}) });
+      const updated = await api.updateKycStatus(selected.id, {
+        kyc_status,
+        ...(lead_status ? { lead_status } : {}),
+      });
       showNotif(`Estado actualizado: ${KYC_STATUS_CONFIG[kyc_status]?.label || kyc_status}`);
       setSelected(prev => ({ ...prev, kyc_status: updated.kyc_status, lead_status: updated.lead_status }));
-      setLeads(prev => prev.map(l => l.id === updated.id ? { ...l, kyc_status: updated.kyc_status, lead_status: updated.lead_status } : l));
+      setLeads(prev => prev.map(l => l.id === updated.id
+        ? { ...l, kyc_status: updated.kyc_status, lead_status: updated.lead_status }
+        : l
+      ));
       if (kyc_status === "ACTIVE_CLIENT") { closeModal(); load(); }
     } catch (e) {
       showNotif(e.message, "error");
@@ -140,19 +154,51 @@ export function GosLeadsPanel({ user, showNotif }) {
     }
   };
 
+  // ── Archive client ──────────────────────────────────────────────────────────
+  const archiveClient = async () => {
+    if (!selected) return;
+    if (!window.confirm(`¿Archivar cliente ${selected.glv_code}? Se marcará como inactivo pero no se eliminará.`)) return;
+    try {
+      await api.archiveClient(selected.id);
+      showNotif("Cliente archivado");
+      closeModal();
+      load();
+    } catch (e) {
+      showNotif(e.message, "error");
+    }
+  };
+
+  // ── Delete lead ─────────────────────────────────────────────────────────────
+  const deleteLead = async () => {
+    if (!selected) return;
+    if (selected.kyc_status === "ACTIVE_CLIENT") {
+      showNotif("No se puede eliminar un cliente activo. Use la función de archivar.", "error");
+      return;
+    }
+    if (!window.confirm(`¿ELIMINAR PERMANENTEMENTE el lead ${selected.glv_code}?\n\nEsta acción no se puede deshacer. El registro y sus submissions serán eliminados del sistema.`)) return;
+    try {
+      await api.deleteLead(selected.id);
+      showNotif(`Lead ${selected.glv_code} eliminado`);
+      closeModal();
+      load();
+    } catch (e) {
+      showNotif(e.message, "error");
+    }
+  };
+
   // ── Filter ──────────────────────────────────────────────────────────────────
   const filtered = leads.filter(l => {
     if (countryFilter && !l.country?.toLowerCase().includes(countryFilter.toLowerCase())) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    return (l.company || "").toLowerCase().includes(q)
-        || (l.name || "").toLowerCase().includes(q)
-        || (l.glv_code || "").toLowerCase().includes(q)
-        || (l.email || "").toLowerCase().includes(q)
-        || (l.country || "").toLowerCase().includes(q);
+    return (l.company        || "").toLowerCase().includes(q)
+        || (l.name           || "").toLowerCase().includes(q)
+        || (l.representative || "").toLowerCase().includes(q)
+        || (l.glv_code       || "").toLowerCase().includes(q)
+        || (l.email          || "").toLowerCase().includes(q)
+        || (l.country        || "").toLowerCase().includes(q);
   });
 
-  // ── Stats ───────────────────────────────────────────────────────────────────
   const countByStatus = (s) => leads.filter(l => l.kyc_status === s).length;
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -176,7 +222,8 @@ export function GosLeadsPanel({ user, showNotif }) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
         {Object.entries(KYC_STATUS_CONFIG).map(([k, v]) => (
           <button key={k} onClick={() => setKycFilter(kycFilter === k ? "" : k)}
-            style={{ padding: "4px 12px", borderRadius: 20, border: `1px solid ${kycFilter === k ? v.border || v.bg : "var(--color-border-secondary)"}`,
+            style={{ padding: "4px 12px", borderRadius: 20,
+              border: `1px solid ${kycFilter === k ? v.border || v.bg : "var(--color-border-secondary)"}`,
               background: kycFilter === k ? v.bg : "var(--color-background-primary)",
               color: kycFilter === k ? v.text : "var(--color-text-secondary)",
               fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
@@ -187,8 +234,9 @@ export function GosLeadsPanel({ user, showNotif }) {
 
       {/* Filters */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar empresa, GLV code, email..."
-          style={{ padding: "8px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 13, width: 280, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }} />
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar empresa, representante, GLV code, email..."
+          style={{ padding: "8px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 13, width: 310, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }} />
         <input value={countryFilter} onChange={e => setCountryFilter(e.target.value)} placeholder="Filtrar por país..."
           style={{ padding: "8px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 13, width: 180, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }} />
         <select value={agentFilter} onChange={e => setAgentFilter(e.target.value)}
@@ -207,8 +255,7 @@ export function GosLeadsPanel({ user, showNotif }) {
       {/* Table */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "3rem", color: "var(--color-text-secondary)" }}>
-          <i className="ti ti-loader ti-spin" style={{ fontSize: 28, display: "block", marginBottom: 8 }} />
-          Cargando leads...
+          <i className="ti ti-loader ti-spin" style={{ fontSize: 28, display: "block", marginBottom: 8 }} />Cargando leads...
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "4rem", color: "var(--color-text-secondary)" }}>
@@ -233,13 +280,15 @@ export function GosLeadsPanel({ user, showNotif }) {
                   <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                     <code style={{ fontSize: 11, background: "#f3f4f6", padding: "2px 6px", borderRadius: 4, color: "#374151" }}>{lead.glv_code || "—"}</code>
                   </td>
+                  {/* Empresa: clients.company (razón social), fallback to clients.name (commercial) */}
                   <td style={{ padding: "10px 12px" }}>
                     <p style={{ margin: 0, fontWeight: 500, color: "var(--color-text-primary)" }}>{lead.company || lead.name}</p>
                     {lead.company && lead.name && lead.company !== lead.name && (
                       <p style={{ margin: 0, fontSize: 11, color: "var(--color-text-secondary)" }}>{lead.name}</p>
                     )}
                   </td>
-                  <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)" }}>{lead.name || "—"}</td>
+                  {/* Representante: clients.representative */}
+                  <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)" }}>{lead.representative || "—"}</td>
                   <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)" }}>{lead.country || "—"}</td>
                   <td style={{ padding: "10px 12px" }}><StatusBadge status={lead.lead_status} map={LEAD_STATUS_CONFIG} /></td>
                   <td style={{ padding: "10px 12px" }}><StatusBadge status={lead.kyc_status} map={KYC_STATUS_CONFIG} /></td>
@@ -276,6 +325,8 @@ export function GosLeadsPanel({ user, showNotif }) {
           onChangeStatus={changeStatus}
           onAssignAgent={assignAgent}
           onSaveNotes={saveNotes}
+          onArchive={archiveClient}
+          onDelete={deleteLead}
           onToggleEdit={() => setEditMode(e => !e)}
           user={user}
         />
@@ -285,10 +336,10 @@ export function GosLeadsPanel({ user, showNotif }) {
 }
 
 // ─── KYC Modal ────────────────────────────────────────────────────────────────
-function KycModal({ lead, detail, loading, agents, editMode, saving, statusChanging, activeTab, setActiveTab, onClose, onChangeStatus, onAssignAgent, onSaveNotes, onToggleEdit, user }) {
+function KycModal({ lead, detail, loading, agents, editMode, saving, statusChanging, activeTab, setActiveTab, onClose, onChangeStatus, onAssignAgent, onSaveNotes, onArchive, onDelete, onToggleEdit, user }) {
   const client  = detail?.client  || {};
   const kd      = client.kyc_data || {};
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes]               = useState("");
   const [selectedAgent, setSelectedAgent] = useState(lead.assigned_agent || "");
 
   useEffect(() => { setNotes(client.onboarding_notes || ""); }, [client.onboarding_notes]);
@@ -297,13 +348,16 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
   const currentStatus = lead.kyc_status;
   const currentIdx    = KYC_FLOW.indexOf(currentStatus);
 
+  const isAdmin    = ADMIN_ROLES.has(user?.role);
+  const isDirector = DIRECTOR_ROLES.has(user?.role);
+
   const tabs = [
-    { id: "empresa",    label: "Empresa",           icon: "ti-building" },
-    { id: "rep",        label: "Representante",      icon: "ti-user" },
-    { id: "comercial",  label: "Perfil Comercial",   icon: "ti-briefcase" },
-    { id: "refs",       label: "Referencias",        icon: "ti-award" },
-    { id: "compliance", label: "Compliance",         icon: "ti-shield-check" },
-    { id: "auditoria",  label: "Auditoría",          icon: "ti-history" },
+    { id: "empresa",    label: "Empresa",         icon: "ti-building" },
+    { id: "rep",        label: "Representante",   icon: "ti-user" },
+    { id: "comercial",  label: "Perfil Comercial", icon: "ti-briefcase" },
+    { id: "refs",       label: "Referencias",      icon: "ti-award" },
+    { id: "compliance", label: "Compliance",       icon: "ti-shield-check" },
+    { id: "auditoria",  label: "Auditoría",        icon: "ti-history" },
   ];
 
   return (
@@ -318,9 +372,22 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
               <StatusBadge status={lead.kyc_status} map={KYC_STATUS_CONFIG} />
               <StatusBadge status={lead.lead_status} map={LEAD_STATUS_CONFIG} />
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 2px" }}>{client.company || lead.company || lead.name}</h2>
-            {client.company && client.name && client.company !== client.name && (
-              <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>{client.name}</p>
+            {/* Empresa: company (razón social) > name (comercial) */}
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 2px" }}>
+              {client.company || lead.company || lead.name}
+            </h2>
+            {(client.company || lead.company) && (client.name || lead.name) &&
+             (client.company || lead.company) !== (client.name || lead.name) && (
+              <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
+                {client.name || lead.name}
+              </p>
+            )}
+            {/* Representante: always from clients.representative */}
+            {(client.representative || lead.representative) && (
+              <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "2px 0 0", display: "flex", alignItems: "center", gap: 5 }}>
+                <i className="ti ti-user" style={{ fontSize: 12 }} />
+                {client.representative || lead.representative}
+              </p>
             )}
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-secondary)", fontSize: 20, padding: 4 }}>
@@ -331,16 +398,18 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
         {/* KYC Flow progress bar */}
         <div style={{ padding: "12px 1.5rem", background: "var(--color-background-secondary)", borderBottom: "0.5px solid var(--color-border-tertiary)", display: "flex", alignItems: "center", gap: 4 }}>
           {KYC_FLOW.map((s, i) => {
-            const cfg = KYC_STATUS_CONFIG[s];
-            const done = currentIdx > i;
+            const cfg  = KYC_STATUS_CONFIG[s];
+            const done   = currentIdx > i;
             const active = currentIdx === i;
             return (
               <div key={s} style={{ display: "flex", alignItems: "center", flex: i < KYC_FLOW.length - 1 ? 1 : "none" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700,
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700,
                     background: active ? cfg.bg : done ? "#dcfce7" : "var(--color-background-primary)",
                     color: active ? cfg.text : done ? "#14532d" : "var(--color-text-secondary)",
-                    border: `2px solid ${active ? cfg.border || cfg.bg : done ? "#22c55e" : "var(--color-border-secondary)"}` }}>
+                    border: `2px solid ${active ? cfg.border || cfg.bg : done ? "#22c55e" : "var(--color-border-secondary)"}`,
+                  }}>
                     {done ? <i className="ti ti-check" style={{ fontSize: 12 }} /> : i + 1}
                   </div>
                   <span style={{ fontSize: 9, color: active ? cfg.text : "var(--color-text-secondary)", fontWeight: active ? 600 : 400, textAlign: "center", maxWidth: 70, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cfg.label}</span>
@@ -361,7 +430,7 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
           )}
         </div>
 
-        {/* Assign Agent + Action buttons row */}
+        {/* Assign Agent + workflow action buttons */}
         <div style={{ padding: "12px 1.5rem", borderBottom: "0.5px solid var(--color-border-tertiary)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
             <i className="ti ti-user-check" style={{ fontSize: 16, color: "var(--color-text-secondary)" }} />
@@ -376,7 +445,7 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {currentStatus === "PRE_REGISTRATION" && (
               <ActionBtn onClick={() => onChangeStatus("UNDER_REVIEW")} disabled={statusChanging} color="#2563eb" icon="ti-eye">En Revisión</ActionBtn>
             )}
@@ -386,7 +455,7 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
             {currentStatus === "COMPLIANCE_APPROVED" && (
               <ActionBtn onClick={() => onChangeStatus("COMMERCIAL_APPROVED")} disabled={statusChanging} color="#059669" icon="ti-check">Aprobar Comercial</ActionBtn>
             )}
-            {(currentStatus === "COMMERCIAL_APPROVED") && (
+            {currentStatus === "COMMERCIAL_APPROVED" && (
               <ActionBtn onClick={() => onChangeStatus("ACTIVE_CLIENT", "QUALIFIED")} disabled={statusChanging} color="#16a34a" icon="ti-user-plus">Activar Cliente</ActionBtn>
             )}
             {currentStatus !== "REJECTED" && currentStatus !== "ACTIVE_CLIENT" && (
@@ -402,8 +471,10 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
         <div style={{ display: "flex", borderBottom: "0.5px solid var(--color-border-tertiary)", overflowX: "auto" }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", border: "none", borderBottom: `2px solid ${activeTab === t.id ? "#1B2A4A" : "transparent"}`,
-                background: "transparent", color: activeTab === t.id ? "#1B2A4A" : "var(--color-text-secondary)",
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", border: "none",
+                borderBottom: `2px solid ${activeTab === t.id ? "#1B2A4A" : "transparent"}`,
+                background: "transparent",
+                color: activeTab === t.id ? "#1B2A4A" : "var(--color-text-secondary)",
                 fontSize: 13, fontWeight: activeTab === t.id ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>
               <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} />{t.label}
             </button>
@@ -423,31 +494,32 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
                   { label: "Razón Social / Empresa",  value: client.company || kd.empresa },
                   { label: "Nombre Comercial",         value: client.name    || kd.comercial },
                   { label: "NIT / Tax ID",             value: client.tax_id  || kd.nit },
-                  { label: "País",                     value: client.country || kd.pais },
+                  { label: "País de Constitución",     value: client.country || kd.pais },
                   { label: "Ciudad / Estado",          value: kd.ciudad },
+                  { label: "Año de Fundación",         value: kd.fundacion },
                   { label: "Dirección",                value: kd.direccion },
                   { label: "Sitio Web",                value: kd.web, isLink: true },
-                  { label: "Año de Fundación",         value: kd.fundacion },
+                  { label: "Actividad / Giro Comercial", value: kd.actividad, multiline: true },
                 ]} />
               )}
               {activeTab === "rep" && (
                 <KycSection fields={[
-                  { label: "Representante Legal",  value: client.representative || kd.rep },
-                  { label: "Cargo / Posición",     value: kd.cargo },
-                  { label: "Email",                value: client.email || kd.email },
-                  { label: "Teléfono / WhatsApp",  value: client.phone || kd.tel },
-                  { label: "Tipo de Documento",    value: kd.doc_tipo },
-                  { label: "Número de Documento",  value: kd.doc_num },
+                  { label: "Representante Legal",     value: client.representative || kd.rep },
+                  { label: "Cargo / Posición",        value: kd.cargo },
+                  { label: "Email",                   value: client.email || kd.email },
+                  { label: "Teléfono / WhatsApp",     value: client.phone || kd.tel },
+                  { label: "Tipo de Documento",       value: kd.doc_tipo },
+                  { label: "Número de Documento",     value: kd.doc_num },
                 ]} />
               )}
               {activeTab === "comercial" && (
                 <KycSection fields={[
-                  { label: "Tipo de Comprador",    value: kd.tipo_comprador },
-                  { label: "Volumen Estimado",     value: kd.volumen },
-                  { label: "Mercados Atendidos",   value: kd.mercados },
-                  { label: "Proveedores Actuales", value: kd.proveedores },
-                  { label: "Actividad / Giro",     value: kd.actividad },
-                  { label: "Productos de Interés", value: kd.productos, multiline: true },
+                  { label: "Tipo de Comprador",       value: kd.tipo_comprador },
+                  { label: "Volumen Estimado",         value: kd.volumen },
+                  { label: "Mercados Atendidos",       value: kd.mercados },
+                  { label: "Proveedores Actuales",     value: kd.proveedores },
+                  { label: "Actividad / Giro",         value: kd.actividad },
+                  { label: "Productos de Interés",     value: kd.productos, multiline: true },
                 ]} />
               )}
               {activeTab === "refs" && (
@@ -459,9 +531,9 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
               )}
               {activeTab === "compliance" && (
                 <div>
-                  <CheckRow label="Anti-lavado de activos (AML)"          checked={true} />
-                  <CheckRow label="Términos & Condiciones GLV"             checked={true} />
-                  <CheckRow label="Política de Privacidad de Datos"       checked={true} />
+                  <CheckRow label="Anti-lavado de activos (AML) y sanciones OFAC / ONU / FATF" checked />
+                  <CheckRow label="Términos & Condiciones GLV Services" checked />
+                  <CheckRow label="Política de Privacidad y Protección de Datos" checked />
                   <div style={{ marginTop: 20 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>Notas de Onboarding / Compliance</p>
                     {editMode ? (
@@ -500,12 +572,28 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
           )}
         </div>
 
-        {/* Footer metadata */}
-        <div style={{ padding: "12px 1.5rem", borderTop: "0.5px solid var(--color-border-tertiary)", display: "flex", gap: 20, flexWrap: "wrap" }}>
+        {/* Footer: metadata + archive/delete actions */}
+        <div style={{ padding: "12px 1.5rem", borderTop: "0.5px solid var(--color-border-tertiary)", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
           <MetaItem label="GLV Code"       value={lead.glv_code} mono />
           <MetaItem label="Fuente"         value={client.registration_source || lead.registration_source} />
           <MetaItem label="Fecha registro" value={lead.created_at ? new Date(lead.created_at).toLocaleString("es") : "—"} />
-          {detail?.submissions?.[0] && <MetaItem label="Última submission" value={new Date(detail.submissions[0].submitted_at).toLocaleString("es")} />}
+          {detail?.submissions?.[0] && (
+            <MetaItem label="Última submission" value={new Date(detail.submissions[0].submitted_at).toLocaleString("es")} />
+          )}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            {isDirector && (
+              <button onClick={onArchive}
+                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "transparent", color: "#6b7280", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>
+                <i className="ti ti-archive" style={{ fontSize: 13 }} /> Archivar
+              </button>
+            )}
+            {isAdmin && currentStatus !== "ACTIVE_CLIENT" && (
+              <button onClick={onDelete}
+                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "transparent", color: "#dc2626", border: "0.5px solid #fca5a5", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>
+                <i className="ti ti-trash" style={{ fontSize: 13 }} /> Eliminar Lead
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -545,11 +633,11 @@ function KycSection({ fields }) {
 function CheckRow({ label, checked }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-      <div style={{ width: 20, height: 20, borderRadius: "50%", background: checked ? "#dcfce7" : "#f3f4f6", border: `1px solid ${checked ? "#22c55e" : "#d1d5db"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 20, height: 20, borderRadius: "50%", background: checked ? "#dcfce7" : "#f3f4f6", border: `1px solid ${checked ? "#22c55e" : "#d1d5db"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         {checked && <i className="ti ti-check" style={{ fontSize: 11, color: "#16a34a" }} />}
       </div>
       <span style={{ fontSize: 13, color: "var(--color-text-primary)" }}>{label}</span>
-      <span style={{ marginLeft: "auto", fontSize: 11, color: checked ? "#16a34a" : "#9ca3af", fontWeight: 500 }}>
+      <span style={{ marginLeft: "auto", fontSize: 11, color: checked ? "#16a34a" : "#9ca3af", fontWeight: 500, whiteSpace: "nowrap" }}>
         {checked ? "✓ Declarado" : "No declarado"}
       </span>
     </div>
@@ -558,7 +646,7 @@ function CheckRow({ label, checked }) {
 
 function AuditTab({ detail, lead }) {
   const events = detail?.audit_trail || [];
-  const tasks  = detail?.tasks || [];
+  const tasks  = detail?.tasks       || [];
   const subs   = detail?.submissions || [];
 
   return (

@@ -142,6 +142,7 @@ router.get("/leads", requireLevel(65), (req, res) => {
     let q = `
       SELECT
         c.id, c.glv_code, c.name, c.company, c.country, c.email, c.phone,
+        c.representative,
         c.lead_status, c.kyc_status, c.registration_source, c.commercial_score,
         c.compliance_flag, c.created_at, c.last_contact_at,
         u.name       AS assigned_agent_name,
@@ -322,6 +323,48 @@ router.put("/:id", (req, res) => {
   );
 
   res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
+});
+
+// ─── PATCH /clients/:id/archive — archive client (DIRECTOR 75+) ──────────────
+router.patch("/:id/archive", requireLevel(75), (req, res) => {
+  try {
+    const client = db.prepare("SELECT id, glv_code, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+
+    db.prepare("UPDATE clients SET active = 0, lead_status = 'ARCHIVED' WHERE id = ?").run(req.params.id);
+
+    db.prepare(
+      "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+    ).run(req.user.username, "CLIENT_ARCHIVED", client.glv_code, client.id, req.ip);
+
+    res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
+  } catch (e) {
+    console.error("[PATCH /clients/:id/archive]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── DELETE /clients/:id — delete lead (CORPORATE_ADMIN 90+, not if ACTIVE_CLIENT) ──
+router.delete("/:id", requireLevel(90), (req, res) => {
+  try {
+    const client = db.prepare("SELECT id, glv_code, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+    if (client.kyc_status === "ACTIVE_CLIENT") {
+      return res.status(400).json({ error: "No se puede eliminar un cliente activo. Use la función de archivar." });
+    }
+
+    db.prepare("DELETE FROM kyc_submissions WHERE mapped_to_id = ?").run(req.params.id);
+    db.prepare("DELETE FROM clients WHERE id = ?").run(req.params.id);
+
+    db.prepare(
+      "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+    ).run(req.user.username, "LEAD_DELETED", client.glv_code, client.id, req.ip);
+
+    res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code });
+  } catch (e) {
+    console.error("[DELETE /clients/:id]", e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;
