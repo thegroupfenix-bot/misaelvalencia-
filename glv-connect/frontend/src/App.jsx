@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { api } from "./api.js";
+import { applySeo } from "./utils/seo.js";
 import { downloadPDF } from "./components/GlvPDF.jsx";
 import { bindMediaForDocument } from "./services/mediaAutoBinding.js";
 import { ProfileModal } from "./components/ProfileModal.jsx";
@@ -197,6 +198,8 @@ function Portal() {
   const [notification, setNotification] = useState(null);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [newDocKey, setNewDocKey] = useState(0);
+
+  useEffect(() => { applySeo(view); }, [view]);
 
   // safeSetView guarantees NewDocForm remounts on EVERY new-* navigation,
   // even when the current view is already that same new-* route (e.g. user
