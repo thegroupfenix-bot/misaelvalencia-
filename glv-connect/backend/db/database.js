@@ -276,6 +276,13 @@ safeAlter("ALTER TABLE clients ADD COLUMN onboarding_notes TEXT");
 // ─── audit_log client tracking (Sprint 1) ────────────────────────────────────
 safeAlter("ALTER TABLE audit_log ADD COLUMN client_id INTEGER");
 
+// ─── clients lifecycle (GOS-03) ───────────────────────────────────────────────
+safeAlter("ALTER TABLE clients ADD COLUMN lifecycle_status TEXT DEFAULT 'ACTIVE'");
+safeAlter("ALTER TABLE clients ADD COLUMN lifecycle_reason TEXT");
+safeAlter("ALTER TABLE clients ADD COLUMN lifecycle_updated_by INTEGER");
+safeAlter("ALTER TABLE clients ADD COLUMN lifecycle_updated_at TEXT");
+safeAlter("ALTER TABLE clients ADD COLUMN duplicate_of INTEGER");
+
 // ─── KYC staging table (Sprint 1) ────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS kyc_submissions (
