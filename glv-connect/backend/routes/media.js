@@ -15,14 +15,41 @@ function getSharp() {
   return _sharp;
 }
 
+const { ROLE_LEVEL, requirePermission } = require("../middleware/rbac");
+
 const router = express.Router();
 router.use(authenticate);
 
+// Legacy admin check kept for existing admin-only routes (reconcile, debug, r2-raw)
 const ADMIN_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTIVO"]);
 function requireAdmin(req, res, next) {
   if (!ADMIN_ROLES.has(req.user?.role) && req.user?.username !== "mvalencia")
     return res.status(403).json({ error: "Acceso restringido" });
   next();
+}
+
+// Media access: MEDIA_MANAGER or level >= 40 (AGENTE+)
+function requireMediaAccess(req, res, next) {
+  const role = req.user?.role;
+  if (role === "MEDIA_MANAGER") return next();
+  if ((ROLE_LEVEL[role] || 0) >= 40) return next();
+  return res.status(403).json({ error: "Acceso al Media Center denegado" });
+}
+
+// Media write: MEDIA_MANAGER or level >= 65 (COMPLIANCE+) or SUPER_ADMIN
+function requireMediaWrite(req, res, next) {
+  const role = req.user?.role;
+  if (role === "SUPER_ADMIN" || role === "MEDIA_MANAGER") return next();
+  if ((ROLE_LEVEL[role] || 0) >= 65) return next();
+  return res.status(403).json({ error: "Se requiere permiso de Media Manager o Compliance+" });
+}
+
+// Audit helper
+function mediaAudit(req, action, entityId) {
+  try {
+    db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?,?,?,?,?)")
+      .run(req.user?.username, action, String(entityId ?? ""), null, req.ip);
+  } catch { /* audit never breaks the main operation */ }
 }
 
 /**
@@ -70,14 +97,30 @@ function validateUploadSecurity(buffer, mimetype, originalname) {
   return { ok: true, reason: null };
 }
 
-// multer: memory storage, 20MB limit
+// Blocked extensions (server-side executables and scripts)
+const BLOCKED_EXTENSIONS = new Set([".exe",".dll",".bat",".cmd",".scr",".vbs",".js",".msi",".com",".pif",".jar",".sh",".ps1"]);
+
+// Allowed mime types — GOS-07A: images, docs, video, design, archives
+const ALLOWED_MIMES = new Set([
+  "image/jpeg","image/png","image/webp","image/gif","image/svg+xml",
+  "application/pdf",
+  "video/mp4","video/quicktime",
+  "application/zip","application/x-zip-compressed","application/x-zip",
+  "application/postscript",
+  "image/vnd.adobe.photoshop","image/x-photoshop","application/x-photoshop",
+  "application/octet-stream",
+]);
+
+// multer: memory storage, 50MB limit (expanded for video/zip)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter(_req, file, cb) {
-    const allowed = ["image/jpeg","image/png","image/webp","image/gif","application/pdf","image/svg+xml"];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error("Tipo de archivo no permitido"));
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (BLOCKED_EXTENSIONS.has(ext)) return cb(new Error(`Extensión bloqueada: ${ext}`), false);
+    if (ALLOWED_MIMES.has(file.mimetype)) return cb(null, true);
+    if ([".psd",".ai",".zip",".mp4",".mov"].includes(ext)) return cb(null, true);
+    cb(new Error(`Tipo de archivo no permitido: ${file.mimetype}`), false);
   },
 });
 
@@ -127,8 +170,8 @@ function serializeAsset(r) {
   };
 }
 
-// GET /media — list assets
-router.get("/", (req, res) => {
+// GET /media — list assets (includes deleted when ?include_deleted=1, MEDIA_MANAGER+ only)
+router.get("/", requireMediaAccess, (req, res) => {
   const { category, country, product, search, archived = 0, limit = 100, offset = 0 } = req.query;
   let base = "SELECT * FROM media_assets WHERE status != 'deleted' AND archived = ?";
   const filterParams = [+archived];
@@ -411,8 +454,8 @@ router.get("/:id", (req, res) => {
   res.json(serializeAsset(row));
 });
 
-// POST /media/upload — single or multiple files
-router.post("/upload", upload.array("files", 20), async (req, res) => {
+// POST /media/upload — single or multiple files (up to 50)
+router.post("/upload", requireMediaWrite, upload.array("files", 50), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: "Sin archivos" });
 
   let { category = "general", subcategory, country_origin, product_relation,
@@ -512,11 +555,7 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
           JSON.stringify({ ai_classified: !!aiResult, ai_confidence: aiResult?.confidence }),
           "active", "r2");
 
-        // D) Audit log for image upload
-        try {
-          db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
-            .run(req.user.username, `media_upload:${r2Key}`, String(record.lastInsertRowid), req.ip);
-        } catch { /* audit failures must not break uploads */ }
+        mediaAudit(req, "UPLOAD_MEDIA", record.lastInsertRowid);
 
         uploaded.push({
           id: record.lastInsertRowid,
@@ -547,11 +586,7 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
         file.size, publicUrl, checksum, r2Key,
         JSON.stringify(tagsArr), "{}", "active", "r2");
 
-      // D) Audit log for non-image upload
-      try {
-        db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
-          .run(req.user.username, `media_upload:${r2Key}`, String(record.lastInsertRowid), req.ip);
-      } catch { /* audit failures must not break uploads */ }
+      mediaAudit(req, "UPLOAD_MEDIA", record.lastInsertRowid);
 
       uploaded.push({ id: record.lastInsertRowid, filename, public_url: fixUrl(publicUrl) });
     } catch (err) {
@@ -564,39 +599,70 @@ router.post("/upload", upload.array("files", 20), async (req, res) => {
 });
 
 // PATCH /media/:id — update metadata/tags/relations
-router.patch("/:id", (req, res) => {
+router.patch("/:id", requireMediaWrite, (req, res) => {
   const { category, subcategory, country_origin, product_relation, operation_relation,
-          document_relation, tags, visibility, archived } = req.body;
+          document_relation, tags, visibility, language, author_id, dam_version } = req.body;
   const sets = ["updated_at = datetime('now')"]; const params = [];
-  if (category !== undefined)           { sets.push("category = ?"); params.push(category); }
-  if (subcategory !== undefined)        { sets.push("subcategory = ?"); params.push(subcategory); }
-  if (country_origin !== undefined)     { sets.push("country_origin = ?"); params.push(country_origin); }
-  if (product_relation !== undefined)   { sets.push("product_relation = ?"); params.push(product_relation); }
+  if (category !== undefined)           { sets.push("category = ?");          params.push(category); }
+  if (subcategory !== undefined)        { sets.push("subcategory = ?");        params.push(subcategory); }
+  if (country_origin !== undefined)     { sets.push("country_origin = ?");     params.push(country_origin); }
+  if (product_relation !== undefined)   { sets.push("product_relation = ?");   params.push(product_relation); }
   if (operation_relation !== undefined) { sets.push("operation_relation = ?"); params.push(operation_relation); }
-  if (document_relation !== undefined)  { sets.push("document_relation = ?"); params.push(document_relation); }
-  if (tags !== undefined)               { sets.push("tags_json = ?"); params.push(JSON.stringify(tags)); }
-  if (visibility !== undefined)         { sets.push("visibility = ?"); params.push(visibility); }
-  if (archived !== undefined)           { sets.push("archived = ?"); params.push(archived ? 1 : 0); }
+  if (document_relation !== undefined)  { sets.push("document_relation = ?");  params.push(document_relation); }
+  if (tags !== undefined)               { sets.push("tags_json = ?");          params.push(JSON.stringify(tags)); }
+  if (visibility !== undefined)         { sets.push("visibility = ?");         params.push(visibility); }
+  if (language !== undefined)           { sets.push("language = ?");           params.push(language); }
+  if (author_id !== undefined)          { sets.push("author_id = ?");          params.push(author_id); }
+  if (dam_version !== undefined)        { sets.push("dam_version = ?");        params.push(dam_version); }
   params.push(req.params.id);
   db.prepare(`UPDATE media_assets SET ${sets.join(",")} WHERE id = ?`).run(...params);
+  mediaAudit(req, "UPDATE_MEDIA", req.params.id);
   res.json(serializeAsset(db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id)));
 });
 
-// DELETE /media/:id
-router.delete("/:id", async (req, res) => {
-  const row = db.prepare("SELECT r2_key, thumbnail_key FROM media_assets WHERE id = ?").get(req.params.id);
+// DELETE /media/:id — SOFT DELETE only (file stays in R2, recoverable)
+router.delete("/:id", requireMediaWrite, (req, res) => {
+  const row = db.prepare("SELECT id, r2_key, status FROM media_assets WHERE id = ?").get(req.params.id);
   if (!row) return res.status(404).json({ error: "No encontrado" });
-  try {
-    if (row.r2_key && r2.isConfigured()) await r2.deleteObject(row.r2_key);
-    if (row.thumbnail_key && r2.isConfigured()) await r2.deleteObject(row.thumbnail_key);
-  } catch (e) { console.warn("R2 delete error:", e.message); }
-  db.prepare("UPDATE media_assets SET status = 'deleted' WHERE id = ?").run(req.params.id);
-  // D) Audit log for delete
-  try {
-    db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
-      .run(req.user.username, `media_delete:${row.r2_key}`, String(req.params.id), req.ip);
-  } catch { /* audit failures must not break deletes */ }
+  if (row.status === "deleted") return res.status(409).json({ error: "El archivo ya está eliminado" });
+  db.prepare("UPDATE media_assets SET status = 'deleted', dam_status = 'DELETED' WHERE id = ?").run(req.params.id);
+  mediaAudit(req, "DELETE_MEDIA", req.params.id);
   res.json({ ok: true });
+});
+
+// POST /media/:id/restore — restore soft-deleted asset (MEDIA_MANAGER or COMPLIANCE+)
+router.post("/:id/restore", requireMediaWrite, (req, res) => {
+  const row = db.prepare("SELECT id, status FROM media_assets WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "No encontrado" });
+  if (row.status !== "deleted") return res.status(409).json({ error: "El archivo no está eliminado" });
+  db.prepare("UPDATE media_assets SET status = 'active', dam_status = 'ACTIVE' WHERE id = ?").run(req.params.id);
+  mediaAudit(req, "RESTORE_MEDIA", req.params.id);
+  res.json({ ok: true, restored_id: Number(req.params.id) });
+});
+
+// POST /media/:id/archive — archive/unarchive (toggle)
+router.post("/:id/archive", requireMediaWrite, (req, res) => {
+  const row = db.prepare("SELECT id, archived FROM media_assets WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "No encontrado" });
+  const newArchived = row.archived ? 0 : 1;
+  db.prepare("UPDATE media_assets SET archived = ?, dam_status = ? WHERE id = ?")
+    .run(newArchived, newArchived ? "ARCHIVED" : "ACTIVE", req.params.id);
+  mediaAudit(req, newArchived ? "ARCHIVE_MEDIA" : "UNARCHIVE_MEDIA", req.params.id);
+  res.json({ ok: true, archived: !!newArchived });
+});
+
+// DELETE /media/:id/purge — HARD DELETE from R2 (SUPER_ADMIN only)
+router.delete("/:id/purge", requireAdmin, async (req, res) => {
+  const row = db.prepare("SELECT id, r2_key, thumbnail_key, status FROM media_assets WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "No encontrado" });
+  if (row.status !== "deleted") return res.status(409).json({ error: "El archivo debe estar en papelera antes de purgar. Use DELETE primero." });
+  try {
+    if (row.r2_key && r2.isConfigured())       await r2.deleteObject(row.r2_key);
+    if (row.thumbnail_key && r2.isConfigured()) await r2.deleteObject(row.thumbnail_key);
+  } catch (e) { console.warn("[purge] R2 delete warning:", e.message); }
+  db.prepare("DELETE FROM media_assets WHERE id = ?").run(req.params.id);
+  mediaAudit(req, "PURGE_MEDIA", req.params.id);
+  res.json({ ok: true, purged_id: Number(req.params.id) });
 });
 
 // GET /media/match/:category — smart matching for SCO/FCO

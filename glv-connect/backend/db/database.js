@@ -462,6 +462,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_notes_client ON client_notes(client_id);
 `);
 
+// ─── GOS-07A: media_assets DAM metadata fields ────────────────────────────────
+safeAlter("ALTER TABLE media_assets ADD COLUMN language    TEXT");
+safeAlter("ALTER TABLE media_assets ADD COLUMN author_id   INTEGER REFERENCES users(id)");
+safeAlter("ALTER TABLE media_assets ADD COLUMN dam_version TEXT DEFAULT '1.0'");
+safeAlter("ALTER TABLE media_assets ADD COLUMN dam_status  TEXT DEFAULT 'ACTIVE'");
+// dam_status: ACTIVE | ARCHIVED | DELETED
+// tags_json, category, subcategory, country_origin, product_relation already exist
+
 // ─── GOS-06G: Client Relationships ────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS client_relationships (
@@ -1004,6 +1012,18 @@ function seedGos06Catalogs() {
     ["FISH_FROZEN","Frozen Fish","SEAFOOD","MT"],
     ["SHRIMP","Shrimp","SEAFOOD","MT"],
   ].forEach(r => insProd.run(...r)))();
+
+  // MEDIA_MANAGER permissions
+  const insRP = db.prepare("INSERT OR IGNORE INTO role_permissions (role,module,action) VALUES (?,?,?)");
+  db.transaction(() => [
+    ["MEDIA_MANAGER","media","VIEW"],
+    ["MEDIA_MANAGER","media","UPLOAD"],
+    ["MEDIA_MANAGER","media","EDIT"],
+    ["MEDIA_MANAGER","media","DELETE"],
+    ["MEDIA_MANAGER","media","RESTORE"],
+    ["MEDIA_MANAGER","media","EXPORT"],
+    ["MEDIA_MANAGER","media","ARCHIVE"],
+  ].forEach(r => insRP.run(...r)))();
 
   // Role groups seed
   const insRG = db.prepare("INSERT OR IGNORE INTO role_groups (code,name) VALUES (?,?)");

@@ -149,8 +149,11 @@ export const api = {
       body: formData,
     }).then(r => r.json());
   },
-  updateMedia:         (id, data) => request("PATCH", `/media/${id}`, data),
-  deleteMedia:         (id) => request("DELETE", `/media/${id}`),
+  updateMedia:         (id, data) => request("PATCH",  `/media/${id}`, data),
+  deleteMedia:         (id)       => request("DELETE", `/media/${id}`),
+  restoreMedia:        (id)       => request("POST",   `/media/${id}/restore`),
+  archiveMedia:        (id)       => request("POST",   `/media/${id}/archive`),
+  purgeMedia:          (id)       => request("DELETE", `/media/${id}/purge`),
   getMediaMatch:       (category, params = {}) => {
     const qs = new URLSearchParams(params).toString();
     return request("GET", `/media/match/${category}${qs ? "?" + qs : ""}`);
