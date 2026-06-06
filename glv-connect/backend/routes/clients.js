@@ -428,27 +428,49 @@ router.get("/:id/lifecycle-history", requireLevel(65), (req, res) => {
   }
 });
 
+// ─── canDeleteClient — referential integrity check ───────────────────────────
+function canDeleteClient(clientId) {
+  const operations     = db.prepare("SELECT COUNT(*) AS n FROM operations WHERE client_id = ?").get(clientId)?.n || 0;
+  const documents      = db.prepare("SELECT COUNT(*) AS n FROM client_documents WHERE client_id = ? AND status != 'DELETED'").get(clientId)?.n || 0;
+  const tasks          = db.prepare("SELECT COUNT(*) AS n FROM tasks WHERE client_id = ?").get(clientId)?.n || 0;
+  const kyc_submissions = db.prepare("SELECT COUNT(*) AS n FROM kyc_submissions WHERE mapped_to_id = ?").get(clientId)?.n || 0;
+
+  const allowed = operations === 0 && documents === 0 && tasks === 0 && kyc_submissions === 0;
+  const reason  = allowed
+    ? null
+    : "Este cliente posee operaciones, documentos o registros vinculados. No puede eliminarse permanentemente. Utilice ARCHIVE.";
+
+  return { allowed, reason, operations, documents, tasks, kyc_submissions };
+}
+
 // ─── DELETE /clients/:id — PERMANENT DELETE (SUPER_ADMIN 100 only) ───────────
 router.delete("/:id", requireLevel(100), (req, res) => {
   try {
-    const client = db.prepare("SELECT id, glv_code, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    const client = db.prepare("SELECT id, glv_code, active, lead_status FROM clients WHERE id = ?").get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
 
-    if (client.kyc_status === "ACTIVE_CLIENT") {
+    if (client.active !== 0 && client.lead_status !== "ARCHIVED") {
       return res.status(400).json({ error: "No se puede eliminar un cliente activo. Archive el cliente primero." });
     }
 
-    const opCount = db.prepare("SELECT COUNT(*) AS n FROM operations WHERE client_id = ?").get(req.params.id)?.n || 0;
-    if (opCount > 0) {
-      return res.status(400).json({ error: `No se puede eliminar: el cliente tiene ${opCount} operación(es) asociada(s).` });
+    const integrity = canDeleteClient(req.params.id);
+    if (!integrity.allowed) {
+      return res.status(409).json({
+        error: integrity.reason,
+        counts: {
+          operations:      integrity.operations,
+          documents:       integrity.documents,
+          tasks:           integrity.tasks,
+          kyc_submissions: integrity.kyc_submissions,
+        },
+      });
     }
 
-    db.prepare("DELETE FROM kyc_submissions WHERE mapped_to_id = ?").run(req.params.id);
     db.prepare("DELETE FROM clients WHERE id = ?").run(req.params.id);
 
     db.prepare(
       "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
-    ).run(req.user.username, "PERMANENT_DELETE", client.glv_code, client.id, req.ip);
+    ).run(req.user.username, "CLIENT_PERMANENT_DELETE", client.glv_code, client.id, req.ip);
 
     res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code });
   } catch (e) {
