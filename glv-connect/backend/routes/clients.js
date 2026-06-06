@@ -431,10 +431,10 @@ router.get("/:id/lifecycle-history", requireLevel(65), (req, res) => {
 // ─── DELETE /clients/:id — PERMANENT DELETE (SUPER_ADMIN 100 only) ───────────
 router.delete("/:id", requireLevel(100), (req, res) => {
   try {
-    const client = db.prepare("SELECT id, glv_code, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    const client = db.prepare("SELECT id, glv_code, active, lead_status FROM clients WHERE id = ?").get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
 
-    if (client.kyc_status === "ACTIVE_CLIENT") {
+    if (client.active !== 0 && client.lead_status !== "ARCHIVED") {
       return res.status(400).json({ error: "No se puede eliminar un cliente activo. Archive el cliente primero." });
     }
 
