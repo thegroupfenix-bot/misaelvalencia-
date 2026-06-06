@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
-const { requireLevel } = require("../middleware/rbac");
+const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 
 const router = express.Router();
 
@@ -145,6 +145,7 @@ router.get("/leads", requireLevel(65), (req, res) => {
         c.representative,
         c.lead_status, c.kyc_status, c.registration_source, c.commercial_score,
         c.compliance_flag, c.created_at, c.last_contact_at,
+        c.lifecycle_status, c.lifecycle_reason, c.duplicate_of,
         u.name       AS assigned_agent_name,
         u.username   AS assigned_agent_username,
         rv.name      AS reviewed_by_name
@@ -344,13 +345,98 @@ router.patch("/:id/archive", requireLevel(75), (req, res) => {
   }
 });
 
-// ─── DELETE /clients/:id — delete lead (CORPORATE_ADMIN 90+, not if ACTIVE_CLIENT) ──
-router.delete("/:id", requireLevel(90), (req, res) => {
+// ─── PATCH /clients/:id/lifecycle — lifecycle transition (COMPLIANCE 65+) ────
+const LIFECYCLE_ACTIONS  = ["ARCHIVE", "ON_HOLD", "DUPLICATE", "REACTIVATE"];
+const LIFECYCLE_STATUSES = { ARCHIVE: "ARCHIVED", ON_HOLD: "ON_HOLD", DUPLICATE: "DUPLICATE", REACTIVATE: "ACTIVE" };
+const LIFECYCLE_AUDITS   = { ARCHIVE: "LIFECYCLE_ARCHIVED", ON_HOLD: "LIFECYCLE_ON_HOLD", DUPLICATE: "LIFECYCLE_DUPLICATE", REACTIVATE: "LIFECYCLE_REACTIVATED" };
+
+router.patch("/:id/lifecycle", requireLevel(65), (req, res) => {
+  try {
+    const { action, reason, duplicate_of } = req.body;
+
+    if (!LIFECYCLE_ACTIONS.includes(action)) {
+      return res.status(400).json({ error: `Acción inválida. Valores: ${LIFECYCLE_ACTIONS.join(", ")}` });
+    }
+    const userLevel = ROLE_LEVEL[req.user?.role] || 0;
+    if (["ARCHIVE", "ON_HOLD"].includes(action) && userLevel < 75) {
+      return res.status(403).json({ error: "Se requiere nivel DIRECTOR (75) para archivar o suspender." });
+    }
+    if (action === "DUPLICATE" && !duplicate_of) {
+      return res.status(400).json({ error: "Se requiere duplicate_of (id del registro canónico)." });
+    }
+    if (action === "REACTIVATE" && userLevel < 75) {
+      return res.status(403).json({ error: "Se requiere nivel DIRECTOR (75) para reactivar." });
+    }
+
+    const client = db.prepare(
+      "SELECT id, glv_code, kyc_status, lifecycle_status FROM clients WHERE id = ?"
+    ).get(req.params.id);
+    if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+
+    if (action === "REACTIVATE" && client.lifecycle_status === "ACTIVE") {
+      return res.status(400).json({ error: "El cliente ya está activo." });
+    }
+
+    const updates = [
+      "lifecycle_status = ?",
+      "lifecycle_reason = ?",
+      "lifecycle_updated_by = ?",
+      "lifecycle_updated_at = datetime('now')",
+    ];
+    const vals = [LIFECYCLE_STATUSES[action], reason || null, req.user.id];
+
+    if (action === "DUPLICATE") { updates.push("duplicate_of = ?"); vals.push(duplicate_of); }
+    updates.push(`active = ${action === "REACTIVATE" ? 1 : 0}`);
+
+    db.prepare(`UPDATE clients SET ${updates.join(", ")} WHERE id = ?`).run(...vals, req.params.id);
+
+    db.prepare(
+      "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+    ).run(req.user.username, LIFECYCLE_AUDITS[action], client.glv_code, client.id, req.ip);
+
+    res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
+  } catch (e) {
+    console.error("[PATCH /clients/:id/lifecycle]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── GET /clients/:id/lifecycle-history (COMPLIANCE 65+) ─────────────────────
+router.get("/:id/lifecycle-history", requireLevel(65), (req, res) => {
+  try {
+    const client = db.prepare(
+      "SELECT id, glv_code, lifecycle_status, lifecycle_reason, lifecycle_updated_at, duplicate_of FROM clients WHERE id = ?"
+    ).get(req.params.id);
+    if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+
+    const history = db.prepare(`
+      SELECT al.ts, al.username, al.action, al.ip, u.name AS actor_name
+      FROM audit_log al
+      LEFT JOIN users u ON u.username = al.username
+      WHERE al.client_id = ? AND al.action LIKE 'LIFECYCLE_%'
+      ORDER BY al.ts DESC LIMIT 100
+    `).all(req.params.id);
+
+    res.json({ client, history });
+  } catch (e) {
+    console.error("[GET /clients/:id/lifecycle-history]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── DELETE /clients/:id — PERMANENT DELETE (SUPER_ADMIN 100 only) ───────────
+router.delete("/:id", requireLevel(100), (req, res) => {
   try {
     const client = db.prepare("SELECT id, glv_code, kyc_status FROM clients WHERE id = ?").get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+
     if (client.kyc_status === "ACTIVE_CLIENT") {
-      return res.status(400).json({ error: "No se puede eliminar un cliente activo. Use la función de archivar." });
+      return res.status(400).json({ error: "No se puede eliminar un cliente activo. Archive el cliente primero." });
+    }
+
+    const opCount = db.prepare("SELECT COUNT(*) AS n FROM operations WHERE client_id = ?").get(req.params.id)?.n || 0;
+    if (opCount > 0) {
+      return res.status(400).json({ error: `No se puede eliminar: el cliente tiene ${opCount} operación(es) asociada(s).` });
     }
 
     db.prepare("DELETE FROM kyc_submissions WHERE mapped_to_id = ?").run(req.params.id);
@@ -358,7 +444,7 @@ router.delete("/:id", requireLevel(90), (req, res) => {
 
     db.prepare(
       "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
-    ).run(req.user.username, "LEAD_DELETED", client.glv_code, client.id, req.ip);
+    ).run(req.user.username, "PERMANENT_DELETE", client.glv_code, client.id, req.ip);
 
     res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code });
   } catch (e) {

@@ -19,6 +19,13 @@ const LEAD_STATUS_CONFIG = {
   ARCHIVED:   { label: "Archivado",   bg: "#f3f4f6", text: "#374151", border: "#9ca3af" },
 };
 
+const LIFECYCLE_CONFIG = {
+  ACTIVE:    { label: "Activo",     bg: "#dcfce7", text: "#14532d", border: "#22c55e" },
+  ARCHIVED:  { label: "Archivado",  bg: "#f3f4f6", text: "#374151", border: "#9ca3af" },
+  ON_HOLD:   { label: "Suspendido", bg: "#fef3c7", text: "#92400e", border: "#fbbf24" },
+  DUPLICATE: { label: "Duplicado",  bg: "#fee2e2", text: "#991b1b", border: "#f87171" },
+};
+
 const KYC_FLOW = [
   "PRE_REGISTRATION",
   "UNDER_REVIEW",
@@ -27,9 +34,9 @@ const KYC_FLOW = [
   "ACTIVE_CLIENT",
 ];
 
-// Roles that can delete leads (CORPORATE_ADMIN=90, SUPER_ADMIN=100)
-const ADMIN_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN"]);
-// Roles that can archive clients (DIRECTOR+=75)
+// Roles that can permanently delete (SUPER_ADMIN=100 only)
+const SUPER_ADMIN_ONLY = new Set(["SUPER_ADMIN"]);
+// Roles that can do lifecycle transitions (DIRECTOR+=75)
 const DIRECTOR_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTOR", "DIRECTIVO", "CFO", "COMMERCIAL_DIRECTOR"]);
 
 function StatusBadge({ status, map }) {
@@ -58,8 +65,10 @@ export function GosLeadsPanel({ user, showNotif }) {
   const [modalLoading, setModalLoading] = useState(false);
   const [editMode, setEditMode]         = useState(false);
   const [saving, setSaving]             = useState(false);
-  const [statusChanging, setStatusChanging] = useState(false);
-  const [activeTab, setActiveTab]       = useState("empresa");
+  const [statusChanging, setStatusChanging]       = useState(false);
+  const [lifecycleChanging, setLifecycleChanging] = useState(false);
+  const [lifecycleHistory, setLifecycleHistory]   = useState(null);
+  const [activeTab, setActiveTab]                 = useState("empresa");
 
   // ── Load leads ──────────────────────────────────────────────────────────────
   const load = useCallback(() => {
@@ -90,6 +99,7 @@ export function GosLeadsPanel({ user, showNotif }) {
     setKycDetail(null);
     setEditMode(false);
     setActiveTab("empresa");
+    setLifecycleHistory(null);
     setModalLoading(true);
     api.getClientKycData(lead.id)
       .then(setKycDetail)
@@ -97,7 +107,7 @@ export function GosLeadsPanel({ user, showNotif }) {
       .finally(() => setModalLoading(false));
   };
 
-  const closeModal = () => { setSelected(null); setKycDetail(null); setEditMode(false); };
+  const closeModal = () => { setSelected(null); setKycDetail(null); setEditMode(false); setLifecycleHistory(null); };
 
   // ── Update KYC status ───────────────────────────────────────────────────────
   const changeStatus = async (kyc_status, lead_status) => {
@@ -151,6 +161,72 @@ export function GosLeadsPanel({ user, showNotif }) {
       showNotif(e.message, "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Lifecycle transitions ───────────────────────────────────────────────────
+  const updateLifecycle = async (action, extraData = {}) => {
+    if (!selected) return;
+    const ACTION_LABELS = { ARCHIVE: "Archivar", ON_HOLD: "Suspender", DUPLICATE: "Marcar Duplicado", REACTIVATE: "Reactivar" };
+    const confirm_msg = {
+      ARCHIVE:    `¿Archivar el ciclo de vida de ${selected.glv_code}? El registro no se eliminará pero quedará inactivo.`,
+      ON_HOLD:    `¿Suspender (ON HOLD) a ${selected.glv_code}? Se marcará en espera.`,
+      DUPLICATE:  `¿Marcar ${selected.glv_code} como duplicado del registro ID ${extraData.duplicate_of}?`,
+      REACTIVATE: `¿Reactivar ${selected.glv_code}? El ciclo de vida volverá a ACTIVO.`,
+    };
+    if (!window.confirm(confirm_msg[action])) return;
+
+    let reason = null;
+    if (action === "ON_HOLD" || action === "ARCHIVE") {
+      reason = window.prompt("Motivo (opcional):") || null;
+    }
+
+    setLifecycleChanging(true);
+    try {
+      const updated = await api.updateLifecycle(selected.id, { action, reason, ...extraData });
+      showNotif(`${ACTION_LABELS[action]}: ciclo de vida actualizado`);
+      setSelected(prev => ({ ...prev, lifecycle_status: updated.lifecycle_status, lifecycle_reason: updated.lifecycle_reason }));
+      setLeads(prev => prev.map(l => l.id === updated.id ? { ...l, lifecycle_status: updated.lifecycle_status } : l));
+      setLifecycleHistory(null);
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setLifecycleChanging(false);
+    }
+  };
+
+  const markDuplicate = async () => {
+    if (!selected) return;
+    const raw = window.prompt(`Ingrese el ID numérico del registro canónico (del cual ${selected.glv_code} es duplicado):`);
+    if (!raw) return;
+    const dup_id = parseInt(raw, 10);
+    if (!dup_id || isNaN(dup_id)) { showNotif("ID inválido", "error"); return; }
+    await updateLifecycle("DUPLICATE", { duplicate_of: dup_id });
+  };
+
+  const loadLifecycleHistory = async () => {
+    if (!selected) return;
+    try {
+      const data = await api.getLifecycleHistory(selected.id);
+      setLifecycleHistory(data);
+    } catch (e) {
+      showNotif(e.message, "error");
+    }
+  };
+
+  // ── Permanent delete (SUPER_ADMIN only) ────────────────────────────────────
+  const permanentDelete = async () => {
+    if (!selected) return;
+    if (!window.confirm(`⚠ ELIMINACIÓN PERMANENTE\n\nEsta acción NO se puede deshacer.\nSe eliminará el lead ${selected.glv_code} y todos sus submissions.\n\n¿Confirmar eliminación permanente?`)) return;
+    const confirm2 = window.prompt(`Para confirmar, escriba el GLV code exacto: ${selected.glv_code}`);
+    if (confirm2 !== selected.glv_code) { showNotif("Confirmación incorrecta. Eliminación cancelada.", "error"); return; }
+    try {
+      await api.deleteLead(selected.id);
+      showNotif(`Lead ${selected.glv_code} eliminado permanentemente`);
+      closeModal();
+      load();
+    } catch (e) {
+      showNotif(e.message, "error");
     }
   };
 
@@ -267,7 +343,7 @@ export function GosLeadsPanel({ user, showNotif }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--color-background-secondary)" }}>
-                {["GLV Code","Empresa","Representante","País","Lead Status","KYC Status","Agente","Fecha",""].map(h => (
+                {["GLV Code","Empresa","Representante","País","Lead Status","KYC Status","Ciclo Vida","Agente","Fecha",""].map(h => (
                   <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -292,6 +368,7 @@ export function GosLeadsPanel({ user, showNotif }) {
                   <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)" }}>{lead.country || "—"}</td>
                   <td style={{ padding: "10px 12px" }}><StatusBadge status={lead.lead_status} map={LEAD_STATUS_CONFIG} /></td>
                   <td style={{ padding: "10px 12px" }}><StatusBadge status={lead.kyc_status} map={KYC_STATUS_CONFIG} /></td>
+                  <td style={{ padding: "10px 12px" }}><StatusBadge status={lead.lifecycle_status || "ACTIVE"} map={LIFECYCLE_CONFIG} /></td>
                   <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)", fontSize: 12 }}>{lead.assigned_agent_name || <span style={{ opacity: 0.4 }}>Sin asignar</span>}</td>
                   <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)", fontSize: 11, whiteSpace: "nowrap" }}>
                     {lead.created_at ? new Date(lead.created_at).toLocaleDateString("es") : "—"}
@@ -319,6 +396,8 @@ export function GosLeadsPanel({ user, showNotif }) {
           editMode={editMode}
           saving={saving}
           statusChanging={statusChanging}
+          lifecycleChanging={lifecycleChanging}
+          lifecycleHistory={lifecycleHistory}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onClose={closeModal}
@@ -327,6 +406,10 @@ export function GosLeadsPanel({ user, showNotif }) {
           onSaveNotes={saveNotes}
           onArchive={archiveClient}
           onDelete={deleteLead}
+          onUpdateLifecycle={updateLifecycle}
+          onMarkDuplicate={markDuplicate}
+          onPermanentDelete={permanentDelete}
+          onLoadLifecycleHistory={loadLifecycleHistory}
           onToggleEdit={() => setEditMode(e => !e)}
           user={user}
         />
@@ -336,7 +419,7 @@ export function GosLeadsPanel({ user, showNotif }) {
 }
 
 // ─── KYC Modal ────────────────────────────────────────────────────────────────
-function KycModal({ lead, detail, loading, agents, editMode, saving, statusChanging, activeTab, setActiveTab, onClose, onChangeStatus, onAssignAgent, onSaveNotes, onArchive, onDelete, onToggleEdit, user }) {
+function KycModal({ lead, detail, loading, agents, editMode, saving, statusChanging, lifecycleChanging, lifecycleHistory, activeTab, setActiveTab, onClose, onChangeStatus, onAssignAgent, onSaveNotes, onArchive, onDelete, onUpdateLifecycle, onMarkDuplicate, onPermanentDelete, onLoadLifecycleHistory, onToggleEdit, user }) {
   const client  = detail?.client  || {};
   const kd      = client.kyc_data || {};
   const [notes, setNotes]               = useState("");
@@ -348,16 +431,18 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
   const currentStatus = lead.kyc_status;
   const currentIdx    = KYC_FLOW.indexOf(currentStatus);
 
-  const isAdmin    = ADMIN_ROLES.has(user?.role);
-  const isDirector = DIRECTOR_ROLES.has(user?.role);
+  const isSuperAdmin = SUPER_ADMIN_ONLY.has(user?.role);
+  const isDirector   = DIRECTOR_ROLES.has(user?.role);
+  const lcStatus     = lead.lifecycle_status || "ACTIVE";
 
   const tabs = [
-    { id: "empresa",    label: "Empresa",         icon: "ti-building" },
-    { id: "rep",        label: "Representante",   icon: "ti-user" },
-    { id: "comercial",  label: "Perfil Comercial", icon: "ti-briefcase" },
-    { id: "refs",       label: "Referencias",      icon: "ti-award" },
-    { id: "compliance", label: "Compliance",       icon: "ti-shield-check" },
-    { id: "auditoria",  label: "Auditoría",        icon: "ti-history" },
+    { id: "empresa",     label: "Empresa",          icon: "ti-building" },
+    { id: "rep",         label: "Representante",    icon: "ti-user" },
+    { id: "comercial",   label: "Perfil Comercial",  icon: "ti-briefcase" },
+    { id: "refs",        label: "Referencias",       icon: "ti-award" },
+    { id: "compliance",  label: "Compliance",        icon: "ti-shield-check" },
+    { id: "ciclo-vida",  label: "Ciclo de Vida",     icon: "ti-refresh" },
+    { id: "auditoria",   label: "Auditoría",         icon: "ti-history" },
   ];
 
   return (
@@ -367,10 +452,11 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
         {/* Modal header */}
         <div style={{ padding: "1.25rem 1.5rem", borderBottom: "0.5px solid var(--color-border-tertiary)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
               <code style={{ fontSize: 12, background: "#f3f4f6", padding: "2px 8px", borderRadius: 6, color: "#374151", fontWeight: 600 }}>{lead.glv_code || "—"}</code>
               <StatusBadge status={lead.kyc_status} map={KYC_STATUS_CONFIG} />
               <StatusBadge status={lead.lead_status} map={LEAD_STATUS_CONFIG} />
+              {lcStatus !== "ACTIVE" && <StatusBadge status={lcStatus} map={LIFECYCLE_CONFIG} />}
             </div>
             {/* Empresa: company (razón social) > name (comercial) */}
             <h2 style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 2px" }}>
@@ -466,6 +552,30 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
             )}
           </div>
         </div>
+
+        {/* Lifecycle actions (DIRECTOR 75+) */}
+        {isDirector && (
+          <div style={{ padding: "10px 1.5rem", borderBottom: "0.5px solid var(--color-border-tertiary)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#fafafa" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", marginRight: 4 }}>
+              <i className="ti ti-refresh" style={{ fontSize: 12 }} /> Ciclo de Vida
+            </span>
+            {lcStatus === "ACTIVE" && (
+              <>
+                <ActionBtn onClick={() => onUpdateLifecycle("ARCHIVE")} disabled={lifecycleChanging} color="#6b7280" icon="ti-archive">Archivar</ActionBtn>
+                <ActionBtn onClick={() => onUpdateLifecycle("ON_HOLD")} disabled={lifecycleChanging} color="#d97706" icon="ti-pause">Suspender</ActionBtn>
+                <ActionBtn onClick={onMarkDuplicate}                   disabled={lifecycleChanging} color="#7c3aed" icon="ti-copy">Duplicado</ActionBtn>
+              </>
+            )}
+            {lcStatus !== "ACTIVE" && (
+              <ActionBtn onClick={() => onUpdateLifecycle("REACTIVATE")} disabled={lifecycleChanging} color="#16a34a" icon="ti-player-play">Reactivar</ActionBtn>
+            )}
+            {lcStatus !== "ACTIVE" && lead.lifecycle_reason && (
+              <span style={{ fontSize: 12, color: "var(--color-text-secondary)", marginLeft: 4 }}>
+                Motivo: <em>{lead.lifecycle_reason}</em>
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: "0.5px solid var(--color-border-tertiary)", overflowX: "auto" }}>
@@ -565,6 +675,14 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
                   </div>
                 </div>
               )}
+              {activeTab === "ciclo-vida" && (
+                <LifecycleTab
+                  lead={lead}
+                  history={lifecycleHistory}
+                  onLoad={onLoadLifecycleHistory}
+                  lcStatus={lcStatus}
+                />
+              )}
               {activeTab === "auditoria" && (
                 <AuditTab detail={detail} lead={lead} />
               )}
@@ -584,13 +702,13 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
             {isDirector && (
               <button onClick={onArchive}
                 style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "transparent", color: "#6b7280", border: "0.5px solid #d1d5db", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>
-                <i className="ti ti-archive" style={{ fontSize: 13 }} /> Archivar
+                <i className="ti ti-archive" style={{ fontSize: 13 }} /> Archivar (KYC)
               </button>
             )}
-            {isAdmin && currentStatus !== "ACTIVE_CLIENT" && (
-              <button onClick={onDelete}
-                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "transparent", color: "#dc2626", border: "0.5px solid #fca5a5", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>
-                <i className="ti ti-trash" style={{ fontSize: 13 }} /> Eliminar Lead
+            {isSuperAdmin && currentStatus !== "ACTIVE_CLIENT" && (
+              <button onClick={onPermanentDelete}
+                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "transparent", color: "#dc2626", border: "0.5px solid #fca5a5", borderRadius: 7, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                <i className="ti ti-trash-x" style={{ fontSize: 13 }} /> ELIMINAR PERMANENTE
               </button>
             )}
           </div>
@@ -690,6 +808,54 @@ function AuditTab({ detail, lead }) {
       {events.length === 0 && tasks.length === 0 && subs.length === 0 && (
         <p style={{ color: "var(--color-text-secondary)", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>Sin eventos de auditoría registrados aún.</p>
       )}
+    </div>
+  );
+}
+
+function LifecycleTab({ lead, history, onLoad, lcStatus }) {
+  const lcCfg = LIFECYCLE_CONFIG[lcStatus] || LIFECYCLE_CONFIG.ACTIVE;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Estado Ciclo de Vida</p>
+          <StatusBadge status={lcStatus} map={LIFECYCLE_CONFIG} />
+        </div>
+        {lead.lifecycle_reason && (
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Motivo</p>
+            <p style={{ fontSize: 13, color: "var(--color-text-primary)", margin: 0 }}>{lead.lifecycle_reason}</p>
+          </div>
+        )}
+        {lead.duplicate_of && (
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Duplicado de (ID)</p>
+            <code style={{ fontSize: 13, background: "#f3f4f6", padding: "2px 8px", borderRadius: 4 }}>{lead.duplicate_of}</code>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>Historial de Transiciones</p>
+          <button onClick={onLoad} style={{ padding: "4px 10px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 6, fontSize: 12, background: "var(--color-background-primary)", color: "var(--color-text-secondary)", cursor: "pointer" }}>
+            <i className="ti ti-refresh" style={{ fontSize: 12 }} /> Cargar
+          </button>
+        </div>
+        {!history ? (
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, opacity: 0.6 }}>Haga clic en "Cargar" para ver el historial de ciclo de vida.</p>
+        ) : history.history?.length === 0 ? (
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, textAlign: "center", padding: "1.5rem 0" }}>Sin transiciones de ciclo de vida registradas.</p>
+        ) : (
+          history.history?.map((e, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: "0.5px solid var(--color-border-tertiary)", fontSize: 12 }}>
+              <span style={{ color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{e.ts}</span>
+              <code style={{ background: "#f3f4f6", padding: "1px 6px", borderRadius: 4, fontSize: 11, color: "#374151" }}>{e.action}</code>
+              <span style={{ color: "var(--color-text-secondary)" }}>{e.actor_name || e.username}</span>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
