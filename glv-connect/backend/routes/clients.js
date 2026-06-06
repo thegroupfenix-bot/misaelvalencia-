@@ -1,7 +1,11 @@
 const express = require("express");
-const db = require("../db/database");
-const { authenticate } = require("../middleware/auth");
+const multer  = require("multer");
+const crypto  = require("crypto");
+const path    = require("path");
+const db      = require("../db/database");
+const { authenticate }         = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
+const r2      = require("../storage/r2");
 
 const router = express.Router();
 
@@ -449,6 +453,126 @@ router.delete("/:id", requireLevel(100), (req, res) => {
     res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code });
   } catch (e) {
     console.error("[DELETE /clients/:id]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Document upload multer config ───────────────────────────────────────────
+const docUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    const allowed = [
+      "image/jpeg", "image/png", "image/webp", "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Tipo de archivo no permitido. Use PDF, imagen o documento Office."));
+  },
+});
+
+// ─── GET /clients/:id/documents (COMPLIANCE 65+) ─────────────────────────────
+router.get("/:id/documents", requireLevel(65), (req, res) => {
+  try {
+    const docs = db.prepare(`
+      SELECT d.*, u.name AS uploaded_by_name
+      FROM client_documents d
+      LEFT JOIN users u ON u.id = d.uploaded_by
+      WHERE d.client_id = ? AND d.status = 'ACTIVE'
+      ORDER BY d.uploaded_at DESC
+    `).all(req.params.id);
+    res.json(docs);
+  } catch (e) {
+    console.error("[GET /clients/:id/documents]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── POST /clients/:id/documents/upload (COMPLIANCE 65+) ─────────────────────
+router.post("/:id/documents/upload", requireLevel(65), docUpload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No se recibió archivo." });
+
+    const client = db.prepare("SELECT id, glv_code FROM clients WHERE id = ?").get(req.params.id);
+    if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+
+    const { document_type, notes } = req.body;
+    const ext = path.extname(req.file.originalname).toLowerCase() || "";
+    const key = `client-docs/${req.params.id}/${crypto.randomUUID()}${ext}`;
+
+    let url = null;
+    try {
+      url = await r2.uploadObject(key, req.file.buffer, req.file.mimetype);
+    } catch (e) {
+      console.warn("[doc-upload] R2 unavailable, record stored without URL:", e.message);
+    }
+
+    const ins = db.prepare(`
+      INSERT INTO client_documents
+        (client_id, document_type, file_name, file_size, mime_type, r2_key, url, uploaded_by, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      req.params.id, document_type || "OTHER",
+      req.file.originalname, req.file.size, req.file.mimetype,
+      key, url, req.user.id, notes || null
+    );
+
+    db.prepare(
+      "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+    ).run(req.user.username, "DOCUMENT_UPLOADED", `${document_type || "OTHER"}:${req.file.originalname}`, client.id, req.ip);
+
+    res.status(201).json(db.prepare(
+      "SELECT d.*, u.name AS uploaded_by_name FROM client_documents d LEFT JOIN users u ON u.id = d.uploaded_by WHERE d.id = ?"
+    ).get(ins.lastInsertRowid));
+  } catch (e) {
+    console.error("[POST /clients/:id/documents/upload]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── DELETE /clients/:id/documents/:docId (COMPLIANCE 65+) ───────────────────
+router.delete("/:id/documents/:docId", requireLevel(65), async (req, res) => {
+  try {
+    const doc = db.prepare(
+      "SELECT * FROM client_documents WHERE id = ? AND client_id = ? AND status = 'ACTIVE'"
+    ).get(req.params.docId, req.params.id);
+    if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
+
+    db.prepare("UPDATE client_documents SET status = 'DELETED' WHERE id = ?").run(req.params.docId);
+
+    if (doc.r2_key) {
+      try { await r2.deleteObject(doc.r2_key); } catch (e) { console.warn("[doc-delete] R2 delete failed:", e.message); }
+    }
+
+    db.prepare(
+      "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+    ).run(req.user.username, "DOCUMENT_DELETED", doc.file_name, parseInt(req.params.id), req.ip);
+
+    res.json({ ok: true, deleted_id: Number(req.params.docId) });
+  } catch (e) {
+    console.error("[DELETE /clients/:id/documents/:docId]", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── GET /clients/:id/documents/:docId/url (COMPLIANCE 65+) ──────────────────
+router.get("/:id/documents/:docId/url", requireLevel(65), async (req, res) => {
+  try {
+    const doc = db.prepare(
+      "SELECT * FROM client_documents WHERE id = ? AND client_id = ? AND status = 'ACTIVE'"
+    ).get(req.params.docId, req.params.id);
+    if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
+
+    let url = doc.url;
+    if (doc.r2_key) {
+      try { url = await r2.getSignedDownloadUrl(doc.r2_key, 3600); } catch (e) {}
+    }
+    res.json({ url, file_name: doc.file_name, mime_type: doc.mime_type });
+  } catch (e) {
+    console.error("[GET /clients/:id/documents/:docId/url]", e.message);
     res.status(500).json({ error: e.message });
   }
 });

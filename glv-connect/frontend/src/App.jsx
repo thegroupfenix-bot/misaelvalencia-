@@ -1555,8 +1555,9 @@ function OperationDetail({ opId, user, setView, showNotif }) {
 }
 
 // ─── Client Detail Modal ──────────────────────────────────────────────────────
-function ClientDetailModal({ client, onClose, onSaved, showNotif }) {
+function ClientDetailModal({ client, user, onClose, onSaved, onDeleted, showNotif }) {
   const [form, setForm] = useState({
+    company: client.company || "",
     name: client.name || "",
     type: client.type || "CLIENT",
     country: client.country || "",
@@ -1588,6 +1589,26 @@ function ClientDetailModal({ client, onClose, onSaved, showNotif }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (user?.role !== "SUPER_ADMIN") return;
+    const expectedCode = client.glv_code || String(client.id);
+    const input = window.prompt(
+      `Para confirmar la eliminación permanente de "${client.company || client.name}", escriba exactamente:\nDELETE ${expectedCode}`
+    );
+    if (input === null) return;
+    if (input.trim() !== `DELETE ${expectedCode}`) {
+      showNotif("Código incorrecto. Eliminación cancelada.", "error");
+      return;
+    }
+    try {
+      await api.deleteLead(client.id);
+      showNotif(`Cliente ${expectedCode} eliminado permanentemente`);
+      onDeleted();
+    } catch (e) {
+      showNotif(e.message, "error");
+    }
+  };
+
   const TYPE_COLORS = { CLIENT: { bg: "#dbeafe", text: "#1e40af" }, SUPPLIER: { bg: "#dcfce7", text: "#166534" }, PARTNER: { bg: "#ede9fe", text: "#4c1d95" } };
   const tc = TYPE_COLORS[form.type] || { bg: "#f3f4f6", text: "#374151" };
 
@@ -1607,8 +1628,12 @@ function ClientDetailModal({ client, onClose, onSaved, showNotif }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Nombre / Razón social *</label>
-            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Empresa o persona" style={inputSt} />
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Razón Social / Empresa</label>
+            <input value={form.company} onChange={e => set("company", e.target.value)} placeholder="Nombre legal de la empresa" style={inputSt} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Nombre Comercial *</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Nombre comercial o persona" style={inputSt} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Tipo</label>
@@ -1645,12 +1670,20 @@ function ClientDetailModal({ client, onClose, onSaved, showNotif }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-          <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>Cerrar</button>
-          <button onClick={handleSave} disabled={saving}
-            style={{ padding: "9px 24px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
+        <div style={{ display: "flex", gap: 10, marginTop: 20, alignItems: "center" }}>
+          {user?.role === "SUPER_ADMIN" && (
+            <button onClick={handleDelete}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "9px 14px", background: "transparent", color: "#dc2626", border: "0.5px solid #fca5a5", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+              <i className="ti ti-trash-x" style={{ fontSize: 13 }} /> ELIMINAR CLIENTE
+            </button>
+          )}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+            <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>Cerrar</button>
+            <button onClick={handleSave} disabled={saving}
+              style={{ padding: "9px 24px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1673,7 +1706,8 @@ function ClientsView({ user, showNotif }) {
   useEffect(load, []);
 
   const filtered = clients.filter(c => {
-    const matchesText = !filter || c.name?.toLowerCase().includes(filter.toLowerCase()) || c.country?.toLowerCase().includes(filter.toLowerCase()) || c.type?.toLowerCase().includes(filter.toLowerCase());
+    const q = filter.toLowerCase();
+    const matchesText = !filter || c.name?.toLowerCase().includes(q) || c.company?.toLowerCase().includes(q) || c.country?.toLowerCase().includes(q) || c.type?.toLowerCase().includes(q);
     const matchesType = !typeFilter || c.type === typeFilter;
     return matchesText && matchesType;
   });
@@ -1728,7 +1762,12 @@ function ClientsView({ user, showNotif }) {
                     style={{ borderTop: "0.5px solid var(--color-border-tertiary)", cursor: "pointer" }}
                     onMouseEnter={e => e.currentTarget.style.background = "var(--color-background-secondary)"}
                     onMouseLeave={e => e.currentTarget.style.background = ""}>
-                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{c.name}</td>
+                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+                      {c.company || c.name}
+                      {c.company && c.name && c.company !== c.name && (
+                        <p style={{ margin: "2px 0 0", fontSize: 11, fontWeight: 400, color: "var(--color-text-secondary)" }}>{c.name}</p>
+                      )}
+                    </td>
                     <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.representative || "—"}</td>
                     <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.country || "—"}</td>
                     <td style={{ padding: "10px 14px" }}>
@@ -1753,8 +1792,10 @@ function ClientsView({ user, showNotif }) {
       {selectedClient && (
         <ClientDetailModal
           client={selectedClient}
+          user={user}
           onClose={() => setSelectedClient(null)}
           onSaved={() => load()}
+          onDeleted={() => { setSelectedClient(null); load(); }}
           showNotif={showNotif}
         />
       )}
@@ -1763,7 +1804,7 @@ function ClientsView({ user, showNotif }) {
 }
 
 function CreateClientModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ name: "", type: "CLIENT", country: "", representative: "", email: "", phone: "", tax_id: "", notes: "" });
+  const [form, setForm] = useState({ company: "", name: "", type: "CLIENT", country: "", representative: "", email: "", phone: "", tax_id: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -1796,8 +1837,12 @@ function CreateClientModal({ onClose, onCreated }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div style={{ gridColumn: "1 / -1" }}>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Nombre / Razón social *</label>
-            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Empresa o persona" style={inputSt} />
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Razón Social / Empresa</label>
+            <input value={form.company} onChange={e => set("company", e.target.value)} placeholder="Nombre legal de la empresa" style={inputSt} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Nombre Comercial *</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Nombre comercial o persona" style={inputSt} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Tipo</label>

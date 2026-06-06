@@ -299,6 +299,25 @@ db.exec(`
   );
 `);
 
+// ─── Client Documents table (GOS-04) ─────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_documents (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id     INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    document_type TEXT    NOT NULL DEFAULT 'OTHER',
+    file_name     TEXT    NOT NULL,
+    file_size     INTEGER DEFAULT 0,
+    mime_type     TEXT,
+    r2_key        TEXT,
+    url           TEXT,
+    uploaded_by   INTEGER REFERENCES users(id),
+    uploaded_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+    status        TEXT    NOT NULL DEFAULT 'ACTIVE',
+    notes         TEXT,
+    version       INTEGER NOT NULL DEFAULT 1
+  );
+`);
+
 // ─── Media Assets table ──────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS media_assets (
