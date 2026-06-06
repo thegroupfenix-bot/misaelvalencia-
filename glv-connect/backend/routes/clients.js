@@ -458,14 +458,11 @@ router.delete("/:id", requireLevel(100), (req, res) => {
 
     const integrity = canDeleteClient(req.params.id);
     if (!integrity.allowed) {
+      const counts = { operations: integrity.operations, documents: integrity.documents, tasks: integrity.tasks };
+      const detail = `Operations: ${counts.operations} | Documents: ${counts.documents} | Tasks: ${counts.tasks}`;
       return res.status(409).json({
-        error: integrity.reason,
-        counts: {
-          operations:      integrity.operations,
-          documents:       integrity.documents,
-          tasks:           integrity.tasks,
-          kyc_submissions: integrity.kyc_submissions,
-        },
+        error: `No se puede eliminar el cliente. ${detail}`,
+        counts,
       });
     }
 
