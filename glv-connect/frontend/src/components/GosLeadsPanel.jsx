@@ -34,6 +34,21 @@ const KYC_FLOW = [
   "ACTIVE_CLIENT",
 ];
 
+// ─── Document types ───────────────────────────────────────────────────────────
+const DOC_TYPES = [
+  "COMMERCIAL_REGISTRATION", "TAX_ID", "BANK_CERTIFICATE", "PASSPORT",
+  "POWER_OF_ATTORNEY", "FINANCIAL_STATEMENTS", "HALAL_CERTIFICATE",
+  "HEALTH_CERTIFICATE", "KYC_FORM", "SIGNED_CONTRACT", "SCO", "FCO", "SPA", "OTHER",
+];
+const DOC_TYPE_LABELS = {
+  COMMERCIAL_REGISTRATION: "Reg. Comercial",  TAX_ID: "NIT / Tax ID",
+  BANK_CERTIFICATE: "Cert. Bancario",          PASSPORT: "Pasaporte",
+  POWER_OF_ATTORNEY: "Poder Notarial",         FINANCIAL_STATEMENTS: "Est. Financieros",
+  HALAL_CERTIFICATE: "Cert. Halal",            HEALTH_CERTIFICATE: "Cert. Sanitario",
+  KYC_FORM: "Formulario KYC",                  SIGNED_CONTRACT: "Contrato Firmado",
+  SCO: "SCO", FCO: "FCO", SPA: "SPA",          OTHER: "Otro",
+};
+
 // Roles that can permanently delete (SUPER_ADMIN=100 only)
 const SUPER_ADMIN_ONLY = new Set(["SUPER_ADMIN"]);
 // Roles that can do lifecycle transitions (DIRECTOR+=75)
@@ -68,6 +83,9 @@ export function GosLeadsPanel({ user, showNotif }) {
   const [statusChanging, setStatusChanging]       = useState(false);
   const [lifecycleChanging, setLifecycleChanging] = useState(false);
   const [lifecycleHistory, setLifecycleHistory]   = useState(null);
+  const [docs, setDocs]                           = useState([]);
+  const [docsLoading, setDocsLoading]             = useState(false);
+  const [docsUploading, setDocsUploading]         = useState(false);
   const [activeTab, setActiveTab]                 = useState("empresa");
 
   // ── Load leads ──────────────────────────────────────────────────────────────
@@ -100,6 +118,7 @@ export function GosLeadsPanel({ user, showNotif }) {
     setEditMode(false);
     setActiveTab("empresa");
     setLifecycleHistory(null);
+    setDocs([]);
     setModalLoading(true);
     api.getClientKycData(lead.id)
       .then(setKycDetail)
@@ -209,6 +228,44 @@ export function GosLeadsPanel({ user, showNotif }) {
     try {
       const data = await api.getLifecycleHistory(selected.id);
       setLifecycleHistory(data);
+    } catch (e) {
+      showNotif(e.message, "error");
+    }
+  };
+
+  // ── Document management ─────────────────────────────────────────────────────
+  const loadDocs = useCallback(async (clientId) => {
+    if (!clientId) return;
+    setDocsLoading(true);
+    try {
+      const data = await api.getClientDocuments(clientId);
+      setDocs(data);
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setDocsLoading(false);
+    }
+  }, []);
+
+  const uploadDoc = async (clientId, formData) => {
+    setDocsUploading(true);
+    try {
+      await api.uploadClientDocument(clientId, formData);
+      showNotif("Documento subido correctamente");
+      await loadDocs(clientId);
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setDocsUploading(false);
+    }
+  };
+
+  const deleteDoc = async (clientId, docId) => {
+    if (!window.confirm("¿Eliminar este documento? Esta acción no se puede deshacer.")) return;
+    try {
+      await api.deleteClientDocument(clientId, docId);
+      showNotif("Documento eliminado");
+      setDocs(prev => prev.filter(d => d.id !== docId));
     } catch (e) {
       showNotif(e.message, "error");
     }
@@ -410,6 +467,12 @@ export function GosLeadsPanel({ user, showNotif }) {
           onMarkDuplicate={markDuplicate}
           onPermanentDelete={permanentDelete}
           onLoadLifecycleHistory={loadLifecycleHistory}
+          docs={docs}
+          docsLoading={docsLoading}
+          docsUploading={docsUploading}
+          onLoadDocs={() => loadDocs(selected?.id)}
+          onUploadDoc={(fd) => uploadDoc(selected?.id, fd)}
+          onDeleteDoc={(docId) => deleteDoc(selected?.id, docId)}
           onToggleEdit={() => setEditMode(e => !e)}
           user={user}
         />
@@ -419,7 +482,7 @@ export function GosLeadsPanel({ user, showNotif }) {
 }
 
 // ─── KYC Modal ────────────────────────────────────────────────────────────────
-function KycModal({ lead, detail, loading, agents, editMode, saving, statusChanging, lifecycleChanging, lifecycleHistory, activeTab, setActiveTab, onClose, onChangeStatus, onAssignAgent, onSaveNotes, onArchive, onDelete, onUpdateLifecycle, onMarkDuplicate, onPermanentDelete, onLoadLifecycleHistory, onToggleEdit, user }) {
+function KycModal({ lead, detail, loading, agents, editMode, saving, statusChanging, lifecycleChanging, lifecycleHistory, docs, docsLoading, docsUploading, onLoadDocs, onUploadDoc, onDeleteDoc, activeTab, setActiveTab, onClose, onChangeStatus, onAssignAgent, onSaveNotes, onArchive, onDelete, onUpdateLifecycle, onMarkDuplicate, onPermanentDelete, onLoadLifecycleHistory, onToggleEdit, user }) {
   const client  = detail?.client  || {};
   const kd      = client.kyc_data || {};
   const [notes, setNotes]               = useState("");
@@ -440,6 +503,7 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
     { id: "rep",         label: "Representante",    icon: "ti-user" },
     { id: "comercial",   label: "Perfil Comercial",  icon: "ti-briefcase" },
     { id: "refs",        label: "Referencias",       icon: "ti-award" },
+    { id: "documentos",  label: "Documentos",        icon: "ti-file-description" },
     { id: "compliance",  label: "Compliance",        icon: "ti-shield-check" },
     { id: "ciclo-vida",  label: "Ciclo de Vida",     icon: "ti-refresh" },
     { id: "auditoria",   label: "Auditoría",         icon: "ti-history" },
@@ -675,6 +739,18 @@ function KycModal({ lead, detail, loading, agents, editMode, saving, statusChang
                   </div>
                 </div>
               )}
+              {activeTab === "documentos" && (
+                <DocumentosTab
+                  clientId={lead.id}
+                  docs={docs}
+                  loading={docsLoading}
+                  uploading={docsUploading}
+                  onLoad={onLoadDocs}
+                  onUpload={onUploadDoc}
+                  onDelete={onDeleteDoc}
+                  onGetUrl={(docId) => api.getClientDocumentUrl(lead.id, docId)}
+                />
+              )}
               {activeTab === "ciclo-vida" && (
                 <LifecycleTab
                   lead={lead}
@@ -808,6 +884,143 @@ function AuditTab({ detail, lead }) {
       {events.length === 0 && tasks.length === 0 && subs.length === 0 && (
         <p style={{ color: "var(--color-text-secondary)", fontSize: 13, textAlign: "center", padding: "2rem 0" }}>Sin eventos de auditoría registrados aún.</p>
       )}
+    </div>
+  );
+}
+
+function DocumentosTab({ clientId, docs, loading, uploading, onLoad, onUpload, onDelete, onGetUrl }) {
+  const [docType, setDocType]       = useState("OTHER");
+  const [notes, setNotes]           = useState("");
+  const [file, setFile]             = useState(null);
+  const [hasLoaded, setHasLoaded]   = useState(false);
+
+  useEffect(() => { if (!hasLoaded) { setHasLoaded(true); onLoad(); } }, []);
+
+  const handleUpload = async () => {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("document_type", docType);
+    if (notes) fd.append("notes", notes);
+    await onUpload(fd);
+    setFile(null);
+    setNotes("");
+    const fi = document.getElementById(`doc-file-${clientId}`);
+    if (fi) fi.value = "";
+  };
+
+  const handleDownload = async (doc) => {
+    try {
+      const { url } = await onGetUrl(doc.id);
+      if (url) window.open(url, "_blank");
+    } catch (e) {
+      alert("No se pudo obtener el enlace de descarga.");
+    }
+  };
+
+  const fmtSize = (b) => {
+    if (!b) return "";
+    if (b < 1024) return `${b} B`;
+    if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+    return `${(b/1048576).toFixed(1)} MB`;
+  };
+
+  const inputSt = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 7, fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Upload form */}
+      <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 10, padding: "14px 16px" }}>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Subir Documento</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Tipo de documento</label>
+            <select value={docType} onChange={e => setDocType(e.target.value)} style={inputSt}>
+              {DOC_TYPES.map(t => <option key={t} value={t}>{DOC_TYPE_LABELS[t] || t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Archivo (PDF, imagen, Office)</label>
+            <input id={`doc-file-${clientId}`} type="file"
+              onChange={e => setFile(e.target.files?.[0] || null)}
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx"
+              style={{ fontSize: 12, width: "100%", boxSizing: "border-box" }} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Notas (opcional)</label>
+            <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: Versión actualizada Junio 2026" style={inputSt} />
+          </div>
+        </div>
+        <button onClick={handleUpload} disabled={!file || uploading}
+          style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, padding: "7px 16px", background: !file || uploading ? "#9ca3af" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, cursor: !file || uploading ? "not-allowed" : "pointer", fontWeight: 500 }}>
+          <i className="ti ti-upload" style={{ fontSize: 13 }} />{uploading ? "Subiendo..." : "Subir Documento"}
+        </button>
+      </div>
+
+      {/* Document list */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            Expediente Documental ({docs.length})
+          </p>
+          <button onClick={onLoad} style={{ padding: "4px 10px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 6, fontSize: 12, background: "var(--color-background-primary)", color: "var(--color-text-secondary)", cursor: "pointer" }}>
+            <i className="ti ti-refresh" style={{ fontSize: 12 }} />
+          </button>
+        </div>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "2rem", color: "var(--color-text-secondary)" }}>
+            <i className="ti ti-loader ti-spin" style={{ fontSize: 20, display: "block", marginBottom: 6 }} />Cargando documentos...
+          </div>
+        ) : docs.length === 0 ? (
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, textAlign: "center", padding: "1.5rem 0", opacity: 0.6 }}>
+            Sin documentos. Suba el primero usando el formulario anterior.
+          </p>
+        ) : (
+          <div style={{ border: "0.5px solid var(--color-border-tertiary)", borderRadius: 8, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "var(--color-background-secondary)" }}>
+                  {["Documento", "Tipo", "Tamaño", "Subido por", "Fecha", ""].map(h => (
+                    <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {docs.map((doc, i) => (
+                  <tr key={doc.id} style={{ borderTop: i > 0 ? "0.5px solid var(--color-border-tertiary)" : "none" }}>
+                    <td style={{ padding: "8px 10px", maxWidth: 180 }}>
+                      <p style={{ margin: 0, fontWeight: 500, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.file_name}</p>
+                      {doc.notes && <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--color-text-secondary)" }}>{doc.notes}</p>}
+                    </td>
+                    <td style={{ padding: "8px 10px" }}>
+                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: "#f3f4f6", color: "#374151", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {DOC_TYPE_LABELS[doc.document_type] || doc.document_type}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 10px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{fmtSize(doc.file_size)}</td>
+                    <td style={{ padding: "8px 10px", color: "var(--color-text-secondary)" }}>{doc.uploaded_by_name || "—"}</td>
+                    <td style={{ padding: "8px 10px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                      {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString("es") : "—"}
+                    </td>
+                    <td style={{ padding: "8px 10px" }}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => handleDownload(doc)} title="Descargar / Ver"
+                          style={{ padding: "4px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 5, background: "var(--color-background-primary)", color: "#2563eb", cursor: "pointer", fontSize: 12 }}>
+                          <i className="ti ti-download" style={{ fontSize: 12 }} />
+                        </button>
+                        <button onClick={() => onDelete(doc.id)} title="Eliminar"
+                          style={{ padding: "4px 8px", border: "0.5px solid #fca5a5", borderRadius: 5, background: "transparent", color: "#dc2626", cursor: "pointer", fontSize: 12 }}>
+                          <i className="ti ti-trash" style={{ fontSize: 12 }} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

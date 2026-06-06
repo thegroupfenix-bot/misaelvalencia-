@@ -79,6 +79,23 @@ export const api = {
   updateLifecycle:     (id, data)    => request("PATCH", `/clients/${id}/lifecycle`, data),
   getLifecycleHistory: (id)          => request("GET",   `/clients/${id}/lifecycle-history`),
 
+  // Client Documents (GOS-04)
+  getClientDocuments:   (id)         => request("GET",    `/clients/${id}/documents`),
+  deleteClientDocument: (id, docId)  => request("DELETE", `/clients/${id}/documents/${docId}`),
+  getClientDocumentUrl: (id, docId)  => request("GET",    `/clients/${id}/documents/${docId}/url`),
+  uploadClientDocument: (id, formData) => {
+    const token = localStorage.getItem("glv_token");
+    return fetch(`${BASE}/clients/${id}/documents/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then(async r => {
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.error || r.statusText);
+      return json;
+    });
+  },
+
   // Operations
   getOperations:   (params = {}) => {
     const q = new URLSearchParams(params).toString();
