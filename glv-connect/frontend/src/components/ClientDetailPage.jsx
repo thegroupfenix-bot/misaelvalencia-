@@ -380,12 +380,35 @@ export default function ClientDetailPage({ clientId, setView, user, showNotif })
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("Resumen");
+  const [deleting, setDeleting] = useState(false);
 
   const load = () => {
     setLoading(true);
     api.getClient(clientId).then(setClient).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
   };
   useEffect(load, [clientId]);
+
+  const handleDelete = async () => {
+    if (user?.role !== "SUPER_ADMIN") return;
+    const expectedCode = client.glv_code || String(client.id);
+    const input = window.prompt(
+      `Para confirmar la eliminación permanente de "${client.company || client.name}", escriba exactamente:\nDELETE ${expectedCode}`
+    );
+    if (input === null) return;
+    if (input.trim() !== `DELETE ${expectedCode}`) {
+      showNotif("Código incorrecto. Eliminación cancelada.", "error");
+      return;
+    }
+    setDeleting(true);
+    try {
+      await api.deleteLead(client.id);
+      showNotif(`Cliente ${expectedCode} eliminado permanentemente`);
+      setView("clients");
+    } catch (e) {
+      showNotif(e.message, "error");
+      setDeleting(false);
+    }
+  };
 
   if (loading) return <div style={{ padding: 40, textAlign: "center", color: "var(--color-text-secondary)" }}>Cargando cliente…</div>;
   if (!client) return <div style={{ padding: 40, textAlign: "center", color: "#dc2626" }}>Cliente no encontrado.</div>;
@@ -402,16 +425,23 @@ export default function ClientDetailPage({ clientId, setView, user, showNotif })
   return (
     <div>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <button onClick={() => setView("clients")} style={{ background: "none", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, padding: "7px 14px", fontSize: 13, cursor: "pointer", color: "var(--color-text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
           <i className="ti ti-arrow-left" /> Volver
         </button>
-        <div>
+        <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--color-text-primary)" }}>
             {client.company || client.name}
           </h1>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--color-text-secondary)" }}>{client.glv_code} · {client.country}</p>
         </div>
+        {user?.role === "SUPER_ADMIN" && (
+          <button onClick={handleDelete} disabled={deleting}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "transparent", color: "#dc2626", border: "0.5px solid #fca5a5", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: deleting ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+            <i className="ti ti-trash-x" style={{ fontSize: 14 }} />
+            {deleting ? "Eliminando…" : "ELIMINAR CLIENTE"}
+          </button>
+        )}
       </div>
 
       {/* Tab bar */}
