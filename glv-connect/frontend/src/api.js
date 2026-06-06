@@ -161,4 +161,42 @@ export const api = {
   reconcileMedia:       () => request("POST", "/media/reconcile"),
   reconcileMediaStatus: () => request("GET",  "/media/reconcile/status"),
   bindMedia:            (params) => request("POST", "/media/bind", params),
+
+  // ─── GOS-06J Catalogs ────────────────────────────────────────────────────────
+  getCatalogCountries:       ()           => request("GET",  "/clients/catalog/countries"),
+  getCatalogEntityTypes:     ()           => request("GET",  "/clients/catalog/entity-types"),
+  getCatalogProducts:        ()           => request("GET",  "/clients/catalog/products"),
+  getCatalogDocCategories:   ()           => request("GET",  "/clients/catalog/document-categories"),
+  getCatalogDocTypes:        (params={})  => { const q = new URLSearchParams(params).toString(); return request("GET", `/clients/catalog/document-types${q?"?"+q:""}`); },
+  createCatalogDocType:      (data)       => request("POST", "/clients/catalog/document-types", data),
+
+  // ─── GOS-06J Country Intelligence ────────────────────────────────────────────
+  getClientCountries:    (id)       => request("GET",    `/clients/${id}/countries`),
+  addClientCountry:      (id, data) => request("POST",   `/clients/${id}/countries`, data),
+  removeClientCountry:   (id, relId)=> request("DELETE", `/clients/${id}/countries/${relId}`),
+
+  // ─── GOS-06J Entity Types ─────────────────────────────────────────────────────
+  getClientEntityTypes:  (id)       => request("GET",    `/clients/${id}/entity-types`),
+  addClientEntityType:   (id, data) => request("POST",   `/clients/${id}/entity-types`, data),
+  removeClientEntityType:(id, relId)=> request("DELETE", `/clients/${id}/entity-types/${relId}`),
+
+  // ─── GOS-06J Product Intelligence ────────────────────────────────────────────
+  getClientProducts:     (id)       => request("GET",    `/clients/${id}/products`),
+  addClientProduct:      (id, data) => request("POST",   `/clients/${id}/products`, data),
+  removeClientProduct:   (id, relId)=> request("DELETE", `/clients/${id}/products/${relId}`),
+
+  // ─── GOS-06J Timeline ────────────────────────────────────────────────────────
+  getClientTimeline:     (id, params={}) => { const q = new URLSearchParams(params).toString(); return request("GET", `/clients/${id}/timeline${q?"?"+q:""}`); },
+  addClientTimelineEvent:(id, data)      => request("POST", `/clients/${id}/timeline`, data),
+
+  // ─── GOS-06J Relationships ────────────────────────────────────────────────────
+  getClientRelationships:   (id)        => request("GET",    `/clients/${id}/relationships`),
+  addClientRelationship:    (id, data)  => request("POST",   `/clients/${id}/relationships`, data),
+  removeClientRelationship: (id, relId) => request("DELETE", `/clients/${id}/relationships/${relId}`),
+
+  // ─── GOS-06J Notes ───────────────────────────────────────────────────────────
+  getClientNotes:    (id)            => request("GET",    `/clients/${id}/notes`),
+  addClientNote:     (id, data)      => request("POST",   `/clients/${id}/notes`, data),
+  updateClientNote:  (id, nId, data) => request("PATCH",  `/clients/${id}/notes/${nId}`, data),
+  deleteClientNote:  (id, nId)       => request("DELETE", `/clients/${id}/notes/${nId}`),
 };

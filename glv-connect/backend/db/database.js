@@ -448,6 +448,20 @@ safeAlter("ALTER TABLE clients ADD COLUMN risk_score         REAL DEFAULT 0");
 safeAlter("ALTER TABLE clients ADD COLUMN risk_level         TEXT DEFAULT 'LOW'");
 safeAlter("ALTER TABLE clients ADD COLUMN compliance_score   REAL DEFAULT 0");
 
+// ─── GOS-06J: Client Notes ────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_notes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id  INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    body       TEXT    NOT NULL,
+    pinned     INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_notes_client ON client_notes(client_id);
+`);
+
 // ─── GOS-06G: Client Relationships ────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS client_relationships (
