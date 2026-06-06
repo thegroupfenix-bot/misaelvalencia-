@@ -129,13 +129,17 @@ router.use(authenticate);
 // ─── GET /clients — list active clients (excludes WEB_KYC leads not yet activated) ──
 router.get("/", (req, res) => {
   const { type } = req.query;
-  // WEB_KYC leads only appear here once fully activated (ACTIVE_CLIENT)
-  let q = `SELECT * FROM clients
-    WHERE (registration_source IS NULL OR registration_source = 'MANUAL'
-           OR (registration_source = 'WEB_KYC' AND kyc_status = 'ACTIVE_CLIENT'))`;
+  let q = `
+    SELECT
+      c.*,
+      (SELECT COUNT(*) FROM operations   o WHERE o.client_id    = c.id) AS operations_count,
+      (SELECT COUNT(*) FROM client_documents d WHERE d.client_id = c.id AND d.status != 'DELETED') AS documents_count
+    FROM clients c
+    WHERE (c.registration_source IS NULL OR c.registration_source = 'MANUAL'
+           OR (c.registration_source = 'WEB_KYC' AND c.kyc_status = 'ACTIVE_CLIENT'))`;
   const params = [];
-  if (type) { q += " AND type = ?"; params.push(type); }
-  q += " ORDER BY name";
+  if (type) { q += " AND c.type = ?"; params.push(type); }
+  q += " ORDER BY c.name";
   res.json(db.prepare(q).all(...params));
 });
 
