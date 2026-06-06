@@ -12,6 +12,7 @@ import { CommercialEngine } from "./components/CommercialEngine.jsx";
 import { PriceCenterView, PriceCenterModal } from "./components/PriceCenterView.jsx";
 import MediaCenter from "./components/MediaCenter.jsx";
 import MediaPanel from "./components/MediaPanel.jsx";
+import ClientDetailPage from "./components/ClientDetailPage.jsx";
 import { FinanceView } from "./components/FinanceView.jsx";
 import { TasksView } from "./components/TasksView.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
@@ -237,7 +238,8 @@ function Portal() {
         {view === "spa"          && isDirector && <DocList type="SPA" user={user} setModal={setModal} setView={safeSetView} showNotif={showNotif} />}
         {view === "operations"         && <OperationsView user={user} setView={safeSetView} showNotif={showNotif} />}
         {view?.startsWith?.("op-detail:") && <OperationDetail opId={view.split(":")[1]} user={user} setView={safeSetView} showNotif={showNotif} />}
-        {view === "clients"      && <ClientsView user={user} showNotif={showNotif} />}
+        {view === "clients"      && <ClientsView user={user} showNotif={showNotif} setView={safeSetView} />}
+        {view?.startsWith?.("client-detail:") && <ClientDetailPage clientId={Number(view.split(":")[1])} user={user} setView={safeSetView} showNotif={showNotif} />}
         {view === "gos-leads"    && GOS_ROLES.has(user?.role) && <GosLeadsPanel user={user} showNotif={showNotif} />}
         {view === "finance"      && isDirector && <FinanceView showNotif={showNotif} />}
         {view === "price-center"  && <PriceCenterView user={user} />}
@@ -1691,35 +1693,112 @@ function ClientDetailModal({ client, user, onClose, onSaved, onDeleted, showNoti
 }
 
 // ─── Clients View ─────────────────────────────────────────────────────────────
-function ClientsView({ user, showNotif }) {
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
+function ClientsView({ user, showNotif, setView }) {
+  const [clients, setClients]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [filter, setFilter]       = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [kycFilter, setKycFilter] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkAction, setBulkAction] = useState("");
+  const [agents, setAgents]       = useState([]);
+  const [showAgentPicker, setShowAgentPicker] = useState(false);
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   const load = () => {
     setLoading(true);
+    setSelectedIds(new Set());
     api.getClients().then(setClients).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
   };
   useEffect(load, []);
 
+  const KYC_OPTIONS = ["PRE_REGISTRATION","UNDER_REVIEW","COMPLIANCE_APPROVED","COMMERCIAL_APPROVED","ACTIVE_CLIENT","REJECTED"];
+  const KYC_LABELS  = { PRE_REGISTRATION:"Pre-registro", UNDER_REVIEW:"En revisión", COMPLIANCE_APPROVED:"Compliance OK", COMMERCIAL_APPROVED:"Comercial OK", ACTIVE_CLIENT:"Cliente Activo", REJECTED:"Rechazado" };
+  const KYC_COLORS  = { PRE_REGISTRATION:{bg:"#f3f4f6",text:"#374151"}, UNDER_REVIEW:{bg:"#fef3c7",text:"#92400e"}, COMPLIANCE_APPROVED:{bg:"#dbeafe",text:"#1e40af"}, COMMERCIAL_APPROVED:{bg:"#ede9fe",text:"#4c1d95"}, ACTIVE_CLIENT:{bg:"#dcfce7",text:"#166534"}, REJECTED:{bg:"#fee2e2",text:"#991b1b"} };
+  const LC_COLORS   = { ACTIVE:{bg:"#dcfce7",text:"#166534"}, ARCHIVED:{bg:"#f3f4f6",text:"#6b7280"}, ON_HOLD:{bg:"#fef3c7",text:"#92400e"}, DUPLICATE:{bg:"#fee2e2",text:"#991b1b"} };
+  const TYPE_COLORS = { CLIENT:{bg:"#dbeafe",text:"#1e40af"}, SUPPLIER:{bg:"#dcfce7",text:"#166534"}, PARTNER:{bg:"#ede9fe",text:"#4c1d95"} };
+
   const filtered = clients.filter(c => {
     const q = filter.toLowerCase();
-    const matchesText = !filter || c.name?.toLowerCase().includes(q) || c.company?.toLowerCase().includes(q) || c.country?.toLowerCase().includes(q) || c.type?.toLowerCase().includes(q);
-    const matchesType = !typeFilter || c.type === typeFilter;
-    return matchesText && matchesType;
+    return (!filter || c.name?.toLowerCase().includes(q) || c.company?.toLowerCase().includes(q) || c.glv_code?.toLowerCase().includes(q) || c.country?.toLowerCase().includes(q))
+      && (!typeFilter || c.type === typeFilter)
+      && (!kycFilter  || c.kyc_status === kycFilter);
   });
 
-  const TYPE_COLORS = { CLIENT: { bg: "#dbeafe", text: "#1e40af" }, SUPPLIER: { bg: "#dcfce7", text: "#166534" }, PARTNER: { bg: "#ede9fe", text: "#4c1d95" } };
+  const allChecked = filtered.length > 0 && filtered.every(c => selectedIds.has(c.id));
+  const toggleAll  = () => setSelectedIds(allChecked ? new Set() : new Set(filtered.map(c => c.id)));
+  const toggleOne  = (id) => setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  // ── CSV export ──────────────────────────────────────────────────────────────
+  const exportCSV = () => {
+    const rows = filtered.filter(c => selectedIds.has(c.id));
+    const headers = ["glv_code","company","name","representative","country","kyc_status","lifecycle_status","type","operations_count","documents_count","created_at"];
+    const csv = [headers.join(","), ...rows.map(c => headers.map(h => JSON.stringify(c[h] ?? "")).join(","))].join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download = "clientes.csv"; a.click();
+  };
+
+  // ── Bulk archive ─────────────────────────────────────────────────────────────
+  const bulkArchive = async () => {
+    if (!window.confirm(`Archivar ${selectedIds.size} cliente(s)?`)) return;
+    setBulkWorking(true);
+    const ids = [...selectedIds];
+    for (const id of ids) {
+      try { await api.updateLifecycle(id, { action: "ARCHIVE", reason: "Archivado en lote" }); }
+      catch (e) { showNotif(`Error en ${id}: ${e.message}`, "error"); }
+    }
+    showNotif(`${ids.length} cliente(s) archivado(s)`);
+    setBulkWorking(false);
+    load();
+  };
+
+  // ── Bulk reactivate ───────────────────────────────────────────────────────────
+  const bulkReactivate = async () => {
+    if (!window.confirm(`Reactivar ${selectedIds.size} cliente(s)?`)) return;
+    setBulkWorking(true);
+    const ids = [...selectedIds];
+    for (const id of ids) {
+      try { await api.updateLifecycle(id, { action: "REACTIVATE", reason: "Reactivado en lote" }); }
+      catch (e) { showNotif(`Error en ${id}: ${e.message}`, "error"); }
+    }
+    showNotif(`${ids.length} cliente(s) reactivado(s)`);
+    setBulkWorking(false);
+    load();
+  };
+
+  // ── Bulk assign agent ─────────────────────────────────────────────────────────
+  const openAgentPicker = () => {
+    if (!agents.length) api.adminGetUsers().then(setAgents).catch(() => {});
+    setShowAgentPicker(true);
+  };
+  const bulkAssign = async (agentId) => {
+    setShowAgentPicker(false);
+    setBulkWorking(true);
+    const ids = [...selectedIds];
+    for (const id of ids) {
+      try { await api.updateClient(id, { assigned_agent: agentId }); }
+      catch (e) { showNotif(`Error en ${id}: ${e.message}`, "error"); }
+    }
+    showNotif(`Agente asignado a ${ids.length} cliente(s)`);
+    setBulkWorking(false);
+    load();
+  };
+
+  const selCount = selectedIds.size;
+  const inp  = { padding: "9px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)" };
+  const bulkBtn = (label, onClick, danger) => (
+    <button onClick={onClick} disabled={bulkWorking} style={{ padding: "7px 14px", fontSize: 12, fontWeight: 500, border: `0.5px solid ${danger ? "#fca5a5" : "var(--color-border-secondary)"}`, borderRadius: 7, background: danger ? "#fee2e2" : "var(--color-background-primary)", color: danger ? "#dc2626" : "var(--color-text-primary)", cursor: "pointer" }}>
+      {bulkWorking ? "…" : label}
+    </button>
+  );
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>Clientes & Contrapartes</h1>
-          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, margin: 0 }}>{clients.length} contrapartes registradas</p>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, margin: 0 }}>{clients.length} contrapartes · {filtered.length} visibles</p>
         </div>
         <button onClick={() => setShowCreate(true)}
           style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
@@ -1727,58 +1806,114 @@ function ClientsView({ user, showNotif }) {
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Buscar por nombre, país o tipo..."
-          style={{ padding: "9px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 14, width: 300, boxSizing: "border-box", background: "var(--color-background-primary)", color: "var(--color-text-primary)" }} />
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-          style={{ padding: "9px 12px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 14, background: "var(--color-background-primary)", color: "var(--color-text-primary)", cursor: "pointer" }}>
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="GLV Code, empresa, país…"
+          style={{ ...inp, width: 260 }} />
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={inp}>
           <option value="">Todos los tipos</option>
           <option value="CLIENT">Cliente</option>
           <option value="SUPPLIER">Proveedor</option>
           <option value="PARTNER">Socio Comercial</option>
         </select>
+        <select value={kycFilter} onChange={e => setKycFilter(e.target.value)} style={inp}>
+          <option value="">Todos los estados KYC</option>
+          {KYC_OPTIONS.map(k => <option key={k} value={k}>{KYC_LABELS[k]}</option>)}
+        </select>
       </div>
+
+      {/* Bulk action bar */}
+      {selCount > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "10px 16px", background: "#eff6ff", border: "0.5px solid #bfdbfe", borderRadius: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#1e40af" }}>{selCount} seleccionado{selCount > 1 ? "s" : ""}</span>
+          {bulkBtn("Archivar", bulkArchive)}
+          {bulkBtn("Reactivar", bulkReactivate)}
+          {bulkBtn("Asignar agente", openAgentPicker)}
+          {bulkBtn("Exportar CSV", exportCSV)}
+          <button onClick={() => setSelectedIds(new Set())} style={{ marginLeft: "auto", fontSize: 12, background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}>Limpiar selección</button>
+        </div>
+      )}
+
+      {/* Agent picker mini-modal */}
+      {showAgentPicker && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "var(--color-background-primary)", borderRadius: 12, padding: 24, width: 340, boxShadow: "0 20px 60px rgba(0,0,0,.3)" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 15 }}>Seleccionar agente</h3>
+            {agents.filter(a => a.role !== "SUPER_ADMIN").map(a => (
+              <div key={a.id} onClick={() => bulkAssign(a.id)}
+                style={{ padding: "10px 14px", borderRadius: 8, cursor: "pointer", fontSize: 13, marginBottom: 4 }}
+                onMouseEnter={e => e.currentTarget.style.background = "var(--color-background-secondary)"}
+                onMouseLeave={e => e.currentTarget.style.background = ""}>
+                {a.name} <span style={{ color: "var(--color-text-secondary)", fontSize: 11 }}>({a.role})</span>
+              </div>
+            ))}
+            <button onClick={() => setShowAgentPicker(false)} style={{ marginTop: 12, fontSize: 12, background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}>Cancelar</button>
+          </div>
+        </div>
+      )}
 
       {loading ? <LoadingSpinner /> : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "4rem", color: "var(--color-text-secondary)" }}>
           <i className="ti ti-building-off" style={{ fontSize: 48, display: "block", marginBottom: 12, opacity: 0.4 }} />
-          <p>{filter || typeFilter ? "Sin resultados para la búsqueda." : "No hay contrapartes registradas aún."}</p>
+          <p>{filter || typeFilter || kycFilter ? "Sin resultados." : "No hay contrapartes registradas."}</p>
         </div>
       ) : (
-        <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "var(--color-background-secondary)" }}>
-                {["Empresa", "Representante", "País", "Tipo", "Email", "Teléfono", "Estado"].map(h => (
-                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
+                <th style={{ padding: "10px 12px", width: 32 }}>
+                  <input type="checkbox" checked={allChecked} onChange={toggleAll} style={{ cursor: "pointer" }} />
+                </th>
+                {["GLV Code","Empresa","Representante","País","Estado KYC","Estado Comercial","Ops","Docs","Fecha"].map(h => (
+                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map(c => {
-                const tc = TYPE_COLORS[c.type] || { bg: "#f3f4f6", text: "#374151" };
+                const kyc = KYC_COLORS[c.kyc_status] || { bg: "#f3f4f6", text: "#374151" };
+                const lc  = LC_COLORS[c.lifecycle_status] || { bg: "#dcfce7", text: "#166534" };
+                const checked = selectedIds.has(c.id);
                 return (
-                  <tr key={c.id} onClick={() => setSelectedClient(c)}
-                    style={{ borderTop: "0.5px solid var(--color-border-tertiary)", cursor: "pointer" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "var(--color-background-secondary)"}
-                    onMouseLeave={e => e.currentTarget.style.background = ""}>
-                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+                  <tr key={c.id}
+                    style={{ borderTop: "0.5px solid var(--color-border-tertiary)", background: checked ? "#eff6ff" : "" }}
+                    onMouseEnter={e => { if (!checked) e.currentTarget.style.background = "var(--color-background-secondary)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = checked ? "#eff6ff" : ""; }}>
+                    <td style={{ padding: "10px 12px" }} onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleOne(c.id)} style={{ cursor: "pointer" }} />
+                    </td>
+                    <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 11, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}
+                      onClick={() => setView("client-detail:" + c.id)}>
+                      <span style={{ cursor: "pointer", color: "#2563eb" }}>{c.glv_code || `#${c.id}`}</span>
+                    </td>
+                    <td style={{ padding: "10px 12px", cursor: "pointer", fontWeight: 600, color: "var(--color-text-primary)", maxWidth: 200 }}
+                      onClick={() => setView("client-detail:" + c.id)}>
                       {c.company || c.name}
                       {c.company && c.name && c.company !== c.name && (
-                        <p style={{ margin: "2px 0 0", fontSize: 11, fontWeight: 400, color: "var(--color-text-secondary)" }}>{c.name}</p>
+                        <div style={{ fontSize: 11, fontWeight: 400, color: "var(--color-text-secondary)" }}>{c.name}</div>
                       )}
                     </td>
-                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.representative || "—"}</td>
-                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{c.country || "—"}</td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: tc.bg, color: tc.text, fontWeight: 500 }}>{c.type || "CLIENT"}</span>
-                    </td>
-                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{c.email || "—"}</td>
-                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{c.phone || "—"}</td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: c.active !== false ? "#dcfce7" : "#fee2e2", color: c.active !== false ? "#166534" : "#991b1b" }}>
-                        {c.active !== false ? "Activo" : "Inactivo"}
+                    <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)" }}>{c.representative || "—"}</td>
+                    <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)" }}>{c.country || "—"}</td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: kyc.bg, color: kyc.text, fontWeight: 500, whiteSpace: "nowrap" }}>
+                        {KYC_LABELS[c.kyc_status] || c.kyc_status || "—"}
                       </span>
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: lc.bg, color: lc.text, fontWeight: 500 }}>
+                        {c.lifecycle_status || "ACTIVE"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: c.operations_count > 0 ? "#1e40af" : "var(--color-text-secondary)", fontWeight: c.operations_count > 0 ? 600 : 400 }}>
+                      {c.operations_count ?? 0}
+                    </td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", color: c.documents_count > 0 ? "#166534" : "var(--color-text-secondary)", fontWeight: c.documents_count > 0 ? 600 : 400 }}>
+                      {c.documents_count ?? 0}
+                    </td>
+                    <td style={{ padding: "10px 12px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                      {c.created_at ? new Date(c.created_at).toLocaleDateString("es") : "—"}
                     </td>
                   </tr>
                 );
@@ -1789,16 +1924,6 @@ function ClientsView({ user, showNotif }) {
       )}
 
       {showCreate && <CreateClientModal onClose={() => setShowCreate(false)} onCreated={() => { showNotif("Contraparte registrada"); load(); }} />}
-      {selectedClient && (
-        <ClientDetailModal
-          client={selectedClient}
-          user={user}
-          onClose={() => setSelectedClient(null)}
-          onSaved={() => load()}
-          onDeleted={() => { setSelectedClient(null); load(); }}
-          showNotif={showNotif}
-        />
-      )}
     </div>
   );
 }

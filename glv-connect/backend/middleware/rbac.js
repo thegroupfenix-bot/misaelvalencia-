@@ -2,7 +2,7 @@ const ROLE_LEVEL = {
   SUPER_ADMIN: 100, CORPORATE_ADMIN: 90, CFO: 80, DIRECTOR: 75, DIRECTIVO: 75,
   COMMERCIAL_DIRECTOR: 70, COMPLIANCE: 65, ACCOUNTING: 60, TREASURY: 60,
   AUDIT: 55, TAX_REVIEWER: 50, COUNTRY_ACCOUNTANT: 50, LOGISTICS: 45,
-  AGENTE: 40, CLIENT: 20, SUPPLIER: 20,
+  AGENTE: 40, MEDIA_MANAGER: 35, CLIENT: 20, SUPPLIER: 20,
 };
 
 const ADMINS    = new Set(["SUPER_ADMIN","CORPORATE_ADMIN"]);
@@ -37,4 +37,23 @@ function requireDirector(req, res, next) {
   next();
 }
 
-module.exports = { requireRole, requireLevel, requireAdmin, requireDirector, ROLE_LEVEL, ALL_ROLES, ADMINS, DIRECTORS, DOC_ROLES };
+// requirePermission checks role_permissions table first, SUPER_ADMIN bypasses all.
+let _db = null;
+function _getDb() { if (!_db) _db = require("../db/database"); return _db; }
+
+function requirePermission(module, action) {
+  return (req, res, next) => {
+    const role = req.user?.role;
+    if (!role) return res.status(401).json({ error: "No autenticado" });
+    if (role === "SUPER_ADMIN") return next();
+    try {
+      const perm = _getDb().prepare(
+        "SELECT 1 FROM role_permissions WHERE role=? AND module=? AND action=?"
+      ).get(role, module, action);
+      if (perm) return next();
+    } catch { /* table not ready yet — fall through to level check */ }
+    return res.status(403).json({ error: `Permiso requerido: ${module}.${action}` });
+  };
+}
+
+module.exports = { requireRole, requireLevel, requireAdmin, requireDirector, requirePermission, ROLE_LEVEL, ALL_ROLES, ADMINS, DIRECTORS, DOC_ROLES };

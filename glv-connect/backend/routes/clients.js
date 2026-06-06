@@ -129,13 +129,17 @@ router.use(authenticate);
 // ─── GET /clients — list active clients (excludes WEB_KYC leads not yet activated) ──
 router.get("/", (req, res) => {
   const { type } = req.query;
-  // WEB_KYC leads only appear here once fully activated (ACTIVE_CLIENT)
-  let q = `SELECT * FROM clients
-    WHERE (registration_source IS NULL OR registration_source = 'MANUAL'
-           OR (registration_source = 'WEB_KYC' AND kyc_status = 'ACTIVE_CLIENT'))`;
+  let q = `
+    SELECT
+      c.*,
+      (SELECT COUNT(*) FROM operations   o WHERE o.client_id    = c.id) AS operations_count,
+      (SELECT COUNT(*) FROM client_documents d WHERE d.client_id = c.id AND d.status != 'DELETED') AS documents_count
+    FROM clients c
+    WHERE (c.registration_source IS NULL OR c.registration_source = 'MANUAL'
+           OR (c.registration_source = 'WEB_KYC' AND c.kyc_status = 'ACTIVE_CLIENT'))`;
   const params = [];
-  if (type) { q += " AND type = ?"; params.push(type); }
-  q += " ORDER BY name";
+  if (type) { q += " AND c.type = ?"; params.push(type); }
+  q += " ORDER BY c.name";
   res.json(db.prepare(q).all(...params));
 });
 
@@ -597,6 +601,318 @@ router.get("/:id/documents/:docId/url", requireLevel(65), async (req, res) => {
     console.error("[GET /clients/:id/documents/:docId/url]", e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GOS-06J — Enterprise API Layer
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
+function getClientOrFail(id, res) {
+  const c = db.prepare("SELECT id FROM clients WHERE id = ?").get(id);
+  if (!c) { res.status(404).json({ error: "Cliente no encontrado" }); return null; }
+  return c;
+}
+
+// ─── CATALOG ROUTES (no client prefix) ────────────────────────────────────────
+
+// GET /clients/catalog/countries — country_catalog
+router.get("/catalog/countries", requireLevel(65), (_req, res) => {
+  res.json(db.prepare("SELECT * FROM country_catalog WHERE active=1 ORDER BY name").all());
+});
+
+// GET /clients/catalog/entity-types
+router.get("/catalog/entity-types", requireLevel(65), (_req, res) => {
+  res.json(db.prepare("SELECT * FROM entity_types WHERE active=1 ORDER BY category,name").all());
+});
+
+// GET /clients/catalog/products
+router.get("/catalog/products", requireLevel(65), (_req, res) => {
+  res.json(db.prepare("SELECT * FROM product_catalog WHERE active=1 ORDER BY category,name").all());
+});
+
+// GET /clients/catalog/document-categories
+router.get("/catalog/document-categories", requireLevel(65), (_req, res) => {
+  res.json(db.prepare("SELECT * FROM document_categories WHERE active=1 ORDER BY name").all());
+});
+
+// GET /clients/catalog/document-types
+router.get("/catalog/document-types", requireLevel(65), (req, res) => {
+  const { category_id } = req.query;
+  let q = "SELECT dt.*, dc.code AS category_code, dc.name AS category_name FROM document_type_catalog dt JOIN document_categories dc ON dc.id=dt.category_id WHERE dt.active=1";
+  const params = [];
+  if (category_id) { q += " AND dt.category_id=?"; params.push(category_id); }
+  q += " ORDER BY dc.name, dt.name";
+  res.json(db.prepare(q).all(...params));
+});
+
+// POST /clients/catalog/document-types (CORPORATE_ADMIN 90+)
+router.post("/catalog/document-types", requireLevel(90), (req, res) => {
+  const { code, name, category_id, applicable_countries, requires_expiry, description } = req.body;
+  if (!code || !name || !category_id) return res.status(400).json({ error: "code, name y category_id son requeridos" });
+  try {
+    const r = db.prepare(
+      "INSERT INTO document_type_catalog (code,name,category_id,applicable_countries,requires_expiry,description,created_by) VALUES (?,?,?,?,?,?,?)"
+    ).run(code.toUpperCase(), name, category_id, applicable_countries || null, requires_expiry ? 1 : 0, description || null, req.user.id);
+    res.status(201).json(db.prepare("SELECT * FROM document_type_catalog WHERE id=?").get(r.lastInsertRowid));
+  } catch (e) {
+    if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Ya existe un tipo con ese código" });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── COUNTRY INTELLIGENCE (:id/countries) ─────────────────────────────────────
+
+// GET /clients/:id/countries
+router.get("/:id/countries", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const rows = db.prepare(`
+    SELECT cc.*, cat.name AS country_name, cat.name_es, cat.region, cat.subregion
+    FROM client_countries cc
+    JOIN country_catalog cat ON cat.code = cc.country_code
+    WHERE cc.client_id = ?
+    ORDER BY cc.relationship_type, cat.name
+  `).all(req.params.id);
+  res.json(rows);
+});
+
+// POST /clients/:id/countries
+router.post("/:id/countries", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const { country_code, relationship_type, notes } = req.body;
+  const VALID_TYPES = ["CONSTITUTION","OPERATES","BUYS","SELLS","INTEREST"];
+  if (!country_code || !relationship_type) return res.status(400).json({ error: "country_code y relationship_type son requeridos" });
+  if (!VALID_TYPES.includes(relationship_type)) return res.status(400).json({ error: `relationship_type debe ser: ${VALID_TYPES.join("|")}` });
+  const catalog = db.prepare("SELECT code FROM country_catalog WHERE code=?").get(country_code);
+  if (!catalog) return res.status(400).json({ error: `País no encontrado en catálogo: ${country_code}` });
+  try {
+    const r = db.prepare(
+      "INSERT INTO client_countries (client_id,country_code,relationship_type,notes) VALUES (?,?,?,?)"
+    ).run(req.params.id, country_code, relationship_type, notes || null);
+    res.status(201).json(db.prepare("SELECT cc.*,cat.name AS country_name,cat.region,cat.subregion FROM client_countries cc JOIN country_catalog cat ON cat.code=cc.country_code WHERE cc.id=?").get(r.lastInsertRowid));
+  } catch (e) {
+    if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Ya existe esa combinación cliente/país/tipo" });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /clients/:id/countries/:countryRelId
+router.delete("/:id/countries/:countryRelId", requireLevel(65), (req, res) => {
+  const row = db.prepare("SELECT id FROM client_countries WHERE id=? AND client_id=?").get(req.params.countryRelId, req.params.id);
+  if (!row) return res.status(404).json({ error: "Relación no encontrada" });
+  db.prepare("DELETE FROM client_countries WHERE id=?").run(req.params.countryRelId);
+  res.json({ ok: true });
+});
+
+// ─── ENTITY CLASSIFICATION (:id/entity-types) ─────────────────────────────────
+
+// GET /clients/:id/entity-types
+router.get("/:id/entity-types", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  res.json(db.prepare(`
+    SELECT cet.id, et.id AS entity_type_id, et.code, et.name, et.category, cet.created_at
+    FROM client_entity_types cet
+    JOIN entity_types et ON et.id = cet.entity_type_id
+    WHERE cet.client_id = ?
+    ORDER BY et.category, et.name
+  `).all(req.params.id));
+});
+
+// POST /clients/:id/entity-types
+router.post("/:id/entity-types", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const { entity_type_id } = req.body;
+  if (!entity_type_id) return res.status(400).json({ error: "entity_type_id es requerido" });
+  const et = db.prepare("SELECT id FROM entity_types WHERE id=? AND active=1").get(entity_type_id);
+  if (!et) return res.status(400).json({ error: "Tipo de entidad no válido" });
+  try {
+    const r = db.prepare("INSERT INTO client_entity_types (client_id,entity_type_id) VALUES (?,?)").run(req.params.id, entity_type_id);
+    res.status(201).json(db.prepare("SELECT cet.id, et.id AS entity_type_id, et.code, et.name, et.category, cet.created_at FROM client_entity_types cet JOIN entity_types et ON et.id=cet.entity_type_id WHERE cet.id=?").get(r.lastInsertRowid));
+  } catch (e) {
+    if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "El cliente ya tiene ese tipo de entidad" });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /clients/:id/entity-types/:relId
+router.delete("/:id/entity-types/:relId", requireLevel(65), (req, res) => {
+  const row = db.prepare("SELECT id FROM client_entity_types WHERE id=? AND client_id=?").get(req.params.relId, req.params.id);
+  if (!row) return res.status(404).json({ error: "Relación no encontrada" });
+  db.prepare("DELETE FROM client_entity_types WHERE id=?").run(req.params.relId);
+  res.json({ ok: true });
+});
+
+// ─── PRODUCT INTELLIGENCE (:id/products) ──────────────────────────────────────
+
+// GET /clients/:id/products
+router.get("/:id/products", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  res.json(db.prepare(`
+    SELECT cp.id, cp.relationship_type, cp.priority, cp.notes, cp.created_at,
+           pc.id AS product_id, pc.code, pc.name, pc.category, pc.subcategory, pc.hs_code, pc.unit
+    FROM client_products cp
+    JOIN product_catalog pc ON pc.id = cp.product_id
+    WHERE cp.client_id = ?
+    ORDER BY cp.priority, pc.category, pc.name
+  `).all(req.params.id));
+});
+
+// POST /clients/:id/products
+router.post("/:id/products", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const { product_id, relationship_type, priority, notes } = req.body;
+  const VALID_RT = ["INTEREST","BUY","SELL","IMPORT","EXPORT"];
+  const VALID_PRI = ["PRIMARY","SECONDARY","OCCASIONAL"];
+  if (!product_id || !relationship_type) return res.status(400).json({ error: "product_id y relationship_type son requeridos" });
+  if (!VALID_RT.includes(relationship_type)) return res.status(400).json({ error: `relationship_type debe ser: ${VALID_RT.join("|")}` });
+  if (priority && !VALID_PRI.includes(priority)) return res.status(400).json({ error: `priority debe ser: ${VALID_PRI.join("|")}` });
+  const prod = db.prepare("SELECT id FROM product_catalog WHERE id=? AND active=1").get(product_id);
+  if (!prod) return res.status(400).json({ error: "Producto no válido" });
+  try {
+    const r = db.prepare(
+      "INSERT INTO client_products (client_id,product_id,relationship_type,priority,notes) VALUES (?,?,?,?,?)"
+    ).run(req.params.id, product_id, relationship_type, priority || "PRIMARY", notes || null);
+    res.status(201).json(db.prepare("SELECT cp.*,pc.code,pc.name,pc.category FROM client_products cp JOIN product_catalog pc ON pc.id=cp.product_id WHERE cp.id=?").get(r.lastInsertRowid));
+  } catch (e) {
+    if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Ya existe esa combinación cliente/producto/tipo" });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /clients/:id/products/:relId
+router.delete("/:id/products/:relId", requireLevel(65), (req, res) => {
+  const row = db.prepare("SELECT id FROM client_products WHERE id=? AND client_id=?").get(req.params.relId, req.params.id);
+  if (!row) return res.status(404).json({ error: "Relación no encontrada" });
+  db.prepare("DELETE FROM client_products WHERE id=?").run(req.params.relId);
+  res.json({ ok: true });
+});
+
+// ─── CLIENT TIMELINE (:id/timeline) ───────────────────────────────────────────
+
+// GET /clients/:id/timeline
+router.get("/:id/timeline", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const { severity, event_type, limit = 100 } = req.query;
+  let q = "SELECT ct.*, u.name AS created_by_name FROM client_timeline ct LEFT JOIN users u ON u.id=ct.created_by WHERE ct.client_id=?";
+  const params = [req.params.id];
+  if (severity)   { q += " AND ct.severity=?";    params.push(severity); }
+  if (event_type) { q += " AND ct.event_type=?";  params.push(event_type); }
+  q += ` ORDER BY ct.created_at DESC LIMIT ${Math.min(Number(limit) || 100, 500)}`;
+  res.json(db.prepare(q).all(...params));
+});
+
+// POST /clients/:id/timeline (manual note-type events)
+router.post("/:id/timeline", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const { event_type, event_description, severity, metadata } = req.body;
+  const VALID_SEV = ["INFO","WARNING","CRITICAL"];
+  if (!event_type || !event_description) return res.status(400).json({ error: "event_type y event_description son requeridos" });
+  if (severity && !VALID_SEV.includes(severity)) return res.status(400).json({ error: `severity debe ser: ${VALID_SEV.join("|")}` });
+  const r = db.prepare(
+    "INSERT INTO client_timeline (client_id,event_type,event_description,severity,metadata,created_by) VALUES (?,?,?,?,?,?)"
+  ).run(req.params.id, event_type, event_description, severity || "INFO", metadata ? JSON.stringify(metadata) : null, req.user.id);
+  res.status(201).json(db.prepare("SELECT * FROM client_timeline WHERE id=?").get(r.lastInsertRowid));
+});
+
+// ─── CLIENT RELATIONSHIPS (:id/relationships) ─────────────────────────────────
+
+const REL_TYPES = ["SUPPLIER_OF","BUYER_OF","BROKER_FOR","MANDATE_FOR","BANK_OF","LOGISTICS_PROVIDER_FOR","INSPECTION_PROVIDER_FOR","CERTIFICATION_PROVIDER_FOR"];
+
+// GET /clients/:id/relationships
+router.get("/:id/relationships", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const rows = db.prepare(`
+    SELECT cr.id, cr.relationship_type, cr.notes, cr.created_at,
+           src.id AS source_id, src.glv_code AS source_code, src.company AS source_company, src.name AS source_name,
+           tgt.id AS target_id, tgt.glv_code AS target_code, tgt.company AS target_company, tgt.name AS target_name
+    FROM client_relationships cr
+    JOIN clients src ON src.id = cr.source_client_id
+    JOIN clients tgt ON tgt.id = cr.target_client_id
+    WHERE cr.source_client_id = ? OR cr.target_client_id = ?
+    ORDER BY cr.created_at DESC
+  `).all(req.params.id, req.params.id);
+  res.json(rows);
+});
+
+// POST /clients/:id/relationships
+router.post("/:id/relationships", requireLevel(75), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const { target_client_id, relationship_type, notes } = req.body;
+  if (!target_client_id || !relationship_type) return res.status(400).json({ error: "target_client_id y relationship_type son requeridos" });
+  if (!REL_TYPES.includes(relationship_type)) return res.status(400).json({ error: `relationship_type debe ser uno de: ${REL_TYPES.join("|")}` });
+  if (Number(target_client_id) === Number(req.params.id)) return res.status(400).json({ error: "Un cliente no puede relacionarse consigo mismo" });
+  const target = db.prepare("SELECT id FROM clients WHERE id=?").get(target_client_id);
+  if (!target) return res.status(404).json({ error: "Cliente destino no encontrado" });
+  try {
+    const r = db.prepare(
+      "INSERT INTO client_relationships (source_client_id,target_client_id,relationship_type,notes) VALUES (?,?,?,?)"
+    ).run(req.params.id, target_client_id, relationship_type, notes || null);
+    res.status(201).json(db.prepare("SELECT * FROM client_relationships WHERE id=?").get(r.lastInsertRowid));
+  } catch (e) {
+    if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Esa relación ya existe" });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /clients/:id/relationships/:relId
+router.delete("/:id/relationships/:relId", requireLevel(75), (req, res) => {
+  const row = db.prepare("SELECT id FROM client_relationships WHERE id=? AND (source_client_id=? OR target_client_id=?)").get(req.params.relId, req.params.id, req.params.id);
+  if (!row) return res.status(404).json({ error: "Relación no encontrada" });
+  db.prepare("DELETE FROM client_relationships WHERE id=?").run(req.params.relId);
+  res.json({ ok: true });
+});
+
+// ─── CLIENT NOTES (:id/notes) ─────────────────────────────────────────────────
+
+// GET /clients/:id/notes
+router.get("/:id/notes", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  res.json(db.prepare(`
+    SELECT cn.*, u.name AS created_by_name
+    FROM client_notes cn
+    LEFT JOIN users u ON u.id = cn.created_by
+    WHERE cn.client_id = ?
+    ORDER BY cn.pinned DESC, cn.created_at DESC
+  `).all(req.params.id));
+});
+
+// POST /clients/:id/notes
+router.post("/:id/notes", requireLevel(65), (req, res) => {
+  if (!getClientOrFail(req.params.id, res)) return;
+  const { body, pinned } = req.body;
+  if (!body?.trim()) return res.status(400).json({ error: "body es requerido" });
+  const r = db.prepare(
+    "INSERT INTO client_notes (client_id,body,pinned,created_by) VALUES (?,?,?,?)"
+  ).run(req.params.id, body.trim(), pinned ? 1 : 0, req.user.id);
+  res.status(201).json(db.prepare("SELECT cn.*,u.name AS created_by_name FROM client_notes cn LEFT JOIN users u ON u.id=cn.created_by WHERE cn.id=?").get(r.lastInsertRowid));
+});
+
+// PATCH /clients/:id/notes/:noteId
+router.patch("/:id/notes/:noteId", requireLevel(65), (req, res) => {
+  const row = db.prepare("SELECT id, created_by FROM client_notes WHERE id=? AND client_id=?").get(req.params.noteId, req.params.id);
+  if (!row) return res.status(404).json({ error: "Nota no encontrada" });
+  const userLevel = ROLE_LEVEL[req.user?.role] || 0;
+  if (row.created_by !== req.user.id && userLevel < 90) return res.status(403).json({ error: "Solo el autor o un administrador puede editar esta nota" });
+  const { body, pinned } = req.body;
+  const updates = [];
+  const params = [];
+  if (body !== undefined) { updates.push("body=?"); params.push(body.trim()); }
+  if (pinned !== undefined) { updates.push("pinned=?"); params.push(pinned ? 1 : 0); }
+  if (!updates.length) return res.status(400).json({ error: "Nada que actualizar" });
+  updates.push("updated_at=datetime('now')");
+  params.push(req.params.noteId);
+  db.prepare(`UPDATE client_notes SET ${updates.join(",")} WHERE id=?`).run(...params);
+  res.json(db.prepare("SELECT cn.*,u.name AS created_by_name FROM client_notes cn LEFT JOIN users u ON u.id=cn.created_by WHERE cn.id=?").get(req.params.noteId));
+});
+
+// DELETE /clients/:id/notes/:noteId
+router.delete("/:id/notes/:noteId", requireLevel(65), (req, res) => {
+  const row = db.prepare("SELECT id, created_by FROM client_notes WHERE id=? AND client_id=?").get(req.params.noteId, req.params.id);
+  if (!row) return res.status(404).json({ error: "Nota no encontrada" });
+  const userLevel = ROLE_LEVEL[req.user?.role] || 0;
+  if (row.created_by !== req.user.id && userLevel < 90) return res.status(403).json({ error: "Solo el autor o un administrador puede eliminar esta nota" });
+  db.prepare("DELETE FROM client_notes WHERE id=?").run(req.params.noteId);
+  res.json({ ok: true });
 });
 
 module.exports = router;
