@@ -432,7 +432,7 @@ router.get("/:id/lifecycle-history", requireLevel(65), (req, res) => {
 function canDeleteClient(clientId) {
   const operations     = db.prepare("SELECT COUNT(*) AS n FROM operations WHERE client_id = ?").get(clientId)?.n || 0;
   const documents      = db.prepare("SELECT COUNT(*) AS n FROM client_documents WHERE client_id = ? AND status != 'DELETED'").get(clientId)?.n || 0;
-  const tasks          = db.prepare("SELECT COUNT(*) AS n FROM tasks WHERE client_id = ?").get(clientId)?.n || 0;
+  const tasks          = db.prepare("SELECT COUNT(*) AS n FROM tasks t JOIN operations o ON o.id = t.operation_id WHERE o.client_id = ?").get(clientId)?.n || 0;
   const kyc_submissions = db.prepare("SELECT COUNT(*) AS n FROM kyc_submissions WHERE mapped_to_id = ?").get(clientId)?.n || 0;
 
   const allowed = operations === 0 && documents === 0 && tasks === 0 && kyc_submissions === 0;
