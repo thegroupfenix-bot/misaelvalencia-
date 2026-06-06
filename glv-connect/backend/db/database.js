@@ -318,6 +318,239 @@ db.exec(`
   );
 `);
 
+// ─── GOS-06A: Country Catalog + Client Countries ──────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS country_catalog (
+    code      TEXT PRIMARY KEY,
+    name      TEXT NOT NULL,
+    name_es   TEXT,
+    region    TEXT NOT NULL,
+    subregion TEXT NOT NULL,
+    latitude  REAL,
+    longitude REAL,
+    active    INTEGER NOT NULL DEFAULT 1
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_countries (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id         INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    country_code      TEXT    NOT NULL REFERENCES country_catalog(code),
+    relationship_type TEXT    NOT NULL,
+    notes             TEXT,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(client_id, country_code, relationship_type)
+  );
+  CREATE INDEX IF NOT EXISTS idx_cc_client  ON client_countries(client_id);
+  CREATE INDEX IF NOT EXISTS idx_cc_country ON client_countries(country_code);
+  CREATE INDEX IF NOT EXISTS idx_cc_role    ON client_countries(relationship_type);
+`);
+
+// ─── GOS-06B: Entity Classification ──────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS entity_types (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    code     TEXT    NOT NULL UNIQUE,
+    name     TEXT    NOT NULL,
+    category TEXT    NOT NULL,
+    active   INTEGER NOT NULL DEFAULT 1
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_entity_types (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id      INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    entity_type_id INTEGER NOT NULL REFERENCES entity_types(id),
+    created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(client_id, entity_type_id)
+  );
+`);
+
+// ─── GOS-06C: Product Intelligence ───────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS product_catalog (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT    NOT NULL UNIQUE,
+    name        TEXT    NOT NULL,
+    category    TEXT    NOT NULL,
+    subcategory TEXT,
+    hs_code     TEXT,
+    unit        TEXT,
+    active      INTEGER NOT NULL DEFAULT 1
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_products (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id         INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    product_id        INTEGER NOT NULL REFERENCES product_catalog(id),
+    relationship_type TEXT    NOT NULL,
+    priority          TEXT    NOT NULL DEFAULT 'PRIMARY',
+    notes             TEXT,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(client_id, product_id, relationship_type)
+  );
+`);
+
+// ─── GOS-06D: Document Compliance Engine ─────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS document_categories (
+    id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    code   TEXT    NOT NULL UNIQUE,
+    name   TEXT    NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS document_type_catalog (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    code                 TEXT    NOT NULL UNIQUE,
+    name                 TEXT    NOT NULL,
+    category_id          INTEGER NOT NULL REFERENCES document_categories(id),
+    applicable_countries TEXT,
+    requires_expiry      INTEGER DEFAULT 0,
+    description          TEXT,
+    created_by           INTEGER REFERENCES users(id),
+    active               INTEGER NOT NULL DEFAULT 1
+  );
+`);
+safeAlter("ALTER TABLE client_documents ADD COLUMN catalog_id       INTEGER REFERENCES document_type_catalog(id)");
+safeAlter("ALTER TABLE client_documents ADD COLUMN issue_date       TEXT");
+safeAlter("ALTER TABLE client_documents ADD COLUMN expiry_date      TEXT");
+safeAlter("ALTER TABLE client_documents ADD COLUMN country_code     TEXT");
+safeAlter("ALTER TABLE client_documents ADD COLUMN is_mandatory     INTEGER DEFAULT 0");
+safeAlter("ALTER TABLE client_documents ADD COLUMN observations     TEXT");
+safeAlter("ALTER TABLE client_documents ADD COLUMN revision         INTEGER NOT NULL DEFAULT 1");
+safeAlter("ALTER TABLE client_documents ADD COLUMN previous_doc_id  INTEGER REFERENCES client_documents(id)");
+
+// ─── GOS-06E: Client Timeline ─────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_timeline (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id         INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    event_type        TEXT    NOT NULL,
+    event_description TEXT,
+    severity          TEXT    NOT NULL DEFAULT 'INFO',
+    metadata          TEXT,
+    created_by        INTEGER REFERENCES users(id),
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_timeline_client ON client_timeline(client_id);
+  CREATE INDEX IF NOT EXISTS idx_timeline_type   ON client_timeline(event_type);
+`);
+
+// ─── GOS-06F: Client 360 + Organizational Structure ──────────────────────────
+safeAlter("ALTER TABLE clients ADD COLUMN client_stage       TEXT DEFAULT 'LEAD'");
+safeAlter("ALTER TABLE clients ADD COLUMN parent_client_id   INTEGER REFERENCES clients(id)");
+safeAlter("ALTER TABLE clients ADD COLUMN annual_value_potential REAL");
+safeAlter("ALTER TABLE clients ADD COLUMN priority_level     TEXT DEFAULT 'MEDIUM'");
+safeAlter("ALTER TABLE clients ADD COLUMN risk_score         REAL DEFAULT 0");
+safeAlter("ALTER TABLE clients ADD COLUMN risk_level         TEXT DEFAULT 'LOW'");
+safeAlter("ALTER TABLE clients ADD COLUMN compliance_score   REAL DEFAULT 0");
+
+// ─── GOS-06G: Client Relationships ────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_relationships (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_client_id  INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    target_client_id  INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    relationship_type TEXT    NOT NULL,
+    notes             TEXT,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    CHECK(source_client_id != target_client_id),
+    UNIQUE(source_client_id, target_client_id, relationship_type)
+  );
+`);
+
+// ─── GOS-06H: Multi Role System ───────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_roles (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role        TEXT    NOT NULL,
+    granted_by  INTEGER REFERENCES users(id),
+    granted_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    valid_from  TEXT,
+    valid_until TEXT,
+    UNIQUE(user_id, role)
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS role_permissions (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    role    TEXT NOT NULL,
+    module  TEXT NOT NULL,
+    action  TEXT NOT NULL,
+    UNIQUE(role, module, action)
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS role_groups (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS role_group_members (
+    group_id INTEGER NOT NULL REFERENCES role_groups(id) ON DELETE CASCADE,
+    role     TEXT    NOT NULL,
+    PRIMARY KEY(group_id, role)
+  );
+`);
+
+// ─── GOS-06I: Workflow Engine Foundation ─────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS workflow_templates (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT    NOT NULL UNIQUE,
+    name        TEXT    NOT NULL,
+    entity_type TEXT    NOT NULL DEFAULT 'CLIENT',
+    active      INTEGER NOT NULL DEFAULT 1
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS workflow_steps (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    template_id     INTEGER NOT NULL REFERENCES workflow_templates(id) ON DELETE CASCADE,
+    step_order      INTEGER NOT NULL,
+    name            TEXT    NOT NULL,
+    required_role   TEXT,
+    required_action TEXT,
+    sla_hours       INTEGER,
+    is_mandatory    INTEGER DEFAULT 1
+  );
+`);
+
+// ─── GOS-06 Analytics: indexes + views ───────────────────────────────────────
+db.exec(`CREATE INDEX IF NOT EXISTS idx_op_client   ON operations(client_id);`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_op_product  ON operations(product_category);`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_op_origin   ON operations(origin_country);`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_op_dest     ON operations(destination_country);`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_op_status   ON operations(status);`);
+db.exec(`
+  CREATE VIEW IF NOT EXISTS v_trade_by_country_product AS
+  SELECT
+    o.destination_country AS country,
+    cc.region, cc.subregion,
+    o.product_category,
+    COUNT(*)                    AS operations,
+    COUNT(DISTINCT o.client_id) AS clients,
+    SUM(o.shipment_value)       AS total_value,
+    o.currency
+  FROM operations o
+  LEFT JOIN country_catalog cc ON cc.code = o.destination_country
+  WHERE o.status != 'cancelled'
+  GROUP BY o.destination_country, o.product_category, o.currency;
+`);
+db.exec(`
+  CREATE VIEW IF NOT EXISTS v_kyc_pipeline AS
+  SELECT kyc_status, lifecycle_status,
+    COUNT(*) AS total,
+    COUNT(CASE WHEN compliance_flag=1 THEN 1 END) AS flagged
+  FROM clients GROUP BY kyc_status, lifecycle_status;
+`);
+
 // ─── Media Assets table ──────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS media_assets (
@@ -666,5 +899,157 @@ function seedUsers() {
 
 seedUsers();
 seedPriceCenter();
+seedGos06Catalogs();
 
 module.exports = db;
+
+function seedGos06Catalogs() {
+  // Entity types
+  const entityTypes = [
+    ["BUYER","Buyer","TRADE"],["SUPPLIER","Supplier","TRADE"],["BROKER","Broker","TRADE"],
+    ["MANDATE","Mandate","TRADE"],["AGENT","Agent","TRADE"],["DISTRIBUTOR","Distributor","TRADE"],
+    ["WHOLESALER","Wholesaler","TRADE"],["RETAILER","Retailer","TRADE"],["PROCESSOR","Processor","TRADE"],
+    ["MANUFACTURER","Manufacturer","TRADE"],["EXPORTER","Exporter","TRADE"],["IMPORTER","Importer","TRADE"],
+    ["GOVERNMENT","Government","GOVERNMENT"],["STATE_COMPANY","State Company","GOVERNMENT"],
+    ["FINANCIAL_INSTITUTION","Financial Institution","FINANCE"],
+    ["SHIPPING_LINE","Shipping Line","LOGISTICS"],["LOGISTICS_PROVIDER","Logistics Provider","LOGISTICS"],
+    ["CUSTOMS_BROKER","Customs Broker","LOGISTICS"],["INSPECTION_COMPANY","Inspection Company","REGULATORY"],
+    ["CERTIFICATION_BODY","Certification Body","REGULATORY"],
+  ];
+  const insET = db.prepare("INSERT OR IGNORE INTO entity_types (code,name,category) VALUES (?,?,?)");
+  db.transaction(() => entityTypes.forEach(r => insET.run(...r)))();
+
+  // Document categories
+  const docCats = [
+    ["GOVERNMENT","Government"],["BANKING","Banking"],["COMMERCIAL","Commercial"],
+    ["REGULATORY","Regulatory"],["CUSTOMS","Customs"],["LOGISTICS","Logistics"],
+    ["INSPECTION","Inspection"],["CERTIFICATION","Certification"],["CUSTOM","Custom"],
+  ];
+  const insDC = db.prepare("INSERT OR IGNORE INTO document_categories (code,name) VALUES (?,?)");
+  db.transaction(() => docCats.forEach(r => insDC.run(...r)))();
+
+  // Document type catalog
+  const govId  = db.prepare("SELECT id FROM document_categories WHERE code='GOVERNMENT'").get()?.id;
+  const bankId = db.prepare("SELECT id FROM document_categories WHERE code='BANKING'").get()?.id;
+  const comId  = db.prepare("SELECT id FROM document_categories WHERE code='COMMERCIAL'").get()?.id;
+  const regId  = db.prepare("SELECT id FROM document_categories WHERE code='REGULATORY'").get()?.id;
+  const cusId  = db.prepare("SELECT id FROM document_categories WHERE code='CUSTOM'").get()?.id;
+  const certId = db.prepare("SELECT id FROM document_categories WHERE code='CERTIFICATION'").get()?.id;
+  if (govId) {
+    const insDT = db.prepare("INSERT OR IGNORE INTO document_type_catalog (code,name,category_id,requires_expiry) VALUES (?,?,?,?)");
+    db.transaction(() => [
+      ["BUSINESS_LICENSE","Business License",govId,1],
+      ["TAX_REGISTRATION","Tax Registration",govId,1],
+      ["PASSPORT","Passport",govId,1],
+      ["GOVERNMENT_REGISTRATION","Government Registration",govId,1],
+      ["CUSTOMS_REGISTRATION","Customs Registration",govId,1],
+      ["IMPORT_LICENSE","Import License",regId,1],
+      ["EXPORT_LICENSE","Export License",regId,1],
+      ["FDA_REGISTRATION","FDA Registration",regId,1],
+      ["AQSIQ_REGISTRATION","AQSIQ Registration",regId,1],
+      ["BANK_REFERENCE","Bank Reference Letter",bankId,0],
+      ["BANK_CERTIFICATE","Bank Certificate",bankId,0],
+      ["CHAMBER_OF_COMMERCE","Chamber of Commerce",comId,1],
+      ["POWER_OF_ATTORNEY","Power of Attorney",comId,0],
+      ["KYC_FORM","KYC Form",comId,0],
+      ["SIGNED_CONTRACT","Signed Contract",comId,0],
+      ["HALAL_CERTIFICATE","Halal Certificate",certId,1],
+      ["HEALTH_CERTIFICATE","Health Certificate",certId,1],
+      ["SCO","SCO",comId,0],["FCO","FCO",comId,0],["SPA","SPA",comId,0],
+      ["OTHER","Other",cusId,0],
+    ].forEach(r => insDT.run(...r)))();
+  }
+
+  // Product catalog seed
+  const insProd = db.prepare("INSERT OR IGNORE INTO product_catalog (code,name,category,unit) VALUES (?,?,?,?)");
+  db.transaction(() => [
+    ["CATTLE","Cattle / Bovine","LIVESTOCK","HEAD"],
+    ["SHEEP_LAMB","Sheep & Lamb","LIVESTOCK","HEAD"],
+    ["GOAT","Goat","LIVESTOCK","HEAD"],
+    ["CAMEL","Camel","LIVESTOCK","HEAD"],
+    ["BUFFALO","Buffalo","LIVESTOCK","HEAD"],
+    ["POULTRY_LIVE","Live Poultry","POULTRY","HEAD"],
+    ["POULTRY_FROZEN","Frozen Poultry","POULTRY","MT"],
+    ["BEEF_FROZEN","Frozen Beef","MEAT","MT"],
+    ["LAMB_FROZEN","Frozen Lamb","MEAT","MT"],
+    ["SOYBEAN","Soybean","GRAINS","MT"],
+    ["CORN","Corn / Maize","GRAINS","MT"],
+    ["WHEAT","Wheat","GRAINS","MT"],
+    ["RICE","Rice","GRAINS","MT"],
+    ["SORGHUM","Sorghum","GRAINS","MT"],
+    ["SOYBEAN_OIL","Soybean Oil","OILS","MT"],
+    ["SUNFLOWER_OIL","Sunflower Oil","OILS","MT"],
+    ["PALM_OIL","Palm Oil","OILS","MT"],
+    ["OLIVE_OIL","Olive Oil","OILS","MT"],
+    ["MILK_POWDER","Milk Powder","DAIRY","MT"],
+    ["BUTTER","Butter","DAIRY","MT"],
+    ["CHEESE","Cheese","DAIRY","MT"],
+    ["SUGAR","Sugar","COMMODITIES","MT"],
+    ["COFFEE","Coffee","COMMODITIES","MT"],
+    ["COCOA","Cocoa","COMMODITIES","MT"],
+    ["FISH_FROZEN","Frozen Fish","SEAFOOD","MT"],
+    ["SHRIMP","Shrimp","SEAFOOD","MT"],
+  ].forEach(r => insProd.run(...r)))();
+
+  // Role groups seed
+  const insRG = db.prepare("INSERT OR IGNORE INTO role_groups (code,name) VALUES (?,?)");
+  db.transaction(() => [
+    ["COMPLIANCE_TEAM","Compliance Team"],["OPERATIONS_TEAM","Operations Team"],
+    ["FINANCE_TEAM","Finance Team"],["MANAGEMENT_TEAM","Management Team"],
+  ].forEach(r => insRG.run(...r)))();
+
+  // Country catalog seed (core trading countries for GLV)
+  const insCC = db.prepare("INSERT OR IGNORE INTO country_catalog (code,name,name_es,region,subregion,latitude,longitude) VALUES (?,?,?,?,?,?,?)");
+  db.transaction(() => [
+    ["AE","United Arab Emirates","Emiratos Árabes Unidos","Middle East","Gulf Region",23.42,53.85],
+    ["SA","Saudi Arabia","Arabia Saudita","Middle East","Gulf Region",23.89,45.08],
+    ["EG","Egypt","Egipto","Africa","North Africa",26.82,30.80],
+    ["CN","China","China","Asia","East Asia",35.86,104.20],
+    ["NG","Nigeria","Nigeria","Africa","West Africa",9.08,8.68],
+    ["BR","Brazil","Brasil","Americas","South America",-14.24,-51.93],
+    ["AR","Argentina","Argentina","Americas","South America",-38.42,-63.62],
+    ["AU","Australia","Australia","Oceania","Australasia",-25.27,133.78],
+    ["US","United States","Estados Unidos","Americas","North America",37.09,-95.71],
+    ["MX","Mexico","México","Americas","North America",23.63,-102.55],
+    ["TR","Turkey","Turquía","Europe","South Europe",38.96,35.24],
+    ["MA","Morocco","Marruecos","Africa","North Africa",31.79,-7.09],
+    ["SN","Senegal","Senegal","Africa","West Africa",14.50,-14.45],
+    ["CI","Côte d'Ivoire","Costa de Marfil","Africa","West Africa",7.54,-5.55],
+    ["GH","Ghana","Ghana","Africa","West Africa",7.95,-1.02],
+    ["KE","Kenya","Kenia","Africa","East Africa",-0.02,37.91],
+    ["ZA","South Africa","Sudáfrica","Africa","Southern Africa",-30.56,22.94],
+    ["ET","Ethiopia","Etiopía","Africa","East Africa",9.15,40.49],
+    ["TZ","Tanzania","Tanzania","Africa","East Africa",-6.37,34.89],
+    ["TH","Thailand","Tailandia","Asia","Southeast Asia",15.87,100.99],
+    ["IN","India","India","Asia","South Asia",20.59,78.96],
+    ["PK","Pakistan","Pakistán","Asia","South Asia",30.38,69.35],
+    ["ID","Indonesia","Indonesia","Asia","Southeast Asia",-0.79,113.92],
+    ["MY","Malaysia","Malasia","Asia","Southeast Asia",4.21,101.98],
+    ["VN","Vietnam","Vietnam","Asia","Southeast Asia",14.06,108.28],
+    ["DE","Germany","Alemania","Europe","Western Europe",51.17,10.45],
+    ["FR","France","Francia","Europe","Western Europe",46.23,2.21],
+    ["ES","Spain","España","Europe","Southern Europe",40.46,-3.75],
+    ["GB","United Kingdom","Reino Unido","Europe","Northern Europe",55.38,-3.44],
+    ["NL","Netherlands","Países Bajos","Europe","Western Europe",52.13,5.29],
+    ["IT","Italy","Italia","Europe","Southern Europe",41.87,12.57],
+    ["RU","Russia","Rusia","Europe","Eastern Europe",61.52,105.32],
+    ["UA","Ukraine","Ucrania","Europe","Eastern Europe",48.38,31.17],
+    ["IQ","Iraq","Irak","Middle East","Middle East",33.22,43.68],
+    ["IR","Iran","Irán","Middle East","Middle East",32.43,53.69],
+    ["JO","Jordan","Jordania","Middle East","Middle East",30.59,36.24],
+    ["LB","Lebanon","Líbano","Middle East","Middle East",33.85,35.86],
+    ["KW","Kuwait","Kuwait","Middle East","Gulf Region",29.31,47.48],
+    ["QA","Qatar","Catar","Middle East","Gulf Region",25.35,51.18],
+    ["BH","Bahrain","Baréin","Middle East","Gulf Region",26.00,50.55],
+    ["OM","Oman","Omán","Middle East","Gulf Region",21.47,55.97],
+    ["PH","Philippines","Filipinas","Asia","Southeast Asia",12.88,121.77],
+    ["CO","Colombia","Colombia","Americas","South America",4.57,-74.30],
+    ["CL","Chile","Chile","Americas","South America",-35.68,-71.54],
+    ["PE","Peru","Perú","Americas","South America",-9.19,-75.02],
+    ["UY","Uruguay","Uruguay","Americas","South America",-32.52,-55.77],
+    ["PY","Paraguay","Paraguay","Americas","South America",-23.44,-58.44],
+    ["BO","Bolivia","Bolivia","Americas","South America",-16.29,-63.59],
+    ["EC","Ecuador","Ecuador","Americas","South America",-1.83,-78.18],
+    ["CA","Canada","Canadá","Americas","North America",56.13,-106.35],
+  ].forEach(r => insCC.run(...r)))();
+}
