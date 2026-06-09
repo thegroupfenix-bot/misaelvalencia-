@@ -376,7 +376,7 @@ const { bindMedia } = require("../services/mediaBinding");
 
 // POST /media/bind — smart media binding for SCO/FCO document generation
 // Body: { category, origin, tags[], limit }  (all optional; limit defaults to 6)
-router.post("/bind", (req, res) => {
+router.post("/bind", requireMediaAccess, (req, res) => {
   try {
     const { category, origin, tags = [], limit = 6 } = req.body || {};
     const result = bindMedia(db, { category, origin, tags: Array.isArray(tags) ? tags : [], limit: Number(limit) || 6 });
@@ -389,7 +389,7 @@ router.post("/bind", (req, res) => {
 
 // GET /media/bind-preview — same as POST /bind but via query params (easy testing)
 // Query: ?category=LIVE_ANIMALS&origin=Brazil&limit=6
-router.get("/bind-preview", (req, res) => {
+router.get("/bind-preview", requireMediaAccess, (req, res) => {
   try {
     const { category, origin, limit = 6 } = req.query;
     const result = bindMedia(db, { category, origin, tags: [], limit: Number(limit) || 6 });
@@ -402,7 +402,7 @@ router.get("/bind-preview", (req, res) => {
 
 // GET /media/proxy — server-side proxy for R2 public URLs (bypasses browser CORS for PDF base64)
 // Query: ?url=<encoded_r2_url>
-router.get("/proxy", async (req, res) => {
+router.get("/proxy", requireMediaAccess, async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "url query param required" });
   let decoded;
@@ -448,7 +448,7 @@ router.get("/proxy", async (req, res) => {
 });
 
 // GET /media/:id
-router.get("/:id", (req, res) => {
+router.get("/:id", requireMediaAccess, (req, res) => {
   const row = db.prepare("SELECT * FROM media_assets WHERE id = ?").get(req.params.id);
   if (!row) return res.status(404).json({ error: "No encontrado" });
   res.json(serializeAsset(row));
@@ -666,7 +666,7 @@ router.delete("/:id/purge", requireAdmin, async (req, res) => {
 });
 
 // GET /media/match/:category — smart matching for SCO/FCO
-router.get("/match/:category", (req, res) => {
+router.get("/match/:category", requireMediaAccess, (req, res) => {
   const { country, limit = 6 } = req.query;
   let sql = "SELECT * FROM media_assets WHERE status = 'active' AND archived = 0";
   const params = [];

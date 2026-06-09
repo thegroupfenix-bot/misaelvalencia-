@@ -386,6 +386,7 @@ export const ALL_ROLES = [
   { id: "COUNTRY_ACCOUNTANT", label: { es: "Contador País",           en: "Country Accountant" }, level: 50 },
   { id: "LOGISTICS",          label: { es: "Logística",               en: "Logistics" },          level: 45 },
   { id: "AGENTE",             label: { es: "Agente Comercial",        en: "Commercial Agent" },   level: 40 },
+  { id: "MEDIA_MANAGER",      label: { es: "Media Manager",           en: "Media Manager" },      level: 35 },
   { id: "CLIENT",             label: { es: "Cliente",                 en: "Client" },             level: 20 },
   { id: "SUPPLIER",           label: { es: "Proveedor",               en: "Supplier" },           level: 20 },
 ];
