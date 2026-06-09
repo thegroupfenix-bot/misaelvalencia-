@@ -475,6 +475,17 @@ router.delete("/:id", requireLevel(100), (req, res) => {
       ).run(req.params.id);
     }
 
+    // Unlink KYC submissions — preserve history, clear FK to allow DELETE
+    const kycUnlinked = db.prepare(
+      "UPDATE kyc_submissions SET mapped_to_id = NULL WHERE mapped_to_id = ?"
+    ).run(req.params.id).changes;
+
+    if (kycUnlinked > 0) {
+      db.prepare(
+        "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+      ).run(req.user.username, "CLIENT_UNLINK_KYC", client.glv_code, client.id, req.ip);
+    }
+
     db.prepare("DELETE FROM clients WHERE id = ?").run(req.params.id);
 
     const auditAction = isForce ? "CLIENT_FORCE_DELETE" : "CLIENT_PERMANENT_DELETE";
@@ -482,7 +493,7 @@ router.delete("/:id", requireLevel(100), (req, res) => {
       "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
     ).run(req.user.username, auditAction, client.glv_code, client.id, req.ip);
 
-    res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code, force: isForce });
+    res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code, force: isForce, kyc_unlinked: kycUnlinked });
   } catch (e) {
     console.error("[DELETE /clients/:id]", e.message);
     res.status(500).json({ error: e.message });
