@@ -457,22 +457,32 @@ router.delete("/:id", requireLevel(100), (req, res) => {
     }
 
     const integrity = canDeleteClient(req.params.id);
-    if (!integrity.allowed) {
-      const counts = { operations: integrity.operations, documents: integrity.documents, tasks: integrity.tasks };
-      const detail = `Operations: ${counts.operations} | Documents: ${counts.documents} | Tasks: ${counts.tasks}`;
+    const { operations, documents, tasks } = integrity;
+
+    // Hard block: operations or documents exist — no role can override
+    if (operations > 0 || documents > 0) {
       return res.status(409).json({
-        error: `No se puede eliminar el cliente. ${detail}`,
-        counts,
+        error: `No se puede eliminar el cliente. Operations: ${operations} | Documents: ${documents} | Tasks: ${tasks}`,
+        counts: { operations, documents, tasks },
       });
+    }
+
+    // Force-delete path: only orphan tasks remain — SUPER_ADMIN may proceed
+    const isForce = tasks > 0;
+    if (isForce) {
+      db.prepare(
+        "DELETE FROM tasks WHERE operation_id IN (SELECT id FROM operations WHERE client_id = ?)"
+      ).run(req.params.id);
     }
 
     db.prepare("DELETE FROM clients WHERE id = ?").run(req.params.id);
 
+    const auditAction = isForce ? "CLIENT_FORCE_DELETE" : "CLIENT_PERMANENT_DELETE";
     db.prepare(
       "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
-    ).run(req.user.username, "CLIENT_PERMANENT_DELETE", client.glv_code, client.id, req.ip);
+    ).run(req.user.username, auditAction, client.glv_code, client.id, req.ip);
 
-    res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code });
+    res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code, force: isForce });
   } catch (e) {
     console.error("[DELETE /clients/:id]", e.message);
     res.status(500).json({ error: e.message });
