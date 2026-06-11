@@ -294,7 +294,7 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
 });
 
 // ─── POST /clients — create client (ERP internal) ────────────────────────────
-router.post("/", (req, res) => {
+router.post("/", requireLevel(40), (req, res) => {
   const { type, name, company, country, representative, email, phone, whatsapp, address, tax_id, preferred_lang } = req.body;
   if (!name) return res.status(400).json({ error: "Nombre requerido" });
 

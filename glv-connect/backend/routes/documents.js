@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
-const { requireRole } = require("../middleware/rbac");
+const { requireRole, requireLevel } = require("../middleware/rbac");
 const { sendDocumentEmail } = require("../utils/email");
 
 const router = express.Router();
@@ -113,7 +113,7 @@ router.get("/:id", (req, res) => {
 });
 
 // POST /documents
-router.post("/", async (req, res) => {
+router.post("/", requireLevel(40), async (req, res) => {
   const {
     type, client, clientCountry, clientRepresentative,
     clientEmail, clientPhone, destination, product,

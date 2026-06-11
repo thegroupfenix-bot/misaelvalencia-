@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
+const { requireLevel } = require("../middleware/rbac");
 
 const router = express.Router();
 router.use(authenticate);
@@ -66,7 +67,7 @@ router.get("/:id", (req, res) => {
   res.json({ ...op, documents: docs });
 });
 
-router.post("/", (req, res) => {
+router.post("/", requireLevel(40), (req, res) => {
   const {
     product_category, product_detail, commercial_data,
     origin_country, destination_country, counterpart_country, incoterm, currency,
