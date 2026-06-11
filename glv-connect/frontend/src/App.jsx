@@ -480,11 +480,15 @@ function Dashboard({ user, setView, setModal }) {
   const activeOps  = operations.filter(o => o.status === "ACTIVE" || o.status === "NEGOTIATING").length;
   const overdue    = tasks.filter(t => t.deadline && new Date(t.deadline) < new Date()).length;
 
+  const isMediaOnly = user?.role === "MEDIA_MANAGER";
+
   const kpis = [
-    { label: "Operaciones activas", value: activeOps,      icon: "ti-briefcase",       color: "#0891b2", view: "operations" },
-    { label: "SCO emitidos",        value: scos,           icon: "ti-file-description", color: "#2563eb", view: "sco" },
-    { label: "FCO / SPA",           value: fcos + spas,    icon: "ti-file-check",       color: "#7c3aed", view: "fco" },
-    { label: "Valor negociado",     value: fmt(totalValue), icon: "ti-currency-dollar", color: "#d97706", view: null },
+    ...(!isMediaOnly ? [
+      { label: "Operaciones activas", value: activeOps,   icon: "ti-briefcase",        color: "#0891b2", view: "operations" },
+      { label: "SCO emitidos",        value: scos,        icon: "ti-file-description", color: "#2563eb", view: "sco" },
+      { label: "FCO / SPA",           value: fcos + spas, icon: "ti-file-check",       color: "#7c3aed", view: "fco" },
+    ] : []),
+    { label: "Valor negociado", value: fmt(totalValue), icon: "ti-currency-dollar", color: "#d97706", view: null },
   ];
 
   return (
@@ -497,7 +501,7 @@ function Dashboard({ user, setView, setModal }) {
       </div>
 
       {/* Alerta tareas vencidas */}
-      {overdue > 0 && (
+      {!isMediaOnly && overdue > 0 && (
         <div onClick={() => setView("tasks")} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: "10px 16px", marginBottom: 20, cursor: "pointer" }}>
           <i className="ti ti-alert-circle" style={{ fontSize: 18, color: "#dc2626" }} />
           <p style={{ fontSize: 13, color: "#991b1b", margin: 0, fontWeight: 500 }}>
@@ -509,7 +513,7 @@ function Dashboard({ user, setView, setModal }) {
       {loading ? <LoadingSpinner /> : (
         <>
           {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: "1.5rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMediaOnly ? "repeat(1, 1fr)" : "repeat(4, 1fr)", gap: 14, marginBottom: "1.5rem" }}>
             {kpis.map((stat, i) => (
               <div key={i} onClick={() => stat.view && setView(stat.view)}
                 style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem", cursor: stat.view ? "pointer" : "default",
@@ -527,6 +531,7 @@ function Dashboard({ user, setView, setModal }) {
             ))}
           </div>
 
+          {!isMediaOnly && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             {/* Operaciones recientes */}
             <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
@@ -575,8 +580,10 @@ function Dashboard({ user, setView, setModal }) {
               ))}
             </div>
           </div>
+          )}
 
           {/* Acciones rápidas + Tareas pendientes */}
+          {!isMediaOnly && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "var(--color-text-primary)" }}>Acciones rápidas</h3>
@@ -622,6 +629,7 @@ function Dashboard({ user, setView, setModal }) {
               })}
             </div>
           </div>
+          )}
         </>
       )}
     </div>
