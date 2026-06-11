@@ -312,7 +312,7 @@ router.post("/", requireLevel(40), (req, res) => {
 });
 
 // ─── PUT /clients/:id — update client ────────────────────────────────────────
-router.put("/:id", (req, res) => {
+router.put("/:id", requireLevel(40), (req, res) => {
   const c = db.prepare("SELECT id FROM clients WHERE id = ?").get(req.params.id);
   if (!c) return res.status(404).json({ error: "Cliente no encontrado" });
 

@@ -216,8 +216,10 @@ function Portal() {
     setTimeout(() => setNotification(null), 3500);
   };
 
-  const isDirector = DIRECTORS.has(user?.role);
-  const isAdmin    = ADMINS.has(user?.role);
+  const isDirector       = DIRECTORS.has(user?.role);
+  const isAdmin          = ADMINS.has(user?.role);
+  const hasFinanceAccess = isDirector || ["ACCOUNTING", "TREASURY"].includes(user?.role);
+  const hasAuditAccess   = isDirector || user?.role === "AUDIT" || user?.role === "COMPLIANCE";
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-background-tertiary)", fontFamily: "var(--font-sans)" }}>
@@ -241,11 +243,11 @@ function Portal() {
         {view === "clients"      && <ClientsView user={user} showNotif={showNotif} setView={safeSetView} />}
         {view?.startsWith?.("client-detail:") && <ClientDetailPage clientId={Number(view.split(":")[1])} user={user} setView={safeSetView} showNotif={showNotif} />}
         {view === "gos-leads"    && GOS_ROLES.has(user?.role) && <GosLeadsPanel user={user} showNotif={showNotif} />}
-        {view === "finance"      && isDirector && <FinanceView showNotif={showNotif} />}
+        {view === "finance"      && hasFinanceAccess && <FinanceView showNotif={showNotif} />}
         {view === "price-center"  && <PriceCenterView user={user} />}
         {view === "media-center"  && <MediaCenter user={user} />}
         {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
-        {view === "audit"        && isDirector && <AuditLog />}
+        {view === "audit"        && hasAuditAccess && <AuditLog />}
         {view === "usuarios"     && isDirector && <UsersPanel />}
         {view === "admin-users"  && isAdmin    && <AdminUsers showNotif={showNotif} />}
         {view === "admin-images" && isAdmin    && <ImageAdmin showNotif={showNotif} />}
@@ -359,31 +361,35 @@ function OnboardingScreen({ user, onContinue }) {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }) {
-  const isDirector = DIRECTORS.has(user?.role);
-  const isAdmin    = ADMINS.has(user?.role);
-  const isGosRole  = GOS_ROLES.has(user?.role);
+  const isDirector       = DIRECTORS.has(user?.role);
+  const isAdmin          = ADMINS.has(user?.role);
+  const isGosRole        = GOS_ROLES.has(user?.role);
+  const isMediaOnly      = user?.role === "MEDIA_MANAGER";
+  const isAgentOnly      = user?.role === "AGENTE";
+  const hasFinanceAccess = isDirector || ["ACCOUNTING", "TREASURY"].includes(user?.role);
+  const hasAuditAccess   = isDirector || user?.role === "AUDIT" || user?.role === "COMPLIANCE";
 
   const navItems = [
     { id: "dashboard",    icon: "ti-dashboard",        label: "Dashboard" },
-    { id: "operations",   icon: "ti-briefcase",        label: "Operaciones" },
-    { id: "clients",      icon: "ti-building",         label: "Clientes" },
+    ...(!isMediaOnly ? [{ id: "operations",   icon: "ti-briefcase",        label: "Operaciones" }] : []),
+    ...(!isMediaOnly ? [{ id: "clients",      icon: "ti-building",         label: "Clientes" }] : []),
     ...(isGosRole ? [
       { id: "gos-leads",  icon: "ti-users-group",      label: "GOS Leads / KYC" },
     ] : []),
-    { id: "sco",          icon: "ti-file-description", label: "SCO" },
-    { id: "fco",          icon: "ti-file-check",       label: "FCO" },
+    ...(!isMediaOnly ? [{ id: "sco",          icon: "ti-file-description", label: "SCO" }] : []),
+    ...(!isMediaOnly ? [{ id: "fco",          icon: "ti-file-check",       label: "FCO" }] : []),
     { id: "price-center", icon: "ti-database",         label: "Price Center" },
-    { id: "media-center", icon: "ti-photo",            label: "Media Center" },
-    { id: "tasks",        icon: "ti-checklist",        label: "Tareas & Calidad" },
+    ...(!isAgentOnly ? [{ id: "media-center", icon: "ti-photo",            label: "Media Center" }] : []),
+    ...(!isMediaOnly ? [{ id: "tasks",        icon: "ti-checklist",        label: "Tareas & Calidad" }] : []),
     ...(isDirector ? [
-      { id: "spa",         icon: "ti-file-certificate", label: "SPA / Contratos" },
-      { id: "finance",     icon: "ti-currency-dollar",  label: "Finanzas" },
-      { id: "audit",       icon: "ti-shield",           label: "Auditoría" },
-      { id: "usuarios",    icon: "ti-users",            label: "Usuarios" },
+      { id: "spa",      icon: "ti-file-certificate", label: "SPA / Contratos" },
+      { id: "usuarios", icon: "ti-users",            label: "Usuarios" },
     ] : []),
+    ...(hasFinanceAccess ? [{ id: "finance", icon: "ti-currency-dollar", label: "Finanzas" }] : []),
+    ...(hasAuditAccess   ? [{ id: "audit",   icon: "ti-shield",          label: "Auditoría" }] : []),
     ...(isAdmin ? [
-      { id: "admin-users",  icon: "ti-user-cog",   label: "Gestión Usuarios" },
-      { id: "admin-images", icon: "ti-photo",       label: "Imágenes Drive" },
+      { id: "admin-users",  icon: "ti-user-cog", label: "Gestión Usuarios" },
+      { id: "admin-images", icon: "ti-photo",    label: "Imágenes Drive" },
     ] : []),
   ];
 

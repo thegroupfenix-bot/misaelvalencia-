@@ -234,7 +234,7 @@ router.patch("/:id/status", requireRole("DIRECTIVO"), (req, res) => {
 // DELETE /documents/:id — soft delete
 // AGENTE: can only delete own docs with status "Emitido" (not signed/active)
 // DIRECTIVO/ADMIN: can delete any doc
-router.delete("/:id", (req, res) => {
+router.delete("/:id", requireLevel(40), (req, res) => {
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
   if (doc.deleted) return res.status(410).json({ error: "Documento ya eliminado" });

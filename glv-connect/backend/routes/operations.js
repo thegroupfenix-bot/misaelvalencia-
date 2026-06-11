@@ -129,7 +129,7 @@ router.post("/", requireLevel(40), (req, res) => {
   res.status(201).json(db.prepare("SELECT * FROM operations WHERE id = ?").get(id));
 });
 
-router.patch("/:id/status", (req, res) => {
+router.patch("/:id/status", requireLevel(40), (req, res) => {
   const { status } = req.body;
   const valid = ["DRAFT","NEGOTIATING","ACTIVE","PENDING_DOCS","SIGNED","SHIPPED","COMPLETED","CANCELLED",
                  "active","paused","completed","cancelled"];
