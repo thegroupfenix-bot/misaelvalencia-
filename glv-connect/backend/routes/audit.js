@@ -4,7 +4,10 @@ const { authenticate } = require("../middleware/auth");
 const { requireRole } = require("../middleware/rbac");
 
 const router = express.Router();
-router.use(authenticate, requireRole("DIRECTIVO"));
+router.use(authenticate, requireRole(
+  "SUPER_ADMIN", "CORPORATE_ADMIN", "CFO",
+  "DIRECTOR", "DIRECTIVO", "COMPLIANCE", "AUDIT"
+));
 
 router.get("/", (req, res) => {
   const { limit = 200 } = req.query;

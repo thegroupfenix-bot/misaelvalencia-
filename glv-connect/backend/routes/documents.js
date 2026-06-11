@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
-const { requireRole } = require("../middleware/rbac");
+const { requireRole, requireLevel } = require("../middleware/rbac");
 const { sendDocumentEmail } = require("../utils/email");
 
 const router = express.Router();
@@ -113,7 +113,7 @@ router.get("/:id", (req, res) => {
 });
 
 // POST /documents
-router.post("/", async (req, res) => {
+router.post("/", requireLevel(40), async (req, res) => {
   const {
     type, client, clientCountry, clientRepresentative,
     clientEmail, clientPhone, destination, product,
@@ -234,7 +234,7 @@ router.patch("/:id/status", requireRole("DIRECTIVO"), (req, res) => {
 // DELETE /documents/:id — soft delete
 // AGENTE: can only delete own docs with status "Emitido" (not signed/active)
 // DIRECTIVO/ADMIN: can delete any doc
-router.delete("/:id", (req, res) => {
+router.delete("/:id", requireLevel(40), (req, res) => {
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
   if (doc.deleted) return res.status(410).json({ error: "Documento ya eliminado" });
