@@ -458,19 +458,39 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function Dashboard({ user, setView, setModal }) {
+  const isMediaOnly = user?.role === "MEDIA_MANAGER";
+
   const [docs, setDocs]         = useState([]);
   const [operations, setOps]    = useState([]);
   const [tasks, setTasks]       = useState([]);
+  const [mediaStats, setMediaStats] = useState({ total: 0, lastUpload: null, categories: 0 });
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      api.getDocs(),
-      api.getOperations(),
-      api.getTasks({ status: "pending" }),
-    ]).then(([d, o, t]) => {
-      setDocs(d); setOps(o); setTasks(t);
-    }).catch(console.error).finally(() => setLoading(false));
+    if (isMediaOnly) {
+      Promise.all([
+        api.getMedia({ limit: 1 }),
+        api.getMediaCategories(),
+      ]).then(([mediaData, cats]) => {
+        const lastAsset = mediaData?.assets?.[0];
+        const lastUpload = lastAsset?.upload_date
+          ? new Date(lastAsset.upload_date).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" })
+          : null;
+        setMediaStats({
+          total:      mediaData?.total ?? 0,
+          lastUpload: lastUpload || "—",
+          categories: Object.keys(cats || {}).length,
+        });
+      }).catch(console.error).finally(() => setLoading(false));
+    } else {
+      Promise.all([
+        api.getDocs(),
+        api.getOperations(),
+        api.getTasks({ status: "pending" }),
+      ]).then(([d, o, t]) => {
+        setDocs(d); setOps(o); setTasks(t);
+      }).catch(console.error).finally(() => setLoading(false));
+    }
   }, []);
 
   const scos       = docs.filter(d => d.type === "SCO").length;
@@ -480,15 +500,17 @@ function Dashboard({ user, setView, setModal }) {
   const activeOps  = operations.filter(o => o.status === "ACTIVE" || o.status === "NEGOTIATING").length;
   const overdue    = tasks.filter(t => t.deadline && new Date(t.deadline) < new Date()).length;
 
-  const isMediaOnly = user?.role === "MEDIA_MANAGER";
-
   const kpis = [
-    ...(!isMediaOnly ? [
-      { label: "Operaciones activas", value: activeOps,   icon: "ti-briefcase",        color: "#0891b2", view: "operations" },
-      { label: "SCO emitidos",        value: scos,        icon: "ti-file-description", color: "#2563eb", view: "sco" },
-      { label: "FCO / SPA",           value: fcos + spas, icon: "ti-file-check",       color: "#7c3aed", view: "fco" },
-    ] : []),
-    { label: "Valor negociado", value: fmt(totalValue), icon: "ti-currency-dollar", color: "#d97706", view: null },
+    { label: "Operaciones activas", value: activeOps,   icon: "ti-briefcase",        color: "#0891b2", view: "operations" },
+    { label: "SCO emitidos",        value: scos,        icon: "ti-file-description", color: "#2563eb", view: "sco" },
+    { label: "FCO / SPA",           value: fcos + spas, icon: "ti-file-check",       color: "#7c3aed", view: "fco" },
+    { label: "Valor negociado",     value: fmt(totalValue), icon: "ti-currency-dollar", color: "#d97706", view: null },
+  ];
+
+  const mediaKpis = [
+    { label: "Total activos",    value: mediaStats.total,      icon: "ti-photo",         color: "#0891b2" },
+    { label: "Categorías",       value: mediaStats.categories, icon: "ti-folder-open",   color: "#7c3aed" },
+    { label: "Última carga",     value: mediaStats.lastUpload, icon: "ti-clock",         color: "#059669" },
   ];
 
   return (
@@ -500,7 +522,7 @@ function Dashboard({ user, setView, setModal }) {
         </p>
       </div>
 
-      {/* Alerta tareas vencidas */}
+      {/* Alerta tareas vencidas — solo roles comerciales */}
       {!isMediaOnly && overdue > 0 && (
         <div onClick={() => setView("tasks")} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: "10px 16px", marginBottom: 20, cursor: "pointer" }}>
           <i className="ti ti-alert-circle" style={{ fontSize: 18, color: "#dc2626" }} />
@@ -512,123 +534,145 @@ function Dashboard({ user, setView, setModal }) {
 
       {loading ? <LoadingSpinner /> : (
         <>
-          {/* KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: isMediaOnly ? "repeat(1, 1fr)" : "repeat(4, 1fr)", gap: 14, marginBottom: "1.5rem" }}>
-            {kpis.map((stat, i) => (
-              <div key={i} onClick={() => stat.view && setView(stat.view)}
-                style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem", cursor: stat.view ? "pointer" : "default",
-                  transition: "box-shadow 0.15s", boxShadow: "none" }}
-                onMouseEnter={e => { if (stat.view) e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)"; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <span style={{ fontSize: 12, color: "var(--color-text-secondary)", fontWeight: 500 }}>{stat.label}</span>
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: stat.color + "1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <i className={`ti ${stat.icon}`} style={{ fontSize: 17, color: stat.color }} />
+          {/* ── Dashboard DAM — solo MEDIA_MANAGER ─────────────────────────── */}
+          {isMediaOnly ? (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: "1.5rem" }}>
+                {mediaKpis.map((stat, i) => (
+                  <div key={i} style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-secondary)", fontWeight: 500 }}>{stat.label}</span>
+                      <div style={{ width: 34, height: 34, borderRadius: 8, background: stat.color + "1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <i className={`ti ${stat.icon}`} style={{ fontSize: 17, color: stat.color }} />
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "var(--color-text-primary)" }}>Acceso rápido</h3>
+                <QuickAction icon="ti-photo" label="Media Center" sub="Gestionar activos digitales" color="#0891b2" onClick={() => setView("media-center")} />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* ── Dashboard comercial — todos los demás roles ───────────────── */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: "1.5rem" }}>
+                {kpis.map((stat, i) => (
+                  <div key={i} onClick={() => stat.view && setView(stat.view)}
+                    style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem", cursor: stat.view ? "pointer" : "default",
+                      transition: "box-shadow 0.15s", boxShadow: "none" }}
+                    onMouseEnter={e => { if (stat.view) e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-secondary)", fontWeight: 500 }}>{stat.label}</span>
+                      <div style={{ width: 34, height: 34, borderRadius: 8, background: stat.color + "1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <i className={`ti ${stat.icon}`} style={{ fontSize: 17, color: stat.color }} />
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                {/* Operaciones recientes */}
+                <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>Operaciones recientes</h3>
+                    <button onClick={() => setView("operations")} style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}>Ver todas →</button>
+                  </div>
+                  {operations.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "var(--color-text-secondary)", textAlign: "center", padding: "1rem 0" }}>Sin operaciones aún</p>
+                  ) : operations.slice(0, 5).map(op => {
+                    const cd = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
+                    return (
+                      <div key={op.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "#1B2A4A", fontFamily: "monospace" }}>{op.operation_id || op.id}</p>
+                          <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>{op.counterpart_name || cd?.product || "—"}</p>
+                        </div>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20,
+                          background: op.status === "ACTIVE" || op.status === "NEGOTIATING" ? "#dbeafe" : "#f3f4f6",
+                          color:      op.status === "ACTIVE" || op.status === "NEGOTIATING" ? "#1e40af" : "#374151" }}>
+                          {op.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Documentos recientes */}
+                <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>Documentos recientes</h3>
+                    <button onClick={() => setView("sco")} style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}>Ver todos →</button>
+                  </div>
+                  {docs.slice(0, 5).map(doc => (
+                    <div key={doc.id} onClick={() => setModal(doc)}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid var(--color-border-tertiary)", cursor: "pointer" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <DocTypeBadge type={doc.type} />
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 500, margin: 0, color: "var(--color-text-primary)" }}>{doc.id}</p>
+                          <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>{doc.client}</p>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>{doc.date}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Acciones rápidas + Tareas pendientes */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "var(--color-text-primary)" }}>Acciones rápidas</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <QuickAction icon="ti-briefcase"        label="Nueva Operación"   sub="Operación comercial"     color="#0891b2" onClick={() => setView("operations")} />
+                    <QuickAction icon="ti-file-description" label="Nueva SCO"          sub="Cotización comercial"   color="#2563eb" onClick={() => setView("new-sco")} />
+                    <QuickAction icon="ti-file-check"       label="Nueva FCO"          sub="Oferta formal completa" color="#7c3aed" onClick={() => setView("new-fco")} />
+                    {DIRECTORS.has(user.role) && (
+                      <QuickAction icon="ti-file-certificate" label="Nuevo SPA"        sub="Contrato — solo directivos" color="#059669" onClick={() => setView("new-spa")} />
+                    )}
+                  </div>
+                  <div style={{ marginTop: 14, padding: "10px 12px", background: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a" }}>
+                    <p style={{ fontSize: 11, color: "#92400e", margin: 0, fontWeight: 500 }}>
+                      <i className="ti ti-alert-triangle" style={{ fontSize: 13, marginRight: 5, verticalAlign: -2 }} />
+                      Destino CHINA → activa GLV Services SAS (Colombia) + GACC No. YA11000PDY110K805
+                    </p>
                   </div>
                 </div>
-                <p style={{ fontSize: 22, fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>{stat.value}</p>
-              </div>
-            ))}
-          </div>
 
-          {!isMediaOnly && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            {/* Operaciones recientes */}
-            <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>Operaciones recientes</h3>
-                <button onClick={() => setView("operations")} style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}>Ver todas →</button>
-              </div>
-              {operations.length === 0 ? (
-                <p style={{ fontSize: 13, color: "var(--color-text-secondary)", textAlign: "center", padding: "1rem 0" }}>Sin operaciones aún</p>
-              ) : operations.slice(0, 5).map(op => {
-                const cd = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
-                return (
-                  <div key={op.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-                    <div>
-                      <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "#1B2A4A", fontFamily: "monospace" }}>{op.operation_id || op.id}</p>
-                      <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>{op.counterpart_name || cd?.product || "—"}</p>
-                    </div>
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20,
-                      background: op.status === "ACTIVE" || op.status === "NEGOTIATING" ? "#dbeafe" : "#f3f4f6",
-                      color:      op.status === "ACTIVE" || op.status === "NEGOTIATING" ? "#1e40af" : "#374151" }}>
-                      {op.status}
-                    </span>
+                {/* Tareas pendientes */}
+                <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>Tareas pendientes</h3>
+                    <button onClick={() => setView("tasks")} style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}>Ver todas →</button>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Documentos recientes */}
-            <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>Documentos recientes</h3>
-                <button onClick={() => setView("sco")} style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}>Ver todos →</button>
-              </div>
-              {docs.slice(0, 5).map(doc => (
-                <div key={doc.id} onClick={() => setModal(doc)}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid var(--color-border-tertiary)", cursor: "pointer" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <DocTypeBadge type={doc.type} />
-                    <div>
-                      <p style={{ fontSize: 12, fontWeight: 500, margin: 0, color: "var(--color-text-primary)" }}>{doc.id}</p>
-                      <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>{doc.client}</p>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: 11, color: "var(--color-text-secondary)", margin: 0 }}>{doc.date}</p>
+                  {tasks.length === 0 ? (
+                    <p style={{ fontSize: 13, color: "var(--color-text-secondary)", textAlign: "center", padding: "1rem 0" }}>
+                      <i className="ti ti-circle-check" style={{ fontSize: 22, display: "block", marginBottom: 6, color: "#059669" }} />
+                      Sin tareas pendientes
+                    </p>
+                  ) : tasks.slice(0, 4).map(task => {
+                    const isOv = task.deadline && new Date(task.deadline) < new Date();
+                    const pc = { low: "#059669", medium: "#d97706", high: "#dc2626", critical: "#9d174d" };
+                    return (
+                      <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 0", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: pc[task.priority] || "#d97706", marginTop: 5, minWidth: 8 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 12, fontWeight: 500, margin: 0, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.title}</p>
+                          {task.deadline && <p style={{ fontSize: 11, color: isOv ? "#dc2626" : "var(--color-text-secondary)", margin: 0, fontWeight: isOv ? 600 : 400 }}>{isOv ? "⚠ Vencida: " : ""}{task.deadline}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          </div>
-          )}
-
-          {/* Acciones rápidas + Tareas pendientes */}
-          {!isMediaOnly && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "var(--color-text-primary)" }}>Acciones rápidas</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <QuickAction icon="ti-briefcase"        label="Nueva Operación"   sub="Operación comercial"     color="#0891b2" onClick={() => setView("operations")} />
-                <QuickAction icon="ti-file-description" label="Nueva SCO"          sub="Cotización comercial"   color="#2563eb" onClick={() => setView("new-sco")} />
-                <QuickAction icon="ti-file-check"       label="Nueva FCO"          sub="Oferta formal completa" color="#7c3aed" onClick={() => setView("new-fco")} />
-                {DIRECTORS.has(user.role) && (
-                  <QuickAction icon="ti-file-certificate" label="Nuevo SPA"        sub="Contrato — solo directivos" color="#059669" onClick={() => setView("new-spa")} />
-                )}
               </div>
-              <div style={{ marginTop: 14, padding: "10px 12px", background: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a" }}>
-                <p style={{ fontSize: 11, color: "#92400e", margin: 0, fontWeight: 500 }}>
-                  <i className="ti ti-alert-triangle" style={{ fontSize: 13, marginRight: 5, verticalAlign: -2 }} />
-                  Destino CHINA → activa GLV Services SAS (Colombia) + GACC No. YA11000PDY110K805
-                </p>
-              </div>
-            </div>
-
-            {/* Tareas pendientes */}
-            <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>Tareas pendientes</h3>
-                <button onClick={() => setView("tasks")} style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}>Ver todas →</button>
-              </div>
-              {tasks.length === 0 ? (
-                <p style={{ fontSize: 13, color: "var(--color-text-secondary)", textAlign: "center", padding: "1rem 0" }}>
-                  <i className="ti ti-circle-check" style={{ fontSize: 22, display: "block", marginBottom: 6, color: "#059669" }} />
-                  Sin tareas pendientes
-                </p>
-              ) : tasks.slice(0, 4).map(task => {
-                const isOv = task.deadline && new Date(task.deadline) < new Date();
-                const pc = { low: "#059669", medium: "#d97706", high: "#dc2626", critical: "#9d174d" };
-                return (
-                  <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 0", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: pc[task.priority] || "#d97706", marginTop: 5, minWidth: 8 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 12, fontWeight: 500, margin: 0, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.title}</p>
-                      {task.deadline && <p style={{ fontSize: 11, color: isOv ? "#dc2626" : "var(--color-text-secondary)", margin: 0, fontWeight: isOv ? 600 : 400 }}>{isOv ? "⚠ Vencida: " : ""}{task.deadline}</p>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            </>
           )}
         </>
       )}
