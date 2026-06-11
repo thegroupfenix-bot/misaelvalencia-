@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
+const { requireLevel } = require("../middleware/rbac");
 
 const router = express.Router();
 router.use(authenticate);
@@ -66,7 +67,7 @@ router.get("/:id", (req, res) => {
   res.json({ ...op, documents: docs });
 });
 
-router.post("/", (req, res) => {
+router.post("/", requireLevel(40), (req, res) => {
   const {
     product_category, product_detail, commercial_data,
     origin_country, destination_country, counterpart_country, incoterm, currency,
@@ -128,7 +129,7 @@ router.post("/", (req, res) => {
   res.status(201).json(db.prepare("SELECT * FROM operations WHERE id = ?").get(id));
 });
 
-router.patch("/:id/status", (req, res) => {
+router.patch("/:id/status", requireLevel(40), (req, res) => {
   const { status } = req.body;
   const valid = ["DRAFT","NEGOTIATING","ACTIVE","PENDING_DOCS","SIGNED","SHIPPED","COMPLETED","CANCELLED",
                  "active","paused","completed","cancelled"];
