@@ -177,13 +177,15 @@ body {
 }
 
 /* ─── LANGUAGE SYSTEM ─── */
-[lang-es], [lang-en], [lang-ar], [lang-zh] { display: none; }
+[lang-es], [lang-en], [lang-ar], [lang-zh], [lang-pt-br] { display: none; }
 body.lang-es [lang-es], body.lang-en [lang-en],
-body.lang-ar [lang-ar], body.lang-zh [lang-zh] { display: inline; }
+body.lang-ar [lang-ar], body.lang-zh [lang-zh],
+body.lang-pt-br [lang-pt-br] { display: inline; }
 body.lang-ar { direction: rtl; }
 body.lang-ar [lang-ar] { display: block; }
 body.lang-es [lang-es].block, body.lang-en [lang-en].block,
-body.lang-ar [lang-ar].block, body.lang-zh [lang-zh].block { display: block; }
+body.lang-ar [lang-ar].block, body.lang-zh [lang-zh].block,
+body.lang-pt-br [lang-pt-br].block { display: block; }
 
 /* ─── NAV ─── */
 nav {
@@ -1270,6 +1272,7 @@ video.hero-video {
     <div class="lang-switcher">
       <button class="lang-btn active" onclick="setLang('es')">ES</button>
       <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('pt-br')">PT-BR</button>
       <button class="lang-btn" onclick="setLang('ar')">عربي</button>
       <button class="lang-btn" onclick="setLang('zh')">中文</button>
     </div>
@@ -2833,9 +2836,10 @@ function setLang(lang) {
   document.body.className = 'lang-' + lang;
   document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.lang-btn').forEach(b => {
-    if (b.textContent.trim() === lang || 
+    if (b.textContent.trim() === lang ||
         (lang === 'ar' && b.textContent.includes('عربي')) ||
-        (lang === 'zh' && b.textContent.includes('中文'))) {
+        (lang === 'zh' && b.textContent.includes('中文')) ||
+        (lang === 'pt-br' && b.textContent.includes('PT-BR'))) {
       b.classList.add('active');
     }
   });

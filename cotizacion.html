@@ -62,8 +62,8 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{background:var(--dark);color:var(--text);font-family:"Barlow",sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
-[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
-body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+[lang-es],[lang-en],[lang-ar],[lang-zh],[lang-pt-br]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh],body.lang-pt-br [lang-pt-br]{display:inline;}
 body.lang-ar{direction:rtl;}
 
 /* NAV */
@@ -286,6 +286,7 @@ video.hero-video {
     <div class="lsw">
       <button class="lb on" onclick="setLang('es')">ES</button>
       <button class="lb" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('pt-br')">PT-BR</button>
       <button class="lb" onclick="setLang('ar')">عربي</button>
       <button class="lb" onclick="setLang('zh')">中文</button>
     </div>
@@ -1111,7 +1112,8 @@ function setLang(l) {
     b.classList.toggle('on',
       t === l ||
       (l === 'ar' && b.textContent.includes('\u0639\u0631\u0628\u064a')) ||
-      (l === 'zh' && b.textContent.includes('\u4e2d\u6587'))
+      (l === 'zh' && b.textContent.includes('\u4e2d\u6587')) ||
+      (l === 'pt-br' && b.textContent.includes('PT-BR'))
     );
   });
   localStorage.setItem('glv-lang', l);

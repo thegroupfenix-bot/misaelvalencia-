@@ -77,9 +77,10 @@ body {
 }
 
 /* ─── LANG ─── */
-[lang-es],[lang-en],[lang-ar],[lang-zh]{ display:none; }
+[lang-es],[lang-en],[lang-ar],[lang-zh],[lang-pt-br]{ display:none; }
 body.lang-es [lang-es], body.lang-en [lang-en],
-body.lang-ar [lang-ar], body.lang-zh [lang-zh]{ display:inline; }
+body.lang-ar [lang-ar], body.lang-zh [lang-zh],
+body.lang-pt-br [lang-pt-br]{ display:inline; }
 body.lang-ar { direction:rtl; }
 
 /* ─── NAV ─── */
@@ -988,6 +989,7 @@ video.hero-video {
     <div class="lang-switcher">
       <button class="lang-btn active" onclick="setLang('es')">ES</button>
       <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('pt-br')">PT-BR</button>
       <button class="lang-btn" onclick="setLang('ar')">عربي</button>
       <button class="lang-btn" onclick="setLang('zh')">中文</button>
     </div>
@@ -1738,7 +1740,8 @@ function setLang(l) {
     b.classList.toggle('active',
       b.textContent.trim() === l ||
       (l==='ar' && b.textContent.includes('عربي')) ||
-      (l==='zh' && b.textContent.includes('中文'))
+      (l==='zh' && b.textContent.includes('中文')) ||
+      (l==='pt-br' && b.textContent.includes('PT-BR'))
     );
   });
   localStorage.setItem('glv-lang', l);

@@ -53,8 +53,8 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{background:var(--dark);color:var(--text);font-family:"Barlow",sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
-[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
-body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+[lang-es],[lang-en],[lang-ar],[lang-zh],[lang-pt-br]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh],body.lang-pt-br [lang-pt-br]{display:inline;}
 body.lang-ar{direction:rtl;}
 nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.97);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
 .nlogo{font-family:"Playfair Display",serif;font-size:1.2rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
@@ -193,6 +193,7 @@ video.hero-video {
     <div class="lsw">
       <button class="lb on" onclick="setLang('es')">ES</button>
       <button class="lb" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('pt-br')">PT-BR</button>
       <button class="lb" onclick="setLang('ar')">عربي</button>
       <button class="lb" onclick="setLang('zh')">中文</button>
     </div>

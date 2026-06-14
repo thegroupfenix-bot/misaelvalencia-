@@ -78,9 +78,10 @@ body {
 }
 
 /* ─── LANG ─── */
-[lang-es],[lang-en],[lang-ar],[lang-zh]{ display:none; }
+[lang-es],[lang-en],[lang-ar],[lang-zh],[lang-pt-br]{ display:none; }
 body.lang-es [lang-es], body.lang-en [lang-en],
-body.lang-ar [lang-ar], body.lang-zh [lang-zh]{ display:inline; }
+body.lang-ar [lang-ar], body.lang-zh [lang-zh],
+body.lang-pt-br [lang-pt-br]{ display:inline; }
 body.lang-ar { direction:rtl; }
 
 /* ─── NAV ─── */
@@ -733,15 +734,16 @@ video.hero-video {
     <span class="nav-logo-sub">Services SAS<br>División III — Proteínas & Huevo</span>
   </a>
   <div class="nav-right">
-    <a href="/" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
+    <a href="/" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-pt-br>Início</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
     <div class="lang-switcher">
       <button class="lang-btn active" onclick="setLang('es')">ES</button>
       <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('pt-br')">PT-BR</button>
       <button class="lang-btn" onclick="setLang('ar')">عربي</button>
       <button class="lang-btn" onclick="setLang('zh')">中文</button>
     </div>
     <a href="/cotizacion" class="nav-cta">
-      <span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-ar>تسعير</span><span lang-zh>询价</span>
+      <span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-pt-br>Cotar</span><span lang-ar>تسعير</span><span lang-zh>询价</span>
     </a>
   </div>
 </nav>
@@ -755,12 +757,14 @@ video.hero-video {
     <div class="hero-div-tag">
       <span lang-es>División III · Proteínas & Huevo</span>
       <span lang-en>Division III · Proteins & Eggs</span>
+      <span lang-pt-br>Divisão III · Proteínas & Ovos</span>
       <span lang-ar>القسم الثالث · البروتينات والبيض</span>
       <span lang-zh>第三部门 · 蛋白质与鸡蛋</span>
     </div>
     <h1 class="hero-title">
       <span lang-es>Proteína de<br><em>calidad</em> certificada.</span>
       <span lang-en>Certified <em>quality</em><br>protein.</span>
+      <span lang-pt-br>Proteína de <em>qualidade</em><br>certificada.</span>
       <span lang-ar>بروتين <em>معتمد</em><br>عالي الجودة.</span>
       <span lang-zh>经认证的<br><em>优质</em>蛋白质。</span>
     </h1>
@@ -768,12 +772,13 @@ video.hero-video {
     <p class="hero-big-label">
       <span lang-es>huevos por contenedor FCL · 920 cajas × 360 unidades</span>
       <span lang-en>eggs per FCL container · 920 boxes × 360 units</span>
+      <span lang-pt-br>ovos por contêiner FCL · 920 caixas × 360 unidades</span>
       <span lang-ar>بيضة لكل حاوية FCL · 920 علبة × 360 وحدة</span>
       <span lang-zh>每个集装箱鸡蛋数 · 920箱 × 360个</span>
     </p>
     <div class="hero-btns">
       <a href="/cotizacion?tab=huevos" class="btn-gold" onclick="localStorage.setItem('glv-open-tab','huevos')">
-        <span lang-es>🥚 Calcular Precio FCL Huevo</span><span lang-en>🥚 Calculate Egg FCL Price</span><span lang-ar>🥚 احسب سعر FCL البيض</span><span lang-zh>🥚 计算鸡蛋FCL价格</span>
+        <span lang-es>🥚 Calcular Precio FCL Huevo</span><span lang-en>🥚 Calculate Egg FCL Price</span><span lang-pt-br>🥚 Calcular Preço FCL Ovo</span><span lang-ar>🥚 احسب سعر FCL البيض</span><span lang-zh>🥚 计算鸡蛋FCL价格</span>
       </a>
       <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20me%20interesa%20cotizar%20huevo%20FCL." target="_blank" class="btn-blue">
         💬 WhatsApp Colombia
@@ -1372,7 +1377,8 @@ function setLang(l) {
     b.classList.toggle('active',
       b.textContent.trim() === l ||
       (l==='ar' && b.textContent.includes('عربي')) ||
-      (l==='zh' && b.textContent.includes('中文'))
+      (l==='zh' && b.textContent.includes('中文')) ||
+      (l==='pt-br' && b.textContent.includes('PT-BR'))
     );
   });
   localStorage.setItem('glv-lang', l);
