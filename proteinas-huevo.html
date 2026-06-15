@@ -78,9 +78,10 @@ body {
 }
 
 /* ─── LANG ─── */
-[lang-es],[lang-en],[lang-ar],[lang-zh]{ display:none; }
+[lang-es],[lang-en],[lang-ar],[lang-zh],[lang-pt-br]{ display:none; }
 body.lang-es [lang-es], body.lang-en [lang-en],
-body.lang-ar [lang-ar], body.lang-zh [lang-zh]{ display:inline; }
+body.lang-ar [lang-ar], body.lang-zh [lang-zh],
+body.lang-pt-br [lang-pt-br]{ display:inline; }
 body.lang-ar { direction:rtl; }
 
 /* ─── NAV ─── */
@@ -723,6 +724,11 @@ video.hero-video {
 /* === END GLV VIDEO === */
 
 </style>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 </head>
 <body class="lang-es">
 
@@ -733,15 +739,16 @@ video.hero-video {
     <span class="nav-logo-sub">Services SAS<br>División III — Proteínas & Huevo</span>
   </a>
   <div class="nav-right">
-    <a href="/" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
+    <a href="/" class="nav-back">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-pt-br>Início</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
     <div class="lang-switcher">
       <button class="lang-btn active" onclick="setLang('es')">ES</button>
       <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('pt-br')">PT-BR</button>
       <button class="lang-btn" onclick="setLang('ar')">عربي</button>
       <button class="lang-btn" onclick="setLang('zh')">中文</button>
     </div>
     <a href="/cotizacion" class="nav-cta">
-      <span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-ar>تسعير</span><span lang-zh>询价</span>
+      <span lang-es>Cotizar</span><span lang-en>Quote</span><span lang-pt-br>Cotar</span><span lang-ar>تسعير</span><span lang-zh>询价</span>
     </a>
   </div>
 </nav>
@@ -755,12 +762,14 @@ video.hero-video {
     <div class="hero-div-tag">
       <span lang-es>División III · Proteínas & Huevo</span>
       <span lang-en>Division III · Proteins & Eggs</span>
+      <span lang-pt-br>Divisão III · Proteínas & Ovos</span>
       <span lang-ar>القسم الثالث · البروتينات والبيض</span>
       <span lang-zh>第三部门 · 蛋白质与鸡蛋</span>
     </div>
     <h1 class="hero-title">
       <span lang-es>Proteína de<br><em>calidad</em> certificada.</span>
       <span lang-en>Certified <em>quality</em><br>protein.</span>
+      <span lang-pt-br>Proteína de <em>qualidade</em><br>certificada.</span>
       <span lang-ar>بروتين <em>معتمد</em><br>عالي الجودة.</span>
       <span lang-zh>经认证的<br><em>优质</em>蛋白质。</span>
     </h1>
@@ -768,18 +777,19 @@ video.hero-video {
     <p class="hero-big-label">
       <span lang-es>huevos por contenedor FCL · 920 cajas × 360 unidades</span>
       <span lang-en>eggs per FCL container · 920 boxes × 360 units</span>
+      <span lang-pt-br>ovos por contêiner FCL · 920 caixas × 360 unidades</span>
       <span lang-ar>بيضة لكل حاوية FCL · 920 علبة × 360 وحدة</span>
       <span lang-zh>每个集装箱鸡蛋数 · 920箱 × 360个</span>
     </p>
     <div class="hero-btns">
       <a href="/cotizacion?tab=huevos" class="btn-gold" onclick="localStorage.setItem('glv-open-tab','huevos')">
-        <span lang-es>🥚 Calcular Precio FCL Huevo</span><span lang-en>🥚 Calculate Egg FCL Price</span><span lang-ar>🥚 احسب سعر FCL البيض</span><span lang-zh>🥚 计算鸡蛋FCL价格</span>
+        <span lang-es>🥚 Calcular Precio FCL Huevo</span><span lang-en>🥚 Calculate Egg FCL Price</span><span lang-pt-br>🥚 Calcular Preço FCL Ovo</span><span lang-ar>🥚 احسب سعر FCL البيض</span><span lang-zh>🥚 计算鸡蛋FCL价格</span>
       </a>
       <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20me%20interesa%20cotizar%20huevo%20FCL." target="_blank" class="btn-blue">
         💬 WhatsApp Colombia
       </a>
       <a href="#productos" class="btn-outline">
-        <span lang-es>Ver Productos →</span><span lang-en>View Products →</span><span lang-ar>← عرض المنتجات</span><span lang-zh>查看产品 →</span>
+        <span lang-es>Ver Productos →</span><span lang-en>View Products →</span><span lang-pt-br>Ver Produtos →</span><span lang-ar>← عرض المنتجات</span><span lang-zh>查看产品 →</span>
       </a>
     </div>
   </div>
@@ -790,23 +800,23 @@ video.hero-video {
   <div class="stats-inner">
     <div class="stat">
       <div class="stat-num">331.200</div>
-      <span class="stat-label"><span lang-es>Huevos / FCL</span><span lang-en>Eggs / FCL</span><span lang-ar>بيضة / FCL</span><span lang-zh>鸡蛋/集装箱</span></span>
+      <span class="stat-label"><span lang-es>Huevos / FCL</span><span lang-en>Eggs / FCL</span><span lang-pt-br>Ovos / FCL</span><span lang-ar>بيضة / FCL</span><span lang-zh>鸡蛋/集装箱</span></span>
     </div>
     <div class="stat">
       <div class="stat-num">920</div>
-      <span class="stat-label"><span lang-es>Cajas por contenedor</span><span lang-en>Boxes per container</span><span lang-ar>علبة لكل حاوية</span><span lang-zh>每箱数量</span></span>
+      <span class="stat-label"><span lang-es>Cajas por contenedor</span><span lang-en>Boxes per container</span><span lang-pt-br>Caixas por contêiner</span><span lang-ar>علبة لكل حاوية</span><span lang-zh>每箱数量</span></span>
     </div>
     <div class="stat">
       <div class="stat-num">149</div>
-      <span class="stat-label"><span lang-es>FCL exportados 2024–25</span><span lang-en>FCL exported 2024–25</span><span lang-ar>FCL مُصدَّرة 2024-25</span><span lang-zh>2024-25年出口集装箱</span></span>
+      <span class="stat-label"><span lang-es>FCL exportados 2024–25</span><span lang-en>FCL exported 2024–25</span><span lang-pt-br>FCL exportados 2024–25</span><span lang-ar>FCL مُصدَّرة 2024-25</span><span lang-zh>2024-25年出口集装箱</span></span>
     </div>
     <div class="stat">
       <div class="stat-num">3+</div>
-      <span class="stat-label"><span lang-es>FTL mín. Pollo/Cerdo</span><span lang-en>FTL min. Chicken/Pork</span><span lang-ar>FTL دجاج/لحم</span><span lang-zh>最低FTL鸡肉/猪肉</span></span>
+      <span class="stat-label"><span lang-es>FTL mín. Pollo/Cerdo</span><span lang-en>FTL min. Chicken/Pork</span><span lang-pt-br>FTL mín. Frango/Suíno</span><span lang-ar>FTL دجاج/لحم</span><span lang-zh>最低FTL鸡肉/猪肉</span></span>
     </div>
     <div class="stat">
       <div class="stat-num">8+</div>
-      <span class="stat-label"><span lang-es>Mercados activos</span><span lang-en>Active markets</span><span lang-ar>أسواق نشطة</span><span lang-zh>活跃市场</span></span>
+      <span class="stat-label"><span lang-es>Mercados activos</span><span lang-en>Active markets</span><span lang-pt-br>Mercados ativos</span><span lang-ar>أسواق نشطة</span><span lang-zh>活跃市场</span></span>
     </div>
   </div>
 </div>
@@ -823,64 +833,64 @@ video.hero-video {
 <section class="egg-section" id="productos">
   <div class="egg-inner">
     <div class="egg-specs">
-      <p class="eyebrow"><span lang-es>Especificaciones Técnicas</span><span lang-en>Technical Specifications</span><span lang-ar>المواصفات الفنية</span><span lang-zh>技术规格</span></p>
+      <p class="eyebrow"><span lang-es>Especificaciones Técnicas</span><span lang-en>Technical Specifications</span><span lang-pt-br>Especificações Técnicas</span><span lang-ar>المواصفات الفنية</span><span lang-zh>技术规格</span></p>
       <h2 class="sec-title">
         <span lang-es>Huevo Fresco. <em>Trazado.</em> Certificado.</span>
-        <span lang-en>Fresh Egg. <em>Traced.</em> Certified.</span>
+        <span lang-en>Fresh Egg. <em>Traced.</em> Certified.</span><span lang-pt-br>Ovo Fresco. <em>Rastreado.</em> Certificado.</span>
         <span lang-ar>بيض طازج. <em>مُتتبَّع.</em> معتمد.</span>
         <span lang-zh>新鲜鸡蛋。<em>可溯源。</em>已认证。</span>
       </h2>
       <p class="sec-body" style="margin-bottom:2rem;">
         <span lang-es>GLV opera con granjas certificadas en Colombia y Brasil con trazabilidad completa desde el gallinero hasta el contenedor. Cada FCL documentado con certificado sanitario ICA/MAPA, packing list y registro de temperatura.</span>
-        <span lang-en>GLV operates with certified farms in Colombia and Brazil with full traceability from the henhouse to the container. Each FCL documented with ICA/MAPA health certificate, packing list and temperature log.</span>
+        <span lang-en>GLV operates with certified farms in Colombia and Brazil with full traceability from the henhouse to the container. Each FCL documented with ICA/MAPA health certificate, packing list and temperature log.</span><span lang-pt-br>A GLV opera com fazendas certificadas na Colômbia e Brasil com rastreabilidade completa do galinheiro ao contêiner. Cada FCL documentado com certificado sanitário ICA/MAPA, packing list e registro de temperatura.</span>
         <span lang-ar>تعمل GLV مع مزارع معتمدة في كولومبيا والبرازيل مع تتبع كامل من مزرعة الدواجن إلى الحاوية.</span>
         <span lang-zh>GLV与哥伦比亚和巴西的认证农场合作，从鸡舍到集装箱全程可溯源。每个FCL均有ICA/MAPA卫生证书、装箱单和温度记录。</span>
       </p>
 
       <table class="spec-table">
         <tr>
-          <td><span lang-es>Producto</span><span lang-en>Product</span><span lang-ar>المنتج</span><span lang-zh>产品</span></td>
-          <td><span lang-es>Huevo fresco de gallina</span><span lang-en>Fresh hen egg</span><span lang-ar>بيض دجاج طازج</span><span lang-zh>新鲜母鸡蛋</span></td>
+          <td><span lang-es>Producto</span><span lang-en>Product</span><span lang-pt-br>Produto</span><span lang-ar>المنتج</span><span lang-zh>产品</span></td>
+          <td><span lang-es>Huevo fresco de gallina</span><span lang-en>Fresh hen egg</span><span lang-pt-br>Ovo de galinha fresco</span><span lang-ar>بيض دجاج طازج</span><span lang-zh>新鲜母鸡蛋</span></td>
         </tr>
         <tr>
-          <td><span lang-es>Clasificación</span><span lang-en>Grade</span><span lang-ar>التصنيف</span><span lang-zh>等级</span></td>
-          <td><span lang-es>Tipo A · Doble AA</span><span lang-en>Grade A · Double AA</span><span lang-ar>درجة A · مزدوج AA</span><span lang-zh>A级 · AA级</span></td>
+          <td><span lang-es>Clasificación</span><span lang-en>Grade</span><span lang-pt-br>Grau</span><span lang-ar>التصنيف</span><span lang-zh>等级</span></td>
+          <td><span lang-es>Tipo A · Doble AA</span><span lang-en>Grade A · Double AA</span><span lang-pt-br>Grau A · Duplo AA</span><span lang-ar>درجة A · مزدوج AA</span><span lang-zh>A级 · AA级</span></td>
         </tr>
         <tr>
-          <td><span lang-es>Unidades / Caja</span><span lang-en>Units / Box</span><span lang-ar>وحدات / صندوق</span><span lang-zh>个/箱</span></td>
-          <td>360 <span lang-es>unidades</span><span lang-en>units</span><span lang-ar>وحدة</span><span lang-zh>个</span></td>
+          <td><span lang-es>Unidades / Caja</span><span lang-en>Units / Box</span><span lang-pt-br>Unidades / Caixa</span><span lang-ar>وحدات / صندوق</span><span lang-zh>个/箱</span></td>
+          <td>360 <span lang-es>unidades</span><span lang-en>units</span><span lang-pt-br>unidades</span><span lang-ar>وحدة</span><span lang-zh>个</span></td>
         </tr>
         <tr>
-          <td><span lang-es>Cajas / FCL</span><span lang-en>Boxes / FCL</span><span lang-ar>صناديق / FCL</span><span lang-zh>箱/集装箱</span></td>
-          <td>920 <span lang-es>cajas</span><span lang-en>boxes</span><span lang-ar>صندوق</span><span lang-zh>箱</span></td>
+          <td><span lang-es>Cajas / FCL</span><span lang-en>Boxes / FCL</span><span lang-pt-br>Caixas / FCL</span><span lang-ar>صناديق / FCL</span><span lang-zh>箱/集装箱</span></td>
+          <td>920 <span lang-es>cajas</span><span lang-en>boxes</span><span lang-pt-br>caixas</span><span lang-ar>صندوق</span><span lang-zh>箱</span></td>
         </tr>
         <tr>
-          <td><span lang-es>Color disponible</span><span lang-en>Available color</span><span lang-ar>الألوان المتاحة</span><span lang-zh>可用颜色</span></td>
-          <td><span lang-es>Blanco · Marrón</span><span lang-en>White · Brown</span><span lang-ar>أبيض · بني</span><span lang-zh>白色 · 棕色</span></td>
+          <td><span lang-es>Color disponible</span><span lang-en>Available color</span><span lang-pt-br>Cor disponível</span><span lang-ar>الألوان المتاحة</span><span lang-zh>可用颜色</span></td>
+          <td><span lang-es>Blanco · Marrón</span><span lang-en>White · Brown</span><span lang-pt-br>Branco · Marrom</span><span lang-ar>أبيض · بني</span><span lang-zh>白色 · 棕色</span></td>
         </tr>
         <tr>
-          <td><span lang-es>Certificación</span><span lang-en>Certification</span><span lang-ar>الاعتماد</span><span lang-zh>认证</span></td>
+          <td><span lang-es>Certificación</span><span lang-en>Certification</span><span lang-pt-br>Certificação</span><span lang-ar>الاعتماد</span><span lang-zh>认证</span></td>
           <td>ICA Colombia · MAPA Brasil · USDA</td>
         </tr>
         <tr>
-          <td><span lang-es>Temperatura</span><span lang-en>Temperature</span><span lang-ar>درجة الحرارة</span><span lang-zh>温度</span></td>
-          <td><span lang-es>Cadena de frío 4–8°C documentada</span><span lang-en>Cold chain 4–8°C documented</span><span lang-ar>سلسلة تبريد 4-8°C موثقة</span><span lang-zh>冷链4-8°C全程记录</span></td>
+          <td><span lang-es>Temperatura</span><span lang-en>Temperature</span><span lang-pt-br>Temperatura</span><span lang-ar>درجة الحرارة</span><span lang-zh>温度</span></td>
+          <td><span lang-es>Cadena de frío 4–8°C documentada</span><span lang-en>Cold chain 4–8°C documented</span><span lang-pt-br>Cadeia de frio 4–8°C documentada</span><span lang-ar>سلسلة تبريد 4-8°C موثقة</span><span lang-zh>冷链4-8°C全程记录</span></td>
         </tr>
         <tr>
           <td>Incoterm</td>
           <td>FOB · CIF · CFR</td>
         </tr>
         <tr>
-          <td><span lang-es>Pago</span><span lang-en>Payment</span><span lang-ar>الدفع</span><span lang-zh>付款</span></td>
+          <td><span lang-es>Pago</span><span lang-en>Payment</span><span lang-pt-br>Pagamento</span><span lang-ar>الدفع</span><span lang-zh>付款</span></td>
           <td>L/C · T/T · CAD</td>
         </tr>
         <tr>
-          <td><span lang-es>Origen</span><span lang-en>Origin</span><span lang-ar>المنشأ</span><span lang-zh>产地</span></td>
+          <td><span lang-es>Origen</span><span lang-en>Origin</span><span lang-pt-br>Origem</span><span lang-ar>المنشأ</span><span lang-zh>产地</span></td>
           <td>🇨🇴 Colombia · 🇧🇷 Brasil</td>
         </tr>
         <tr>
-          <td><span lang-es>Marca propia</span><span lang-en>Private label</span><span lang-ar>العلامة الخاصة</span><span lang-zh>自有品牌</span></td>
-          <td><span lang-es>Puro Huevo · Disponible bajo marca cliente</span><span lang-en>Puro Huevo · Available under client brand</span><span lang-ar>Puro Huevo · متاح تحت علامة العميل</span><span lang-zh>Puro Huevo · 可贴客户品牌</span></td>
+          <td><span lang-es>Marca propia</span><span lang-en>Private label</span><span lang-pt-br>Marca própria</span><span lang-ar>العلامة الخاصة</span><span lang-zh>自有品牌</span></td>
+          <td><span lang-es>Puro Huevo · Disponible bajo marca cliente</span><span lang-en>Puro Huevo · Available under client brand</span><span lang-pt-br>Puro Huevo · Disponível sob marca do cliente</span><span lang-ar>Puro Huevo · متاح تحت علامة العميل</span><span lang-zh>Puro Huevo · 可贴客户品牌</span></td>
         </tr>
       </table>
 
@@ -888,49 +898,49 @@ video.hero-video {
       <div class="egg-calc">
         <div class="egg-calc-title">
           <span lang-es>📦 Estructura FCL — Referencia de Precio</span>
-          <span lang-en>📦 FCL Structure — Price Reference</span>
+          <span lang-en>📦 FCL Structure — Price Reference</span><span lang-pt-br>📦 Estrutura FCL — Preço de Referência</span>
           <span lang-ar>📦 هيكل FCL — مرجع السعر</span>
           <span lang-zh>📦 集装箱结构 — 价格参考</span>
         </div>
 
         <!-- Structure breakdown -->
         <div class="egg-calc-row">
-          <span class="egg-calc-label"><span lang-es>Cajas por FCL</span><span lang-en>Boxes per FCL</span><span lang-ar>صناديق / FCL</span><span lang-zh>箱/集装箱</span></span>
-          <span class="egg-calc-value">920 <span lang-es>cajas master</span><span lang-en>master boxes</span></span>
+          <span class="egg-calc-label"><span lang-es>Cajas por FCL</span><span lang-en>Boxes per FCL</span><span lang-pt-br>Caixas por FCL</span><span lang-ar>صناديق / FCL</span><span lang-zh>箱/集装箱</span></span>
+          <span class="egg-calc-value">920 <span lang-es>cajas master</span><span lang-en>master boxes</span><span lang-pt-br>caixas máster</span></span>
         </div>
         <div class="egg-calc-row">
-          <span class="egg-calc-label"><span lang-es>Cubetas por caja</span><span lang-en>Trays per box</span><span lang-ar>أطباق / صندوق</span><span lang-zh>托/箱</span></span>
-          <span class="egg-calc-value">12 <span lang-es>cubetas (30 huevos c/u)</span><span lang-en>trays (30 eggs each)</span></span>
+          <span class="egg-calc-label"><span lang-es>Cubetas por caja</span><span lang-en>Trays per box</span><span lang-pt-br>Bandejas por caixa</span><span lang-ar>أطباق / صندوق</span><span lang-zh>托/箱</span></span>
+          <span class="egg-calc-value">12 <span lang-es>cubetas (30 huevos c/u)</span><span lang-en>trays (30 eggs each)</span><span lang-pt-br>bandejas (30 ovos cada)</span></span>
         </div>
         <div class="egg-calc-row">
-          <span class="egg-calc-label"><span lang-es>Total cubetas FCL</span><span lang-en>Total trays FCL</span><span lang-ar>إجمالي الأطباق</span><span lang-zh>托总数</span></span>
-          <span class="egg-calc-value">11.040 <span lang-es>cubetas</span><span lang-en>trays</span></span>
+          <span class="egg-calc-label"><span lang-es>Total cubetas FCL</span><span lang-en>Total trays FCL</span><span lang-pt-br>Total bandejas FCL</span><span lang-ar>إجمالي الأطباق</span><span lang-zh>托总数</span></span>
+          <span class="egg-calc-value">11.040 <span lang-es>cubetas</span><span lang-en>trays</span><span lang-pt-br>bandejas</span></span>
         </div>
         <div class="egg-calc-row">
-          <span class="egg-calc-label"><span lang-es>Total huevos FCL</span><span lang-en>Total eggs FCL</span><span lang-ar>إجمالي البيض</span><span lang-zh>鸡蛋总数</span></span>
-          <span class="egg-calc-value">331.200 <span lang-es>huevos</span><span lang-en>eggs</span></span>
+          <span class="egg-calc-label"><span lang-es>Total huevos FCL</span><span lang-en>Total eggs FCL</span><span lang-pt-br>Total ovos FCL</span><span lang-ar>إجمالي البيض</span><span lang-zh>鸡蛋总数</span></span>
+          <span class="egg-calc-value">331.200 <span lang-es>huevos</span><span lang-en>eggs</span><span lang-pt-br>ovos</span></span>
         </div>
 
         <!-- Price reference -->
         <div style="margin:1rem 0;padding:0.8rem 1rem;background:rgba(201,168,76,0.06);border-left:2px solid rgba(201,168,76,0.3);">
           <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);margin-bottom:0.6rem;">
             <span lang-es>Precio de Referencia FOB — Tipo A · Grade A Large</span>
-            <span lang-en>FOB Reference Price — Grade A Large (50–63g)</span>
+            <span lang-en>FOB Reference Price — Grade A Large (50–63g)</span><span lang-pt-br>Preço FOB de Referência — Grau A Grande (50–63g)</span>
             <span lang-ar>سعر FOB المرجعي — درجة A كبير (50-63 جم)</span>
             <span lang-zh>FOB参考价 — A级大号(50-63g)</span>
           </div>
           <div style="font-size:0.9rem;color:var(--text-dim);line-height:1.7;">
             <span lang-es>USD 3,45 / cubeta × 12 cubetas = <strong style="color:var(--text)">USD 41,40 / caja</strong></span>
-            <span lang-en>USD 3.45 / tray × 12 trays = <strong style="color:var(--text)">USD 41.40 / box</strong></span><br>
+            <span lang-en>USD 3.45 / tray × 12 trays = <strong style="color:var(--text)">USD 41.40 / box</strong></span><span lang-pt-br>USD 3,45 / bandeja × 12 bandejas = <strong style="color:var(--text)">USD 41,40 / caixa</strong></span><br>
             <span lang-es>920 cajas × USD 41,40 = </span>
-            <span lang-en>920 boxes × USD 41.40 = </span>
+            <span lang-en>920 boxes × USD 41.40 = </span><span lang-pt-br>920 caixas × USD 41,40 =</span>
           </div>
         </div>
 
         <div class="egg-calc-total">
           <span class="egg-calc-total-label">
             <span lang-es>Valor ref. FOB / FCL · Grade A Large</span>
-            <span lang-en>Ref. FOB Value / FCL · Grade A Large</span>
+            <span lang-en>Ref. FOB Value / FCL · Grade A Large</span><span lang-pt-br>Valor FOB Ref. / FCL · Grau A Grande</span>
             <span lang-ar>قيمة FOB المرجعية / FCL · Grade A Large</span>
             <span lang-zh>参考FOB价值/集装箱 · A级大号</span>
           </span>
@@ -942,12 +952,12 @@ video.hero-video {
           <p style="font-size:0.9rem;color:var(--text-dim);line-height:1.65;">
             <strong style="color:var(--text);">
               <span lang-es>⚠️ Precios de referencia orientativa</span>
-              <span lang-en>⚠️ Reference prices only</span>
+              <span lang-en>⚠️ Reference prices only</span><span lang-pt-br>⚠️ Apenas preços de referência</span>
               <span lang-ar>⚠️ أسعار مرجعية فقط</span>
               <span lang-zh>⚠️ 仅供参考价格</span>
             </strong><br>
             <span lang-es>Los precios mostrados son valores de referencia basados en condiciones de mercado actuales. <strong style="color:var(--text)">El precio oficial del día debe ser cotizado directamente con un agente GLV autorizado.</strong> Solo la oferta escrita emitida por un agente GLV constituye precio final vinculante. Los precios varían según volumen, destino, temporada y condiciones de pago.</span>
-            <span lang-en>Prices shown are reference values based on current market conditions. <strong style="color:var(--text)">The official price of the day must be quoted directly with an authorized GLV agent.</strong> Only the written offer issued by a GLV agent constitutes the final binding price. Prices vary by volume, destination, season and payment conditions.</span>
+            <span lang-en>Prices shown are reference values based on current market conditions. <strong style="color:var(--text)">The official price of the day must be quoted directly with an authorized GLV agent.</strong> Only the written offer issued by a GLV agent constitutes the final binding price. Prices vary by volume, destination, season and payment conditions.</span><span lang-pt-br>Os preços mostrados são valores de referência baseados nas condições atuais do mercado. <strong style="color:var(--text)">O preço oficial do dia deve ser cotado diretamente com um agente GLV autorizado.</strong> Apenas a oferta escrita emitida por um agente GLV constitui o preço final vinculante. Os preços variam por volume, destino, temporada e condições de pagamento.</span>
             <span lang-ar>الأسعار المعروضة قيم مرجعية. <strong style="color:var(--text)">يجب الاستفسار عن السعر الرسمي ليوم من وكيل GLV معتمد.</strong> فقط العرض المكتوب من وكيل GLV يُعدّ سعراً ملزماً.</span>
             <span lang-zh>所示价格为参考值。<strong style="color:var(--text)">当日官方价格必须直接向GLV授权代理商询价。</strong>只有GLV代理商出具的书面报价才是最终约束价格。</span>
           </p>
@@ -958,7 +968,7 @@ video.hero-video {
           <p style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;">
             <strong style="color:var(--text)">Grade A Large</strong> —
             <span lang-es>Clasificación USDA para huevo fresco de gallina, peso 50–63g por unidad. Equivale al Tipo A colombiano (50–60g) y al padrón MAPA Brasil para huevo grande. Yema centrada, clara firme, cámara de aire ≤3mm. Estándar universal de exportación.</span>
-            <span lang-en>USDA classification for fresh hen egg, 50–63g per unit. Equivalent to Colombian Grade A (50–60g) and MAPA Brazil standard for large egg. Centered yolk, firm white, air cell ≤3mm. Universal export standard.</span>
+            <span lang-en>USDA classification for fresh hen egg, 50–63g per unit. Equivalent to Colombian Grade A (50–60g) and MAPA Brazil standard for large egg. Centered yolk, firm white, air cell ≤3mm. Universal export standard.</span><span lang-pt-br>Classificação USDA para ovo de galinha fresco, 50–63g por unidade. Equivalente ao Grau A colombiano (50–60g) e padrão MAPA Brasil para ovo grande. Gema centrada, clara firme, câmara de ar ≤3mm. Padrão universal de exportação.</span>
             <span lang-ar>تصنيف USDA للبيض الطازج، 50-63 جم للوحدة. مكافئ للدرجة A الكولومبية وبرازيل. صفار في المنتصف، زلال صلب، فجوة هواء ≤3مم.</span>
             <span lang-zh>美国农业部(USDA)对新鲜鸡蛋的分级，每个重量50-63克。相当于哥伦比亚A级(50-60克)和巴西MAPA标准大号蛋。蛋黄居中、蛋白结实、气室≤3毫米。通用出口标准。</span>
           </p>
@@ -968,7 +978,7 @@ video.hero-video {
            onclick="localStorage.setItem('glv-open-tab','huevos')"
            style="display:flex;align-items:center;justify-content:center;gap:0.6rem;margin-top:1.2rem;background:var(--gold);color:var(--dark);font-family:'Barlow',sans-serif;font-size:0.88rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 1.5rem;text-decoration:none;transition:background 0.2s;">
           🧮 <span lang-es>Calcular mi operación →</span>
-          <span lang-en>Calculate my operation →</span>
+          <span lang-en>Calculate my operation →</span><span lang-pt-br>Calcular minha operação →</span>
           <span lang-ar>← احسب عمليتي</span>
           <span lang-zh>计算我的业务 →</span>
         </a>
@@ -982,7 +992,7 @@ video.hero-video {
         <img src="/imagenes/contenedor%20cargado%20con%20huevos%20full%20apilado.jpeg" alt="Contenedor Huevos GLV">
         <div class="egg-img-label">
           <span lang-es>FCL completo · 331.200 huevos</span>
-          <span lang-en>Full FCL · 331,200 eggs</span>
+          <span lang-en>Full FCL · 331,200 eggs</span><span lang-pt-br>FCL Completo · 331.200 ovos</span>
         </div>
       </div>
       <div class="egg-img-row">
@@ -990,28 +1000,28 @@ video.hero-video {
           <img src="/imagenes/pallat%20con%20huevos%20-%20contenedor%20con%20huevos%20en%20caja%20master.png" alt="Pallet Huevos">
           <div class="egg-img-label">
             <span lang-es>Pallet · Caja Master</span>
-            <span lang-en>Pallet · Master Box</span>
+            <span lang-en>Pallet · Master Box</span><span lang-pt-br>Palete · Caixa Máster</span>
           </div>
         </div>
         <div class="egg-img-small">
           <img src="/imagenes/cubetas%20marca%20puro%20huevo.png" alt="Puro Huevo GLV">
           <div class="egg-img-label">
             <span lang-es>Marca Puro Huevo</span>
-            <span lang-en>Puro Huevo Brand</span>
+            <span lang-en>Puro Huevo Brand</span><span lang-pt-br>Marca Puro Huevo</span>
           </div>
         </div>
         <div class="egg-img-small">
           <img src="/imagenes/huevo%20blanco%20en%20bodega.jpeg" alt="Huevo Blanco Bodega">
           <div class="egg-img-label">
             <span lang-es>Huevo Blanco · Bodega</span>
-            <span lang-en>White Egg · Warehouse</span>
+            <span lang-en>White Egg · Warehouse</span><span lang-pt-br>Ovo Branco · Armazém</span>
           </div>
         </div>
         <div class="egg-img-small">
           <img src="/imagenes/huevo%20marron.jpeg" alt="Huevo Marrón Bodega">
           <div class="egg-img-label">
             <span lang-es>Huevo Marrón · Bodega</span>
-            <span lang-en>Brown Egg · Warehouse</span>
+            <span lang-en>Brown Egg · Warehouse</span><span lang-pt-br>Ovo Marrom · Armazém</span>
           </div>
         </div>
       </div>
@@ -1029,35 +1039,35 @@ video.hero-video {
       <div class="video-play-btn" id="eggPlayBtn" onclick="toggleEggVid()">▶</div>
     </div>
     <div class="video-content">
-      <p class="eyebrow"><span lang-es>Empaque & Presentación</span><span lang-en>Packaging & Presentation</span><span lang-ar>التغليف والعرض</span><span lang-zh>包装与展示</span></p>
+      <p class="eyebrow"><span lang-es>Empaque & Presentación</span><span lang-en>Packaging & Presentation</span><span lang-pt-br>Embalagem & Apresentação</span><span lang-ar>التغليف والعرض</span><span lang-zh>包装与展示</span></p>
       <h2 class="sec-title" style="max-width:420px;">
         <span lang-es>Cubeta plástica <em>transparente</em> con tapa</span>
-        <span lang-en>Transparent plastic <em>tray</em> with lid</span>
+        <span lang-en>Transparent plastic <em>tray</em> with lid</span><span lang-pt-br>Bandeja plástica transparente <em>com tampa</em></span>
         <span lang-ar>علبة بلاستيكية <em>شفافة</em> مع غطاء</span>
         <span lang-zh>带盖<em>透明</em>塑料蛋托</span>
       </h2>
       <p class="sec-body" style="margin-bottom:1.5rem;">
         <span lang-es>Disponible en cubeta plástica transparente con tapa hermética — presentación premium para retail y food service. También disponible en cartón estándar y caja master para exportación a granel.</span>
-        <span lang-en>Available in transparent plastic tray with airtight lid — premium presentation for retail and food service. Also available in standard cardboard and master box for bulk export.</span>
+        <span lang-en>Available in transparent plastic tray with airtight lid — premium presentation for retail and food service. Also available in standard cardboard and master box for bulk export.</span><span lang-pt-br>Disponível em bandeja plástica transparente com tampa hermética — apresentação premium para varejo e food service. Também disponível em papelão padrão e caixa máster para exportação a granel.</span>
         <span lang-ar>متوفر في علبة بلاستيكية شفافة مع غطاء محكم — عرض متميز للبيع بالتجزئة. متاح أيضاً في الكرتون القياسي.</span>
         <span lang-zh>提供带密封盖的透明塑料蛋托——适合零售和餐饮服务的高端展示。也提供标准纸箱和散装出口主箱。</span>
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2rem;">
         <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
-          <span lang-es>Cubeta plástica transparente</span><span lang-en>Transparent plastic tray</span>
+          <span lang-es>Cubeta plástica transparente</span><span lang-en>Transparent plastic tray</span><span lang-pt-br>Bandeja plástica transparente</span>
         </span>
         <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
-          <span lang-es>Cartón estándar</span><span lang-en>Standard cardboard</span>
+          <span lang-es>Cartón estándar</span><span lang-en>Standard cardboard</span><span lang-pt-br>Papelão padrão</span>
         </span>
         <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
-          <span lang-es>Caja master exportación</span><span lang-en>Export master box</span>
+          <span lang-es>Caja master exportación</span><span lang-en>Export master box</span><span lang-pt-br>Caixa máster para exportação</span>
         </span>
         <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
-          <span lang-es>Marca privada disponible</span><span lang-en>Private label available</span>
+          <span lang-es>Marca privada disponible</span><span lang-en>Private label available</span><span lang-pt-br>Marca própria disponível</span>
         </span>
       </div>
       <a href="/cotizacion?tab=huevos" class="btn-gold" onclick="localStorage.setItem('glv-open-tab','huevos')">
-        <span lang-es>🥚 Cotizar Huevo FCL →</span><span lang-en>🥚 Quote Egg FCL →</span><span lang-ar>🥚 ← تسعير FCL البيض</span><span lang-zh>🥚 鸡蛋FCL报价 →</span>
+        <span lang-es>🥚 Cotizar Huevo FCL →</span><span lang-en>🥚 Quote Egg FCL →</span><span lang-pt-br>🥚 Cotar FCL de Ovos →</span><span lang-ar>🥚 ← تسعير FCL البيض</span><span lang-zh>🥚 鸡蛋FCL报价 →</span>
       </a>
     </div>
   </div>
@@ -1066,17 +1076,17 @@ video.hero-video {
 <!-- ─── PROTEINS GRID ─── -->
 <section class="proteins-section">
   <div class="proteins-inner">
-    <p class="eyebrow"><span lang-es>Portafolio Completo</span><span lang-en>Full Portfolio</span><span lang-ar>المحفظة الكاملة</span><span lang-zh>完整产品组合</span></p>
+    <p class="eyebrow"><span lang-es>Portafolio Completo</span><span lang-en>Full Portfolio</span><span lang-pt-br>Portfólio Completo</span><span lang-ar>المحفظة الكاملة</span><span lang-zh>完整产品组合</span></p>
     <h2 class="sec-title">
       <span lang-es>Huevo · Pollo · <em>Cerdo</em></span>
-      <span lang-en>Egg · Chicken · <em>Pork</em></span>
+      <span lang-en>Egg · Chicken · <em>Pork</em></span><span lang-pt-br>Ovo · Frango · <em>Suíno</em></span>
       <span lang-ar>بيض · دجاج · <em>لحم خنزير</em></span>
       <span lang-zh>鸡蛋 · 鸡肉 · <em>猪肉</em></span>
     </h2>
     <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.15);border-left:3px solid var(--gold);padding:1.2rem 1.5rem;margin-bottom:2rem;max-width:800px;">
       <p style="font-size:0.88rem;color:var(--text-dim);line-height:1.6;">
         <span lang-es>⚠️ <strong style="color:var(--text)">Nota operativa:</strong> Pollo y Cerdo se procesan en plantas e instalaciones <strong style="color:var(--text)">100% independientes</strong> entre sí y completamente separadas de las operaciones de ovinos y bovinos Halal de la División IV. No hay contacto cruzado ni compartición de líneas.</span>
-        <span lang-en>⚠️ <strong style="color:var(--text)">Operational note:</strong> Chicken and Pork are processed in <strong style="color:var(--text)">100% independent</strong> plants and facilities, completely separate from the Halal ovine and bovine operations of Division IV. No cross-contact or shared lines.</span>
+        <span lang-en>⚠️ <strong style="color:var(--text)">Operational note:</strong> Chicken and Pork are processed in <strong style="color:var(--text)">100% independent</strong> plants and facilities, completely separate from the Halal ovine and bovine operations of Division IV. No cross-contact or shared lines.</span><span lang-pt-br>⚠️ <strong style="color:var(--text)">Nota operacional:</strong> Frango e Suíno são processados em plantas e instalações <strong style="color:var(--text)">100% independentes</strong>, completamente separadas das operações Halal ovinas e bovinas da Divisão IV. Sem contato cruzado ou linhas compartilhadas.</span>
         <span lang-ar>⚠️ <strong style="color:var(--text)">ملاحظة تشغيلية:</strong> تتم معالجة الدجاج ولحم الخنزير في مصانع ومرافق <strong style="color:var(--text)">مستقلة بالكامل</strong> ومنفصلة تماماً عن عمليات الأغنام والأبقار الحلال في القسم الرابع.</span>
         <span lang-zh>⚠️ <strong style="color:var(--text)">运营说明：</strong>鸡肉和猪肉在<strong style="color:var(--text)">完全独立</strong>的工厂和设施中加工，与第四部门的清真绵羊和牛的生产操作完全分离。没有交叉接触或共用生产线。</span>
       </p>
@@ -1086,11 +1096,11 @@ video.hero-video {
       <!-- HUEVO -->
       <div class="protein-card">
         <span class="protein-icon">🥚</span>
-        <div class="protein-name"><span lang-es>Huevo Fresco</span><span lang-en>Fresh Egg</span><span lang-ar>بيض طازج</span><span lang-zh>新鲜鸡蛋</span></div>
+        <div class="protein-name"><span lang-es>Huevo Fresco</span><span lang-en>Fresh Egg</span><span lang-pt-br>Ovo Fresco</span><span lang-ar>بيض طازج</span><span lang-zh>新鲜鸡蛋</span></div>
         <div class="protein-sub">Tipo A · Doble AA · Blanco · Marrón</div>
         <p class="protein-desc">
           <span lang-es>Huevo fresco de gallina Tipo A y Doble AA. Origen Colombia y Brasil. 331.200 unidades por FCL. Marca Puro Huevo o marca privada. Certificación ICA Colombia y MAPA Brasil. Cadena de frío 4–8°C documentada. 149 FCL exportados en 2024–2025.</span>
-          <span lang-en>Fresh Grade A and AA hen egg. Origin Colombia and Brazil. 331,200 units per FCL. Puro Huevo brand or private label. ICA Colombia and MAPA Brazil certification. Cold chain 4–8°C documented. 149 FCL exported in 2024–2025.</span>
+          <span lang-en>Fresh Grade A and AA hen egg. Origin Colombia and Brazil. 331,200 units per FCL. Puro Huevo brand or private label. ICA Colombia and MAPA Brazil certification. Cold chain 4–8°C documented. 149 FCL exported in 2024–2025.</span><span lang-pt-br>Ovo de galinha fresco Grau A e AA. Origem Colômbia e Brasil. 331.200 unidades por FCL. Marca Puro Huevo ou marca própria. Certificação ICA Colômbia e MAPA Brasil. Cadeia de frio 4–8°C documentada. 149 FCL exportados em 2024–2025.</span>
           <span lang-ar>بيض دجاج طازج درجة A وAA. المنشأ كولومبيا والبرازيل. 331,200 وحدة لكل FCL. ICA وMAPA معتمد. 149 FCL مُصدَّرة في 2024-2025.</span>
           <span lang-zh>A级和AA级新鲜母鸡蛋。产地哥伦比亚和巴西。每个FCL 331,200个。ICA哥伦比亚和MAPA巴西认证。2024-2025年出口149个FCL。</span>
         </p>
@@ -1107,11 +1117,11 @@ video.hero-video {
       <!-- POLLO -->
       <div class="protein-card">
         <span class="protein-icon">🐔</span>
-        <div class="protein-name"><span lang-es>Pollo Certificado</span><span lang-en>Certified Chicken</span><span lang-ar>دجاج معتمد</span><span lang-zh>认证鸡肉</span></div>
-        <div class="protein-sub"><span lang-es>Entero · Partes · IQF</span><span lang-en>Whole · Parts · IQF</span><span lang-ar>كامل · أجزاء · IQF</span><span lang-zh>整鸡·部件·IQF</span></div>
+        <div class="protein-name"><span lang-es>Pollo Certificado</span><span lang-en>Certified Chicken</span><span lang-pt-br>Frango Certificado</span><span lang-ar>دجاج معتمد</span><span lang-zh>认证鸡肉</span></div>
+        <div class="protein-sub"><span lang-es>Entero · Partes · IQF</span><span lang-en>Whole · Parts · IQF</span><span lang-pt-br>Inteiro · Cortes · IQF</span><span lang-ar>كامل · أجزاء · IQF</span><span lang-zh>整鸡·部件·IQF</span></div>
         <p class="protein-desc">
           <span lang-es>Pollo entero y partes (pechuga, muslo, ala, pierna). Congelado IQF y fresco. MOQ 3 FTL. Origen Colombia y Brasil. ICA Colombia + MAPA Brasil. Canal vía GLV Florida LLC para mercado USA. Mercados activos: Caribe, Norte de África, Medio Oriente.</span>
-          <span lang-en>Whole chicken and parts (breast, thigh, wing, leg). IQF frozen and fresh. MOQ 3 FTL. Origin Colombia and Brazil. ICA Colombia + MAPA Brazil. USA channel via GLV Florida LLC. Active markets: Caribbean, North Africa, Middle East.</span>
+          <span lang-en>Whole chicken and parts (breast, thigh, wing, leg). IQF frozen and fresh. MOQ 3 FTL. Origin Colombia and Brazil. ICA Colombia + MAPA Brazil. USA channel via GLV Florida LLC. Active markets: Caribbean, North Africa, Middle East.</span><span lang-pt-br>Frango inteiro e cortes (peito, coxa, asa, perna). Congelado IQF e fresco. MOQ 3 FTL. Origem Colômbia e Brasil. ICA Colômbia + MAPA Brasil. Canal EUA via GLV Florida LLC. Mercados ativos: Caribe, Norte da África, Oriente Médio.</span>
           <span lang-ar>دجاج كامل وأجزاء (صدر، فخذ، جناح، ساق). IQF ومجمد وطازج. MOQ 3 FTL. كولومبيا والبرازيل. ICA وMAPA معتمد.</span>
           <span lang-zh>整鸡和部件（胸、腿、翅、腿）。IQF冷冻和新鲜。MOQ 3 FTL。哥伦比亚和巴西产地。</span>
         </p>
@@ -1128,11 +1138,11 @@ video.hero-video {
       <!-- CERDO -->
       <div class="protein-card">
         <span class="protein-icon">🐷</span>
-        <div class="protein-name"><span lang-es>Cerdo Certificado</span><span lang-en>Certified Pork</span><span lang-ar>لحم خنزير معتمد</span><span lang-zh>认证猪肉</span></div>
-        <div class="protein-sub"><span lang-es>Entero · Cortes · Procesado</span><span lang-en>Whole · Cuts · Processed</span><span lang-ar>كامل · قطع · معالج</span><span lang-zh>整猪·切割·加工</span></div>
+        <div class="protein-name"><span lang-es>Cerdo Certificado</span><span lang-en>Certified Pork</span><span lang-pt-br>Suíno Certificado</span><span lang-ar>لحم خنزير معتمد</span><span lang-zh>认证猪肉</span></div>
+        <div class="protein-sub"><span lang-es>Entero · Cortes · Procesado</span><span lang-en>Whole · Cuts · Processed</span><span lang-pt-br>Inteiro · Cortes · Processado</span><span lang-ar>كامل · قطع · معالج</span><span lang-zh>整猪·切割·加工</span></div>
         <p class="protein-desc">
           <span lang-es>Cerdo entero y cortes especializados. Colombia y Brasil. MOQ 3 FTL. Cadena de frío completa. Certificación ICA y MAPA. Canal USA vía GLV Global Food Services LLC Florida. Mercados: Asia, Europa, USA.</span>
-          <span lang-en>Whole pork and specialized cuts. Colombia and Brazil. MOQ 3 FTL. Full cold chain. ICA and MAPA certification. USA channel via GLV Global Food Services LLC Florida. Markets: Asia, Europe, USA.</span>
+          <span lang-en>Whole pork and specialized cuts. Colombia and Brazil. MOQ 3 FTL. Full cold chain. ICA and MAPA certification. USA channel via GLV Global Food Services LLC Florida. Markets: Asia, Europe, USA.</span><span lang-pt-br>Suíno inteiro e cortes especializados. Colômbia e Brasil. MOQ 3 FTL. Cadeia de frio completa. Certificação ICA e MAPA. Canal EUA via GLV Global Food Services LLC Florida. Mercados: Ásia, Europa, EUA.</span>
           <span lang-ar>لحم خنزير كامل وقطع متخصصة. كولومبيا والبرازيل. MOQ 3 FTL. سلسلة تبريد كاملة.</span>
           <span lang-zh>整猪和专业切割部件。哥伦比亚和巴西。MOQ 3 FTL。完整冷链。</span>
         </p>
@@ -1154,21 +1164,21 @@ video.hero-video {
         <img src="/imagenes/lote%20en%20bodega%20de%20partes%20de%20pollo.jpeg" alt="Partes de Pollo GLV"
              style="width:100%;height:100%;object-fit:cover;transition:transform 0.6s;">
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:1.5rem 1rem 0.7rem;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);">
-          <span lang-es>Bodega Partes de Pollo</span><span lang-en>Chicken Parts Warehouse</span>
+          <span lang-es>Bodega Partes de Pollo</span><span lang-en>Chicken Parts Warehouse</span><span lang-pt-br>Armazém de Cortes de Frango</span>
         </div>
       </div>
       <div style="position:relative;overflow:hidden;aspect-ratio:16/9;max-height:280px;">
         <img src="/imagenes/carne%20enlatada.jpeg" alt="Carne Enlatada GLV"
              style="width:100%;height:100%;object-fit:cover;transition:transform 0.6s;">
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:1.5rem 1rem 0.7rem;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);">
-          <span lang-es>Proteína Enlatada</span><span lang-en>Canned Protein</span>
+          <span lang-es>Proteína Enlatada</span><span lang-en>Canned Protein</span><span lang-pt-br>Proteína Enlatada</span>
         </div>
       </div>
       <div style="position:relative;overflow:hidden;aspect-ratio:16/9;max-height:280px;">
         <img src="/imagenes/CARNE%20EN%20LATA.png" alt="Carne en Lata GLV"
              style="width:100%;height:100%;object-fit:cover;transition:transform 0.6s;">
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:1.5rem 1rem 0.7rem;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);">
-          <span lang-es>Marca Propia · Lata</span><span lang-en>Private Label · Can</span>
+          <span lang-es>Marca Propia · Lata</span><span lang-en>Private Label · Can</span><span lang-pt-br>Marca Própria · Lata</span>
         </div>
       </div>
     </div>
@@ -1178,68 +1188,68 @@ video.hero-video {
 <!-- ─── MARKETS ─── -->
 <section class="markets-section">
   <div class="markets-inner">
-    <p class="eyebrow eyebrow-blue"><span lang-es>Mercados Activos</span><span lang-en>Active Markets</span><span lang-ar>الأسواق النشطة</span><span lang-zh>活跃市场</span></p>
+    <p class="eyebrow eyebrow-blue"><span lang-es>Mercados Activos</span><span lang-en>Active Markets</span><span lang-pt-br>Mercados Ativos</span><span lang-ar>الأسواق النشطة</span><span lang-zh>活跃市场</span></p>
     <h2 class="sec-title">
       <span lang-es>149 contenedores. <em>8 mercados.</em></span>
-      <span lang-en">149 containers. <em>8 markets.</em></span>
+      <span lang-en">149 containers. <em>8 markets.</em></span><span lang-pt-br>149 contêineres. <em>8 mercados.</em></span>
       <span lang-ar>149 حاوية. <em>8 أسواق.</em></span>
       <span lang-zh>149个集装箱。<em>8个市场。</em></span>
     </h2>
     <div class="markets-grid">
       <div class="mkt-card">
         <span class="mkt-flag">🇩🇴</span>
-        <div class="mkt-region"><span lang-es>Principal</span><span lang-en>Primary</span><span lang-ar>رئيسي</span><span lang-zh>主要</span></div>
-        <div class="mkt-title"><span lang-es>Rep. Dominicana</span><span lang-en>Dominican Republic</span><span lang-ar>جمهورية الدومينيكان</span><span lang-zh>多明尼加共和国</span></div>
-        <p class="mkt-desc"><span lang-es>Personal GLV local en Santo Domingo. Mayor volumen de huevo FCL. Relación directa con importadores y distribuidores.</span><span lang-en>GLV local staff in Santo Domingo. Highest egg FCL volume. Direct relationship with importers and distributors.</span><span lang-ar>موظفون GLV محليون في سانتو دومينغو. أعلى حجم من FCL البيض.</span><span lang-zh>在圣多明各设有GLV本地员工。最高鸡蛋FCL量。与进口商和分销商直接合作。</span></p>
-        <div class="mkt-highlight">🏢 <span lang-es>Personal local GLV</span><span lang-en>GLV local staff</span></div>
+        <div class="mkt-region"><span lang-es>Principal</span><span lang-en>Primary</span><span lang-pt-br>Principal</span><span lang-ar>رئيسي</span><span lang-zh>主要</span></div>
+        <div class="mkt-title"><span lang-es>Rep. Dominicana</span><span lang-en>Dominican Republic</span><span lang-pt-br>República Dominicana</span><span lang-ar>جمهورية الدومينيكان</span><span lang-zh>多明尼加共和国</span></div>
+        <p class="mkt-desc"><span lang-es>Personal GLV local en Santo Domingo. Mayor volumen de huevo FCL. Relación directa con importadores y distribuidores.</span><span lang-en>GLV local staff in Santo Domingo. Highest egg FCL volume. Direct relationship with importers and distributors.</span><span lang-pt-br>Equipe local GLV em Santo Domingo. Maior volume de FCL de ovos. Relacionamento direto com importadores e distribuidores.</span><span lang-ar>موظفون GLV محليون في سانتو دومينغو. أعلى حجم من FCL البيض.</span><span lang-zh>在圣多明各设有GLV本地员工。最高鸡蛋FCL量。与进口商和分销商直接合作。</span></p>
+        <div class="mkt-highlight">🏢 <span lang-es>Personal local GLV</span><span lang-en>GLV local staff</span><span lang-pt-br>Equipe local GLV</span></div>
       </div>
       <div class="mkt-card">
         <span class="mkt-flag">🇦🇪🇸🇦🇰🇼</span>
         <div class="mkt-region">Halal Premium</div>
-        <div class="mkt-title"><span lang-es>Medio Oriente</span><span lang-en>Middle East</span><span lang-ar>الشرق الأوسط</span><span lang-zh>中东</span></div>
-        <p class="mkt-desc"><span lang-es>UAE, Arabia Saudita, Kuwait. Huevo blanco Tipo A y Doble AA. Canal vía GLV Global Commodities Dubai Free Zone.</span><span lang-en>UAE, Saudi Arabia, Kuwait. White Grade A and AA egg. Channel via GLV Global Commodities Dubai Free Zone.</span><span lang-ar>الإمارات والسعودية والكويت. بيض أبيض درجة A وAA. عبر GLV دبي.</span><span lang-zh>阿联酋、沙特、科威特。A级和AA级白鸡蛋。通过GLV迪拜自由区渠道。</span></p>
+        <div class="mkt-title"><span lang-es>Medio Oriente</span><span lang-en>Middle East</span><span lang-pt-br>Oriente Médio</span><span lang-ar>الشرق الأوسط</span><span lang-zh>中东</span></div>
+        <p class="mkt-desc"><span lang-es>UAE, Arabia Saudita, Kuwait. Huevo blanco Tipo A y Doble AA. Canal vía GLV Global Commodities Dubai Free Zone.</span><span lang-en>UAE, Saudi Arabia, Kuwait. White Grade A and AA egg. Channel via GLV Global Commodities Dubai Free Zone.</span><span lang-pt-br>Emirados, Arábia Saudita, Kuwait. Ovo branco Grau A e AA. Canal via GLV Global Commodities Dubai Free Zone.</span><span lang-ar>الإمارات والسعودية والكويت. بيض أبيض درجة A وAA. عبر GLV دبي.</span><span lang-zh>阿联酋、沙特、科威特。A级和AA级白鸡蛋。通过GLV迪拜自由区渠道。</span></p>
         <div class="mkt-highlight">🏢 <span lang-es>GLV Dubai FZ</span></div>
       </div>
       <div class="mkt-card">
         <span class="mkt-flag">🇯🇵🇨🇳🇭🇰</span>
         <div class="mkt-region">Asia</div>
-        <div class="mkt-title"><span lang-es>Japón · China · HK</span><span lang-en>Japan · China · HK</span><span lang-ar>اليابان · الصين · هونغ كونغ</span><span lang-zh>日本·中国·香港</span></div>
-        <p class="mkt-desc"><span lang-es>Huevo marrón Doble AA premium. Canal vía GLV HK y GLV China. Japón requiere especificaciones premium de calibre y color.</span><span lang-en>Premium AA brown egg. Channel via GLV HK and GLV China. Japan requires premium size and color specifications.</span><span lang-ar>بيض بني AA متميز. عبر GLV هونغ كونغ والصين.</span><span lang-zh>优质AA级棕色鸡蛋。通过GLV香港和GLV中国渠道。日本需要高端规格。</span></p>
+        <div class="mkt-title"><span lang-es>Japón · China · HK</span><span lang-en>Japan · China · HK</span><span lang-pt-br>Japão · China · HK</span><span lang-ar>اليابان · الصين · هونغ كونغ</span><span lang-zh>日本·中国·香港</span></div>
+        <p class="mkt-desc"><span lang-es>Huevo marrón Doble AA premium. Canal vía GLV HK y GLV China. Japón requiere especificaciones premium de calibre y color.</span><span lang-en>Premium AA brown egg. Channel via GLV HK and GLV China. Japan requires premium size and color specifications.</span><span lang-pt-br>Ovo marrom AA premium. Canal via GLV HK e GLV China. O Japão exige especificações premium de tamanho e cor.</span><span lang-ar>بيض بني AA متميز. عبر GLV هونغ كونغ والصين.</span><span lang-zh>优质AA级棕色鸡蛋。通过GLV香港和GLV中国渠道。日本需要高端规格。</span></p>
         <div class="mkt-highlight">🏢 <span lang-es>GLV HK · GLV China</span></div>
       </div>
       <div class="mkt-card">
         <span class="mkt-flag">🇨🇺🇲🇽🇵🇪</span>
         <div class="mkt-region">Latinoamérica</div>
-        <div class="mkt-title"><span lang-es>Cuba · México · Perú</span><span lang-en>Cuba · Mexico · Peru</span><span lang-ar>كوبا · المكسيك · بيرو</span><span lang-zh>古巴·墨西哥·秘鲁</span></div>
-        <p class="mkt-desc"><span lang-es>Mercados de alto volumen. Cuba con acuerdos institucionales. México y Perú con importadores privados. Producto blanco Tipo A.</span><span lang-en>High volume markets. Cuba with institutional agreements. Mexico and Peru with private importers. White Grade A product.</span><span lang-ar>أسواق ذات حجم كبير. كوبا مع اتفاقيات مؤسسية. المكسيك وبيرو مع مستوردين خاصين.</span><span lang-zh>大量市场。古巴有机构协议。墨西哥和秘鲁有私人进口商。</span></p>
+        <div class="mkt-title"><span lang-es>Cuba · México · Perú</span><span lang-en>Cuba · Mexico · Peru</span><span lang-pt-br>Cuba · México · Peru</span><span lang-ar>كوبا · المكسيك · بيرو</span><span lang-zh>古巴·墨西哥·秘鲁</span></div>
+        <p class="mkt-desc"><span lang-es>Mercados de alto volumen. Cuba con acuerdos institucionales. México y Perú con importadores privados. Producto blanco Tipo A.</span><span lang-en>High volume markets. Cuba with institutional agreements. Mexico and Peru with private importers. White Grade A product.</span><span lang-pt-br>Mercados de alto volume. Cuba com acordos institucionais. México e Peru com importadores privados. Produto branco Grau A.</span><span lang-ar>أسواق ذات حجم كبير. كوبا مع اتفاقيات مؤسسية. المكسيك وبيرو مع مستوردين خاصين.</span><span lang-zh>大量市场。古巴有机构协议。墨西哥和秘鲁有私人进口商。</span></p>
         <div class="mkt-highlight">📦 <span lang-es>FOB Colombia / Brasil</span></div>
       </div>
       <div class="mkt-card">
         <span class="mkt-flag">🇳🇦🇬🇭🇿🇦</span>
         <div class="mkt-region">África</div>
-        <div class="mkt-title"><span lang-es>Namibia · Ghana · Sudáfrica</span><span lang-en>Namibia · Ghana · South Africa</span><span lang-ar>ناميبيا · غانا · جنوب أفريقيا</span><span lang-zh>纳米比亚·加纳·南非</span></div>
-        <p class="mkt-desc"><span lang-es>Mercado en crecimiento. Huevo blanco y marrón. Alta demanda de proteína asequible de calidad certificada.</span><span lang-en>Growing market. White and brown egg. High demand for affordable certified quality protein.</span><span lang-ar>سوق متنامٍ. بيض أبيض وبني. طلب مرتفع على البروتين الميسور المعتمد.</span><span lang-zh>增长中的市场。白色和棕色鸡蛋。对可负担的优质认证蛋白质需求旺盛。</span></p>
-        <div class="mkt-highlight">📈 <span lang-es>Mercado en expansión</span><span lang-en>Expanding market</span></div>
+        <div class="mkt-title"><span lang-es>Namibia · Ghana · Sudáfrica</span><span lang-en>Namibia · Ghana · South Africa</span><span lang-pt-br>Namíbia · Gana · África do Sul</span><span lang-ar>ناميبيا · غانا · جنوب أفريقيا</span><span lang-zh>纳米比亚·加纳·南非</span></div>
+        <p class="mkt-desc"><span lang-es>Mercado en crecimiento. Huevo blanco y marrón. Alta demanda de proteína asequible de calidad certificada.</span><span lang-en>Growing market. White and brown egg. High demand for affordable certified quality protein.</span><span lang-pt-br>Mercado em crescimento. Ovo branco e marrom. Alta demanda por proteína de qualidade certificada acessível.</span><span lang-ar>سوق متنامٍ. بيض أبيض وبني. طلب مرتفع على البروتين الميسور المعتمد.</span><span lang-zh>增长中的市场。白色和棕色鸡蛋。对可负担的优质认证蛋白质需求旺盛。</span></p>
+        <div class="mkt-highlight">📈 <span lang-es>Mercado en expansión</span><span lang-en>Expanding market</span><span lang-pt-br>Mercado em expansão</span></div>
       </div>
       <div class="mkt-card">
         <span class="mkt-flag">🇺🇸</span>
         <div class="mkt-region">USA</div>
         <div class="mkt-title">United States</div>
-        <p class="mkt-desc"><span lang-es>Canal vía GLV Global Food Services LLC Florida. Huevo USDA Grade A y proteínas certificadas para mercado hispano y food service.</span><span lang-en>Channel via GLV Global Food Services LLC Florida. USDA Grade A egg and certified proteins for Hispanic market and food service.</span><span lang-ar>قناة عبر GLV فلوريدا. بيض USDA ومنتجات بروتين للسوق الهسباني.</span><span lang-zh>通过GLV佛罗里达LLC渠道。USDA A级鸡蛋和认证蛋白质供应西班牙裔市场和餐饮服务。</span></p>
+        <p class="mkt-desc"><span lang-es>Canal vía GLV Global Food Services LLC Florida. Huevo USDA Grade A y proteínas certificadas para mercado hispano y food service.</span><span lang-en>Channel via GLV Global Food Services LLC Florida. USDA Grade A egg and certified proteins for Hispanic market and food service.</span><span lang-pt-br>Canal via GLV Global Food Services LLC Florida. Ovo USDA Grau A e proteínas certificadas para mercado hispano e food service.</span><span lang-ar>قناة عبر GLV فلوريدا. بيض USDA ومنتجات بروتين للسوق الهسباني.</span><span lang-zh>通过GLV佛罗里达LLC渠道。USDA A级鸡蛋和认证蛋白质供应西班牙裔市场和餐饮服务。</span></p>
         <div class="mkt-highlight">🏢 <span lang-es>GLV Florida LLC</span></div>
       </div>
       <div class="mkt-card">
         <span class="mkt-flag">🇩🇿🇲🇦🇪🇬</span>
-        <div class="mkt-region"><span lang-es>Norte de África</span><span lang-en>North Africa</span></div>
-        <div class="mkt-title"><span lang-es>Argelia · Marruecos · Egipto</span><span lang-en>Algeria · Morocco · Egypt</span></div>
-        <p class="mkt-desc"><span lang-es>Alta demanda de huevo blanco y pollo. Mercados con volúmenes institucionales importantes. Certificación Halal disponible para pollo.</span><span lang-en>High demand for white egg and chicken. Markets with significant institutional volumes. Halal certification available for chicken.</span><span lang-ar>طلب مرتفع على البيض الأبيض والدجاج. شهادة حلال متاحة للدجاج.</span><span lang-zh>对白鸡蛋和鸡肉需求旺盛。有重要机构量的市场。鸡肉可提供清真认证。</span></p>
-        <div class="mkt-highlight">☪️ <span lang-es>Halal disponible</span><span lang-en>Halal available</span></div>
+        <div class="mkt-region"><span lang-es>Norte de África</span><span lang-en>North Africa</span><span lang-pt-br>Norte da África</span></div>
+        <div class="mkt-title"><span lang-es>Argelia · Marruecos · Egipto</span><span lang-en>Algeria · Morocco · Egypt</span><span lang-pt-br>Argélia · Marrocos · Egito</span></div>
+        <p class="mkt-desc"><span lang-es>Alta demanda de huevo blanco y pollo. Mercados con volúmenes institucionales importantes. Certificación Halal disponible para pollo.</span><span lang-en>High demand for white egg and chicken. Markets with significant institutional volumes. Halal certification available for chicken.</span><span lang-pt-br>Alta demanda por ovo branco e frango. Mercados com volumes institucionais significativos. Certificação Halal disponível para frango.</span><span lang-ar>طلب مرتفع على البيض الأبيض والدجاج. شهادة حلال متاحة للدجاج.</span><span lang-zh>对白鸡蛋和鸡肉需求旺盛。有重要机构量的市场。鸡肉可提供清真认证。</span></p>
+        <div class="mkt-highlight">☪️ <span lang-es>Halal disponible</span><span lang-en>Halal available</span><span lang-pt-br>Halal disponível</span></div>
       </div>
       <div class="mkt-card">
         <span class="mkt-flag">🇮🇹🇪🇺</span>
         <div class="mkt-region">Europa</div>
-        <div class="mkt-title"><span lang-es>Italia · Unión Europea</span><span lang-en>Italy · European Union</span></div>
-        <p class="mkt-desc"><span lang-es>Canal vía GLV Global Foods Italia SRL. Proteínas certificadas para mercado europeo con altos estándares sanitarios.</span><span lang-en>Channel via GLV Global Foods Italia SRL. Certified proteins for European market with high health standards.</span><span lang-ar>قناة عبر GLV إيطاليا. بروتينات معتمدة للسوق الأوروبية.</span><span lang-zh>通过GLV意大利公司渠道。符合欧洲高卫生标准的认证蛋白质。</span></p>
+        <div class="mkt-title"><span lang-es>Italia · Unión Europea</span><span lang-en>Italy · European Union</span><span lang-pt-br>Itália · União Europeia</span></div>
+        <p class="mkt-desc"><span lang-es>Canal vía GLV Global Foods Italia SRL. Proteínas certificadas para mercado europeo con altos estándares sanitarios.</span><span lang-en>Channel via GLV Global Foods Italia SRL. Certified proteins for European market with high health standards.</span><span lang-pt-br>Canal via GLV Global Foods Italia SRL. Proteínas certificadas para o mercado europeu com altos padrões sanitários.</span><span lang-ar>قناة عبر GLV إيطاليا. بروتينات معتمدة للسوق الأوروبية.</span><span lang-zh>通过GLV意大利公司渠道。符合欧洲高卫生标准的认证蛋白质。</span></p>
         <div class="mkt-highlight">🏢 <span lang-es>GLV Italia SRL</span></div>
       </div>
     </div>
@@ -1249,38 +1259,38 @@ video.hero-video {
 <!-- ─── PROCESS ─── -->
 <section class="process-section">
   <div class="process-inner">
-    <p class="eyebrow"><span lang-es>Proceso Operativo</span><span lang-en>Operational Process</span><span lang-ar>العملية التشغيلية</span><span lang-zh>运营流程</span></p>
-    <h2 class="sec-title"><span lang-es>De la granja <em>al comprador</em></span><span lang-en>From the farm <em>to the buyer</em></span><span lang-ar>من المزرعة <em>إلى المشتري</em></span><span lang-zh>从农场<em>到买家</em></span></h2>
+    <p class="eyebrow"><span lang-es>Proceso Operativo</span><span lang-en>Operational Process</span><span lang-pt-br>Processo Operacional</span><span lang-ar>العملية التشغيلية</span><span lang-zh>运营流程</span></p>
+    <h2 class="sec-title"><span lang-es>De la granja <em>al comprador</em></span><span lang-en>From the farm <em>to the buyer</em></span><span lang-pt-br>Da fazenda <em>ao comprador</em></span><span lang-ar>من المزرعة <em>إلى المشتري</em></span><span lang-zh>从农场<em>到买家</em></span></h2>
     <div class="process-steps">
       <div class="pstep">
         <div class="pstep-num">01</div>
         <span class="pstep-icon">🏡</span>
-        <div class="pstep-name"><span lang-es>Granja Certificada</span><span lang-en>Certified Farm</span><span lang-ar>مزرعة معتمدة</span><span lang-zh>认证农场</span></div>
-        <p class="pstep-desc"><span lang-es>Selección de granjas ICA/MAPA con protocolo bioseguridad activo y trazabilidad por lote.</span><span lang-en>ICA/MAPA farm selection with active biosecurity protocol and lot traceability.</span><span lang-ar>اختيار مزارع ICA/MAPA مع بروتوكول الأمان الحيوي.</span><span lang-zh>选择具有生物安全协议和批次追溯性的ICA/MAPA认证农场。</span></p>
+        <div class="pstep-name"><span lang-es>Granja Certificada</span><span lang-en>Certified Farm</span><span lang-pt-br>Fazenda Certificada</span><span lang-ar>مزرعة معتمدة</span><span lang-zh>认证农场</span></div>
+        <p class="pstep-desc"><span lang-es>Selección de granjas ICA/MAPA con protocolo bioseguridad activo y trazabilidad por lote.</span><span lang-en>ICA/MAPA farm selection with active biosecurity protocol and lot traceability.</span><span lang-pt-br>Seleção de fazenda ICA/MAPA com protocolo de biossegurança ativo e rastreabilidade do lote.</span><span lang-ar>اختيار مزارع ICA/MAPA مع بروتوكول الأمان الحيوي.</span><span lang-zh>选择具有生物安全协议和批次追溯性的ICA/MAPA认证农场。</span></p>
       </div>
       <div class="pstep">
         <div class="pstep-num">02</div>
         <span class="pstep-icon">🔬</span>
-        <div class="pstep-name"><span lang-es>Control de Calidad</span><span lang-en>Quality Control</span><span lang-ar>مراقبة الجودة</span><span lang-zh>质量控制</span></div>
-        <p class="pstep-desc"><span lang-es>Clasificación Tipo A / AA. Inspección visual y de calibre. Certificado sanitario ICA o MAPA.</span><span lang-en>Grade A / AA classification. Visual and size inspection. ICA or MAPA health certificate.</span><span lang-ar>تصنيف A/AA. فحص بصري ومعايرة. شهادة صحية.</span><span lang-zh>A/AA级分类。外观和尺寸检验。ICA或MAPA卫生证书。</span></p>
+        <div class="pstep-name"><span lang-es>Control de Calidad</span><span lang-en>Quality Control</span><span lang-pt-br>Controle de Qualidade</span><span lang-ar>مراقبة الجودة</span><span lang-zh>质量控制</span></div>
+        <p class="pstep-desc"><span lang-es>Clasificación Tipo A / AA. Inspección visual y de calibre. Certificado sanitario ICA o MAPA.</span><span lang-en>Grade A / AA classification. Visual and size inspection. ICA or MAPA health certificate.</span><span lang-pt-br>Classificação Grau A / AA. Inspeção visual e de tamanho. Certificado sanitário ICA ou MAPA.</span><span lang-ar>تصنيف A/AA. فحص بصري ومعايرة. شهادة صحية.</span><span lang-zh>A/AA级分类。外观和尺寸检验。ICA或MAPA卫生证书。</span></p>
       </div>
       <div class="pstep">
         <div class="pstep-num">03</div>
         <span class="pstep-icon">📦</span>
-        <div class="pstep-name"><span lang-es>Empaque & Paletizado</span><span lang-en>Packaging & Palletizing</span><span lang-ar>التعبئة والتلبيس</span><span lang-zh>包装与托盘</span></div>
-        <p class="pstep-desc"><span lang-es>360 ud/caja. 920 cajas/FCL. Paletizado certificado. Etiquetado según mercado destino.</span><span lang-en">360 units/box. 920 boxes/FCL. Certified palletizing. Labeling per destination market.</span><span lang-ar>360 وحدة/صندوق. 920 صندوق/FCL. تلبيس معتمد.</span><span lang-zh>360个/箱。920箱/集装箱。认证托盘。按目标市场标签。</span></p>
+        <div class="pstep-name"><span lang-es>Empaque & Paletizado</span><span lang-en>Packaging & Palletizing</span><span lang-pt-br>Embalagem & Paletização</span><span lang-ar>التعبئة والتلبيس</span><span lang-zh>包装与托盘</span></div>
+        <p class="pstep-desc"><span lang-es>360 ud/caja. 920 cajas/FCL. Paletizado certificado. Etiquetado según mercado destino.</span><span lang-en">360 units/box. 920 boxes/FCL. Certified palletizing. Labeling per destination market.</span><span lang-pt-br>360 unidades/caixa. 920 caixas/FCL. Paletização certificada. Rotulagem por mercado de destino.</span><span lang-ar>360 وحدة/صندوق. 920 صندوق/FCL. تلبيس معتمد.</span><span lang-zh>360个/箱。920箱/集装箱。认证托盘。按目标市场标签。</span></p>
       </div>
       <div class="pstep">
         <div class="pstep-num">04</div>
         <span class="pstep-icon">❄️</span>
-        <div class="pstep-name"><span lang-es>Cadena de Frío</span><span lang-en>Cold Chain</span><span lang-ar>سلسلة التبريد</span><span lang-zh>冷链</span></div>
-        <p class="pstep-desc"><span lang-es>Contenedor refrigerado 4–8°C. Registro continuo de temperatura. Alerta automática por desviación.</span><span lang-en">Refrigerated container 4–8°C. Continuous temperature log. Automatic deviation alert.</span><span lang-ar>حاوية مبردة 4-8°C. سجل درجات الحرارة المستمر.</span><span lang-zh>4-8°C冷藏集装箱。持续温度记录。自动偏差警报。</span></p>
+        <div class="pstep-name"><span lang-es>Cadena de Frío</span><span lang-en>Cold Chain</span><span lang-pt-br>Cadeia de Frio</span><span lang-ar>سلسلة التبريد</span><span lang-zh>冷链</span></div>
+        <p class="pstep-desc"><span lang-es>Contenedor refrigerado 4–8°C. Registro continuo de temperatura. Alerta automática por desviación.</span><span lang-en">Refrigerated container 4–8°C. Continuous temperature log. Automatic deviation alert.</span><span lang-pt-br>Contêiner refrigerado 4–8°C. Registro contínuo de temperatura. Alerta automático de desvio.</span><span lang-ar>حاوية مبردة 4-8°C. سجل درجات الحرارة المستمر.</span><span lang-zh>4-8°C冷藏集装箱。持续温度记录。自动偏差警报。</span></p>
       </div>
       <div class="pstep">
         <div class="pstep-num">05</div>
         <span class="pstep-icon">🚢</span>
-        <div class="pstep-name"><span lang-es>Entrega al Comprador</span><span lang-en>Delivery to Buyer</span><span lang-ar>التسليم للمشتري</span><span lang-zh>交付买家</span></div>
-        <p class="pstep-desc"><span lang-es>FOB/CIF/CFR según acuerdo. Documentación completa: BL, COO, Cert. Sanitario, Packing List, Invoice.</span><span lang-en">FOB/CIF/CFR per agreement. Full documentation: BL, COO, Health Cert, Packing List, Invoice.</span><span lang-ar>FOB/CIF/CFR حسب الاتفاق. وثائق كاملة: BL, COO, شهادة صحية.</span><span lang-zh>按协议FOB/CIF/CFR。完整单证：提单、原产地证、卫生证书、装箱单、发票。</span></p>
+        <div class="pstep-name"><span lang-es>Entrega al Comprador</span><span lang-en>Delivery to Buyer</span><span lang-pt-br>Entrega ao Comprador</span><span lang-ar>التسليم للمشتري</span><span lang-zh>交付买家</span></div>
+        <p class="pstep-desc"><span lang-es>FOB/CIF/CFR según acuerdo. Documentación completa: BL, COO, Cert. Sanitario, Packing List, Invoice.</span><span lang-en">FOB/CIF/CFR per agreement. Full documentation: BL, COO, Health Cert, Packing List, Invoice.</span><span lang-pt-br>FOB/CIF/CFR conforme acordo. Documentação completa: BL, COO, Certificado Sanitário, Packing List, Fatura.</span><span lang-ar>FOB/CIF/CFR حسب الاتفاق. وثائق كاملة: BL, COO, شهادة صحية.</span><span lang-zh>按协议FOB/CIF/CFR。完整单证：提单、原产地证、卫生证书、装箱单、发票。</span></p>
       </div>
     </div>
   </div>
@@ -1289,7 +1299,7 @@ video.hero-video {
 <!-- ─── CERTS ─── -->
 <section class="certs-section">
   <div class="certs-inner">
-    <p class="eyebrow" style="justify-content:center;"><span lang-es>Certificaciones & Documentación</span><span lang-en>Certifications & Documentation</span><span lang-ar>الشهادات والتوثيق</span><span lang-zh>认证与文件</span></p>
+    <p class="eyebrow" style="justify-content:center;"><span lang-es>Certificaciones & Documentación</span><span lang-en>Certifications & Documentation</span><span lang-pt-br>Certificações & Documentação</span><span lang-ar>الشهادات والتوثيق</span><span lang-zh>认证与文件</span></p>
     <div class="certs-row">
       <span class="cert-pill">ICA Colombia</span>
       <span class="cert-pill">MAPA Brasil</span>
@@ -1310,22 +1320,22 @@ video.hero-video {
 <!-- ─── CTA ─── -->
 <section class="cta-section">
   <div class="cta-inner">
-    <p class="eyebrow" style="justify-content:center;"><span lang-es>Habla con GLV hoy</span><span lang-en>Talk to GLV today</span><span lang-ar>تحدث مع GLV اليوم</span><span lang-zh>今天联系GLV</span></p>
+    <p class="eyebrow" style="justify-content:center;"><span lang-es>Habla con GLV hoy</span><span lang-en>Talk to GLV today</span><span lang-pt-br>Fale com a GLV hoje</span><span lang-ar>تحدث مع GLV اليوم</span><span lang-zh>今天联系GLV</span></p>
     <h2 class="cta-title">
       <span lang-es>¿Necesita <em>proteína certificada</em> para su mercado?</span>
-      <span lang-en">Need <em>certified protein</em> for your market?</span>
+      <span lang-en">Need <em>certified protein</em> for your market?</span><span lang-pt-br>Precisa de <em>proteína certificada</em> para o seu mercado?</span>
       <span lang-ar>هل تحتاج <em>بروتيناً معتمداً</em> لسوقك؟</span>
       <span lang-zh>需要为您的市场<em>认证蛋白质</em>？</span>
     </h2>
     <p class="cta-sub">
       <span lang-es>GLV entrega cotizaciones formales en menos de 24 horas con especificaciones completas, documentación disponible y términos de pago claros. 149 contenedores de huevo exportados en 2024–2025 respaldan nuestra capacidad operativa.</span>
-      <span lang-en">GLV delivers formal quotes in under 24 hours with full specifications, available documentation and clear payment terms. 149 egg containers exported in 2024–2025 back our operational capacity.</span>
+      <span lang-en">GLV delivers formal quotes in under 24 hours with full specifications, available documentation and clear payment terms. 149 egg containers exported in 2024–2025 back our operational capacity.</span><span lang-pt-br>A GLV entrega cotações formais em menos de 24 horas com especificações completas, documentação disponível e condições de pagamento claras. 149 contêineres de ovos exportados em 2024–2025 confirmam nossa capacidade operacional.</span>
       <span lang-ar>تقدم GLV عروض أسعار رسمية في أقل من 24 ساعة مع مواصفات كاملة وشروط دفع واضحة. 149 حاوية بيض مُصدَّرة في 2024-2025.</span>
       <span lang-zh">GLV在24小时内提供完整规格、可用文件和明确付款条款的正式报价。2024-2025年出口的149个鸡蛋集装箱支撑我们的运营能力。</span>
     </p>
     <div class="cta-btns">
       <a href="/cotizacion?tab=huevos" class="btn-gold" onclick="localStorage.setItem('glv-open-tab','huevos')">
-        <span lang-es>🥚 Cotizar Huevo FCL</span><span lang-en>🥚 Quote Egg FCL</span><span lang-ar>🥚 تسعير FCL البيض</span><span lang-zh>🥚 鸡蛋FCL报价</span>
+        <span lang-es>🥚 Cotizar Huevo FCL</span><span lang-en>🥚 Quote Egg FCL</span><span lang-pt-br>🥚 Cotar FCL de Ovos</span><span lang-ar>🥚 تسعير FCL البيض</span><span lang-zh>🥚 鸡蛋FCL报价</span>
       </a>
       <a href="https://wa.me/573160865294?text=Hola%20GLV%2C%20me%20interesa%20cotizar%20huevo%20FCL%20y%20proteinas." target="_blank" class="btn-blue">
         🇨🇴 WhatsApp Colombia
@@ -1346,11 +1356,11 @@ video.hero-video {
   <div class="subnav-inner">
     <div style="font-size:0.75rem;color:var(--text-dim);">GLV Services SAS · División III — Proteínas & Huevo</div>
     <div class="subnav-links">
-      <a href="/animales-vivos"><span lang-es>Div. IV — Animales Vivos</span><span lang-en>Div. IV — Live Animals</span></a>
-      <a href="/granos-legumbres"><span lang-es>Div. I — Granos</span><span lang-en>Div. I — Grains</span></a>
-      <a href="/aceites-derivados"><span lang-es>Div. II — Aceites</span><span lang-en>Div. II — Oils</span></a>
-      <a href="/estructura-corporativa"><span lang-es>Holding</span><span lang-en>Holding</span></a>
-      <a href="/cotizacion" style="color:var(--gold);"><span lang-es>Cotizar →</span><span lang-en>Quote →</span></a>
+      <a href="/animales-vivos"><span lang-es>Div. IV — Animales Vivos</span><span lang-en>Div. IV — Live Animals</span><span lang-pt-br>Div. IV — Animais Vivos</span></a>
+      <a href="/granos-legumbres"><span lang-es>Div. I — Granos</span><span lang-en>Div. I — Grains</span><span lang-pt-br>Div. I — Grãos</span></a>
+      <a href="/aceites-derivados"><span lang-es>Div. II — Aceites</span><span lang-en>Div. II — Oils</span><span lang-pt-br>Div. II — Óleos</span></a>
+      <a href="/estructura-corporativa"><span lang-es>Holding</span><span lang-en>Holding</span><span lang-pt-br>Holding</span></a>
+      <a href="/cotizacion" style="color:var(--gold);"><span lang-es>Cotizar →</span><span lang-en>Quote →</span><span lang-pt-br>Cotar →</span></a>
     </div>
   </div>
 </div>
@@ -1372,7 +1382,8 @@ function setLang(l) {
     b.classList.toggle('active',
       b.textContent.trim() === l ||
       (l==='ar' && b.textContent.includes('عربي')) ||
-      (l==='zh' && b.textContent.includes('中文'))
+      (l==='zh' && b.textContent.includes('中文')) ||
+      (l==='pt-br' && b.textContent.includes('PT-BR'))
     );
   });
   localStorage.setItem('glv-lang', l);

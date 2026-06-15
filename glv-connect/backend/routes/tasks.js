@@ -45,7 +45,7 @@ router.get("/", (req, res) => {
 });
 
 // ─── POST /tasks ──────────────────────────────────────────────────────────────
-router.post("/", (req, res) => {
+router.post("/", requireLevel(40), (req, res) => {
   try {
     const { title, description, priority = "medium", assigned_to, deadline, operation_id, doc_id } = req.body;
     if (!title) return res.status(400).json({ error: "El título es obligatorio." });

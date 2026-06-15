@@ -52,8 +52,8 @@
 :root{--gold:#C9A84C;--gold-light:#E8C97A;--blue:#3a8fd4;--dark:#0A0A0A;--dark2:#111111;--dark3:#1A1A1A;--mid:#2A2A2A;--text:#E8E8E8;--dim:#888;--white:#FFFFFF;}
 *{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
 body{background:var(--dark);color:var(--text);font-family:"Barlow",sans-serif;font-weight:300;font-size:16px;line-height:1.65;overflow-x:hidden;}
-[lang-es],[lang-en],[lang-ar],[lang-zh]{display:none;}
-body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh]{display:inline;}
+[lang-es],[lang-en],[lang-ar],[lang-zh],[lang-pt-br]{display:none;}
+body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-zh [lang-zh],body.lang-pt-br [lang-pt-br]{display:inline;}
 body.lang-ar{direction:rtl;}
 nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.97);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
 .nlogo{font-family:"Playfair Display",serif;font-size:1.2rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
@@ -173,16 +173,22 @@ video.hero-video {
 /* === END GLV VIDEO === */
 
 </style>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 </head>
 <body class="lang-es">
 
 <nav>
   <a href="/" class="nlogo">GLV<span class="nsub">Services SAS<br>Redes Sociales</span></a>
   <div class="nright">
-    <a href="/" class="nback">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
+    <a href="/" class="nback">← <span lang-es>Inicio</span><span lang-en>Home</span><span lang-pt-br>Início</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a>
     <div class="lsw">
       <button class="lb on" onclick="setLang('es')">ES</button>
       <button class="lb" onclick="setLang('en')">EN</button>
+      <button class="lb" onclick="setLang('pt-br')">PT-BR</button>
       <button class="lb" onclick="setLang('ar')">عربي</button>
       <button class="lb" onclick="setLang('zh')">中文</button>
     </div>
@@ -191,9 +197,9 @@ video.hero-video {
 
 <div class="ph">
   <div class="ph-in">
-    <div class="htag"><span lang-es>Contenido oficial GLV Services SAS</span><span lang-en>Official GLV Services SAS content</span><span lang-ar>المحتوى الرسمي لـ GLV Services SAS</span><span lang-zh>GLV Services SAS官方内容</span></div>
-    <h1 class="htitle"><span lang-es>Síganos.<br><em>Vea cómo operamos.</em></span><span lang-en>Follow us.<br><em>See how we operate.</em></span><span lang-ar>تابعونا.<br><em>شاهدوا كيف نعمل.</em></span><span lang-zh>关注我们。<br><em>了解我们的运营。</em></span></h1>
-    <p class="hsub"><span lang-es>Documentamos nuestras operaciones reales: embarques, animales vivos, operaciones de campo, bodegas, socios productores y más. El contenido de GLV es verificable, real y sin edición comercial excesiva.</span><span lang-en>We document our real operations: shipments, live animals, field operations, warehouses, producer partners and more. GLV content is verifiable, real and without excessive commercial editing.</span><span lang-ar>نوثق عملياتنا الفعلية: الشحنات والحيوانات الحية وعمليات الحقل والمستودعات والمزيد.</span><span lang-zh>我们记录真实运营：装运、活体动物、实地作业、仓库、生产合作伙伴等。GLV内容可验证、真实，没有过多商业编辑。</span></p>
+    <div class="htag"><span lang-es>Contenido oficial GLV Services SAS</span><span lang-en>Official GLV Services SAS content</span><span lang-pt-br>Conteúdo oficial GLV Services SAS</span><span lang-ar>المحتوى الرسمي لـ GLV Services SAS</span><span lang-zh>GLV Services SAS官方内容</span></div>
+    <h1 class="htitle"><span lang-es>Síganos.<br><em>Vea cómo operamos.</em></span><span lang-en>Follow us.<br><em>See how we operate.</em></span><span lang-pt-br>Siga-nos.<br><em>Veja como operamos.</em></span><span lang-ar>تابعونا.<br><em>شاهدوا كيف نعمل.</em></span><span lang-zh>关注我们。<br><em>了解我们的运营。</em></span></h1>
+    <p class="hsub"><span lang-es>Documentamos nuestras operaciones reales: embarques, animales vivos, operaciones de campo, bodegas, socios productores y más. El contenido de GLV es verificable, real y sin edición comercial excesiva.</span><span lang-en>We document our real operations: shipments, live animals, field operations, warehouses, producer partners and more. GLV content is verifiable, real and without excessive commercial editing.</span><span lang-pt-br>Documentamos nossas operações reais: embarques, animais vivos, operações de campo, armazéns, parceiros produtores e mais. O conteúdo GLV é verificável, real e sem edição comercial excessiva.</span><span lang-ar>نوثق عملياتنا الفعلية: الشحنات والحيوانات الحية وعمليات الحقل والمستودعات والمزيد.</span><span lang-zh>我们记录真实运营：装运、活体动物、实地作业、仓库、生产合作伙伴等。GLV内容可验证、真实，没有过多商业编辑。</span></p>
   </div>
 </div>
 
@@ -203,22 +209,22 @@ video.hero-video {
     <span class="sh-icon">📷</span>
     <div class="sh-name">Instagram</div>
     <div class="sh-handle">@glvservices</div>
-    <p class="sh-desc"><span lang-es>Fotos y videos de operaciones, animales, bodegas, equipo GLV y socios internacionales.</span><span lang-en>Photos and videos of operations, animals, warehouses, GLV team and international partners.</span></p>
-    <span class="sh-btn"><span lang-es>Seguir</span><span lang-en>Follow</span><span lang-ar>متابعة</span><span lang-zh>关注</span> →</span>
+    <p class="sh-desc"><span lang-es>Fotos y videos de operaciones, animales, bodegas, equipo GLV y socios internacionales.</span><span lang-en>Photos and videos of operations, animals, warehouses, GLV team and international partners.</span><span lang-pt-br>Fotos e vídeos de operações, animais, armazéns, equipe GLV e parceiros internacionais.</span></p>
+    <span class="sh-btn"><span lang-es>Seguir</span><span lang-en>Follow</span><span lang-pt-br>Seguir</span><span lang-ar>متابعة</span><span lang-zh>关注</span> →</span>
   </a>
   <a href="https://youtube.com/@glvservicessas.foods1000" target="_blank" class="social-hero" style="background:var(--dark3);">
     <span class="sh-icon">▶️</span>
     <div class="sh-name">YouTube</div>
     <div class="sh-handle">@glvservicessas.foods1000</div>
-    <p class="sh-desc"><span lang-es>Videos completos de operaciones: corte Halal, carga de ovinos, bodegas de coco, contenedores de huevo y más.</span><span lang-en>Full operation videos: Halal cut, ovine loading, coconut warehouses, egg containers and more.</span></p>
-    <span class="sh-btn"><span lang-es>Suscribirse</span><span lang-en>Subscribe</span><span lang-ar>اشتراك</span><span lang-zh>订阅</span> →</span>
+    <p class="sh-desc"><span lang-es>Videos completos de operaciones: corte Halal, carga de ovinos, bodegas de coco, contenedores de huevo y más.</span><span lang-en>Full operation videos: Halal cut, ovine loading, coconut warehouses, egg containers and more.</span><span lang-pt-br>Vídeos completos de operações: corte Halal, embarque de ovinos, armazéns de coco, contêineres de ovo e mais.</span></p>
+    <span class="sh-btn"><span lang-es>Suscribirse</span><span lang-en>Subscribe</span><span lang-pt-br>Inscrever-se</span><span lang-ar>اشتراك</span><span lang-zh>订阅</span> →</span>
   </a>
   <a href="https://facebook.com/glvservicessasinternacional" target="_blank" class="social-hero" style="background:var(--dark2);">
     <span class="sh-icon">👥</span>
     <div class="sh-name">Facebook</div>
     <div class="sh-handle">glvservicessasinternacional</div>
-    <p class="sh-desc"><span lang-es>Actualizaciones de la empresa, noticias del sector y contenido para importadores y distribuidores.</span><span lang-en>Company updates, industry news and content for importers and distributors.</span></p>
-    <span class="sh-btn"><span lang-es>Seguir página</span><span lang-en>Follow page</span> →</span>
+    <p class="sh-desc"><span lang-es>Actualizaciones de la empresa, noticias del sector y contenido para importadores y distribuidores.</span><span lang-en>Company updates, industry news and content for importers and distributors.</span><span lang-pt-br>Atualizações da empresa, notícias do setor e conteúdo para importadores e distribuidores.</span></p>
+    <span class="sh-btn"><span lang-es>Seguir página</span><span lang-en>Follow page</span><span lang-pt-br>Seguir página</span> →</span>
   </a>
 </div>
 
@@ -227,8 +233,8 @@ video.hero-video {
   <!-- YOUTUBE -->
   <div class="embed-section">
     <p class="embed-label">▶️ YouTube — @glvservicessas.foods1000</p>
-    <h2 class="section-title"><span lang-es>Videos de <em>operaciones reales</em></span><span lang-en>Videos of <em>real operations</em></span><span lang-ar>مقاطع فيديو <em>العمليات الفعلية</em></span><span lang-zh><em>真实运营</em>视频</span></h2>
-    <p class="section-sub"><span lang-es>Documentamos cada operación. Desde el campo hasta el buque. Vea cómo trabaja GLV.</span><span lang-en>We document every operation. From the field to the vessel. See how GLV works.</span></p>
+    <h2 class="section-title"><span lang-es>Videos de <em>operaciones reales</em></span><span lang-en>Videos of <em>real operations</em></span><span lang-pt-br>Vídeos de <em>operações reais</em></span><span lang-ar>مقاطع فيديو <em>العمليات الفعلية</em></span><span lang-zh><em>真实运营</em>视频</span></h2>
+    <p class="section-sub"><span lang-es>Documentamos cada operación. Desde el campo hasta el buque. Vea cómo trabaja GLV.</span><span lang-en>We document every operation. From the field to the vessel. See how GLV works.</span><span lang-pt-br>Documentamos cada operação. Do campo ao navio. Veja como a GLV trabalha.</span></p>
 
     <div class="yt-grid">
       <div class="yt-video">
@@ -237,8 +243,8 @@ video.hero-video {
                onerror="this.src='/imagenes/operacion%20animales%20vivos%20corderos.jpeg'">
           <div class="yt-play">▶</div>
         </div>
-        <div class="yt-title"><span lang-es>Operación Ovinos — Socio GLV Brasil · Dr. Marcio</span><span lang-en>Ovine Operation — GLV Brazil Partner · Dr. Marcio</span></div>
-        <div class="yt-sub"><span lang-es>División IV · Animales Vivos · Brasil</span></div>
+        <div class="yt-title"><span lang-es>Operación Ovinos — Socio GLV Brasil · Dr. Marcio</span><span lang-en>Ovine Operation — GLV Brazil Partner · Dr. Marcio</span><span lang-pt-br>Operação Ovinos — Sócio GLV Brasil · Dr. Marcio</span></div>
+        <div class="yt-sub"><span lang-es>División IV · Animales Vivos · Brasil</span><span lang-pt-br>Divisão IV · Animais Vivos · Brasil</span></div>
       </div>
       <div class="yt-video">
         <div class="yt-thumb">
@@ -246,30 +252,30 @@ video.hero-video {
                onerror="this.src='/imagenes/operacion%20animales%20vivos%20corderos.jpeg'">
           <div class="yt-play">▶</div>
         </div>
-        <div class="yt-title"><span lang-es>Corte Halal Certificado — Ovinos GLV</span><span lang-en>Certified Halal Cut — GLV Ovine</span></div>
-        <div class="yt-sub"><span lang-es>División IV · Certificación Halal</span></div>
+        <div class="yt-title"><span lang-es>Corte Halal Certificado — Ovinos GLV</span><span lang-en>Certified Halal Cut — GLV Ovine</span><span lang-pt-br>Corte Halal Certificado — Ovinos GLV</span></div>
+        <div class="yt-sub"><span lang-es>División IV · Certificación Halal</span><span lang-pt-br>Divisão IV · Certificação Halal</span></div>
       </div>
       <div class="yt-video">
         <div class="yt-thumb">
           <img src="/imagenes/Bodega-%20productos-%20coco-%20glv.jpeg" alt="GLV Coco Bodega">
           <div class="yt-play">▶</div>
         </div>
-        <div class="yt-title"><span lang-es>Bodega Productos de Coco — GLV División II</span><span lang-en>Coconut Products Warehouse — GLV Division II</span></div>
-        <div class="yt-sub"><span lang-es>División II · Aceites & Coco · Brasil</span></div>
+        <div class="yt-title"><span lang-es>Bodega Productos de Coco — GLV División II</span><span lang-en>Coconut Products Warehouse — GLV Division II</span><span lang-pt-br>Armazém Produtos de Coco — GLV Divisão II</span></div>
+        <div class="yt-sub"><span lang-es>División II · Aceites & Coco · Brasil</span><span lang-pt-br>Divisão II · Óleos & Coco · Brasil</span></div>
       </div>
       <div class="yt-video">
         <div class="yt-thumb">
           <img src="/imagenes/contenedor%20cargado%20con%20huevos%20full%20apilado.jpeg" alt="Contenedor Huevos GLV">
           <div class="yt-play">▶</div>
         </div>
-        <div class="yt-title"><span lang-es>Contenedor FCL Huevo — 331.200 unidades</span><span lang-en>Egg FCL Container — 331,200 units</span></div>
-        <div class="yt-sub"><span lang-es>División III · Proteínas & Huevo</span></div>
+        <div class="yt-title"><span lang-es>Contenedor FCL Huevo — 331.200 unidades</span><span lang-en>Egg FCL Container — 331,200 units</span><span lang-pt-br>Contêiner FCL Ovo — 331.200 unidades</span></div>
+        <div class="yt-sub"><span lang-es>División III · Proteínas & Huevo</span><span lang-pt-br>Divisão III · Proteínas & Ovo</span></div>
       </div>
     </div>
 
     <div style="text-align:center;margin-top:1.5rem;">
       <a href="https://youtube.com/@glvservicessas.foods1000" target="_blank" class="yt-btn">
-        ▶ <span lang-es>Ver todos los videos en YouTube</span><span lang-en>View all videos on YouTube</span><span lang-ar>مشاهدة جميع الفيديوهات</span><span lang-zh>在YouTube查看所有视频</span>
+        ▶ <span lang-es>Ver todos los videos en YouTube</span><span lang-en>View all videos on YouTube</span><span lang-pt-br>Ver todos os vídeos no YouTube</span><span lang-ar>مشاهدة جميع الفيديوهات</span><span lang-zh>在YouTube查看所有视频</span>
       </a>
     </div>
   </div>
@@ -277,18 +283,18 @@ video.hero-video {
   <!-- INSTAGRAM -->
   <div class="embed-section">
     <p class="embed-label">📷 Instagram — @glvservices</p>
-    <h2 class="section-title"><span lang-es><em>En el campo.</em> En el mar. En el mundo.</span><span lang-en><em>In the field.</em> At sea. In the world.</span><span lang-ar><em>في الحقل.</em> في البحر. في العالم.</span><span lang-zh><em>在田间。</em>在海上。在世界。</span></h2>
-    <p class="section-sub"><span lang-es>El Instagram de GLV muestra las operaciones reales: Misael Valencia en bodega, ovinos en cuarentena, MV Al Kuwait, pallets de huevo, marcas Aternal Rice y Coco Harmony.</span><span lang-en>GLV Instagram shows real operations: Misael Valencia in warehouse, ovine in quarantine, MV Al Kuwait, egg pallets, Aternal Rice and Coco Harmony brands.</span></p>
+    <h2 class="section-title"><span lang-es><em>En el campo.</em> En el mar. En el mundo.</span><span lang-en><em>In the field.</em> At sea. In the world.</span><span lang-pt-br><em>No campo.</em> No mar. No mundo.</span><span lang-ar><em>في الحقل.</em> في البحر. في العالم.</span><span lang-zh><em>在田间。</em>在海上。在世界。</span></h2>
+    <p class="section-sub"><span lang-es>El Instagram de GLV muestra las operaciones reales: Misael Valencia en bodega, ovinos en cuarentena, MV Al Kuwait, pallets de huevo, marcas Aternal Rice y Coco Harmony.</span><span lang-en>GLV Instagram shows real operations: Misael Valencia in warehouse, ovine in quarantine, MV Al Kuwait, egg pallets, Aternal Rice and Coco Harmony brands.</span><span lang-pt-br>O Instagram da GLV mostra operações reais: Misael Valencia em armazém, ovinos em quarentena, MV Al Kuwait, paletes de ovo, marcas Aternal Rice e Coco Harmony.</span></p>
     <div class="ig-grid">
-      <div class="ig-placeholder"><span class="ig-icon">📷</span><div class="ig-text"><span lang-es>Operaciones de campo</span><span lang-en>Field operations</span></div></div>
-      <div class="ig-placeholder"><span class="ig-icon">🐑</span><div class="ig-text"><span lang-es>Animales vivos</span><span lang-en>Live animals</span></div></div>
+      <div class="ig-placeholder"><span class="ig-icon">📷</span><div class="ig-text"><span lang-es>Operaciones de campo</span><span lang-en>Field operations</span><span lang-pt-br>Operações de campo</span></div></div>
+      <div class="ig-placeholder"><span class="ig-icon">🐑</span><div class="ig-text"><span lang-es>Animales vivos</span><span lang-en>Live animals</span><span lang-pt-br>Animais vivos</span></div></div>
       <div class="ig-placeholder"><span class="ig-icon">🚢</span><div class="ig-text">MV Al Kuwait</div></div>
-      <div class="ig-placeholder"><span class="ig-icon">🥚</span><div class="ig-text"><span lang-es>Contenedores huevo</span><span lang-en">Egg containers</span></div></div>
-      <div class="ig-placeholder"><span class="ig-icon">🥥</span><div class="ig-text"><span lang-es>Coco Harmony</span><span lang-en>Coco Harmony</span></div></div>
+      <div class="ig-placeholder"><span class="ig-icon">🥚</span><div class="ig-text"><span lang-es>Contenedores huevo</span><span lang-en>Egg containers</span><span lang-pt-br>Contêineres de ovo</span></div></div>
+      <div class="ig-placeholder"><span class="ig-icon">🥥</span><div class="ig-text"><span lang-es>Coco Harmony</span><span lang-en>Coco Harmony</span><span lang-pt-br>Coco Harmony</span></div></div>
       <div class="ig-placeholder"><span class="ig-icon">🌾</span><div class="ig-text">Aternal Rice</div></div>
       <div class="ig-cta">
-        <p><span lang-es>Instagram no permite incrustar el feed directamente. Visite nuestro perfil para ver las imágenes y videos más recientes de las operaciones GLV.</span><span lang-en>Instagram does not allow direct feed embedding. Visit our profile to see the latest images and videos from GLV operations.</span></p>
-        <a href="https://instagram.com/glvservices" target="_blank" class="ig-link">📷 <span lang-es>Ver @glvservices en Instagram</span><span lang-en>View @glvservices on Instagram</span><span lang-ar>عرض @glvservices على إنستغرام</span><span lang-zh>在Instagram查看@glvservices</span></a>
+        <p><span lang-es>Instagram no permite incrustar el feed directamente. Visite nuestro perfil para ver las imágenes y videos más recientes de las operaciones GLV.</span><span lang-en>Instagram does not allow direct feed embedding. Visit our profile to see the latest images and videos from GLV operations.</span><span lang-pt-br>O Instagram não permite incorporar o feed diretamente. Visite nosso perfil para ver as imagens e vídeos mais recentes das operações GLV.</span></p>
+        <a href="https://instagram.com/glvservices" target="_blank" class="ig-link">📷 <span lang-es>Ver @glvservices en Instagram</span><span lang-en>View @glvservices on Instagram</span><span lang-pt-br>Ver @glvservices no Instagram</span><span lang-ar>عرض @glvservices على إنستغرام</span><span lang-zh>在Instagram查看@glvservices</span></a>
       </div>
     </div>
   </div>
@@ -296,13 +302,13 @@ video.hero-video {
   <!-- FACEBOOK -->
   <div class="embed-section">
     <p class="embed-label">👥 Facebook — glvservicessasinternacional</p>
-    <h2 class="section-title"><span lang-es>Actualizaciones y <em>noticias del sector</em></span><span lang-en>Updates and <em>industry news</em></span></h2>
-    <p class="section-sub"><span lang-es>En Facebook compartimos actualizaciones de la empresa, noticias del comercio internacional de alimentos y contenido dirigido a importadores, distribuidores y socios comerciales.</span><span lang-en>On Facebook we share company updates, international food trade news and content aimed at importers, distributors and commercial partners.</span></p>
+    <h2 class="section-title"><span lang-es>Actualizaciones y <em>noticias del sector</em></span><span lang-en>Updates and <em>industry news</em></span><span lang-pt-br>Atualizações e <em>notícias do setor</em></span></h2>
+    <p class="section-sub"><span lang-es>En Facebook compartimos actualizaciones de la empresa, noticias del comercio internacional de alimentos y contenido dirigido a importadores, distribuidores y socios comerciales.</span><span lang-en>On Facebook we share company updates, international food trade news and content aimed at importers, distributors and commercial partners.</span><span lang-pt-br>No Facebook compartilhamos atualizações da empresa, notícias do comércio internacional de alimentos e conteúdo voltado a importadores, distribuidores e parceiros comerciais.</span></p>
     <div style="background:var(--dark2);padding:3rem;text-align:center;">
       <div style="font-size:3rem;margin-bottom:1rem">👥</div>
-      <p style="font-size:1rem;color:var(--dim);max-width:500px;margin:0 auto 1.5rem;line-height:1.7;"><span lang-es>Siga la página oficial de GLV Services SAS en Facebook para actualizaciones de operaciones, oportunidades comerciales y noticias del sector.</span><span lang-en>Follow the official GLV Services SAS page on Facebook for operation updates, business opportunities and industry news.</span></p>
+      <p style="font-size:1rem;color:var(--dim);max-width:500px;margin:0 auto 1.5rem;line-height:1.7;"><span lang-es>Siga la página oficial de GLV Services SAS en Facebook para actualizaciones de operaciones, oportunidades comerciales y noticias del sector.</span><span lang-en>Follow the official GLV Services SAS page on Facebook for operation updates, business opportunities and industry news.</span><span lang-pt-br>Siga a página oficial da GLV Services SAS no Facebook para atualizações de operações, oportunidades comerciais e notícias do setor.</span></p>
       <a href="https://facebook.com/glvservicessasinternacional" target="_blank" class="fb-btn">
-        👥 <span lang-es>Ir a la página de Facebook</span><span lang-en>Go to Facebook page</span><span lang-ar>الانتقال إلى صفحة فيسبوك</span><span lang-zh>前往Facebook页面</span>
+        👥 <span lang-es>Ir a la página de Facebook</span><span lang-en>Go to Facebook page</span><span lang-pt-br>Ir à página do Facebook</span><span lang-ar>الانتقال إلى صفحة فيسبوك</span><span lang-zh>前往Facebook页面</span>
       </a>
     </div>
   </div>
@@ -312,8 +318,8 @@ video.hero-video {
 <!-- FOLLOW CTA -->
 <div class="follow-section">
   <div class="follow-in">
-    <h2 class="follow-title"><span lang-es>¿Aún no nos sigue? <em>Es el momento.</em></span><span lang-en>Not following us yet? <em>Now is the time.</em></span><span lang-ar">لم تتابعنا بعد؟ <em>الوقت مناسب.</em></span><span lang-zh>还没关注我们？<em>现在正是时候。</em></span></h2>
-    <p class="follow-sub"><span lang-es>Cada semana publicamos operaciones reales, noticias de exportación y actualizaciones del grupo GLV. Contenido para profesionales del comercio internacional.</span><span lang-en>Every week we publish real operations, export news and GLV group updates. Content for international trade professionals.</span></p>
+    <h2 class="follow-title"><span lang-es>¿Aún no nos sigue? <em>Es el momento.</em></span><span lang-en>Not following us yet? <em>Now is the time.</em></span><span lang-pt-br>Ainda não nos segue? <em>É o momento.</em></span><span lang-ar">لم تتابعنا بعد؟ <em>الوقت مناسب.</em></span><span lang-zh>还没关注我们？<em>现在正是时候。</em></span></h2>
+    <p class="follow-sub"><span lang-es>Cada semana publicamos operaciones reales, noticias de exportación y actualizaciones del grupo GLV. Contenido para profesionales del comercio internacional.</span><span lang-en>Every week we publish real operations, export news and GLV group updates. Content for international trade professionals.</span><span lang-pt-br>Toda semana publicamos operações reais, notícias de exportação e atualizações do grupo GLV. Conteúdo para profissionais do comércio internacional.</span></p>
     <div class="follow-btns">
       <a href="https://instagram.com/glvservices" target="_blank" class="ig-btn">📷 @glvservices</a>
       <a href="https://youtube.com/@glvservicessas.foods1000" target="_blank" class="yt-btn">▶ YouTube</a>
@@ -326,9 +332,9 @@ video.hero-video {
   <div class="sni">
     <div style="font-size:0.85rem;color:var(--dim)">GLV Services SAS · Where Trust Moves Markets</div>
     <div class="snl">
-      <a href="/estructura-corporativa"><span lang-es>Holding</span><span lang-en>Holding</span></a>
+      <a href="/estructura-corporativa"><span lang-es>Holding</span><span lang-en>Holding</span><span lang-pt-br>Holding</span></a>
       <a href="/animales-vivos">Div. IV</a>
-      <a href="/cotizacion" style="color:var(--gold)"><span lang-es>Cotizar →</span><span lang-en>Quote →</span></a>
+      <a href="/cotizacion" style="color:var(--gold)"><span lang-es>Cotizar →</span><span lang-en>Quote →</span><span lang-pt-br>Cotar →</span></a>
     </div>
   </div>
 </div>
@@ -344,7 +350,7 @@ video.hero-video {
 </div>
 
 <script>
-function setLang(l){document.body.className="lang-"+l;document.querySelectorAll(".lb").forEach(function(b){b.classList.toggle("on",b.textContent.trim()===l||(l==="ar"&&b.textContent.includes("\u0639\u0631\u0628\u064a"))||(l==="zh"&&b.textContent.includes("\u4e2d\u6587")));});localStorage.setItem("glv-lang",l);document.documentElement.lang=l;}
+function setLang(l){document.body.className="lang-"+l;document.querySelectorAll(".lb").forEach(function(b){b.classList.toggle("on",b.textContent.trim()===l||(l==="ar"&&b.textContent.includes("\u0639\u0631\u0628\u064a"))||(l==="zh"&&b.textContent.includes("\u4e2d\u6587"))||(l==="pt-br"&&b.textContent.includes("PT-BR")));});localStorage.setItem("glv-lang",l);document.documentElement.lang=l;}
 setLang(localStorage.getItem("glv-lang")||"es");
 window.addEventListener("scroll",function(){document.querySelector("nav").style.boxShadow=window.scrollY>40?"0 4px 28px rgba(0,0,0,0.6)":"none";});
 </script>
