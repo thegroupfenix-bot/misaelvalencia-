@@ -600,6 +600,84 @@ video.hero-video {
 }
 /* === END GLV VIDEO === */
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE UX SPRINT — Critical & High fixes
+   C-1 Touch targets · H-2 WhatsApp safe-area · H-4 Notch · H-1 480px
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* C-1: Language button minimum 44 × 44 px touch target (non-index variant) */
+.lb {
+  font-size: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.lsw { flex-wrap: wrap; }
+
+/* H-4: Nav notch / Dynamic Island safe-area inset */
+nav {
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(2rem, env(safe-area-inset-left));
+  padding-right: max(2rem, env(safe-area-inset-right));
+}
+@media (max-width: 768px) {
+  nav {
+    padding-left: max(1.2rem, env(safe-area-inset-left));
+    padding-right: max(1.2rem, env(safe-area-inset-right));
+  }
+}
+
+/* H-2: WhatsApp floating button — iPhone home bar + safe-area */
+.waf {
+  bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
+  right: max(2rem, env(safe-area-inset-right));
+}
+@media (max-width: 480px) {
+  .waf {
+    bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+    right: 1rem;
+  }
+}
+
+/* H-1: 480 px breakpoint — stats bar */
+@media (max-width: 480px) {
+  .stats-bar { padding: 1.5rem 1rem; }
+  .stats-inner { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem; }
+  .stat-label { font-size: 0.7rem; }
+}
+
+/* H-3: Table cells legible at 600 px (CSS part — HTML wrap applied separately) */
+@media (max-width: 600px) {
+  .cortes-table th, .cortes-table td { padding: 0.6rem 0.75rem; font-size: 0.85rem; }
+  .spec-table td { padding: 0.6rem 0.75rem; font-size: 0.85rem; }
+}
+
+/* H-5: Footer tablet layout (index .footer-top and form-page .sni rows) */
+@media (max-width: 900px) {
+  .footer-top { grid-template-columns: 1fr 1fr !important; gap: 2rem; }
+}
+@media (max-width: 600px) {
+  .footer-top { grid-template-columns: 1fr !important; }
+  .sni { flex-direction: column; gap: 0.75rem; text-align: center; }
+}
+
+/* H-1: 480 px — section padding for inner pages */
+@media (max-width: 480px) {
+  .ph-in, .main-wrap { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* C-3: Hero 100vh fix — mobile */
+@media (max-width: 768px) {
+  .hero {
+    height: auto;
+    min-height: unset;
+    padding-top: 5.5rem;
+    padding-bottom: 4rem;
+  }
+}
 </style>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
