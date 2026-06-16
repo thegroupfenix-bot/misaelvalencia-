@@ -55,17 +55,27 @@ export async function bindMediaForDocument(doc) {
       doc.product ||
       null;
 
+    // Product-level code (e.g. "CATTLE" vs "SHEEP") — already produced by
+    // CommercialEngine.jsx as row.product. Resolving media off this instead
+    // of `category` alone is what prevents cross-product image bleed
+    // (e.g. a BOVINE operation rendering OVINE imagery).
+    const productCode =
+      firstRow?.product ||
+      doc.productCode ||
+      null;
+
     const origin = doc.origin || firstRow?.origin || null;
 
-    console.log("[media-bind] category:", category, "| origin:", origin, "| firstRow.category:", firstRow?.category, "| doc.productCategory:", doc.productCategory);
+    console.log("[media-bind] category:", category, "| productCode:", productCode, "| origin:", origin, "| firstRow.category:", firstRow?.category, "| doc.productCategory:", doc.productCategory);
 
     if (!category) {
       console.warn("[media-bind] no category resolved — skipping bind. doc keys:", Object.keys(doc).join(", "));
       return { main: null, secondary: [], branding: null, meta: null };
     }
 
-    console.log("[media-bind] calling api.bindMedia — category:", category, "origin:", origin);
-    const bindResult = await api.bindMedia({ category, origin: origin || undefined, limit: 6 });
+    console.log("[media-bind] calling api.bindMedia — category:", category, "productCode:", productCode, "origin:", origin);
+    const bindResult = await api.bindMedia({ category, productCode: productCode || undefined, origin: origin || undefined, limit: 6 });
+    console.log("[media-bind] resolution:", bindResult?.resolution);
 
     const mainAsset      = bindResult?.main || null;
     const secondaryAssets = Array.isArray(bindResult?.secondary) ? bindResult.secondary.slice(0, 2) : [];
