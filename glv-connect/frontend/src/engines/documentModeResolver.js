@@ -24,6 +24,7 @@ import {
   FRUIT_CATEGORIES,
   GRAIN_CATEGORIES,
 } from "./categoryEngine.js";
+import { PRODUCT_CATEGORIES } from "../config/productCategories.js";
 
 // ─── Mode constants ────────────────────────────────────────────────────────────
 
@@ -122,6 +123,71 @@ export function getCategoryDisplayLabel(category = "", lang = "es") {
   if (entry) return entry[lang] || entry.es;
   // Fallback: clean underscores and capitalize
   return category.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "—";
+}
+
+// ─── Product-level identity (Phase 3D — product identity correction) ──────────
+// A document must always represent the actual commercial product (e.g. CATTLE,
+// PALM_OIL) rather than the broader category it belongs to (e.g. LIVE_ANIMALS,
+// OILS). Category-level labels above are used ONLY when no product is selected.
+
+// Livestock trade terminology — the species, not the generic category, is the
+// commercially correct term for an export program title (BOVINE/OVINE/CAPRINE).
+const LIVESTOCK_PROGRAM_LABELS = {
+  CATTLE: { es: "Programa de Exportación Bovina",  en: "Bovine Export Program" },
+  SHEEP:  { es: "Programa de Exportación Ovina",   en: "Live Sheep Export Program" },
+  GOAT:   { es: "Programa de Exportación Caprina", en: "Caprine Export Program" },
+};
+
+const LIVESTOCK_IDENTITY_TAGS = {
+  CATTLE: { es: "EXPORTACIÓN BOVINA",  en: "BOVINE EXPORT" },
+  SHEEP:  { es: "EXPORTACIÓN OVINA",   en: "OVINE EXPORT" },
+  GOAT:   { es: "EXPORTACIÓN CAPRINA", en: "CAPRINE EXPORT" },
+};
+
+const LIVESTOCK_SHORT_NAMES = {
+  CATTLE: { es: "Ganado Bovino en Pie", en: "Live Bovine Cattle" },
+  SHEEP:  { es: "Ovinos en Pie",        en: "Live Sheep" },
+  GOAT:   { es: "Caprinos en Pie",      en: "Live Goats" },
+};
+
+/**
+ * Resolve the cover/program-level title for a document. Uses the product's
+ * trade terminology when one exists; falls back to the category label only
+ * when no product code is present or no product-level mapping exists.
+ */
+export function getProductDisplayLabel(category = "", productCode = "", lang = "es") {
+  const code = (productCode || "").toUpperCase();
+  if (LIVESTOCK_PROGRAM_LABELS[code]) {
+    return LIVESTOCK_PROGRAM_LABELS[code][lang] || LIVESTOCK_PROGRAM_LABELS[code].es;
+  }
+  const prodLabel = PRODUCT_CATEGORIES[category]?.products?.[code]?.label;
+  if (prodLabel) return prodLabel[lang] || prodLabel.es || prodLabel.en;
+  return getCategoryDisplayLabel(category, lang);
+}
+
+/**
+ * Resolve the short identity-bar tag (e.g. "BOVINE EXPORT"). Returns null
+ * when no product-level tag exists so callers can keep their existing
+ * category-level tag as a fallback — never block rendering.
+ */
+export function getProductIdentityTag(productCode = "", lang = "es") {
+  const code = (productCode || "").toUpperCase();
+  const entry = LIVESTOCK_IDENTITY_TAGS[code];
+  return entry ? (entry[lang] || entry.es) : null;
+}
+
+/**
+ * Resolve a short, body-friendly product name (e.g. "Live Bovine Cattle").
+ * Falls back to the product master's catalog label, then null.
+ */
+export function getProductShortName(category = "", productCode = "", lang = "es") {
+  const code = (productCode || "").toUpperCase();
+  if (LIVESTOCK_SHORT_NAMES[code]) {
+    return LIVESTOCK_SHORT_NAMES[code][lang] || LIVESTOCK_SHORT_NAMES[code].es;
+  }
+  const prodLabel = PRODUCT_CATEGORIES[category]?.products?.[code]?.label;
+  if (prodLabel) return prodLabel[lang] || prodLabel.es || prodLabel.en;
+  return null;
 }
 
 // ─── Mode-specific product descriptions ────────────────────────────────────────

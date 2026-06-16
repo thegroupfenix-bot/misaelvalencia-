@@ -530,7 +530,10 @@ function bindMedia(db, { category, productCode, origin, tags = [], limit = 6 } =
 
   const resolution = productMain ? "PRODUCT_PROFILE" : (main ? "CATEGORY_FALLBACK" : "NO_IMAGE");
   if (productCode && !productMain) {
-    console.warn(`[media-bind] productCode "${productCode}" had no usable MediaProfile — falling back to category scoring for "${category}"`);
+    if (productResult === null) {
+      console.warn(`[media-bind] MEDIA_PROFILE_MISSING — no media_profiles row for productCode "${productCode}"`);
+    }
+    console.warn(`[media-bind] MEDIA_FALLBACK_USED — productCode "${productCode}" falling back to category scoring for "${category}" (resolution=${resolution})`);
   }
 
   return {

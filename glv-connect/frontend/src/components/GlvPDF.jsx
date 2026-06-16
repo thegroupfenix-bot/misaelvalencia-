@@ -12,6 +12,7 @@ import {
   resolveDocumentMode, getCategoryDisplayLabel,
   getModeProductDescription, getModeCertifications,
   getModeTimeline, getModeMandatoryInfo, getModeCoverLabel,
+  getProductDisplayLabel, getProductIdentityTag, getProductShortName,
   DOCUMENT_MODES,
 } from "../engines/documentModeResolver.js";
 import { auditBoundMediaForMode, getMaxSecondaryImages } from "../engines/media/MediaCategoryIsolationEngine.js";
@@ -353,12 +354,21 @@ function GoldRule() {
   return <View style={execS.goldRule} />;
 }
 
-function ExecSectionTitle({ text }) {
+// Phase 3D — optional step/total badge gives each major reading zone (Parties,
+// Product, Pricing, Certifications, Payment, Timeline) an explicit position in
+// the document's structure, reinforcing executive hierarchy without touching
+// brand colors (reuses the existing gold accent + muted grey already in use).
+function ExecSectionTitle({ text, step, totalSteps }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12 }}>
       <View style={{ width: 2, backgroundColor: EXECUTIVE_COLORS.ACCENT_GOLD, marginRight: 8, marginTop: 1, height: 11 }} />
-      <View style={{ flex: 1, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7", paddingBottom: 5 }}>
+      <View style={{ flex: 1, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7", paddingBottom: 5 }}>
         <Text style={execS.execSectionTitle}>{text}</Text>
+        {step && totalSteps && (
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8 }}>
+            {String(step).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -750,12 +760,21 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     return null;
   })();
 
+  // Phase 3D — product identity correction. The row's `product` field carries
+  // the actual commercial product (CATTLE/SHEEP/GOAT/PALM_OIL/...); the category
+  // (LIVE_ANIMALS/OILS/...) is only a grouping. Never display the category name
+  // when a product is selected — resolve product-aware text instead.
+  const productCode        = firstCdRow.product || null;
+  const productIdentityTag = getProductIdentityTag(productCode, docLang === "en" ? "en" : "es");
+  const productShortName   = getProductShortName(firstCdRow.category, productCode, docLang === "en" ? "en" : "es");
+  const productProgramName = getProductDisplayLabel(firstCdRow.category, productCode, docLang === "en" ? "en" : "es");
+
   // catAtmosphere — READ-ONLY visual atmosphere config derived from category booleans.
   // Drives: identity tag, lifecycle label, hero framing, summary row order, certs accent, regulated marker.
   // Zero business logic. No formula changes.
   const catAtmosphere = (() => {
     if (isLiveAnimalRow) return {
-      tag:             docLang === "en" ? "LIVESTOCK EXPORT"          : "EXPORTACIÓN GANADO",
+      tag:             productIdentityTag || (docLang === "en" ? "LIVESTOCK EXPORT"          : "EXPORTACIÓN GANADO"),
       lifecycleLabel:  docLang === "en" ? "LIVESTOCK OPERATION LIFECYCLE" : "CICLO OPERACIÓN PECUARIA",
       heroHeight: 140, heroOpacity: 0.92,
       summaryOrder:    ["product","origin","destination","incoterm","value","validity"],
@@ -959,7 +978,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
           {/* Zone 4 — Executive Operation Summary Table */}
           <ExecOperationSummaryTable
-            product={doc.custom_product_name || doc.customProductName || doc.product}
+            product={doc.custom_product_name || doc.customProductName || productShortName || doc.product}
             origin={doc.origin || "Brazil"}
             destination={doc.destination}
             incoterm={cdInc}
@@ -1042,7 +1061,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         )}
 
         {/* Section 1: Parties */}
-        <ExecSectionTitle text={L.parties} />
+        <ExecSectionTitle text={L.parties} step={1} totalSteps={6} />
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 0 }}>
           <View style={{ width: "48%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 12", borderRadius: 2 }}>
             <Text style={[s.infoLabel, { color: "#1e3a5f", marginBottom: 4 }]}>{L.seller}</Text>
@@ -1066,13 +1085,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             )}
           </View>
         </View>
-        <SectionSep />
+        <NarrativeSep />
 
         {/* Section 2: Product */}
-        <ExecSectionTitle text={L.product} />
+        <ExecSectionTitle text={L.product} step={2} totalSteps={6} />
         <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 14", marginBottom: 0, borderRadius: 2 }}>
           <Text style={{ fontSize: 9.5, fontWeight: "bold", color: "#1B2A4A", marginBottom: 5, letterSpacing: 0.2 }}>
-            {doc.custom_product_name || doc.customProductName || doc.product}
+            {doc.custom_product_name || doc.customProductName || productShortName || doc.product}
           </Text>
           <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.6 }}>{productDesc}</Text>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#E8ECF1" }}>
@@ -1498,41 +1517,49 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 <Text style={{ fontSize: 7.5, color: "#64748b", fontWeight: "bold", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
                   {docLang === "en" ? `SKU Breakdown — ${rowSkus.length} Presentation${rowSkus.length > 1 ? "s" : ""}` : `Desglose SKU — ${rowSkus.length} Presentación${rowSkus.length > 1 ? "es" : ""}`}
                 </Text>
-                {/* Column headers */}
-                <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 0, padding: "5 8", marginBottom: 0 }}>
-                  {["SKU", docLang === "en" ? "Packaging" : "Empaque", docLang === "en" ? "Size" : "Tamaño", docLang === "en" ? "Units/Carton" : "Unid/Caja", docLang === "en" ? "Qty" : "Cant.", docLang === "en" ? "Price" : "Precio", docLang === "en" ? "Shipment Value" : "Valor Embarque"].map((h, i) => (
-                    <Text key={i} style={{ flex: i === 0 ? 0.4 : i >= 4 ? 1 : 1.2, fontSize: 6.5, color: "#fff", fontWeight: "bold", textAlign: i >= 4 ? "right" : "left" }}>{h}</Text>
-                  ))}
-                </View>
-                {rowSkus.map((sk, i) => {
-                  const pkgLabel  = SKU_PKG_LABELS[sk.packagingType] || sk.packagingType || "—";
-                  const sizeLabel = SIZE_LABELS[sk.presentationSize] || sk.presentationSize || "—";
-                  const qty       = parseFloat(sk.quantity) || 0;
-                  const price     = parseFloat(sk.price) || 0;
-                  const sv        = qty * price;
-                  const cuAbbr    = CU_ABBR[sk.commercialUnit] || sk.commercialUnit || "";
-                  const upb       = parseFloat(sk.unitsPerCarton) || 0;
+                {/* Column headers — fixed weights (Phase 3D): Shipment Value gets enough
+                    room for 999,999,999,999-range totals in USD/EUR/BRL without wrapping */}
+                {(() => {
+                  const SKU_TABLE_COLW = [0.4, 1.1, 1.0, 1.1, 0.9, 1.1, 1.5];
                   return (
-                    <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "5 8", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
-                      <Text style={{ flex: 0.4, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{i + 1}</Text>
-                      <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{pkgLabel}</Text>
-                      <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151" }}>{sizeLabel}</Text>
-                      <Text style={{ flex: 1.2, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{upb > 0 ? upb : "—"}</Text>
-                      <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{qty > 0 ? new Intl.NumberFormat("en-US").format(qty) : "—"}</Text>
-                      <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{price > 0 ? `${resolvedCurrency} ${price}${cuAbbr}` : "—"}</Text>
-                      <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(sv, resolvedCurrency)}</Text>
-                    </View>
+                    <>
+                      <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 0, padding: "5 8", marginBottom: 0 }}>
+                        {["SKU", docLang === "en" ? "Packaging" : "Empaque", docLang === "en" ? "Size" : "Tamaño", docLang === "en" ? "Units/Carton" : "Unid/Caja", docLang === "en" ? "Qty" : "Cant.", docLang === "en" ? "Price" : "Precio", docLang === "en" ? "Shipment Value" : "Valor Embarque"].map((h, i) => (
+                          <Text key={i} wrap={false} style={{ flex: SKU_TABLE_COLW[i], fontSize: 6.5, color: "#fff", fontWeight: "bold", textAlign: i >= 4 ? "right" : "left" }}>{h}</Text>
+                        ))}
+                      </View>
+                      {rowSkus.map((sk, i) => {
+                        const pkgLabel  = SKU_PKG_LABELS[sk.packagingType] || sk.packagingType || "—";
+                        const sizeLabel = SIZE_LABELS[sk.presentationSize] || sk.presentationSize || "—";
+                        const qty       = parseFloat(sk.quantity) || 0;
+                        const price     = parseFloat(sk.price) || 0;
+                        const sv        = qty * price;
+                        const cuAbbr    = CU_ABBR[sk.commercialUnit] || sk.commercialUnit || "";
+                        const upb       = parseFloat(sk.unitsPerCarton) || 0;
+                        return (
+                          <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "5 8", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
+                            <Text wrap={false} style={{ flex: SKU_TABLE_COLW[0], fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{i + 1}</Text>
+                            <Text wrap={false} style={{ flex: SKU_TABLE_COLW[1], fontSize: 7.5, color: "#374151" }}>{pkgLabel}</Text>
+                            <Text wrap={false} style={{ flex: SKU_TABLE_COLW[2], fontSize: 7.5, color: "#374151" }}>{sizeLabel}</Text>
+                            <Text wrap={false} style={{ flex: SKU_TABLE_COLW[3], fontSize: 7.5, color: "#374151", textAlign: "right" }}>{upb > 0 ? upb : "—"}</Text>
+                            <Text wrap={false} style={{ flex: SKU_TABLE_COLW[4], fontSize: 7.5, color: "#374151", textAlign: "right" }}>{qty > 0 ? new Intl.NumberFormat("en-US").format(qty) : "—"}</Text>
+                            <Text wrap={false} style={{ flex: SKU_TABLE_COLW[5], fontSize: 7, color: "#374151", textAlign: "right" }}>{price > 0 ? `${resolvedCurrency} ${price}${cuAbbr}` : "—"}</Text>
+                            <Text wrap={false} style={{ flex: SKU_TABLE_COLW[6], fontSize: 7, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(sv, resolvedCurrency)}</Text>
+                          </View>
+                        );
+                      })}
+                      {/* Total shipment value row */}
+                      {totalShipV > 0 && (
+                        <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "6 8", borderTopWidth: 1.5, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+                          <Text wrap={false} style={{ flex: 5.2, fontSize: 7.5, color: "#fff", fontWeight: "bold" }}>
+                            {docLang === "en" ? "TOTAL SHIPMENT VALUE" : "VALOR TOTAL POR EMBARQUE"}
+                          </Text>
+                          <Text wrap={false} style={{ flex: 1.5, fontSize: 8, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(totalShipV, resolvedCurrency)}</Text>
+                        </View>
+                      )}
+                    </>
                   );
-                })}
-                {/* Total shipment value row */}
-                {totalShipV > 0 && (
-                  <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "6 8", borderTopWidth: 1.5, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
-                    <Text style={{ flex: 5, fontSize: 7.5, color: "#fff", fontWeight: "bold" }}>
-                      {docLang === "en" ? "TOTAL SHIPMENT VALUE" : "VALOR TOTAL POR EMBARQUE"}
-                    </Text>
-                    <Text style={{ flex: 1, fontSize: 8, color: "#4ade80", fontWeight: "bold", textAlign: "right" }}>{fmtPdfCurrency(totalShipV, resolvedCurrency)}</Text>
-                  </View>
-                )}
+                })()}
               </View>
             );
           } catch (skuSectionErr) {
@@ -1555,6 +1582,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           const cd = doc.commercialData || doc.commercial_data;
           const rows = cd?.rows?.filter(r => r.category && (r.quantity || (Array.isArray(r.skus) && r.skus.length > 0))) || [];
           if (rows.length === 0) return null;
+          // Phase 3D — fixed column weights shared by header/rows/totals so numeric
+          // cells (Price/U, Shipment, Contract) get enough width for values up to
+          // 999,999,999,999 in USD/EUR/BRL without wrapping or colliding with
+          // neighboring columns. Verified against the A4 content width (515pt);
+          // Letter (612pt) and desktop preview are both wider, so this also fits.
+          const CD_TABLE_COLW = [1.4, 0.9, 0.7, 0.8, 0.65, 1.3, 1.55, 1.7];
           return (
             <View wrap={false} style={{ marginBottom: 18, borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
               <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "7 10", marginBottom: 0 }}>
@@ -1563,12 +1596,15 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     ? ["Product", "Origin", "Qty", "Unit", "Incoterm", "Price/U", "Shipment", "Contract"]
                     : ["Producto", "Origen", "Cant.", "Unidad", "Incoterm", "Precio/U", "Embarque", "Contrato"]
                   ).map((h, i) => (
-                    <Text key={h} style={{ flex: 1, fontSize: 6.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", textAlign: i < 2 ? "left" : "right", letterSpacing: 0.3 }}>{h}</Text>
+                    <Text key={h} wrap={false} style={{ flex: CD_TABLE_COLW[i], fontSize: 6.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", textAlign: i < 2 ? "left" : "right", letterSpacing: 0.3 }}>{h}</Text>
                   ))}
                 </View>
               </View>
               {rows.map((row, i) => {
-                const catLabel = getCategoryDisplayLabel(row.category || "", docLang);
+                // Phase 3D — row label must reflect the actual product (CATTLE/PALM_OIL/...),
+                // never the raw category, when a product is selected on that row.
+                const rowLabel = getProductShortName(row.category || "", row.product || "", docLang) ||
+                  getCategoryDisplayLabel(row.category || "", docLang);
                 const inc = cdInc; // normalized to document canonical incoterm — no per-row override allowed
                 const price = parseFloat(row.incotermPrices?.[inc] || row.unitPrice || 0);
                 const isSkuRow = Array.isArray(row.skus) && row.skus.length > 0;
@@ -1611,14 +1647,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                     : (row.unitType || "").split("/")[0].trim();
                 return (
                   <View key={i} style={{ flexDirection: "row", backgroundColor: i % 2 === 0 ? "#F7F9FC" : "#FFFFFF", padding: "6 10", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{catLabel}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151" }}>{row.origin || "—"}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{qtyDisplay}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{unitDisplay}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "center" }}>{inc}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#374151", textAlign: "right" }}>{isSkuRow ? "—" : (price ? `${rowCurrency} ${price}` : "—")}</Text>
-                    <Text style={{ flex: 1, fontSize: 7.5, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv)}</Text>
-                    <Text style={{ flex: 1, fontSize: 8, color: "#1B2A4A", fontWeight: "bold", textAlign: "right" }}>{fmtV(cv)}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[0], fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{rowLabel}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[1], fontSize: 7.5, color: "#374151" }}>{row.origin || "—"}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[2], fontSize: 7.5, color: "#374151", textAlign: "center" }}>{qtyDisplay}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[3], fontSize: 7.5, color: "#374151", textAlign: "center" }}>{unitDisplay}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[4], fontSize: 7.5, color: "#374151", textAlign: "center" }}>{inc}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[5], fontSize: 7, color: "#374151", textAlign: "right" }}>{isSkuRow ? "—" : (price ? `${rowCurrency} ${price}` : "—")}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[6], fontSize: 7, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{fmtV(sv)}</Text>
+                    <Text wrap={false} style={{ flex: CD_TABLE_COLW[7], fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold", textAlign: "right" }}>{fmtV(cv)}</Text>
                   </View>
                 );
               })}
@@ -1629,10 +1665,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 const fmtV = (v) => fmtPdfCurrency(v, totalsCurrency);
                 return (
                   <View style={{ flexDirection: "row", backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "7 10", borderRadius: 0, marginTop: 0, borderTopWidth: 1.5, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
-                    <Text style={{ flex: 6, fontSize: 7.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", letterSpacing: 0.5 }}>
+                    <Text wrap={false} style={{ flex: 6, fontSize: 7.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", letterSpacing: 0.5 }}>
                       {docLang === "en" ? `TOTAL EXPORT PROGRAM — ${rows.length} PRODUCTS` : `TOTAL PROGRAMA DE EXPORTACIÓN — ${rows.length} PRODUCTOS`}
                     </Text>
-                    <Text style={{ flex: 1, fontSize: 9, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
+                    <Text wrap={false} style={{ flex: 1.7, fontSize: 9, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", textAlign: "right" }}>{fmtV(totalCV)}</Text>
                   </View>
                 );
               })()}
@@ -1647,7 +1683,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 3: Price */}
         <SilentPause />
-        <ExecSectionTitle text={L.price} />
+        <ExecSectionTitle text={L.price} step={3} totalSteps={6} />
 
         {/* Shipment value — DOMINANT financial card, no left accent needed: dark bg IS the emphasis */}
         {engineShipmentValue > 0 && (
@@ -1780,8 +1816,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               value={doc.guaranteeBank || doc.guarantee_bank || "Por confirmar en contrato"} />
           )}
         </View>
-        <SectionSep />
-        <SilentPause />
+        <NarrativeSep />
 
         {/* Section 4: Certifications */}
         {catAtmosphere.regulatedMarker && (
@@ -1796,21 +1831,21 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </Text>
           </View>
         )}
-        <ExecSectionTitle text={L.certs} />
+        <ExecSectionTitle text={L.certs} step={4} totalSteps={6} />
         <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: catAtmosphere.certsAccentColor }}>
           <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{certifications}</Text>
         </View>
         <SectionSep />
 
         {/* Section 5: Payment */}
-        <ExecSectionTitle text={L.payment} />
+        <ExecSectionTitle text={L.payment} step={5} totalSteps={6} />
         <View style={s.paymentBox}>
           <Text style={s.paymentText}>{paymentText}</Text>
         </View>
         <NarrativeSep />
 
         {/* Section 6: Timeline */}
-        <ExecSectionTitle text={L.timeline} />
+        <ExecSectionTitle text={L.timeline} step={6} totalSteps={6} />
         <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} lifecycleLabel={catAtmosphere.lifecycleLabel} />
         <SectionSep />
 
