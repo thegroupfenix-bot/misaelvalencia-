@@ -608,6 +608,30 @@ db.exec(`
   );
 `);
 
+// ─── Product Master & Media Resolver (Phase 3B) ──────────────────────────────
+// Resolves PDF imagery at the PRODUCT level (e.g. CATTLE vs SHEEP) instead of
+// the CATEGORY level (e.g. LIVE_ANIMALS), which previously caused cross-product
+// image bleed (a BOVINE operation could render OVINE imagery).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS product_master (
+    product_code TEXT PRIMARY KEY,
+    category     TEXT NOT NULL,
+    name_es      TEXT,
+    name_en      TEXT,
+    active       INTEGER NOT NULL DEFAULT 1
+  );
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS media_profiles (
+    product_code        TEXT PRIMARY KEY REFERENCES product_master(product_code),
+    main_asset_id        INTEGER REFERENCES media_assets(id),
+    secondary_asset_ids  TEXT DEFAULT '[]',
+    branding_asset_id    INTEGER REFERENCES media_assets(id),
+    updated_at           TEXT DEFAULT (datetime('now')),
+    updated_by           TEXT
+  );
+`);
+
 // ─── Price Center tables ──────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS pc_categories (
@@ -1012,6 +1036,27 @@ function seedGos06Catalogs() {
     ["FISH_FROZEN","Frozen Fish","SEAFOOD","MT"],
     ["SHRIMP","Shrimp","SEAFOOD","MT"],
   ].forEach(r => insProd.run(...r)))();
+
+  // Product Master seed — product-level codes used by the Media Resolver.
+  // These mirror the `product` keys already produced by CommercialEngine.jsx
+  // (PRODUCT_CATEGORIES[category].products) so no new field is required on
+  // commercial_data rows — productCode = the existing row.product value.
+  const insPM = db.prepare("INSERT OR IGNORE INTO product_master (product_code,category,name_es,name_en) VALUES (?,?,?,?)");
+  db.transaction(() => [
+    ["CATTLE","LIVE_ANIMALS","Bovinos","Cattle (Bovine)"],
+    ["SHEEP","LIVE_ANIMALS","Ovinos","Sheep (Ovine)"],
+    ["GOAT","LIVE_ANIMALS","Caprinos","Goat (Caprine)"],
+    ["PALM_OIL","OILS","Aceite de Palma","Palm Oil"],
+    ["SOYBEAN_OIL","OILS","Aceite de Soja","Soybean Oil"],
+    ["SUNFLOWER_OIL","OILS","Aceite de Girasol","Sunflower Oil"],
+    ["CORN_OIL","OILS","Aceite de Maíz","Corn Oil"],
+    ["SOYBEANS","COMMODITIES","Soja en Grano","Soybeans"],
+    ["CORN","COMMODITIES","Maíz Amarillo","Corn"],
+    ["WHEAT","COMMODITIES","Trigo","Wheat"],
+    ["OATS","COMMODITIES","Avena","Oats"],
+    ["RICE","COMMODITIES","Arroz","Rice"],
+    ["SUGAR","COMMODITIES","Azúcar Blanca","Sugar"],
+  ].forEach(r => insPM.run(...r)))();
 
   // MEDIA_MANAGER permissions
   const insRP = db.prepare("INSERT OR IGNORE INTO role_permissions (role,module,action) VALUES (?,?,?)");

@@ -372,14 +372,16 @@ router.get("/r2-traverse-test", requireAdmin, async (_req, res) => {
 // NOTE: both /bind and /bind-preview are static-path routes and MUST appear
 // before the /:id wildcard route below.
 
-const { bindMedia } = require("../services/mediaBinding");
+const { bindMedia, validateProductAssetMatch } = require("../services/mediaBinding");
 
 // POST /media/bind — smart media binding for SCO/FCO document generation
-// Body: { category, origin, tags[], limit }  (all optional; limit defaults to 6)
+// Body: { category, productCode, origin, tags[], limit }  (all optional; limit defaults to 6)
+// productCode (e.g. "CATTLE") resolves an explicit MediaProfile first; category
+// scoring is only consulted as a fallback — see services/mediaBinding.js.
 router.post("/bind", requireMediaAccess, (req, res) => {
   try {
-    const { category, origin, tags = [], limit = 6 } = req.body || {};
-    const result = bindMedia(db, { category, origin, tags: Array.isArray(tags) ? tags : [], limit: Number(limit) || 6 });
+    const { category, productCode, origin, tags = [], limit = 6 } = req.body || {};
+    const result = bindMedia(db, { category, productCode, origin, tags: Array.isArray(tags) ? tags : [], limit: Number(limit) || 6 });
     res.json(result);
   } catch (err) {
     console.error("[POST /media/bind] Error:", err.message);
@@ -388,14 +390,114 @@ router.post("/bind", requireMediaAccess, (req, res) => {
 });
 
 // GET /media/bind-preview — same as POST /bind but via query params (easy testing)
-// Query: ?category=LIVE_ANIMALS&origin=Brazil&limit=6
+// Query: ?category=LIVE_ANIMALS&productCode=CATTLE&origin=Brazil&limit=6
 router.get("/bind-preview", requireMediaAccess, (req, res) => {
   try {
-    const { category, origin, limit = 6 } = req.query;
-    const result = bindMedia(db, { category, origin, tags: [], limit: Number(limit) || 6 });
+    const { category, productCode, origin, limit = 6 } = req.query;
+    const result = bindMedia(db, { category, productCode, origin, tags: [], limit: Number(limit) || 6 });
     res.json(result);
   } catch (err) {
     console.error("[GET /media/bind-preview] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Product Master & Media Resolver admin endpoints (Phase 3B) ─────────────
+// NOTE: must stay above the GET /:id wildcard route below.
+
+// GET /media/products-report — administration report (Step 6):
+// products without a media profile, products on category fallback, and
+// products fully migrated to an explicit product-level image.
+router.get("/products-report", requireMediaAccess, (req, res) => {
+  try {
+    const products = db.prepare(
+      "SELECT product_code, category, name_es, name_en FROM product_master WHERE active = 1 ORDER BY category, product_code"
+    ).all();
+    const profiles = db.prepare("SELECT * FROM media_profiles").all();
+    const profileMap = new Map(profiles.map(p => [p.product_code, p]));
+
+    const withoutProfile = [];
+    const usingFallback = [];
+    const fullyMigrated = [];
+
+    for (const p of products) {
+      const profile = profileMap.get(p.product_code);
+      if (!profile || !profile.main_asset_id) {
+        withoutProfile.push(p);
+        continue;
+      }
+      const asset = db.prepare("SELECT id, status, archived FROM media_assets WHERE id = ?").get(profile.main_asset_id);
+      if (!asset || asset.status !== "active" || asset.archived) {
+        usingFallback.push({ ...p, reason: "main_asset_id references a missing/inactive/archived asset" });
+        continue;
+      }
+      fullyMigrated.push(p);
+    }
+
+    res.json({
+      withoutProfile,
+      usingFallback,
+      fullyMigrated,
+      summary: {
+        total: products.length,
+        withoutProfile: withoutProfile.length,
+        usingFallback: usingFallback.length,
+        fullyMigrated: fullyMigrated.length,
+      },
+    });
+  } catch (err) {
+    console.error("[GET /media/products-report] Error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /media/product-profiles/:productCode — fetch the current MediaProfile for a product
+router.get("/product-profiles/:productCode", requireMediaAccess, (req, res) => {
+  const profile = db.prepare("SELECT * FROM media_profiles WHERE product_code = ?").get(req.params.productCode);
+  res.json(profile || null);
+});
+
+// POST /media/product-profiles/:productCode — assign explicit imagery to a product (curation)
+// Body: { mainAssetId, secondaryAssetIds: [], brandingAssetId }
+// Rejects mainAssetId if it fails the sibling-product keyword check (Step 5).
+router.post("/product-profiles/:productCode", requireMediaWrite, (req, res) => {
+  try {
+    const { productCode } = req.params;
+    const { mainAssetId, secondaryAssetIds = [], brandingAssetId } = req.body || {};
+
+    const product = db.prepare("SELECT * FROM product_master WHERE product_code = ?").get(productCode);
+    if (!product) return res.status(404).json({ error: "Producto no encontrado en Product Master" });
+
+    if (mainAssetId) {
+      const asset = db.prepare("SELECT * FROM media_assets WHERE id = ? AND status = 'active' AND archived = 0").get(mainAssetId);
+      if (!asset) return res.status(400).json({ error: "mainAssetId no es un activo válido/activo" });
+      const validation = validateProductAssetMatch(asset, productCode);
+      if (!validation.ok) {
+        console.warn(`[media-bind] rejected product-profile assignment for ${productCode}: ${validation.reason}`);
+        return res.status(409).json({ error: `Imagen incompatible con el producto: ${validation.reason}` });
+      }
+    }
+
+    db.prepare(`
+      INSERT INTO media_profiles (product_code, main_asset_id, secondary_asset_ids, branding_asset_id, updated_at, updated_by)
+      VALUES (?, ?, ?, ?, datetime('now'), ?)
+      ON CONFLICT(product_code) DO UPDATE SET
+        main_asset_id       = excluded.main_asset_id,
+        secondary_asset_ids = excluded.secondary_asset_ids,
+        branding_asset_id   = excluded.branding_asset_id,
+        updated_at          = excluded.updated_at,
+        updated_by          = excluded.updated_by
+    `).run(
+      productCode,
+      mainAssetId || null,
+      JSON.stringify(Array.isArray(secondaryAssetIds) ? secondaryAssetIds : []),
+      brandingAssetId || null,
+      req.user?.username || "system"
+    );
+
+    res.json({ ok: true, product_code: productCode });
+  } catch (err) {
+    console.error("[POST /media/product-profiles/:productCode] Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

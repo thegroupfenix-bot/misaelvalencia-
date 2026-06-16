@@ -26,6 +26,44 @@ const CATEGORY_RULES = {
   EGGS:           { cats: ["products/poultry","poultry","eggs","huevos","huevo"], tags: ["egg","huevo","poultry","incubation","fertile","huevos","pollito"] },
 };
 
+// ─── Product-level Media Resolver (Phase 3B) ─────────────────────────────────
+// Sub-product keywords, scoped to a single product_code, used ONLY to validate
+// that an explicitly-assigned MediaProfile asset actually depicts that product
+// (e.g. reject a "sheep" image assigned to CATTLE). This is intentionally
+// narrower than CATEGORY_RULES above, which legitimately groups sibling
+// products together for the category-level fallback scoring path.
+const PRODUCT_KEYWORDS = {
+  CATTLE:        ["cattle","bovino","bovine","beef","angus","nelore","brahman","hereford","ganado"],
+  SHEEP:         ["sheep","lamb","ovino","ovine","cordero","merino","dorper","corriedale","texel","suffolk"],
+  GOAT:          ["goat","caprino","caprine","cabra"],
+  PALM_OIL:      ["palm","palma"],
+  SOYBEAN_OIL:   ["soybean oil","soy oil","aceite de soja","aceite de soya"],
+  SUNFLOWER_OIL: ["sunflower","girasol"],
+  CORN_OIL:      ["corn oil","aceite de maiz","aceite de maíz"],
+  SOYBEANS:      ["soybean","soya","soja"],
+  CORN:          ["corn","maiz","maíz"],
+  WHEAT:         ["wheat","trigo"],
+  OATS:          ["oats","avena"],
+  RICE:          ["rice","arroz"],
+  SUGAR:         ["sugar","azucar","azúcar"],
+};
+
+// Sibling products within the same family — used to detect cross-product
+// keyword collisions (e.g. a CATTLE profile pointing at a SHEEP-tagged asset).
+const PRODUCT_FAMILY = {
+  CATTLE: ["SHEEP","GOAT"], SHEEP: ["CATTLE","GOAT"], GOAT: ["CATTLE","SHEEP"],
+  PALM_OIL: ["SOYBEAN_OIL","SUNFLOWER_OIL","CORN_OIL"],
+  SOYBEAN_OIL: ["PALM_OIL","SUNFLOWER_OIL","CORN_OIL"],
+  SUNFLOWER_OIL: ["PALM_OIL","SOYBEAN_OIL","CORN_OIL"],
+  CORN_OIL: ["PALM_OIL","SOYBEAN_OIL","SUNFLOWER_OIL"],
+  SOYBEANS: ["CORN","WHEAT","OATS","RICE","SUGAR"],
+  CORN: ["SOYBEANS","WHEAT","OATS","RICE","SUGAR"],
+  WHEAT: ["SOYBEANS","CORN","OATS","RICE","SUGAR"],
+  OATS: ["SOYBEANS","CORN","WHEAT","RICE","SUGAR"],
+  RICE: ["SOYBEANS","CORN","WHEAT","OATS","SUGAR"],
+  SUGAR: ["SOYBEANS","CORN","WHEAT","OATS","RICE"],
+};
+
 const BRANDING_CATS = ["branding","branding/logos","branding/templates","Branding","Corporativo","corporate"];
 
 // Hard exclusion keywords for PRODUCT (non-branding) assets per document category.
@@ -281,24 +319,109 @@ function isBrandingCompatible(asset, category) {
 }
 
 /**
+ * Validates that an asset assigned to a product's MediaProfile actually
+ * depicts that product, by checking it doesn't match a SIBLING product's
+ * keywords without also matching its own (e.g. an asset tagged "sheep"
+ * assigned to CATTLE is rejected).
+ *
+ * @param {object} asset       — raw DB row (media_assets)
+ * @param {string} productCode — e.g. "CATTLE"
+ * @returns {{ok: boolean, reason?: string}}
+ */
+function validateProductAssetMatch(asset, productCode) {
+  const siblings = PRODUCT_FAMILY[productCode];
+  if (!siblings || siblings.length === 0) return { ok: true };
+
+  const searchText = [
+    parseTags(asset.tags_json).join(" "),
+    asset.product_relation || "",
+    asset.original_name    || "",
+    asset.subcategory      || "",
+  ].join(" ").toLowerCase();
+
+  const ownKeywords = PRODUCT_KEYWORDS[productCode] || [];
+  const matchesOwn = ownKeywords.some(kw => searchText.includes(kw.toLowerCase()));
+
+  for (const sibling of siblings) {
+    const siblingKeywords = PRODUCT_KEYWORDS[sibling] || [];
+    const hit = siblingKeywords.find(kw => searchText.includes(kw.toLowerCase()));
+    if (hit && !matchesOwn) {
+      return {
+        ok: false,
+        reason: `asset #${asset.id} (${asset.original_name}) matches sibling product "${sibling}" keyword "${hit}" but no "${productCode}" keyword`,
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/**
+ * Resolve the explicit MediaProfile for a product_code, if one exists and
+ * passes validation. This is the PREFERRED resolution path — it bypasses
+ * category-level scoring entirely.
+ *
+ * @param {import('better-sqlite3').Database} db
+ * @param {string} productCode
+ * @returns {{main: object, secondary: object[], brandingAssetId: number|null}|{rejected:true,reason:string}|null}
+ */
+function resolveProductMedia(db, productCode) {
+  if (!productCode) return null;
+
+  const profile = db.prepare("SELECT * FROM media_profiles WHERE product_code = ?").get(productCode);
+  if (!profile || !profile.main_asset_id) return null;
+
+  const assetCols = "id, public_url, thumbnail_url, category, tags_json, country_origin, original_name, mime_type, product_relation, subcategory, visibility, status, archived";
+  const mainAsset = db.prepare(`SELECT ${assetCols} FROM media_assets WHERE id = ? AND status = 'active' AND archived = 0`).get(profile.main_asset_id);
+  if (!mainAsset) {
+    console.warn(`[media-bind] product profile for ${productCode} points to a missing/inactive asset #${profile.main_asset_id}`);
+    return null;
+  }
+
+  const validation = validateProductAssetMatch(mainAsset, productCode);
+  if (!validation.ok) {
+    console.warn(`[media-bind] REJECTED product profile binding for ${productCode}: ${validation.reason}`);
+    return { rejected: true, reason: validation.reason };
+  }
+
+  let secondaryIds = [];
+  try { secondaryIds = JSON.parse(profile.secondary_asset_ids || "[]"); } catch (_) { secondaryIds = []; }
+
+  const secondary = secondaryIds
+    .map(id => db.prepare(`SELECT ${assetCols} FROM media_assets WHERE id = ? AND status = 'active' AND archived = 0`).get(id))
+    .filter(Boolean)
+    .map(projectAsset);
+
+  return { main: projectAsset(mainAsset), secondary, brandingAssetId: profile.branding_asset_id || null };
+}
+
+/**
  * Main binding function.
  *
  * @param {import('better-sqlite3').Database} db
  * @param {object} opts
- * @param {string}   [opts.category] — document product category key (e.g. "LIVE_ANIMALS")
- * @param {string}   [opts.origin]   — country of origin (e.g. "Brazil")
- * @param {string[]} [opts.tags]     — additional tags from the caller
- * @param {number}   [opts.limit]    — max non-branding assets to consider (default 6)
+ * @param {string}   [opts.category]    — document product category key (e.g. "LIVE_ANIMALS")
+ * @param {string}   [opts.productCode] — document product code (e.g. "CATTLE") — preferred,
+ *                                        resolves via the explicit MediaProfile FK instead of scoring
+ * @param {string}   [opts.origin]      — country of origin (e.g. "Brazil")
+ * @param {string[]} [opts.tags]        — additional tags from the caller
+ * @param {number}   [opts.limit]       — max non-branding assets to consider (default 6)
  * @returns {{
  *   main: object|null,
  *   secondary: object[],
  *   branding: object[],
  *   totalMatched: number,
  *   category: string|null,
- *   origin: string|null
+ *   origin: string|null,
+ *   productCode: string|null,
+ *   resolution: "PRODUCT_PROFILE"|"CATEGORY_FALLBACK"|"NO_IMAGE"
  * }}
  */
-function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
+function bindMedia(db, { category, productCode, origin, tags = [], limit = 6 } = {}) {
+  // ── Step 1: explicit product-level resolution (preferred path) ──
+  // Bypasses category scoring entirely when a validated MediaProfile exists.
+  const productResult = productCode ? resolveProductMedia(db, productCode) : null;
+  const productMain = productResult && !productResult.rejected ? productResult : null;
+
   // Fetch all active, non-archived assets in one query
   const allAssets = db.prepare(
     "SELECT id, public_url, thumbnail_url, category, tags_json, country_origin, " +
@@ -327,7 +450,9 @@ function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
 
   console.log(`[media-bind] product pool — compatible: ${compatibleProductAssets.length}/${productAssets.length} for category ${category}`);
 
-  // Score and sort product assets
+  // ── Step 4: category scoring runs only as the emergency fallback path ──
+  // (when no product-level MediaProfile is resolved above). It is never
+  // consulted for `main` when a productCode profile already won.
   let scoredProducts = compatibleProductAssets.map(asset => ({
     asset,
     score: rule ? scoreAsset(asset, rule, category, origin) : 0,
@@ -338,8 +463,13 @@ function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
   // Take top `limit` scored product assets
   const topProducts = scoredProducts.slice(0, limit);
 
-  const main      = topProducts.length > 0 ? projectAsset(topProducts[0].asset) : null;
-  const secondary = topProducts.slice(1, 5).map(s => projectAsset(s.asset));
+  const categoryMain      = topProducts.length > 0 ? projectAsset(topProducts[0].asset) : null;
+  const categorySecondary = topProducts.slice(1, 5).map(s => projectAsset(s.asset));
+
+  const main      = productMain ? productMain.main : categoryMain;
+  const secondary = productMain
+    ? [...productMain.secondary, ...categorySecondary].slice(0, 4)
+    : categorySecondary;
 
   // Filter branding to only assets compatible with the current document category,
   // then score them with origin bonus and category-affinity bonus.
@@ -387,7 +517,21 @@ function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
 
   console.log(`[media-bind] branding pool — compatible: ${compatibleBrandingAssets.length}/${brandingAssets.length} | selected: ${JSON.stringify(scoredBranding.slice(0,2).map(s => ({ id: s.asset.id, name: s.asset.original_name, score: s.score })))}`);
 
-  const branding = scoredBranding.slice(0, 2).map(s => projectAsset(s.asset));
+  let branding = scoredBranding.slice(0, 2).map(s => projectAsset(s.asset));
+
+  // Explicit branding asset from the MediaProfile, if any, takes priority.
+  if (productMain?.brandingAssetId) {
+    const brandAsset = db.prepare(
+      "SELECT id, public_url, thumbnail_url, category, tags_json, country_origin, original_name, mime_type " +
+      "FROM media_assets WHERE id = ? AND status = 'active' AND archived = 0"
+    ).get(productMain.brandingAssetId);
+    if (brandAsset) branding = [projectAsset(brandAsset), ...branding].slice(0, 2);
+  }
+
+  const resolution = productMain ? "PRODUCT_PROFILE" : (main ? "CATEGORY_FALLBACK" : "NO_IMAGE");
+  if (productCode && !productMain) {
+    console.warn(`[media-bind] productCode "${productCode}" had no usable MediaProfile — falling back to category scoring for "${category}"`);
+  }
 
   return {
     main,
@@ -396,7 +540,9 @@ function bindMedia(db, { category, origin, tags = [], limit = 6 } = {}) {
     totalMatched: topProducts.length,
     category: category || null,
     origin:   origin   || null,
+    productCode: productCode || null,
+    resolution,
   };
 }
 
-module.exports = { bindMedia };
+module.exports = { bindMedia, resolveProductMedia, validateProductAssetMatch };

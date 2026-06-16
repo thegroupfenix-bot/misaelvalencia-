@@ -9,6 +9,7 @@ export const PRODUCT_CATEGORIES = {
     products: {
       SHEEP: { label: { es: "Ovinos", en: "Sheep", fr: "Ovins" }, defaultBreed: "Merino / Dorper / Rambouillet" },
       CATTLE: { label: { es: "Bovinos", en: "Cattle", fr: "Bovins" }, defaultBreed: "Nelore / Angus / Hereford" },
+      GOAT: { label: { es: "Caprinos", en: "Goat", fr: "Caprins" }, defaultBreed: "Boer / Saanen" },
     },
     units: ["Cabezas / Head", "KG Peso Vivo / Live KG", "Tonelada Métrica / MT"],
     defaultUnit: "KG Peso Vivo / Live KG",
@@ -106,6 +107,7 @@ export const PRODUCT_CATEGORIES = {
       SOYBEANS: { label: { es: "Soja en Grano",  en: "Soybeans" },    containerCapacity: 27 },
       CORN:     { label: { es: "Maíz Amarillo",  en: "Yellow Corn" }, containerCapacity: 27 },
       WHEAT:    { label: { es: "Trigo",           en: "Wheat" },        containerCapacity: 25 },
+      OATS:     { label: { es: "Avena",           en: "Oats" },         containerCapacity: 25 },
       RICE:     { label: { es: "Arroz",           en: "Rice" },         containerCapacity: 27 },
       SUGAR:    { label: { es: "Azúcar Blanca",   en: "White Sugar" }, containerCapacity: 27 },
     },
