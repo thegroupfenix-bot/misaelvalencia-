@@ -1328,6 +1328,69 @@ nav {
   .holding-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
   .process-steps { grid-template-columns: 1fr; }
 }
+
+/* ── Language Dropdown ────────────────────────────────────────────── */
+.lang-drop { position: relative; }
+.lang-drop-btn {
+  background: none;
+  border: 1px solid rgba(201,168,76,0.3);
+  color: rgba(200,200,200,0.82);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 0.75rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+.lang-drop-btn:hover,
+.lang-drop.open .lang-drop-btn { color: var(--gold); border-color: var(--gold); }
+.lang-drop-arrow { font-size: 0.62rem; transition: transform 0.2s; line-height: 1; }
+.lang-drop.open .lang-drop-arrow { transform: rotate(180deg); }
+.lang-drop-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: rgba(12,12,20,0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(201,168,76,0.2);
+  list-style: none;
+  padding: 0.3rem 0;
+  margin: 0;
+  min-width: 175px;
+  z-index: 4000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+}
+.lang-drop.open .lang-drop-menu { display: block; }
+.lang-drop-menu li {
+  padding: 0.65rem 1rem;
+  color: rgba(200,200,200,0.75);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-bottom: 1px solid rgba(201,168,76,0.06);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+.lang-drop-menu li:last-child { border-bottom: none; }
+.lang-drop-menu li:hover { background: rgba(201,168,76,0.09); color: var(--gold); }
+.lang-drop-menu li.active { color: var(--gold); background: rgba(201,168,76,0.06); font-weight: 700; }
+@media (max-width: 480px) {
+  .lang-drop-menu { right: auto; left: 0; min-width: 160px; }
+  .lang-drop-btn { font-size: 0.78rem; padding: 0.5rem 0.6rem; }
+}
+/* ── End Language Dropdown ── */
 </style>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -1383,12 +1446,17 @@ nav {
     </li>
   </ul>
   <div class="nav-right">
-    <div class="lang-switcher">
-      <button class="lang-btn active" onclick="setLang('es')">ES</button>
-      <button class="lang-btn" onclick="setLang('en')">EN</button>
-      <button class="lang-btn" onclick="setLang('pt-br')">PT-BR</button>
-      <button class="lang-btn" onclick="setLang('ar')">عربي</button>
-      <button class="lang-btn" onclick="setLang('zh')">中文</button>
+        <div class="lang-drop" id="langDrop">
+      <button class="lang-drop-btn" onclick="toggleLangDrop(event)" aria-haspopup="listbox" aria-expanded="false">
+        🌐 <span id="langLabel">ES</span> <span class="lang-drop-arrow">▾</span>
+      </button>
+      <ul class="lang-drop-menu" role="listbox">
+        <li role="option" data-lang="es"    onclick="setLang('es');closeLangDrop()">🇪🇸 Español</li>
+        <li role="option" data-lang="en"    onclick="setLang('en');closeLangDrop()">🇬🇧 English</li>
+        <li role="option" data-lang="pt-br" onclick="setLang('pt-br');closeLangDrop()">🇧🇷 Português BR</li>
+        <li role="option" data-lang="ar"    onclick="setLang('ar');closeLangDrop()">🇸🇦 العربية</li>
+        <li role="option" data-lang="zh"    onclick="setLang('zh');closeLangDrop()">🇨🇳 中文</li>
+      </ul>
     </div>
     <a href="https://misaelvalencia-production.up.railway.app" class="nav-cta" target="_blank" style="margin-right:0.5rem;background:transparent;border:1px solid var(--gold);color:var(--gold);">
       🔐 <span lang-es>Portal Funcionarios</span><span lang-en>Staff Portal</span><span lang-pt-br>Portal de Colaboradores</span><span lang-ar>بوابة الموظفين</span><span lang-zh>员工门户</span>
@@ -2948,20 +3016,37 @@ document.addEventListener('click', function(e){
 
 function setLang(lang) {
   document.body.className = 'lang-' + lang;
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.lang-btn').forEach(b => {
-    if (b.textContent.trim() === lang ||
-        (lang === 'ar' && b.textContent.includes('عربي')) ||
-        (lang === 'zh' && b.textContent.includes('中文')) ||
-        (lang === 'pt-br' && b.textContent.includes('PT-BR'))) {
-      b.classList.add('active');
-    }
-  });
+    var _lbl=document.getElementById('langLabel');if(_lbl)_lbl.textContent=({'es':'ES','en':'EN','pt-br':'PT','ar':'عربي','zh':'中文'})[lang]||lang;
+  document.querySelectorAll('.lang-drop-menu li').forEach(function(li){li.classList.toggle('active',li.dataset.lang===lang);});
   localStorage.setItem('glv-lang', lang);
   document.documentElement.lang = lang;
 }
 
 // Load saved lang
+
+// ── Language Dropdown Controls ──────────────────────────────────────
+function toggleLangDrop(e) {
+  e.stopPropagation();
+  var d = document.getElementById('langDrop');
+  if (d) {
+    var open = d.classList.toggle('open');
+    d.querySelector('.lang-drop-btn').setAttribute('aria-expanded', String(open));
+  }
+}
+function closeLangDrop() {
+  var d = document.getElementById('langDrop');
+  if (d) {
+    d.classList.remove('open');
+    d.querySelector('.lang-drop-btn').setAttribute('aria-expanded', 'false');
+  }
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#langDrop')) closeLangDrop();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeLangDrop();
+});
+// ────────────────────────────────────────────────────────────────────
 const savedLang = localStorage.getItem('glv-lang') || 'es';
 setLang(savedLang);
 
