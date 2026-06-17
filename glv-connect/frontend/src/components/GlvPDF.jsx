@@ -1156,9 +1156,24 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </View>
         </View>
 
-        <NarrativeSep />
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
 
-        {/* ── PHASE 3: WHY GLV GLOBAL HOLDING ────────────────────────────────── */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 3 — CORPORATE POSITIONING
+           (Why GLV, Why This Program, Global Network, Operational Advantages)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
+        {/* ── WHY GLV GLOBAL HOLDING ─────────────────────────────────────────── */}
         <View style={{ marginBottom: 16 }}>
           <ExecSectionTitle text={docLang === "en" ? "WHY GLV GLOBAL HOLDING" : "POR QUÉ GLV GLOBAL HOLDING"} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -1182,24 +1197,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </View>
         </View>
 
-        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
-      </Page>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-           PAGE 3 — EXECUTIVE COMMERCIAL ENHANCEMENT
-           (Sprint 2 Phase 2: Why This Program, Global Network, Operational
-            Advantages, Supply Capacity, Global Compliance)
-         ═══════════════════════════════════════════════════════════════════════ */}
-      <Page size="A4" style={s.page}>
-        {/* Continuation context bar */}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
-          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
-            {catAtmosphere.tag}{"  ·  "}{doc.id}
-          </Text>
-          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
-            {doc.client}{"  ·  "}{doc.date}
-          </Text>
-        </View>
+        <NarrativeSep />
 
         {/* ── WHY THIS PROGRAM ──────────────────────────────────────────────── */}
         <ExecSectionTitle text={docLang === "en" ? "WHY THIS PROGRAM" : "POR QUÉ ESTE PROGRAMA"} />
@@ -1274,7 +1272,22 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           ))}
         </View>
 
-        <NarrativeSep />
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 4 — BUYER CONFIDENCE
+           (Supply Capacity, Global Compliance, Certifications)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
 
         {/* ── SUPPLY CAPACITY ───────────────────────────────────────────────── */}
         <ExecSectionTitle text={docLang === "en" ? "SUPPLY CAPACITY" : "CAPACIDAD DE SUMINISTRO"} />
@@ -1340,7 +1353,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             return fallbackBadges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
           })()}
         </View>
-        <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: "#059669", borderRadius: 2, padding: "8 12" }}>
+        <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: "#059669", borderRadius: 2, padding: "8 12", marginBottom: 16 }}>
           <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.6 }}>
             {docLang === "en"
               ? "GLV Global Holding maintains active compliance programs across all export corridors. All products are sourced from certified facilities, inspected by accredited third parties, and documented to meet destination country import requirements. Country-specific regulatory requirements are managed on a per-operation basis."
@@ -1348,13 +1361,52 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </Text>
         </View>
 
+        <NarrativeSep />
+
+        {/* ── CERTIFICATIONS & QUALITY ──────────────────────────────────────── */}
+        {catAtmosphere.regulatedMarker && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <View style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: "#EEF2F7", borderWidth: 0.5, borderColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
+              <Text style={{ fontSize: 6.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.8, textTransform: "uppercase" }}>
+                {docLang === "en" ? "REGULATED OPERATION" : "OPERACIÓN REGULADA"}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 0.3 }}>
+              {docLang === "en" ? "Veterinary  ·  Sanitary  ·  International Standards" : "Veterinario  ·  Sanitario  ·  Normas Internacionales"}
+            </Text>
+          </View>
+        )}
+        <ExecSectionTitle text={L.certs} />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 10 }}>
+          {(() => {
+            const certBadges = [];
+            const certText = (certifications || "").toLowerCase();
+            if (certText.includes("halal"))          certBadges.push({ l: "HALAL",         a: "#059669" });
+            if (certText.includes("sgs"))            certBadges.push({ l: "SGS",           a: "#1e40af" });
+            if (certText.includes("gacc"))           certBadges.push({ l: "GACC",          a: "#b45309" });
+            if (certText.includes("iso"))            certBadges.push({ l: "ISO",           a: "#0e7490" });
+            if (certText.includes("veterinar"))      certBadges.push({ l: docLang === "en" ? "VET. CERT." : "CERT. VET.", a: "#7c3aed" });
+            if (certText.includes("origen") || certText.includes("origin"))
+              certBadges.push({ l: docLang === "en" ? "CERT. OF ORIGIN" : "CERT. ORIGEN", a: "#475569" });
+            if (certText.includes("phytosanit") || certText.includes("fitosanit"))
+              certBadges.push({ l: docLang === "en" ? "PHYTOSANITARY" : "FITOSANITARIO",  a: "#15803d" });
+            if (certText.includes("usda"))           certBadges.push({ l: "USDA",          a: "#1d4ed8" });
+            if (certBadges.length === 0) certBadges.push({ l: docLang === "en" ? "CERTIFIED" : "CERTIFICADO", a: "#059669" });
+            return certBadges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
+          })()}
+        </View>
+        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: catAtmosphere.certsAccentColor }}>
+          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{certifications}</Text>
+        </View>
+
         <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
       </Page>
 
-      {/* PAGE 4 — COMMERCIAL DETAIL (Parties, Product, Pricing, Certs, Payment, Timeline) */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 5 — COMMERCIAL DETAIL
+           (Parties, Product Description, Specifications, Logistics)
+         ═══════════════════════════════════════════════════════════════════════ */}
       <Page size="A4" style={s.page}>
-
-        {/* Continuation context bar */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
           <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
             {catAtmosphere.tag}{"  ·  "}{doc.id}
@@ -1896,7 +1948,23 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </View>
           )}
         </View>
-        <NarrativeSep />
+
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 6 — PRICING & COMMERCIAL STRUCTURE
+           (Commercial Table, Shipment/Contract Values, Category Fields)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
 
         {/* Commercial data table — multi-product rows from CommercialEngine */}
         {(() => { try {
@@ -2138,51 +2206,25 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
               value={doc.guaranteeBank || doc.guarantee_bank || "Por confirmar en contrato"} />
           )}
         </View>
-        <NarrativeSep />
 
-        {/* ── PHASE 6: Certification Badges ──────────────────────────────── */}
-        {catAtmosphere.regulatedMarker && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <View style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: "#EEF2F7", borderWidth: 0.5, borderColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
-              <Text style={{ fontSize: 6.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.8, textTransform: "uppercase" }}>
-                {docLang === "en" ? "REGULATED OPERATION" : "OPERACIÓN REGULADA"}
-              </Text>
-            </View>
-            <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 0.3 }}>
-              {docLang === "en" ? "Veterinary  ·  Sanitary  ·  International Standards" : "Veterinario  ·  Sanitario  ·  Normas Internacionales"}
-            </Text>
-          </View>
-        )}
-        <ExecSectionTitle text={L.certs} step={4} totalSteps={8} />
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
 
-        {/* Visual certification badges */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 10 }}>
-          {(() => {
-            const certBadges = [];
-            const certText = (certifications || "").toLowerCase();
-            if (certText.includes("halal"))          certBadges.push({ l: "HALAL",         a: "#059669" });
-            if (certText.includes("sgs"))            certBadges.push({ l: "SGS",           a: "#1e40af" });
-            if (certText.includes("gacc"))           certBadges.push({ l: "GACC",          a: "#b45309" });
-            if (certText.includes("iso"))            certBadges.push({ l: "ISO",           a: "#0e7490" });
-            if (certText.includes("veterinar"))      certBadges.push({ l: docLang === "en" ? "VET. CERT." : "CERT. VET.", a: "#7c3aed" });
-            if (certText.includes("origen") || certText.includes("origin"))
-              certBadges.push({ l: docLang === "en" ? "CERT. OF ORIGIN" : "CERT. ORIGEN", a: "#475569" });
-            if (certText.includes("phytosanit") || certText.includes("fitosanit"))
-              certBadges.push({ l: docLang === "en" ? "PHYTOSANITARY" : "FITOSANITARIO",  a: "#15803d" });
-            if (certText.includes("usda"))           certBadges.push({ l: "USDA",          a: "#1d4ed8" });
-            if (certBadges.length === 0) certBadges.push({ l: docLang === "en" ? "CERTIFIED" : "CERTIFICADO", a: "#059669" });
-            return certBadges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
-          })()}
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 7 — PAYMENT STRUCTURE & TIMELINE
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
         </View>
 
-        {/* Full certification text */}
-        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: catAtmosphere.certsAccentColor }}>
-          <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{certifications}</Text>
-        </View>
-        <NarrativeSep />
-
-        {/* ── PHASE 7: Payment Structure Visualization ────────────────────── */}
-        <ExecSectionTitle text={L.payment} step={5} totalSteps={8} />
+        {/* ── PAYMENT STRUCTURE ──────────────────────────────────────────────── */}
+        <ExecSectionTitle text={L.payment} />
 
         {/* Payment cards */}
         {(() => {
@@ -2261,13 +2303,29 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Existing workflow-state timeline strip (kept for live status tracking) */}
         <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} lifecycleLabel={catAtmosphere.lifecycleLabel} />
-        <SectionSep />
 
-        {/* Section 7: Mandatory */}
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 8 — RISK & COMPLIANCE
+           (Mandatory Info, China Alert, SPA Structure)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
+        {/* Mandatory information */}
         {mandatoryInfo && (
           <>
-            <SectionTitle text={L.mandatory} />
-            <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+            <ExecSectionTitle text={L.mandatory} />
+            <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 16 }}>
               <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{mandatoryInfo}</Text>
             </View>
           </>
@@ -2275,7 +2333,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* China alert box */}
         {isChina && (
-          <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 12 }}>
+          <View style={{ backgroundColor: "#FAFBFC", borderWidth: 0.5, borderColor: "#E8ECF1", borderLeftWidth: 2, borderLeftColor: "#D97706", borderRadius: 2, padding: "8 12", marginBottom: 16 }}>
             <Text style={{ fontSize: 8, color: "#374151", fontWeight: "bold" }}>FILTRO CHINA — Entidad: GLV Services SAS (Colombia) | GACC No. YA11000PDY110K805</Text>
             {docLang === "zh" && (
               <Text style={{ fontSize: 8, color: "#92400e", marginTop: 4 }}>
@@ -2300,29 +2358,74 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </View>
         )}
 
-        {/* Section 8: Observations */}
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 9 — EXECUTIVE CLOSING
+           (Observations, Terms & Conditions, SCO/FCO Notes)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
+        {/* Observations */}
         {doc.observations && (
           <>
-            <SectionTitle text={L.observations} />
-            <View style={{ backgroundColor: "#FAFBFC", borderRadius: 2, padding: "8 12", marginBottom: 14, borderWidth: 0.5, borderColor: "#EEF1F5" }}>
+            <ExecSectionTitle text={L.observations} />
+            <View style={{ backgroundColor: "#FAFBFC", borderRadius: 2, padding: "8 12", marginBottom: 16, borderWidth: 0.5, borderColor: "#EEF1F5" }}>
               <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.6 }}>{doc.observations}</Text>
             </View>
-            <SectionSep />
           </>
         )}
 
-        {/* Section 9: T&C */}
-        <SectionSep />
-        <SectionTitle text={L.tc} />
+        {/* Terms & Conditions */}
+        <ExecSectionTitle text={L.tc} />
         <View style={s.tcBox}>
           <Text style={s.tcText}>{tcText}</Text>
         </View>
 
-        {/* Section 10: Agent signature */}
-        <SilentPause />
-        <View wrap={false} style={s.sigBlock}>
-          <SectionTitle text={L.agent_sig} />
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <NarrativeSep />
+
+        {isSCO && (
+          <View style={s.indicativaBox}>
+            <Text style={{ fontSize: 8, color: "#92400e" }}>{L.sco_note}</Text>
+          </View>
+        )}
+
+        {isFCO && (
+          <View style={s.firmeBox}>
+            <Text style={{ fontSize: 8, color: "#14532d" }}>{fcoNote}</Text>
+          </View>
+        )}
+
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 10 — SIGNATURES
+           (Agent Signature, Buyer Acceptance)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
+        {/* Agent signature */}
+        <View wrap={false} style={{ marginBottom: 24 }}>
+          <ExecSectionTitle text={L.agent_sig} />
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginTop: 8 }}>
             <View style={{ flex: 1 }}>
               {agentProfile?.signature_b64 ? (
                 <View style={{ marginBottom: 8, height: 60, justifyContent: "flex-end" }}>
@@ -2353,10 +2456,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </View>
         </View>
 
-        {/* Section 11: Buyer acceptance (FCO only) */}
+        <NarrativeSep />
+
+        {/* Buyer acceptance (FCO only) */}
         {isFCO && (
-          <View style={{ marginTop: 20 }}>
-            <SectionTitle text={L.buyer_sig} />
+          <View style={{ marginTop: 12 }}>
+            <ExecSectionTitle text={L.buyer_sig} />
             <View style={s.buyerSigBlock}>
               <Text style={{ fontSize: 8, color: "#6b7280", marginBottom: 3 }}>
                 {L.buyer_accept}
@@ -2377,19 +2482,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 </Text>
               </View>
             </View>
-            <View style={s.firmeBox}>
-              <Text style={{ fontSize: 8, color: "#14532d" }}>{fcoNote}</Text>
-            </View>
           </View>
         )}
 
-        {isSCO && (
-          <View style={s.indicativaBox}>
-            <Text style={{ fontSize: 8, color: "#92400e" }}>{L.sco_note}</Text>
-          </View>
-        )}
-
-        {/* Footer — executive audit footer */}
         <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
       </Page>
     </Document>
