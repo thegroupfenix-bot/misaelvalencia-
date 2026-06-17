@@ -14,6 +14,13 @@ export const WORKFLOW_STATES = Object.freeze({
   DRAFT:               "DRAFT",
   QUOTED:              "QUOTED",
   APPROVED:            "APPROVED",
+  FCO_ACCEPTED:        "FCO_ACCEPTED",
+  SPA_REQUIRED:        "SPA_REQUIRED",
+  SPA_DRAFT:           "SPA_DRAFT",
+  SPA_APPROVED:        "SPA_APPROVED",
+  SPA_SENT_FOR_SIGNATURE: "SPA_SENT_FOR_SIGNATURE",
+  SPA_SIGNED:          "SPA_SIGNED",
+  CONTRACT_ACTIVE:     "CONTRACT_ACTIVE",
   CONTRACTED:          "CONTRACTED",
   PAYMENT_PENDING:     "PAYMENT_PENDING",
   PAYMENT_CONFIRMED:   "PAYMENT_CONFIRMED",
@@ -30,6 +37,13 @@ export const WORKFLOW_STATE_LABELS = Object.freeze({
   DRAFT:               { es: "Borrador",                  en: "Draft" },
   QUOTED:              { es: "Cotizado",                  en: "Quoted" },
   APPROVED:            { es: "Aprobado",                  en: "Approved" },
+  FCO_ACCEPTED:        { es: "FCO Aceptada",              en: "FCO Accepted" },
+  SPA_REQUIRED:        { es: "SPA Requerido",             en: "SPA Required" },
+  SPA_DRAFT:           { es: "Borrador SPA",              en: "SPA Draft" },
+  SPA_APPROVED:        { es: "SPA Aprobado",              en: "SPA Approved" },
+  SPA_SENT_FOR_SIGNATURE: { es: "SPA Enviado a Firma",   en: "SPA Sent for Signature" },
+  SPA_SIGNED:          { es: "SPA Firmado",               en: "SPA Signed" },
+  CONTRACT_ACTIVE:     { es: "Contrato Activo",           en: "Contract Active" },
   CONTRACTED:          { es: "Contratado",                en: "Contracted" },
   PAYMENT_PENDING:     { es: "Pago Pendiente",            en: "Payment Pending" },
   PAYMENT_CONFIRMED:   { es: "Pago Confirmado",           en: "Payment Confirmed" },
@@ -48,9 +62,16 @@ export const WORKFLOW_STATE_LABELS = Object.freeze({
 export const WORKFLOW_TRANSITIONS = Object.freeze({
   DRAFT:               ["QUOTED"],
   QUOTED:              ["APPROVED", "DRAFT"],
-  APPROVED:            ["CONTRACTED", "QUOTED"],
+  APPROVED:            ["FCO_ACCEPTED", "CONTRACTED", "QUOTED"],
+  FCO_ACCEPTED:        ["SPA_REQUIRED", "CONTRACTED"],
+  SPA_REQUIRED:        ["SPA_DRAFT", "FCO_ACCEPTED"],
+  SPA_DRAFT:           ["SPA_APPROVED", "SPA_REQUIRED"],
+  SPA_APPROVED:        ["SPA_SENT_FOR_SIGNATURE", "SPA_DRAFT"],
+  SPA_SENT_FOR_SIGNATURE: ["SPA_SIGNED", "SPA_APPROVED"],
+  SPA_SIGNED:          ["CONTRACT_ACTIVE"],
+  CONTRACT_ACTIVE:     ["PAYMENT_PENDING"],
   CONTRACTED:          ["PAYMENT_PENDING", "APPROVED"],
-  PAYMENT_PENDING:     ["PAYMENT_CONFIRMED", "CONTRACTED"],
+  PAYMENT_PENDING:     ["PAYMENT_CONFIRMED", "CONTRACTED", "CONTRACT_ACTIVE"],
   PAYMENT_CONFIRMED:   ["PRODUCTION"],
   PRODUCTION:          ["INSPECTION", "PAYMENT_PENDING"],
   INSPECTION:          ["READY_FOR_LOADING", "PRODUCTION"],
@@ -169,4 +190,54 @@ export function getWorkflowTimeline(operation = {}, lang = "es") {
 
 export function getStateLabel(state, lang = "es") {
   return (WORKFLOW_STATE_LABELS[state] || {})[lang] || state;
+}
+
+// ─── SPA Workflow Foundation (Sprint 2 Phase 3) ─────────────────────────────
+
+export const SPA_WORKFLOW_STATES = Object.freeze([
+  "FCO_ACCEPTED",
+  "SPA_REQUIRED",
+  "SPA_DRAFT",
+  "SPA_APPROVED",
+  "SPA_SENT_FOR_SIGNATURE",
+  "SPA_SIGNED",
+  "CONTRACT_ACTIVE",
+]);
+
+export function isSpaWorkflowState(state) {
+  return SPA_WORKFLOW_STATES.includes(state);
+}
+
+export function getSpaWorkflowProgress(state) {
+  const idx = SPA_WORKFLOW_STATES.indexOf(state);
+  if (idx === -1) return null;
+  return {
+    currentStep: idx + 1,
+    totalSteps: SPA_WORKFLOW_STATES.length,
+    percent: Math.round(((idx + 1) / SPA_WORKFLOW_STATES.length) * 100),
+    isComplete: state === "CONTRACT_ACTIVE",
+    label: (WORKFLOW_STATE_LABELS[state] || {}),
+  };
+}
+
+// ─── Legal Task Automation Design ───────────────────────────────────────────
+// When an operation transitions to FCO_ACCEPTED, the system should create
+// a LEGAL_REVIEW task assigned to the Legal Department. This function returns
+// the task specification — the caller (transition executor or event handler)
+// is responsible for persisting it via the task creation API.
+
+export function buildLegalReviewTask(operation, actorId = null) {
+  if (!operation || operation.workflowState !== "FCO_ACCEPTED") return null;
+  return Object.freeze({
+    taskType:      "LEGAL_REVIEW",
+    category:      "COMPLIANCE",
+    title:         `SPA Contract Preparation — ${operation.operationId || "Unknown"}`,
+    description:   `FCO accepted for operation ${operation.operationId}. Legal department must review commercial terms and prepare SPA contract draft.`,
+    priority:      "HIGH",
+    assignedRole:  "LEGAL",
+    operationId:   operation.operationId || null,
+    triggeredBy:   actorId,
+    triggeredAt:   new Date().toISOString(),
+    autoCreated:   true,
+  });
 }
