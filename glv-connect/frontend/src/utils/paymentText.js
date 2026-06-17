@@ -1,5 +1,6 @@
 export function generatePaymentText({
   productCategory,
+  category,
   paymentOption,
   blocks,
   docTrigger,
@@ -8,9 +9,7 @@ export function generatePaymentText({
   guaranteeType,
   bankName,
 }) {
-  const livestock = ["LIVE_ANIMALS", "Ovino", "Bovino", "animal", "vivo"].some(
-    k => productCategory?.toLowerCase().includes(k.toLowerCase())
-  );
+  const livestock = (category || "").toUpperCase() === "LIVE_ANIMALS";
   const fmt = (v) =>
     `${currency} ${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 

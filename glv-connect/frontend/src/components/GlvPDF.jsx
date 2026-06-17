@@ -21,6 +21,10 @@ import {
   buildCoverPageData, buildTimelineData,
   getTrustBadges, getCategoryVisualMode, buildFooterData,
 } from "../core/pdf/ExecutivePdfIntegrationBridge.js";
+import {
+  getProductDescription, getProductCertifications,
+  getProductTimeline, getProductComplianceBadges,
+} from "../core/product/ProductIntelligenceRegistry.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
 // Wraps any field extraction in a try/catch with a typed fallback.
@@ -868,11 +872,9 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     };
   })();
 
-  const productCategory = doc.product || "";
-  const pdfTextKey = firstCdRow?.category
-    ? getPDFTextKey(firstCdRow.category)
-    : isLivestock(productCategory) ? "livestock"
-    : isGrain(productCategory) ? "grain"
+  const productCategory = firstCdRow?.category || "";
+  const pdfTextKey = productCategory
+    ? getPDFTextKey(productCategory)
     : "food";
 
   const paymentOption = doc.paymentOption || doc.payment_option || doc.paymentMethod || "SBLC";
@@ -883,6 +885,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   const paymentText = generatePaymentText({
     productCategory,
+    category: firstCdRow?.category || "",
     paymentOption,
     docTrigger,
     totalValue,
@@ -891,17 +894,17 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
     bankName,
   });
 
-  // Executive product description — mode-aware, never generic template text
+  // Executive product description — product-first resolution chain
   const productDesc = (doc.product === "Otro" || doc.custom_product_name)
-    ? (doc.custom_product_desc || doc.customProductDesc || getModeProductDescription(docMode, firstCdRow, doc, docLang))
-    : getModeProductDescription(docMode, firstCdRow, doc, docLang);
+    ? (doc.custom_product_desc || doc.customProductDesc || getProductDescription(productCode, docMode, firstCdRow, doc, docLang))
+    : getProductDescription(productCode, docMode, firstCdRow, doc, docLang);
 
   const exporter = doc.exporter || "GLV Global Food Services LLC (Miami, FL)";
   const domain = doc.domain || "glvglobalfoodservices.com";
 
-  const certifications = getModeCertifications(docMode, docLang);
+  const certifications = getProductCertifications(productCode, docMode, docLang);
 
-  const timeline      = getModeTimeline(docMode, docLang);
+  const timeline      = getProductTimeline(productCode, docMode, docLang);
   const mandatoryInfo = getModeMandatoryInfo(docMode, docLang);
 
   const tcText = docLang === "en"
@@ -1316,21 +1319,25 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         <ExecSectionTitle text={docLang === "en" ? "GLOBAL COMPLIANCE" : "CUMPLIMIENTO GLOBAL"} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           {(() => {
-            const complianceBadges = docLang === "en" ? [
-              { l: "VETERINARY COMPLIANCE", a: "#7c3aed" },
-              { l: "HALAL CERTIFIED",       a: "#059669" },
-              { l: "GACC APPROVED",         a: "#b45309" },
+            const productBadges = getProductComplianceBadges(productCode, docLang);
+            if (productBadges) {
+              const badges = productBadges.map(b => ({ l: b.label, a: b.color }));
+              if (isChina) badges.push({ l: "GACC CHINA", a: "#dc2626" });
+              return badges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
+            }
+            const fallbackBadges = docLang === "en" ? [
               { l: "SGS INSPECTION",        a: "#1e40af" },
+              { l: "ORIGIN CERTIFIED",      a: "#059669" },
               { l: "ISO STANDARDS",         a: "#0e7490" },
+              { l: "QUALITY VERIFIED",      a: "#7c3aed" },
             ] : [
-              { l: "CUMPLIMIENTO VETERINARIO", a: "#7c3aed" },
-              { l: "CERTIFICACIÓN HALAL",       a: "#059669" },
-              { l: "APROBACIÓN GACC",           a: "#b45309" },
-              { l: "INSPECCIÓN SGS",            a: "#1e40af" },
-              { l: "NORMAS ISO",                a: "#0e7490" },
+              { l: "INSPECCIÓN SGS",        a: "#1e40af" },
+              { l: "ORIGEN CERTIFICADO",    a: "#059669" },
+              { l: "NORMAS ISO",            a: "#0e7490" },
+              { l: "CALIDAD VERIFICADA",    a: "#7c3aed" },
             ];
-            if (isChina) complianceBadges.push({ l: "GACC CHINA", a: "#dc2626" });
-            return complianceBadges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
+            if (isChina) fallbackBadges.push({ l: "GACC CHINA", a: "#dc2626" });
+            return fallbackBadges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
           })()}
         </View>
         <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: "#059669", borderRadius: 2, padding: "8 12" }}>
