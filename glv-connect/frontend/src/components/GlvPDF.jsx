@@ -1182,7 +1182,169 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
       </Page>
 
-      {/* PAGE 3 — COMMERCIAL DETAIL (Parties, Product, Pricing, Certs, Payment, Timeline) */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 3 — EXECUTIVE COMMERCIAL ENHANCEMENT
+           (Sprint 2 Phase 2: Why This Program, Global Network, Operational
+            Advantages, Supply Capacity, Global Compliance)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        {/* Continuation context bar */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
+        {/* ── WHY THIS PROGRAM ──────────────────────────────────────────────── */}
+        <ExecSectionTitle text={docLang === "en" ? "WHY THIS PROGRAM" : "POR QUÉ ESTE PROGRAMA"} />
+        <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD, padding: "12 16", borderRadius: 2, marginBottom: 16 }}>
+          <Text style={{ fontSize: 9, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 8 }}>
+            {productProgramName}
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {(docLang === "en" ? [
+              { t: "Supply Security",       d: "Guaranteed product availability through diversified multi-origin sourcing across Latin America." },
+              { t: "Scalable Volume",        d: "From container programs to strategic multi-vessel operations, adapted to buyer demand." },
+              { t: "Full Compliance",        d: "All regulatory, veterinary, sanitary, and customs requirements managed end-to-end." },
+              { t: "Logistics Coordination", d: "Integrated inland transport, port operations, vessel booking, and cold chain management." },
+              { t: "Intl. Supervision",      d: "SGS, Bureau Veritas, and third-party inspection coordination at origin and destination." },
+            ] : [
+              { t: "Seguridad de Suministro", d: "Disponibilidad garantizada mediante sourcing diversificado multi-origen en Latinoamérica." },
+              { t: "Volumen Escalable",        d: "Desde programas por contenedor hasta operaciones multi-buque, adaptados a la demanda." },
+              { t: "Cumplimiento Total",       d: "Todos los requisitos regulatorios, veterinarios, sanitarios y aduaneros gestionados integralmente." },
+              { t: "Coord. Logística",         d: "Transporte interno, operaciones portuarias, reserva de buque y gestión de cadena de frío." },
+              { t: "Supervisión Intl.",        d: "Coordinación SGS, Bureau Veritas e inspecciones de terceros en origen y destino." },
+            ]).map((item, i) => (
+              <View key={i} style={{ width: "48%", marginBottom: 4 }}>
+                <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 2 }}>{item.t}</Text>
+                <Text style={{ fontSize: 7, color: "#64748B", lineHeight: 1.45 }}>{item.d}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <NarrativeSep />
+
+        {/* ── GLV GLOBAL NETWORK ────────────────────────────────────────────── */}
+        <ExecSectionTitle text={docLang === "en" ? "GLV GLOBAL NETWORK" : "RED GLOBAL GLV"} />
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+          {(docLang === "en" ? [
+            { t: "Export Countries",   v: "Brazil  ·  Colombia  ·  Argentina  ·  Paraguay  ·  Uruguay" },
+            { t: "Export Hubs",         v: "Santos  ·  Paranaguá  ·  Buenaventura  ·  Buenos Aires  ·  Montevideo" },
+            { t: "Supplier Network",    v: "200+ certified producers and processors across Latin America" },
+            { t: "Intl. Reach",         v: "Middle East  ·  North Africa  ·  Asia  ·  Europe  ·  40+ destination countries" },
+          ] : [
+            { t: "Países de Exportación", v: "Brasil  ·  Colombia  ·  Argentina  ·  Paraguay  ·  Uruguay" },
+            { t: "Hubs de Exportación",    v: "Santos  ·  Paranaguá  ·  Buenaventura  ·  Buenos Aires  ·  Montevideo" },
+            { t: "Red de Proveedores",     v: "200+ productores y procesadores certificados en Latinoamérica" },
+            { t: "Alcance Intl.",          v: "Medio Oriente  ·  Norte de África  ·  Asia  ·  Europa  ·  40+ países destino" },
+          ]).map((item, i) => (
+            <View key={i} style={{ flex: 1, backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E2E8F0", borderTopWidth: 2, borderTopColor: i === 0 ? EXECUTIVE_COLORS.PRIMARY_DARK : EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, padding: "8 10" }}>
+              <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 4 }}>{item.t}</Text>
+              <Text style={{ fontSize: 7.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold", lineHeight: 1.45 }}>{item.v}</Text>
+            </View>
+          ))}
+        </View>
+
+        <NarrativeSep />
+
+        {/* ── OPERATIONAL ADVANTAGES ─────────────────────────────────────────── */}
+        <ExecSectionTitle text={docLang === "en" ? "OPERATIONAL ADVANTAGES" : "VENTAJAS OPERATIVAS"} />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          {(docLang === "en" ? [
+            { t: "Direct Sourcing",      d: "First-hand relationships with certified producers — no intermediaries, competitive pricing." },
+            { t: "Quality Control",       d: "Multi-point quality verification: origin farm, processing, pre-shipment, and arrival." },
+            { t: "Inspection Coord.",     d: "SGS, Bureau Veritas, and government authority inspection management." },
+            { t: "Documentation Mgmt",   d: "Export permits, certificates, customs declarations, and trade finance documents." },
+            { t: "Trade Support",         d: "Incoterms advisory, LC/SBLC structuring, and SPA contract management." },
+          ] : [
+            { t: "Sourcing Directo",      d: "Relación directa con productores certificados — sin intermediarios, precios competitivos." },
+            { t: "Control de Calidad",    d: "Verificación multi-punto: finca de origen, procesamiento, pre-embarque y llegada." },
+            { t: "Coord. Inspección",     d: "Gestión de inspecciones SGS, Bureau Veritas y autoridades gubernamentales." },
+            { t: "Gestión Documental",    d: "Permisos de exportación, certificados, declaraciones aduaneras y documentos financieros." },
+            { t: "Soporte Comercial",     d: "Asesoría Incoterms, estructuración LC/SBLC y gestión de contratos SPA." },
+          ]).map((item, i) => (
+            <CapabilityCard key={i} title={item.t} desc={item.d} />
+          ))}
+        </View>
+
+        <NarrativeSep />
+
+        {/* ── SUPPLY CAPACITY ───────────────────────────────────────────────── */}
+        <ExecSectionTitle text={docLang === "en" ? "SUPPLY CAPACITY" : "CAPACIDAD DE SUMINISTRO"} />
+        <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2, padding: "12 16", marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 3 }}>
+                {docLang === "en" ? "AVAILABLE VOLUME" : "VOLUMEN DISPONIBLE"}
+              </Text>
+              <Text style={{ fontSize: 10, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
+                {isLiveAnimalRow
+                  ? (docLang === "en" ? "Up to 120,000 heads/year" : "Hasta 120.000 cabezas/año")
+                  : isOilsRow
+                    ? (docLang === "en" ? "Up to 50,000 MT/year" : "Hasta 50.000 TM/año")
+                    : isGrainRow
+                      ? (docLang === "en" ? "Up to 500,000 MT/year" : "Hasta 500.000 TM/año")
+                      : (docLang === "en" ? "Scalable per demand" : "Escalable según demanda")}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 3 }}>
+                {docLang === "en" ? "PROGRAM SCALABILITY" : "ESCALABILIDAD"}
+              </Text>
+              <Text style={{ fontSize: 10, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
+                {scaleLabel || (docLang === "en" ? "Container to Strategic" : "Contenedor a Estratégico")}
+              </Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 3 }}>
+                {docLang === "en" ? "OPERATIONAL READINESS" : "DISPONIBILIDAD OPERATIVA"}
+              </Text>
+              <Text style={{ fontSize: 10, color: "#059669", fontWeight: "bold" }}>
+                {docLang === "en" ? "Active" : "Activo"}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <NarrativeSep />
+
+        {/* ── GLOBAL COMPLIANCE ──────────────────────────────────────────────── */}
+        <ExecSectionTitle text={docLang === "en" ? "GLOBAL COMPLIANCE" : "CUMPLIMIENTO GLOBAL"} />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+          {(() => {
+            const complianceBadges = docLang === "en" ? [
+              { l: "VETERINARY COMPLIANCE", a: "#7c3aed" },
+              { l: "HALAL CERTIFIED",       a: "#059669" },
+              { l: "GACC APPROVED",         a: "#b45309" },
+              { l: "SGS INSPECTION",        a: "#1e40af" },
+              { l: "ISO STANDARDS",         a: "#0e7490" },
+            ] : [
+              { l: "CUMPLIMIENTO VETERINARIO", a: "#7c3aed" },
+              { l: "CERTIFICACIÓN HALAL",       a: "#059669" },
+              { l: "APROBACIÓN GACC",           a: "#b45309" },
+              { l: "INSPECCIÓN SGS",            a: "#1e40af" },
+              { l: "NORMAS ISO",                a: "#0e7490" },
+            ];
+            if (isChina) complianceBadges.push({ l: "GACC CHINA", a: "#dc2626" });
+            return complianceBadges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
+          })()}
+        </View>
+        <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: "#059669", borderRadius: 2, padding: "8 12" }}>
+          <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.6 }}>
+            {docLang === "en"
+              ? "GLV Global Holding maintains active compliance programs across all export corridors. All products are sourced from certified facilities, inspected by accredited third parties, and documented to meet destination country import requirements. Country-specific regulatory requirements are managed on a per-operation basis."
+              : "GLV Global Holding mantiene programas de cumplimiento activos en todos los corredores de exportación. Todos los productos provienen de instalaciones certificadas, inspeccionados por terceros acreditados y documentados para cumplir con los requisitos de importación del país destino. Los requisitos regulatorios específicos por país se gestionan por operación."}
+          </Text>
+        </View>
+
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
+
+      {/* PAGE 4 — COMMERCIAL DETAIL (Parties, Product, Pricing, Certs, Payment, Timeline) */}
       <Page size="A4" style={s.page}>
 
         {/* Continuation context bar */}
