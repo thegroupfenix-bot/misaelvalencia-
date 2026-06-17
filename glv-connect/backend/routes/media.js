@@ -419,22 +419,54 @@ router.get("/products-report", requireMediaAccess, (req, res) => {
     const withoutProfile = [];
     const usingFallback = [];
     const fullyMigrated = [];
+    // Phase 3D — administrative report: Product / Media Status / Profile Count / Fallback Used
+    const report = [];
 
     for (const p of products) {
       const profile = profileMap.get(p.product_code);
+
       if (!profile || !profile.main_asset_id) {
         withoutProfile.push(p);
+        report.push({
+          product: p.product_code,
+          category: p.category,
+          mediaStatus: "NO_MEDIA",
+          profileCount: 0,
+          fallbackUsed: true,
+        });
         continue;
       }
+
       const asset = db.prepare("SELECT id, status, archived FROM media_assets WHERE id = ?").get(profile.main_asset_id);
       if (!asset || asset.status !== "active" || asset.archived) {
         usingFallback.push({ ...p, reason: "main_asset_id references a missing/inactive/archived asset" });
+        report.push({
+          product: p.product_code,
+          category: p.category,
+          mediaStatus: "FALLBACK_ONLY",
+          profileCount: 0,
+          fallbackUsed: true,
+        });
         continue;
       }
+
+      let secondaryIds = [];
+      try { secondaryIds = JSON.parse(profile.secondary_asset_ids || "[]"); } catch (_) { secondaryIds = []; }
+      const profileCount = 1 + secondaryIds.length + (profile.branding_asset_id ? 1 : 0);
+      const mediaStatus = secondaryIds.length > 0 && profile.branding_asset_id ? "FULLY_CONFIGURED" : "PARTIAL";
+
       fullyMigrated.push(p);
+      report.push({
+        product: p.product_code,
+        category: p.category,
+        mediaStatus,
+        profileCount,
+        fallbackUsed: false,
+      });
     }
 
     res.json({
+      report,
       withoutProfile,
       usingFallback,
       fullyMigrated,
