@@ -354,6 +354,51 @@ function GoldRule() {
   return <View style={execS.goldRule} />;
 }
 
+// ─── Phase 1: Executive Cover Page helpers ───────────────────────────────────
+function CoverInfoRow({ label, value }) {
+  if (!value) return null;
+  return (
+    <View style={{ flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.07)", paddingVertical: 5 }}>
+      <Text style={{ width: "38%", fontSize: 6.5, color: "rgba(255,255,255,0.45)", letterSpacing: 0.6, textTransform: "uppercase" }}>{label}</Text>
+      <Text style={{ flex: 1, fontSize: 8.5, color: "#FFFFFF", fontWeight: "bold" }}>{value}</Text>
+    </View>
+  );
+}
+
+// ─── Phase 3 (GLV Capability): card for the "Why GLV" section ────────────────
+function CapabilityCard({ title, desc }) {
+  return (
+    <View style={{ width: "31%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E2E8F0", borderTopWidth: 2, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, padding: "8 10" }}>
+      <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.5, marginBottom: 4, textTransform: "uppercase" }}>{title}</Text>
+      <Text style={{ fontSize: 7, color: "#475569", lineHeight: 1.5 }}>{desc}</Text>
+    </View>
+  );
+}
+
+// ─── Phase 6: Certification badge ────────────────────────────────────────────
+function CertBadge({ label, accent }) {
+  return (
+    <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderWidth: 0.5, borderColor: accent || "#059669", borderRadius: 2, backgroundColor: "rgba(5,150,105,0.04)", marginRight: 6, marginBottom: 6 }}>
+      <Text style={{ fontSize: 6.5, fontWeight: "bold", color: accent || "#059669", letterSpacing: 0.8, textTransform: "uppercase" }}>{label}</Text>
+    </View>
+  );
+}
+
+// ─── Phase 7: Payment structure card ─────────────────────────────────────────
+function PaymentCard({ step, title, desc, accent }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E2E8F0", borderTopWidth: 2, borderTopColor: accent || EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "10 12" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+        <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: accent || EXECUTIVE_COLORS.PRIMARY_DARK, justifyContent: "center", alignItems: "center", marginRight: 8 }}>
+          <Text style={{ fontSize: 8, color: "#FFFFFF", fontWeight: "bold" }}>{step}</Text>
+        </View>
+        <Text style={{ fontSize: 8, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 0.3 }}>{title}</Text>
+      </View>
+      <Text style={{ fontSize: 7.5, color: "#475569", lineHeight: 1.5 }}>{desc}</Text>
+    </View>
+  );
+}
+
 // Phase 3D — optional step/total badge gives each major reading zone (Parties,
 // Product, Pricing, Certifications, Payment, Timeline) an explicit position in
 // the document's structure, reinforcing executive hierarchy without touching
@@ -889,17 +934,35 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   return (
     <Document>
-      {/* PAGE 1 — EXECUTIVE COVER */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 1 — EXECUTIVE COVER PAGE (Phase 1 Transformation)
+           Premium first impression: International Supply Program, not ERP report
+         ═══════════════════════════════════════════════════════════════════════ */}
       <Page size="A4" style={s.coverPage}>
-        <View style={[s.coverBg, { backgroundColor: coverBg, paddingTop: 32, paddingBottom: 28, paddingHorizontal: 40 }]}>
+        <View style={[s.coverBg, { backgroundColor: coverBg, paddingTop: 28, paddingBottom: 22, paddingHorizontal: 40 }]}>
 
-          {/* Zone 1 — Corporate Identity Bar */}
-          <ExecIdentityBar lang={docLang} tag={catAtmosphere.tag} />
+          {/* Zone 1 — GLV Logo + Corporate Identity */}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+            <View>
+              <View style={s.coverLogo}>
+                <Text style={s.coverLogoTxt}>G</Text>
+              </View>
+              <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "bold", letterSpacing: 2.5, marginBottom: 3 }}>GLV GLOBAL</Text>
+              <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 7, letterSpacing: 1.2 }}>GLV Holding Group  ·  International Trade & Supply</Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 0.8, marginBottom: 2 }}>{catAtmosphere.tag}</Text>
+              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.28)", letterSpacing: 0.5 }}>{docLang === "en" ? "EN" : "ES"}</Text>
+            </View>
+          </View>
+
           <GoldRule />
 
-          {/* Zone 2 — Document title + reference */}
-          <View style={{ marginBottom: 6 }}>
-            {/* Document type title */}
+          {/* Zone 2 — Program Name + Document Type */}
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 7, color: EXECUTIVE_COLORS.ACCENT_GOLD, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
+              {docLang === "en" ? "INTERNATIONAL SUPPLY PROGRAM" : "PROGRAMA INTERNACIONAL DE SUMINISTRO"}
+            </Text>
             <Text style={{ color: "#FFFFFF", fontSize: 26, fontWeight: "bold", letterSpacing: 0.8, lineHeight: 1.2, marginBottom: 5 }}>
               {isSCO
                 ? (docLang === "en" ? "Soft Corporate Offer" : "Oferta Corporativa Blanda")
@@ -907,11 +970,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   ? (docLang === "en" ? "Full Corporate Offer" : "Oferta Corporativa Completa")
                   : (docLang === "en" ? "International Supply Agreement" : "Contrato Internacional de Suministro")}
             </Text>
+            <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", fontWeight: "bold", marginBottom: 4 }}>
+              {productProgramName}
+            </Text>
 
-            {/* Reference + metadata — single quiet line, no competing badge boxes */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            {/* Reference + status */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 }}>
               <Text style={{ fontSize: 9.5, color: EXECUTIVE_COLORS.ACCENT_GOLD, fontWeight: "bold", letterSpacing: 0.5 }}>{doc.id}</Text>
-              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", letterSpacing: 0.3 }}>·</Text>
+              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.3)" }}>·</Text>
               {(isSCO || isFCO) && (
                 <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", fontWeight: "bold", letterSpacing: 0.8, textTransform: "uppercase" }}>
                   {isSCO ? L.indicative : L.firm}
@@ -926,48 +992,12 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                   </>
                 ) : null;
               })()}
-              <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.28)", letterSpacing: 0.5 }}>{docLang === "en" ? "EN" : "ES"}</Text>
             </View>
-
-            {/* Scale / trade program — quiet institutional context line */}
-            {scaleLabel && scaleTier !== "MICRO" && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Text style={{ fontSize: 6.5, color: "rgba(201,168,76,0.60)", letterSpacing: 0.8, textTransform: "uppercase" }}>
-                  {scaleLabel}
-                </Text>
-                {tradeProgram === "BULK_VESSEL" && (
-                  <>
-                    <Text style={{ fontSize: 6, color: "rgba(255,255,255,0.2)" }}>·</Text>
-                    <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.38)", letterSpacing: 0.5 }}>
-                      {docLang === "en" ? "Bulk Vessel" : "Buque Granel"}
-                      {vesselClass ? `  (${vesselClass})` : ""}
-                    </Text>
-                  </>
-                )}
-                {tradeProgram === "CONTAINER" && (scaleTier === "PROGRAM" || scaleTier === "STRATEGIC" || scaleTier === "MEGA") && (
-                  <>
-                    <Text style={{ fontSize: 6, color: "rgba(255,255,255,0.2)" }}>·</Text>
-                    <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.38)", letterSpacing: 0.5 }}>
-                      {docLang === "en" ? "Container Program" : "Programa Contenedor"}
-                    </Text>
-                  </>
-                )}
-              </View>
-            )}
-
-            {/* Client + date */}
-            <Text style={{ fontSize: 9.5, color: "rgba(255,255,255,0.8)", marginBottom: 2 }}>
-              {docLang === "en" ? "Prepared for:" : "Elaborado para:"}{" "}
-              <Text style={{ fontWeight: "bold", color: "#FFFFFF" }}>{doc.client}</Text>
-            </Text>
-            <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>
-              {docLang === "en" ? "Date:" : "Fecha:"} {doc.date}{"  "}·{"  "}{exporter}
-            </Text>
           </View>
 
-          {/* Zone 3 — Hero product image (category-isolated, max 1) */}
+          {/* Zone 3 — Executive Hero Image */}
           {boundMedia?.main && (
-            <View style={{ marginVertical: 12, marginHorizontal: 0 }}>
+            <View style={{ marginVertical: 10, marginHorizontal: 0 }}>
               <Image
                 src={boundMedia.main}
                 style={{ width: "100%", height: catAtmosphere.heroHeight, objectFit: "cover", opacity: catAtmosphere.heroOpacity }}
@@ -976,25 +1006,23 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </View>
           )}
 
-          {/* Zone 4 — Executive Operation Summary Table */}
-          <ExecOperationSummaryTable
-            product={doc.custom_product_name || doc.customProductName || productShortName || doc.product}
-            origin={doc.origin || "Brazil"}
-            destination={doc.destination}
-            incoterm={cdInc}
-            totalValue={totalValue}
-            currency={resolvedCurrency}
-            validityDays={validityDays}
-            date={doc.date}
-            containerType={containerType ? (CONTAINER_LABELS[containerType] || containerType) : null}
-            lang={docLang}
-            rowOrder={catAtmosphere.summaryOrder}
-            programLabel={programLabel}
-          />
+          {/* Zone 4 — Premium Operation Brief: key commercial parameters at a glance */}
+          <View style={{ marginTop: 8, marginBottom: 8 }}>
+            <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.32)", letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 8, paddingBottom: 5, borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.09)" }}>
+              {programLabel || (docLang === "en" ? "OPERATION BRIEF" : "RESUMEN DE OPERACIÓN")}
+            </Text>
+            <CoverInfoRow label={docLang === "en" ? "PRODUCT" : "PRODUCTO"} value={doc.custom_product_name || doc.customProductName || productShortName || doc.product} />
+            <CoverInfoRow label={docLang === "en" ? "ORIGIN" : "ORIGEN"} value={doc.origin || "Brazil"} />
+            <CoverInfoRow label={docLang === "en" ? "DESTINATION" : "DESTINO"} value={doc.destination} />
+            <CoverInfoRow label="INCOTERM" value={cdInc} />
+            {containerType && <CoverInfoRow label={docLang === "en" ? "CONTAINER" : "CONTENEDOR"} value={CONTAINER_LABELS[containerType] || containerType} />}
+            <CoverInfoRow label={docLang === "en" ? "ISSUE DATE" : "FECHA EMISIÓN"} value={doc.date} />
+            <CoverInfoRow label={docLang === "en" ? "VALIDITY" : "VALIDEZ"} value={`${validityDays} ${docLang === "en" ? "days" : "días"}`} />
+          </View>
 
-          {/* Financial Dominance Zone — stops the eye, communicates transaction scale */}
+          {/* Zone 5 — Contract Value Hero */}
           {totalValue > 0 && (
-            <View style={{ marginTop: 14, marginBottom: 14, paddingVertical: 14, paddingHorizontal: 18, backgroundColor: "rgba(0,0,0,0.24)", borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.07)", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.07)" }}>
+            <View style={{ marginTop: 6, marginBottom: 10, paddingVertical: 14, paddingHorizontal: 18, backgroundColor: "rgba(0,0,0,0.28)", borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.07)", borderBottomWidth: 0.5, borderBottomColor: "rgba(255,255,255,0.07)" }}>
               <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.35)", letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 7 }}>
                 {docLang === "en" ? "ESTIMATED CONTRACT VALUE" : "VALOR ESTIMADO DEL CONTRATO"}
               </Text>
@@ -1005,34 +1033,159 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </View>
           )}
 
-          {/* Zone 5 — Enterprise Trust Indicators — quiet footer of cover */}
+          {/* Zone 6 — Trust Badges + Scale Program */}
+          {scaleLabel && scaleTier !== "MICRO" && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Text style={{ fontSize: 6.5, color: "rgba(201,168,76,0.60)", letterSpacing: 0.8, textTransform: "uppercase" }}>{scaleLabel}</Text>
+              {tradeProgram === "BULK_VESSEL" && (
+                <>
+                  <Text style={{ fontSize: 6, color: "rgba(255,255,255,0.2)" }}>·</Text>
+                  <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.38)", letterSpacing: 0.5 }}>
+                    {docLang === "en" ? "Bulk Vessel" : "Buque Granel"}{vesselClass ? `  (${vesselClass})` : ""}
+                  </Text>
+                </>
+              )}
+            </View>
+          )}
           <ExecTrustRow lang={docLang} />
 
-          {/* Legal note — quiet, supporting, not competing with financial zone */}
+          {/* Legal note */}
           {isSCO && (
-            <View style={{ marginTop: 12, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(201,168,76,0.3)" }}>
+            <View style={{ marginTop: 10, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(201,168,76,0.3)" }}>
               <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.55 }}>{L.sco_note}</Text>
             </View>
           )}
           {isFCO && (
-            <View style={{ marginTop: 12, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(5,150,105,0.4)" }}>
+            <View style={{ marginTop: 10, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: "rgba(5,150,105,0.4)" }}>
               <Text style={{ fontSize: 6.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.55 }}>{fcoNote}</Text>
             </View>
           )}
 
-          {/* Footer line */}
+          {/* Cover footer */}
           <View style={{ marginTop: "auto", paddingTop: 10, borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.12)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>{domain}</Text>
+            <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>{docLang === "en" ? "Prepared for:" : "Elaborado para:"} {doc.client}</Text>
             <Text style={{ fontSize: 7, color: "rgba(255,255,255,0.35)" }}>GLV Holding Group © 2026</Text>
           </View>
-
         </View>
       </Page>
 
-      {/* PAGE 2 — MAIN CONTENT */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+           PAGE 2 — EXECUTIVE SUMMARY + PROGRAM OVERVIEW + GLV CAPABILITY
+           (Phases 2, 3, 4: summary cards, why GLV block, program narrative)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.page}>
+        {/* Continuation context bar */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
+          <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            {catAtmosphere.tag}{"  ·  "}{doc.id}
+          </Text>
+          <Text style={{ fontSize: 6.5, color: "#CBD5E1", letterSpacing: 0.3 }}>
+            {doc.client}{"  ·  "}{doc.date}
+          </Text>
+        </View>
+
+        {/* ── PHASE 2: EXECUTIVE SUMMARY ─────────────────────────────────────── */}
+        <View style={{ marginBottom: 20 }}>
+          <ExecSectionTitle text={docLang === "en" ? "EXECUTIVE SUMMARY" : "RESUMEN EJECUTIVO"} />
+
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            <BiInfoBox style={{ width: "48%" }} esLabel={docLang === "en" ? "Product" : "Producto"} value={doc.custom_product_name || doc.customProductName || productShortName || doc.product} />
+            <BiInfoBox style={{ width: "48%" }} esLabel={docLang === "en" ? "Origin" : "Origen"} value={doc.origin || "Brazil"} />
+            <BiInfoBox style={{ width: "48%" }} esLabel={docLang === "en" ? "Destination" : "Destino"} value={doc.destination} />
+            <BiInfoBox style={{ width: "48%" }} esLabel={docLang === "en" ? "Volume" : "Volumen"} value={
+              isLiveAnimalRow
+                ? `${new Intl.NumberFormat().format(engineHeads)} ${docLang === "en" ? "heads" : "cabezas"}`
+                : engineQty > 0 ? `${new Intl.NumberFormat().format(engineQty)} ${engineUnitType.split("/")[0].trim() || "units"}` : "—"
+            } />
+            <BiInfoBox style={{ width: "48%" }} highlight esLabel={docLang === "en" ? "Contract Value" : "Valor del Contrato"} value={totalValue ? fmtCurrency(totalValue) : "—"} />
+            <BiInfoBox style={{ width: "48%" }} esLabel="Incoterm" value={cdInc} />
+            {portInfo?.transit && (
+              <BiInfoBox style={{ width: "48%" }} esLabel={docLang === "en" ? "Estimated Transit" : "Tránsito Estimado"} value={`${portInfo.transit} ${docLang === "en" ? "days" : "días"}`} />
+            )}
+            <BiInfoBox style={{ width: "48%" }} esLabel={docLang === "en" ? "Validity" : "Validez"} value={`${validityDays} ${docLang === "en" ? "days" : "días"}`} />
+          </View>
+
+          {certifications && (
+            <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: "#059669", borderRadius: 2, padding: "8 12" }}>
+              <Text style={{ fontSize: 6.5, color: "#64748B", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+                {docLang === "en" ? "CERTIFICATIONS" : "CERTIFICACIONES"}
+              </Text>
+              <Text style={{ fontSize: 8, color: "#059669", fontWeight: "bold", lineHeight: 1.5 }}>{certifications.split("\n").slice(0, 3).join("  ·  ").replace(/^[•\-–]\s*/gm, "")}</Text>
+            </View>
+          )}
+        </View>
+
+        <NarrativeSep />
+
+        {/* ── PHASE 4: PROGRAM OVERVIEW ──────────────────────────────────────── */}
+        <View style={{ marginBottom: 18 }}>
+          <ExecSectionTitle text={docLang === "en" ? "PROGRAM OVERVIEW" : "DESCRIPCIÓN DEL PROGRAMA"} />
+          <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "12 16", borderRadius: 2 }}>
+            <Text style={{ fontSize: 10, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 6 }}>
+              {productProgramName}
+            </Text>
+            <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.65 }}>
+              {productDesc}
+            </Text>
+            {(doc.origin || doc.destination) && (
+              <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#EEF2F7", flexDirection: "row", gap: 12 }}>
+                {doc.origin && (
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 2 }}>{docLang === "en" ? "SOURCING" : "ORIGEN"}</Text>
+                    <Text style={{ fontSize: 9, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{doc.origin}</Text>
+                  </View>
+                )}
+                {doc.destination && (
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 2 }}>{docLang === "en" ? "DESTINATION" : "DESTINO"}</Text>
+                    <Text style={{ fontSize: 9, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>{doc.destination}</Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 2 }}>{docLang === "en" ? "MODEL" : "MODELO"}</Text>
+                  <Text style={{ fontSize: 9, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
+                    {scaleLabel || (docLang === "en" ? "Direct Export" : "Exportación Directa")}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <NarrativeSep />
+
+        {/* ── PHASE 3: WHY GLV GLOBAL HOLDING ────────────────────────────────── */}
+        <View style={{ marginBottom: 16 }}>
+          <ExecSectionTitle text={docLang === "en" ? "WHY GLV GLOBAL HOLDING" : "POR QUÉ GLV GLOBAL HOLDING"} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {(docLang === "en" ? [
+              { t: "Global Sourcing",        d: "Multi-origin supply network across Latin America, ensuring competitive pricing and reliable inventory." },
+              { t: "Compliance Mgmt",        d: "Full regulatory compliance: GACC, USDA, EU, Halal, veterinary and sanitary certifications." },
+              { t: "Export Documentation",    d: "Complete documentation management: certificates of origin, phytosanitary, bills of lading." },
+              { t: "Inspection Coord.",       d: "SGS, Bureau Veritas, and local authority coordination for pre-shipment quality assurance." },
+              { t: "Logistics Supervision",   d: "End-to-end logistics: inland transport, port handling, vessel booking, cold chain integrity." },
+              { t: "Trade Support",           d: "Incoterms advisory, SBLC/LC structuring, payment facilitation, and SPA contract management." },
+            ] : [
+              { t: "Sourcing Global",         d: "Red de suministro multi-origen en Latinoamérica, asegurando precios competitivos e inventario confiable." },
+              { t: "Gestión Cumplimiento",    d: "Cumplimiento regulatorio completo: GACC, USDA, UE, Halal, certificaciones veterinarias y sanitarias." },
+              { t: "Documentación Export",    d: "Gestión completa de documentación: certificados de origen, fitosanitarios, conocimientos de embarque." },
+              { t: "Coord. Inspección",       d: "Coordinación SGS, Bureau Veritas y autoridades locales para aseguramiento pre-embarque." },
+              { t: "Supervisión Logística",   d: "Logística integral: transporte interno, manejo portuario, reserva de buque, cadena de frío." },
+              { t: "Soporte Comercial",       d: "Asesoría Incoterms, estructuración SBLC/LC, facilitación de pagos y gestión de contratos SPA." },
+            ]).map((c, i) => (
+              <CapabilityCard key={i} title={c.t} desc={c.d} />
+            ))}
+          </View>
+        </View>
+
+        <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
+      </Page>
+
+      {/* PAGE 3 — COMMERCIAL DETAIL (Parties, Product, Pricing, Certs, Payment, Timeline) */}
       <Page size="A4" style={s.page}>
 
-        {/* Quiet document continuation context — ties Page 2 narrative to Page 1 */}
+        {/* Continuation context bar */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: "#EEF2F7" }}>
           <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase" }}>
             {catAtmosphere.tag}{"  ·  "}{doc.id}
@@ -1061,7 +1214,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         )}
 
         {/* Section 1: Parties */}
-        <ExecSectionTitle text={L.parties} step={1} totalSteps={6} />
+        <ExecSectionTitle text={L.parties} step={1} totalSteps={8} />
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 0 }}>
           <View style={{ width: "48%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderTopWidth: 2, borderTopColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 12", borderRadius: 2 }}>
             <Text style={[s.infoLabel, { color: "#1e3a5f", marginBottom: 4 }]}>{L.seller}</Text>
@@ -1088,7 +1241,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         <NarrativeSep />
 
         {/* Section 2: Product */}
-        <ExecSectionTitle text={L.product} step={2} totalSteps={6} />
+        <ExecSectionTitle text={L.product} step={2} totalSteps={8} />
         <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "10 14", marginBottom: 0, borderRadius: 2 }}>
           <Text style={{ fontSize: 9.5, fontWeight: "bold", color: "#1B2A4A", marginBottom: 5, letterSpacing: 0.2 }}>
             {doc.custom_product_name || doc.customProductName || productShortName || doc.product}
@@ -1683,7 +1836,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         {/* Section 3: Price */}
         <SilentPause />
-        <ExecSectionTitle text={L.price} step={3} totalSteps={6} />
+        <ExecSectionTitle text={L.price} step={3} totalSteps={8} />
 
         {/* Shipment value — DOMINANT financial card, no left accent needed: dark bg IS the emphasis */}
         {engineShipmentValue > 0 && (
@@ -1818,7 +1971,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         </View>
         <NarrativeSep />
 
-        {/* Section 4: Certifications */}
+        {/* ── PHASE 6: Certification Badges ──────────────────────────────── */}
         {catAtmosphere.regulatedMarker && (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <View style={{ paddingHorizontal: 7, paddingVertical: 3, backgroundColor: "#EEF2F7", borderWidth: 0.5, borderColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2 }}>
@@ -1831,21 +1984,113 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </Text>
           </View>
         )}
-        <ExecSectionTitle text={L.certs} step={4} totalSteps={6} />
+        <ExecSectionTitle text={L.certs} step={4} totalSteps={8} />
+
+        {/* Visual certification badges */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 10 }}>
+          {(() => {
+            const certBadges = [];
+            const certText = (certifications || "").toLowerCase();
+            if (certText.includes("halal"))          certBadges.push({ l: "HALAL",         a: "#059669" });
+            if (certText.includes("sgs"))            certBadges.push({ l: "SGS",           a: "#1e40af" });
+            if (certText.includes("gacc"))           certBadges.push({ l: "GACC",          a: "#b45309" });
+            if (certText.includes("iso"))            certBadges.push({ l: "ISO",           a: "#0e7490" });
+            if (certText.includes("veterinar"))      certBadges.push({ l: docLang === "en" ? "VET. CERT." : "CERT. VET.", a: "#7c3aed" });
+            if (certText.includes("origen") || certText.includes("origin"))
+              certBadges.push({ l: docLang === "en" ? "CERT. OF ORIGIN" : "CERT. ORIGEN", a: "#475569" });
+            if (certText.includes("phytosanit") || certText.includes("fitosanit"))
+              certBadges.push({ l: docLang === "en" ? "PHYTOSANITARY" : "FITOSANITARIO",  a: "#15803d" });
+            if (certText.includes("usda"))           certBadges.push({ l: "USDA",          a: "#1d4ed8" });
+            if (certBadges.length === 0) certBadges.push({ l: docLang === "en" ? "CERTIFIED" : "CERTIFICADO", a: "#059669" });
+            return certBadges.map((b, i) => <CertBadge key={i} label={b.l} accent={b.a} />);
+          })()}
+        </View>
+
+        {/* Full certification text */}
         <View style={{ backgroundColor: "#FFFFFF", borderRadius: 2, padding: "9 13", marginBottom: 0, borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2, borderLeftColor: catAtmosphere.certsAccentColor }}>
           <Text style={{ fontSize: 8.5, color: "#374151", lineHeight: 1.65 }}>{certifications}</Text>
         </View>
-        <SectionSep />
+        <NarrativeSep />
 
-        {/* Section 5: Payment */}
-        <ExecSectionTitle text={L.payment} step={5} totalSteps={6} />
+        {/* ── PHASE 7: Payment Structure Visualization ────────────────────── */}
+        <ExecSectionTitle text={L.payment} step={5} totalSteps={8} />
+
+        {/* Payment cards */}
+        {(() => {
+          const hasAdvance = paymentText.toLowerCase().includes("advance") || paymentText.toLowerCase().includes("anticipo") || paymentText.toLowerCase().includes("down payment");
+          const hasSBLC = paymentText.toLowerCase().includes("sblc") || paymentText.toLowerCase().includes("standby");
+          const hasLC = paymentText.toLowerCase().includes("letter of credit") || paymentText.toLowerCase().includes("carta de crédito") || paymentOption.includes("LC");
+          const hasFinal = paymentText.toLowerCase().includes("final") || paymentText.toLowerCase().includes("balance") || paymentText.toLowerCase().includes("saldo");
+          const cards = [];
+          if (hasAdvance) cards.push({
+            step: "1", title: docLang === "en" ? "Advance Payment" : "Pago Anticipado",
+            desc: docLang === "en" ? "Initial deposit to confirm allocation and initiate documentation process." : "Depósito inicial para confirmar asignación e iniciar proceso documental.",
+            accent: EXECUTIVE_COLORS.ACCENT_GOLD,
+          });
+          if (hasSBLC || hasLC) cards.push({
+            step: String(cards.length + 1), title: hasSBLC ? "SBLC / Guarantee" : "Letter of Credit",
+            desc: docLang === "en" ? "Bank guarantee instrument securing the transaction per international trade standards." : "Instrumento de garantía bancaria asegurando la transacción según estándares de comercio internacional.",
+            accent: EXECUTIVE_COLORS.PRIMARY_DARK,
+          });
+          if (hasFinal || cards.length > 0) cards.push({
+            step: String(cards.length + 1), title: docLang === "en" ? "Final Settlement" : "Liquidación Final",
+            desc: docLang === "en" ? "Balance payment upon confirmed delivery, inspection approval, and documentation release." : "Pago de saldo contra entrega confirmada, aprobación de inspección y liberación documental.",
+            accent: "#059669",
+          });
+          if (cards.length === 0) return null;
+          return (
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+              {cards.map((c, i) => <PaymentCard key={i} step={c.step} title={c.title} desc={c.desc} accent={c.accent} />)}
+            </View>
+          );
+        })()}
+
+        {/* Full payment terms text (always shown) */}
         <View style={s.paymentBox}>
           <Text style={s.paymentText}>{paymentText}</Text>
         </View>
         <NarrativeSep />
 
-        {/* Section 6: Timeline */}
-        <ExecSectionTitle text={L.timeline} step={6} totalSteps={6} />
+        {/* ── PHASE 5: Timeline Redesign (Program Timeline) ──────────────── */}
+        <ExecSectionTitle text={docLang === "en" ? "PROGRAM TIMELINE" : "LÍNEA DE TIEMPO DEL PROGRAMA"} step={6} totalSteps={8} />
+
+        {/* Step-based program timeline */}
+        <View wrap={false} style={{ marginBottom: 14, paddingVertical: 14, paddingHorizontal: 14, backgroundColor: "#F7F9FC", borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <Text style={{ fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, letterSpacing: 1.1, textTransform: "uppercase" }}>
+              {catAtmosphere.lifecycleLabel}
+            </Text>
+          </View>
+          {(docLang === "en" ? [
+            { n: "1", t: "Commercial Validation",   d: "Offer review, terms confirmation, buyer acceptance" },
+            { n: "2", t: "Allocation",               d: "Product sourcing, inventory reservation, supplier coordination" },
+            { n: "3", t: "Documentation",             d: "Export permits, certificates, compliance verification" },
+            { n: "4", t: "Inspection",                d: "SGS / third-party quality assurance, pre-shipment audit" },
+            { n: "5", t: "Loading",                   d: "Port logistics, container stuffing, vessel booking" },
+            { n: "6", t: "Shipment",                  d: "Maritime transit, tracking, cold chain monitoring" },
+            { n: "7", t: "Arrival",                   d: "Destination customs, delivery confirmation, settlement" },
+          ] : [
+            { n: "1", t: "Validación Comercial",      d: "Revisión de oferta, confirmación de términos, aceptación" },
+            { n: "2", t: "Asignación",                 d: "Sourcing de producto, reserva de inventario, coordinación" },
+            { n: "3", t: "Documentación",              d: "Permisos de exportación, certificados, verificación" },
+            { n: "4", t: "Inspección",                 d: "SGS / auditoría de calidad, inspección pre-embarque" },
+            { n: "5", t: "Carga",                      d: "Logística portuaria, llenado de contenedor, reserva de buque" },
+            { n: "6", t: "Embarque",                   d: "Tránsito marítimo, rastreo, monitoreo cadena de frío" },
+            { n: "7", t: "Llegada",                    d: "Aduanas destino, confirmación de entrega, liquidación" },
+          ]).map((step, i) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 8 }}>
+              <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, justifyContent: "center", alignItems: "center", marginRight: 10, marginTop: 1 }}>
+                <Text style={{ fontSize: 8, color: "#FFFFFF", fontWeight: "bold" }}>{step.n}</Text>
+              </View>
+              <View style={{ flex: 1, borderBottomWidth: i < 6 ? 0.5 : 0, borderBottomColor: "#E2E8F0", paddingBottom: 7 }}>
+                <Text style={{ fontSize: 8, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 2 }}>{step.t}</Text>
+                <Text style={{ fontSize: 7, color: "#64748B", lineHeight: 1.4 }}>{step.d}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Existing workflow-state timeline strip (kept for live status tracking) */}
         <ExecTimelineStrip workflowState={doc.workflowState || "QUOTED"} lang={docLang} lifecycleLabel={catAtmosphere.lifecycleLabel} />
         <SectionSep />
 
