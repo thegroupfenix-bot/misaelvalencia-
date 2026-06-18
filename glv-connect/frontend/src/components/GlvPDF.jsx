@@ -25,6 +25,11 @@ import {
   getProductDescription, getProductCertifications,
   getProductTimeline, getProductComplianceBadges,
 } from "../core/product/ProductIntelligenceRegistry.js";
+import { buildExecutiveIntroduction } from "../core/pdf/ExecutiveIntroductionEngine.js";
+import { buildCorporatePositioning } from "../core/pdf/CorporatePositioningEngine.js";
+import { buildBuyerConfidence } from "../core/pdf/BuyerConfidenceEngine.js";
+import { buildRiskMitigation } from "../core/pdf/RiskMitigationEngine.js";
+import { buildExecutiveClosing } from "../core/pdf/ExecutiveClosingEngine.js";
 
 // ─── V8.1: Safe PDF context resolver ─────────────────────────────────────────
 // Wraps any field extraction in a try/catch with a typed fallback.
@@ -913,6 +918,13 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
   const fcoNote = (L.fco_note || "").replace("{days}", validityDays).replace("{date}", doc.date);
 
+  // ── Phase 6A.2: Executive Content Engines ─────────────────────────────────────
+  const execIntro = buildExecutiveIntroduction({ productCode, category: firstCdRow.category, lang: docLang });
+  const corpPositioning = buildCorporatePositioning({ category: firstCdRow.category, lang: docLang });
+  const buyerConf = buildBuyerConfidence({ productCode, category: firstCdRow.category, scaleLabel, lang: docLang });
+  const riskMit = buildRiskMitigation({ category: firstCdRow.category, lang: docLang });
+  const execClosing = buildExecutiveClosing({ documentType: doc.doc_type || doc.docType || "SCO", validityDays, date: doc.date, lang: docLang });
+
   // ── Phase 6: Category validation — runs before render, logs violations, never throws ──
   (() => {
     const cat  = firstCdRow.category || "";
@@ -1121,7 +1133,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         <NarrativeSep />
 
-        {/* ── PHASE 4: PROGRAM OVERVIEW ──────────────────────────────────────── */}
+        {/* ── PHASE 6A.2: PROGRAM OVERVIEW — Engine 1 (Executive Introduction) ── */}
         <View style={{ marginBottom: 18 }}>
           <ExecSectionTitle text={docLang === "en" ? "PROGRAM OVERVIEW" : "DESCRIPCIÓN DEL PROGRAMA"} />
           <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.PRIMARY_DARK, padding: "12 16", borderRadius: 2 }}>
@@ -1131,6 +1143,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             <Text style={{ fontSize: 8.5, color: "#475569", lineHeight: 1.65 }}>
               {productDesc}
             </Text>
+            {execIntro.supplyProgramDescription && (
+              <Text style={{ fontSize: 8, color: "#64748B", lineHeight: 1.55, marginTop: 6 }}>
+                {execIntro.supplyProgramDescription}
+              </Text>
+            )}
             {(doc.origin || doc.destination) && (
               <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#EEF2F7", flexDirection: "row", gap: 12 }}>
                 {doc.origin && (
@@ -1156,6 +1173,27 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </View>
         </View>
 
+        {/* ── Engine 1: Buyer Value & Key Advantages ─────────────────────────── */}
+        {execIntro.narrative && (
+          <View style={{ marginBottom: 14 }}>
+            <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2, padding: "10 14" }}>
+              <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+                {docLang === "en" ? "BUYER VALUE PROPOSITION" : "PROPUESTA DE VALOR"}
+              </Text>
+              <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.55 }}>{execIntro.narrative.buyerValue}</Text>
+            </View>
+            {execIntro.keyAdvantages && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {execIntro.keyAdvantages.slice(0, 4).map((adv, i) => (
+                  <View key={i} style={{ width: "48%", backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: i === 0 ? EXECUTIVE_COLORS.PRIMARY_DARK : EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, padding: "6 10" }}>
+                    <Text style={{ fontSize: 7.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, lineHeight: 1.4 }}>{adv}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         <ExecAuditFooter documentRef={doc.id} date={doc.date} lang={docLang} />
       </Page>
 
@@ -1173,25 +1211,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </Text>
         </View>
 
-        {/* ── WHY GLV GLOBAL HOLDING ─────────────────────────────────────────── */}
+        {/* ── Engine 2: WHY GLV GLOBAL HOLDING (Corporate Positioning) ──────── */}
         <View style={{ marginBottom: 16 }}>
-          <ExecSectionTitle text={docLang === "en" ? "WHY GLV GLOBAL HOLDING" : "POR QUÉ GLV GLOBAL HOLDING"} />
+          <ExecSectionTitle text={corpPositioning.whyGlvTitle} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {(docLang === "en" ? [
-              { t: "Global Sourcing",        d: "Multi-origin supply network across Latin America, ensuring competitive pricing and reliable inventory." },
-              { t: "Compliance Mgmt",        d: "Full regulatory compliance: GACC, USDA, EU, Halal, veterinary and sanitary certifications." },
-              { t: "Export Documentation",    d: "Complete documentation management: certificates of origin, phytosanitary, bills of lading." },
-              { t: "Inspection Coord.",       d: "SGS, Bureau Veritas, and local authority coordination for pre-shipment quality assurance." },
-              { t: "Logistics Supervision",   d: "End-to-end logistics: inland transport, port handling, vessel booking, cold chain integrity." },
-              { t: "Trade Support",           d: "Incoterms advisory, SBLC/LC structuring, payment facilitation, and SPA contract management." },
-            ] : [
-              { t: "Sourcing Global",         d: "Red de suministro multi-origen en Latinoamérica, asegurando precios competitivos e inventario confiable." },
-              { t: "Gestión Cumplimiento",    d: "Cumplimiento regulatorio completo: GACC, USDA, UE, Halal, certificaciones veterinarias y sanitarias." },
-              { t: "Documentación Export",    d: "Gestión completa de documentación: certificados de origen, fitosanitarios, conocimientos de embarque." },
-              { t: "Coord. Inspección",       d: "Coordinación SGS, Bureau Veritas y autoridades locales para aseguramiento pre-embarque." },
-              { t: "Supervisión Logística",   d: "Logística integral: transporte interno, manejo portuario, reserva de buque, cadena de frío." },
-              { t: "Soporte Comercial",       d: "Asesoría Incoterms, estructuración SBLC/LC, facilitación de pagos y gestión de contratos SPA." },
-            ]).map((c, i) => (
+            {corpPositioning.capabilities.map((c, i) => (
               <CapabilityCard key={i} title={c.t} desc={c.d} />
             ))}
           </View>
@@ -1199,26 +1223,14 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         <NarrativeSep />
 
-        {/* ── WHY THIS PROGRAM ──────────────────────────────────────────────── */}
-        <ExecSectionTitle text={docLang === "en" ? "WHY THIS PROGRAM" : "POR QUÉ ESTE PROGRAMA"} />
+        {/* ── Engine 2: WHY THIS PROGRAM (Category-specific emphasis) ──────── */}
+        <ExecSectionTitle text={corpPositioning.whyProgramTitle} />
         <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderLeftWidth: 2.5, borderLeftColor: EXECUTIVE_COLORS.ACCENT_GOLD, padding: "12 16", borderRadius: 2, marginBottom: 16 }}>
           <Text style={{ fontSize: 9, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 8 }}>
             {productProgramName}
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {(docLang === "en" ? [
-              { t: "Supply Security",       d: "Guaranteed product availability through diversified multi-origin sourcing across Latin America." },
-              { t: "Scalable Volume",        d: "From container programs to strategic multi-vessel operations, adapted to buyer demand." },
-              { t: "Full Compliance",        d: "All regulatory, veterinary, sanitary, and customs requirements managed end-to-end." },
-              { t: "Logistics Coordination", d: "Integrated inland transport, port operations, vessel booking, and cold chain management." },
-              { t: "Intl. Supervision",      d: "SGS, Bureau Veritas, and third-party inspection coordination at origin and destination." },
-            ] : [
-              { t: "Seguridad de Suministro", d: "Disponibilidad garantizada mediante sourcing diversificado multi-origen en Latinoamérica." },
-              { t: "Volumen Escalable",        d: "Desde programas por contenedor hasta operaciones multi-buque, adaptados a la demanda." },
-              { t: "Cumplimiento Total",       d: "Todos los requisitos regulatorios, veterinarios, sanitarios y aduaneros gestionados integralmente." },
-              { t: "Coord. Logística",         d: "Transporte interno, operaciones portuarias, reserva de buque y gestión de cadena de frío." },
-              { t: "Supervisión Intl.",        d: "Coordinación SGS, Bureau Veritas e inspecciones de terceros en origen y destino." },
-            ]).map((item, i) => (
+            {corpPositioning.programEmphasis.map((item, i) => (
               <View key={i} style={{ width: "48%", marginBottom: 4 }}>
                 <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 2 }}>{item.t}</Text>
                 <Text style={{ fontSize: 7, color: "#64748B", lineHeight: 1.45 }}>{item.d}</Text>
@@ -1229,20 +1241,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         <NarrativeSep />
 
-        {/* ── GLV GLOBAL NETWORK ────────────────────────────────────────────── */}
-        <ExecSectionTitle text={docLang === "en" ? "GLV GLOBAL NETWORK" : "RED GLOBAL GLV"} />
+        {/* ── Engine 2: GLV GLOBAL NETWORK ────────────────────────────────────── */}
+        <ExecSectionTitle text={corpPositioning.networkTitle} />
         <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-          {(docLang === "en" ? [
-            { t: "Export Countries",   v: "Brazil  ·  Colombia  ·  Argentina  ·  Paraguay  ·  Uruguay" },
-            { t: "Export Hubs",         v: "Santos  ·  Paranaguá  ·  Buenaventura  ·  Buenos Aires  ·  Montevideo" },
-            { t: "Supplier Network",    v: "200+ certified producers and processors across Latin America" },
-            { t: "Intl. Reach",         v: "Middle East  ·  North Africa  ·  Asia  ·  Europe  ·  40+ destination countries" },
-          ] : [
-            { t: "Países de Exportación", v: "Brasil  ·  Colombia  ·  Argentina  ·  Paraguay  ·  Uruguay" },
-            { t: "Hubs de Exportación",    v: "Santos  ·  Paranaguá  ·  Buenaventura  ·  Buenos Aires  ·  Montevideo" },
-            { t: "Red de Proveedores",     v: "200+ productores y procesadores certificados en Latinoamérica" },
-            { t: "Alcance Intl.",          v: "Medio Oriente  ·  Norte de África  ·  Asia  ·  Europa  ·  40+ países destino" },
-          ]).map((item, i) => (
+          {corpPositioning.network.items.map((item, i) => (
             <View key={i} style={{ flex: 1, backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E2E8F0", borderTopWidth: 2, borderTopColor: i === 0 ? EXECUTIVE_COLORS.PRIMARY_DARK : EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, padding: "8 10" }}>
               <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 4 }}>{item.t}</Text>
               <Text style={{ fontSize: 7.5, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold", lineHeight: 1.45 }}>{item.v}</Text>
@@ -1252,22 +1254,10 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
 
         <NarrativeSep />
 
-        {/* ── OPERATIONAL ADVANTAGES ─────────────────────────────────────────── */}
-        <ExecSectionTitle text={docLang === "en" ? "OPERATIONAL ADVANTAGES" : "VENTAJAS OPERATIVAS"} />
+        {/* ── Engine 2: OPERATIONAL ADVANTAGES ─────────────────────────────────── */}
+        <ExecSectionTitle text={corpPositioning.advantagesTitle} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          {(docLang === "en" ? [
-            { t: "Direct Sourcing",      d: "First-hand relationships with certified producers — no intermediaries, competitive pricing." },
-            { t: "Quality Control",       d: "Multi-point quality verification: origin farm, processing, pre-shipment, and arrival." },
-            { t: "Inspection Coord.",     d: "SGS, Bureau Veritas, and government authority inspection management." },
-            { t: "Documentation Mgmt",   d: "Export permits, certificates, customs declarations, and trade finance documents." },
-            { t: "Trade Support",         d: "Incoterms advisory, LC/SBLC structuring, and SPA contract management." },
-          ] : [
-            { t: "Sourcing Directo",      d: "Relación directa con productores certificados — sin intermediarios, precios competitivos." },
-            { t: "Control de Calidad",    d: "Verificación multi-punto: finca de origen, procesamiento, pre-embarque y llegada." },
-            { t: "Coord. Inspección",     d: "Gestión de inspecciones SGS, Bureau Veritas y autoridades gubernamentales." },
-            { t: "Gestión Documental",    d: "Permisos de exportación, certificados, declaraciones aduaneras y documentos financieros." },
-            { t: "Soporte Comercial",     d: "Asesoría Incoterms, estructuración LC/SBLC y gestión de contratos SPA." },
-          ]).map((item, i) => (
+          {corpPositioning.operationalAdvantages.map((item, i) => (
             <CapabilityCard key={i} title={item.t} desc={item.d} />
           ))}
         </View>
@@ -1289,8 +1279,8 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </Text>
         </View>
 
-        {/* ── SUPPLY CAPACITY ───────────────────────────────────────────────── */}
-        <ExecSectionTitle text={docLang === "en" ? "SUPPLY CAPACITY" : "CAPACIDAD DE SUMINISTRO"} />
+        {/* ── Engine 3: SUPPLY CAPACITY (Buyer Confidence) ─────────────────── */}
+        <ExecSectionTitle text={buyerConf.supplyTitle} />
         <View style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2, padding: "12 16", marginBottom: 16 }}>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
@@ -1298,13 +1288,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 {docLang === "en" ? "AVAILABLE VOLUME" : "VOLUMEN DISPONIBLE"}
               </Text>
               <Text style={{ fontSize: 10, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
-                {isLiveAnimalRow
-                  ? (docLang === "en" ? "Up to 120,000 heads/year" : "Hasta 120.000 cabezas/año")
-                  : isOilsRow
-                    ? (docLang === "en" ? "Up to 50,000 MT/year" : "Hasta 50.000 TM/año")
-                    : isGrainRow
-                      ? (docLang === "en" ? "Up to 500,000 MT/year" : "Hasta 500.000 TM/año")
-                      : (docLang === "en" ? "Scalable per demand" : "Escalable según demanda")}
+                {buyerConf.supplyCapacity.volume}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
@@ -1312,7 +1296,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 {docLang === "en" ? "PROGRAM SCALABILITY" : "ESCALABILIDAD"}
               </Text>
               <Text style={{ fontSize: 10, color: EXECUTIVE_COLORS.PRIMARY_DARK, fontWeight: "bold" }}>
-                {scaleLabel || (docLang === "en" ? "Container to Strategic" : "Contenedor a Estratégico")}
+                {buyerConf.supplyCapacity.scalability}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
@@ -1320,16 +1304,28 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 {docLang === "en" ? "OPERATIONAL READINESS" : "DISPONIBILIDAD OPERATIVA"}
               </Text>
               <Text style={{ fontSize: 10, color: "#059669", fontWeight: "bold" }}>
-                {docLang === "en" ? "Active" : "Activo"}
+                {buyerConf.supplyCapacity.readiness}
               </Text>
             </View>
           </View>
         </View>
 
+        {/* ── Engine 3: Category-specific confidence highlights ────────────── */}
+        {buyerConf.highlights.length > 0 && (
+          <View style={{ marginBottom: 12 }}>
+            {buyerConf.highlights.slice(0, 2).map((h, i) => (
+              <View key={i} style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: i === 0 ? EXECUTIVE_COLORS.PRIMARY_DARK : EXECUTIVE_COLORS.ACCENT_GOLD, borderRadius: 2, padding: "8 12", marginBottom: 6 }}>
+                <Text style={{ fontSize: 7.5, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 2 }}>{h.t}</Text>
+                <Text style={{ fontSize: 7, color: "#64748B", lineHeight: 1.5 }}>{h.d}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         <NarrativeSep />
 
-        {/* ── GLOBAL COMPLIANCE ──────────────────────────────────────────────── */}
-        <ExecSectionTitle text={docLang === "en" ? "GLOBAL COMPLIANCE" : "CUMPLIMIENTO GLOBAL"} />
+        {/* ── Engine 3: GLOBAL COMPLIANCE ──────────────────────────────────── */}
+        <ExecSectionTitle text={buyerConf.complianceTitle} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           {(() => {
             const productBadges = getProductComplianceBadges(productCode, docLang);
@@ -1355,9 +1351,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
         </View>
         <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: "#059669", borderRadius: 2, padding: "8 12", marginBottom: 16 }}>
           <Text style={{ fontSize: 8, color: "#374151", lineHeight: 1.6 }}>
-            {docLang === "en"
-              ? "GLV Global Holding maintains active compliance programs across all export corridors. All products are sourced from certified facilities, inspected by accredited third parties, and documented to meet destination country import requirements. Country-specific regulatory requirements are managed on a per-operation basis."
-              : "GLV Global Holding mantiene programas de cumplimiento activos en todos los corredores de exportación. Todos los productos provienen de instalaciones certificadas, inspeccionados por terceros acreditados y documentados para cumplir con los requisitos de importación del país destino. Los requisitos regulatorios específicos por país se gestionan por operación."}
+            {buyerConf.complianceNarrative}
           </Text>
         </View>
 
@@ -2321,6 +2315,19 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           </Text>
         </View>
 
+        {/* ── Engine 4: Risk Mitigation Controls ─────────────────────────── */}
+        <ExecSectionTitle text={riskMit.title} />
+        <View style={{ marginBottom: 14 }}>
+          {riskMit.controls.slice(0, 4).map((rc, i) => (
+            <View key={i} style={{ backgroundColor: "#FFFFFF", borderWidth: 0.5, borderColor: "#E2E8F0", borderLeftWidth: 2, borderLeftColor: i === 0 ? EXECUTIVE_COLORS.PRIMARY_DARK : "#94A3B8", borderRadius: 2, padding: "6 10", marginBottom: 4 }}>
+              <Text style={{ fontSize: 7, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 1 }}>{rc.area}</Text>
+              <Text style={{ fontSize: 6.5, color: "#64748B", lineHeight: 1.45 }}>{rc.control}</Text>
+            </View>
+          ))}
+        </View>
+
+        <NarrativeSep />
+
         {/* Mandatory information */}
         {mandatoryInfo && (
           <>
@@ -2374,6 +2381,28 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             {doc.client}{"  ·  "}{doc.date}
           </Text>
         </View>
+
+        {/* ── Engine 5: Executive Closing — Next Steps / Acceptance Workflow ── */}
+        <ExecSectionTitle text={execClosing.title} />
+        <View style={{ marginBottom: 14 }}>
+          {execClosing.steps.map((step, i) => (
+            <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}>
+              <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, justifyContent: "center", alignItems: "center" }}>
+                <Text style={{ fontSize: 8, color: "#FFFFFF", fontWeight: "bold" }}>{step.n}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 8, fontWeight: "bold", color: EXECUTIVE_COLORS.PRIMARY_DARK, marginBottom: 1 }}>{step.t}</Text>
+                <Text style={{ fontSize: 7.5, color: "#64748B", lineHeight: 1.45 }}>{step.d}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2, padding: "8 12", marginBottom: 14 }}>
+          <Text style={{ fontSize: 7.5, color: "#374151", lineHeight: 1.5 }}>{execClosing.validity}</Text>
+        </View>
+
+        <NarrativeSep />
 
         {/* Observations */}
         {doc.observations && (
