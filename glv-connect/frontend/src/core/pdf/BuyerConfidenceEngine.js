@@ -11,6 +11,7 @@
 import {
   resolveProductProfile,
   getProductLogistics,
+  getProductOriginAdvantages,
 } from "../product/ProductIntelligenceRegistry.js";
 
 const CATEGORY_CONFIDENCE = Object.freeze({
@@ -218,11 +219,14 @@ export function buildBuyerConfidence({ productCode, category, scaleLabel, lang =
   const capacity = { ...conf.supplyCapacity };
   if (scaleLabel) capacity.scalability = scaleLabel;
 
+  const originAdvantages = getProductOriginAdvantages(productCode, l);
+
   return {
     supplyCapacity: capacity,
     highlights: conf.highlights,
     complianceNarrative: conf.complianceNarrative,
     logistics: logistics,
+    originAdvantages: originAdvantages,
     supplyTitle: l === "en" ? "SUPPLY CAPACITY" : "CAPACIDAD DE SUMINISTRO",
     complianceTitle: l === "en" ? "GLOBAL COMPLIANCE" : "CUMPLIMIENTO GLOBAL",
   };
