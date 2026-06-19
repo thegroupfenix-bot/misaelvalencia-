@@ -7,6 +7,10 @@
  * Factual, no sales language.
  */
 
+import {
+  resolveProductProfile,
+} from "../product/ProductIntelligenceRegistry.js";
+
 const RISK_CONTROLS = Object.freeze({
   LIVE_ANIMALS: {
     en: [
@@ -130,13 +134,17 @@ function resolveCategory(category) {
   return null;
 }
 
-export function buildRiskMitigation({ category, lang = "en" }) {
+export function buildRiskMitigation({ category, productCode, lang = "en" }) {
   const l = lang === "es" ? "es" : "en";
   const catKey = resolveCategory(category);
   const controls = catKey ? (RISK_CONTROLS[catKey]?.[l] || GENERIC_CONTROLS[l]) : GENERIC_CONTROLS[l];
 
+  const profile = productCode ? resolveProductProfile(productCode) : null;
+  const riskHighlights = profile?.riskHighlights?.[l] || null;
+
   return {
     title: l === "en" ? "RISK MANAGEMENT & CONTROLS" : "GESTIÓN DE RIESGOS Y CONTROLES",
     controls,
+    riskHighlights,
   };
 }

@@ -15,6 +15,8 @@ import {
   getProductMarketApplications,
   getProductKeyAdvantages,
   getProductOriginCountries,
+  getProductBuyerProfile,
+  getProductCommercialPositioning,
 } from "../product/ProductIntelligenceRegistry.js";
 
 const CATEGORY_INTROS = Object.freeze({
@@ -139,6 +141,8 @@ export function buildExecutiveIntroduction({ productCode, category, lang = "en" 
   const marketApps = profile?.marketApplications?.[l] || null;
   const keyAdvantages = profile?.keyAdvantages?.[l] || null;
   const originCountries = profile?.originCountries || null;
+  const buyerProfile = profile?.buyerProfile?.[l] || null;
+  const commercialPositioning = profile?.commercialPositioning?.[l] || null;
 
   return {
     narrative: intro,
@@ -146,6 +150,8 @@ export function buildExecutiveIntroduction({ productCode, category, lang = "en" 
     marketApplications: marketApps,
     keyAdvantages: keyAdvantages,
     originCountries: originCountries,
+    buyerProfile: buyerProfile,
+    commercialPositioning: commercialPositioning,
     hasProductProfile: !!profile,
   };
 }

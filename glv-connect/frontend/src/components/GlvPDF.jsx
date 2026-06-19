@@ -922,7 +922,7 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const execIntro = buildExecutiveIntroduction({ productCode, category: firstCdRow.category, lang: docLang });
   const corpPositioning = buildCorporatePositioning({ category: firstCdRow.category, lang: docLang });
   const buyerConf = buildBuyerConfidence({ productCode, category: firstCdRow.category, scaleLabel, lang: docLang });
-  const riskMit = buildRiskMitigation({ category: firstCdRow.category, lang: docLang });
+  const riskMit = buildRiskMitigation({ category: firstCdRow.category, productCode, lang: docLang });
   const execClosing = buildExecutiveClosing({ documentType: doc.doc_type || doc.docType || "SCO", validityDays, date: doc.date, lang: docLang });
 
   // ── Phase 6: Category validation — runs before render, logs violations, never throws ──
@@ -1191,6 +1191,26 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
                 ))}
               </View>
             )}
+            {execIntro.commercialPositioning && (
+              <View style={{ marginTop: 8, backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "8 12" }}>
+                <Text style={{ fontSize: 7.5, color: "#FFFFFF", lineHeight: 1.5, fontStyle: "italic" }}>{execIntro.commercialPositioning}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {execIntro.buyerProfile && (
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
+              {docLang === "en" ? "TARGET BUYER PROFILES" : "PERFILES DE COMPRADOR OBJETIVO"}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
+              {execIntro.buyerProfile.slice(0, 4).map((bp, i) => (
+                <View key={i} style={{ width: "48%", backgroundColor: "#F8FAFC", borderWidth: 0.5, borderColor: "#E2E8F0", borderRadius: 2, padding: "5 8" }}>
+                  <Text style={{ fontSize: 7, color: "#475569", lineHeight: 1.4 }}>{bp}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
@@ -1354,6 +1374,20 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             {buyerConf.complianceNarrative}
           </Text>
         </View>
+
+        {buyerConf.originAdvantages && (
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
+              {docLang === "en" ? "ORIGIN ADVANTAGES" : "VENTAJAS DE ORIGEN"}
+            </Text>
+            {buyerConf.originAdvantages.slice(0, 3).map((oa, i) => (
+              <View key={i} style={{ flexDirection: "row", marginBottom: 3 }}>
+                <Text style={{ fontSize: 7, color: EXECUTIVE_COLORS.ACCENT_GOLD, marginRight: 4 }}>●</Text>
+                <Text style={{ fontSize: 7, color: "#475569", lineHeight: 1.45, flex: 1 }}>{oa}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <NarrativeSep />
 
@@ -2325,6 +2359,20 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
             </View>
           ))}
         </View>
+
+        {riskMit.riskHighlights && (
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ fontSize: 6.5, color: "#94A3B8", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 5 }}>
+              {docLang === "en" ? "PRODUCT-SPECIFIC RISK FACTORS" : "FACTORES DE RIESGO ESPECÍFICOS DEL PRODUCTO"}
+            </Text>
+            {riskMit.riskHighlights.slice(0, 4).map((rh, i) => (
+              <View key={i} style={{ flexDirection: "row", marginBottom: 3, paddingLeft: 4 }}>
+                <Text style={{ fontSize: 6.5, color: "#DC2626", marginRight: 4 }}>▸</Text>
+                <Text style={{ fontSize: 6.5, color: "#475569", lineHeight: 1.45, flex: 1 }}>{rh}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <NarrativeSep />
 
