@@ -634,9 +634,11 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
   const isSPA = doc.type === "SPA";
   const portInfo = findPortInfo(doc.destination);
   // Read price from CommercialEngine row when doc.pricePerKg not saved
-  const cdRows = ((typeof (doc.commercialData || doc.commercial_data) === "string")
+  const _cdParsed = (typeof (doc.commercialData || doc.commercial_data) === "string")
     ? (() => { try { return JSON.parse(doc.commercialData || doc.commercial_data); } catch { return {}; } })()
-    : (doc.commercialData || doc.commercial_data || {}))?.rows || [];
+    : (doc.commercialData || doc.commercial_data || {});
+  const cdRows = _cdParsed?.rows || [];
+  const cdPrograms = safeArr(_cdParsed?.programs).filter(p => p.enabled !== false);
   const firstCdRow = cdRows[0] || {};
   const cdInc = (firstCdRow.incoterms || ["CFR"])[0];
   // Dynamic port label — incoterm-aware, never hardcodes "CFR"
@@ -2097,6 +2099,57 @@ function DocPDF({ doc, agentProfile, boundMedia, lang = "es" }) {
           return <View style={{ padding: 8, backgroundColor: "#fff7ed", borderRadius: 4, marginBottom: 8 }}>
             <Text style={{ fontSize: 8, color: "#92400e" }}>Commercial data table — section unavailable</Text>
           </View>;
+        }})()}
+
+        {/* Executive Pricing Matrix — Program Options (Phase 7A-S1) */}
+        {cdPrograms.length > 0 && (() => { try {
+          const TIER_COLORS_PDF = { TRIAL: "#F59E0B", COMMERCIAL: "#2563EB", STRATEGIC: "#7C3AED", CUSTOM: "#64748B" };
+          const TIER_LABELS_PDF = { TRIAL: "Trial", COMMERCIAL: "Commercial", STRATEGIC: "Strategic", CUSTOM: "Custom" };
+          const FREQ_LABELS_PDF = { MONTHLY: docLang === "en" ? "Monthly" : "Mensual", QUARTERLY: docLang === "en" ? "Quarterly" : "Trimestral", SEMI_ANNUAL: docLang === "en" ? "Semi-Annual" : "Semestral", ANNUAL: docLang === "en" ? "Annual" : "Anual", ONE_TIME: docLang === "en" ? "One-Time" : "Único" };
+          const PM_COLW = [1.8, 0.8, 1.0, 1.2, 1.0, 1.2];
+          return (
+            <View wrap={false} style={{ marginTop: 14, marginBottom: 14, borderWidth: 0.5, borderColor: "#DDE3EC", borderRadius: 2 }}>
+              <View style={{ backgroundColor: EXECUTIVE_COLORS.PRIMARY_DARK, borderRadius: 2, padding: "7 10" }}>
+                <Text style={{ fontSize: 7.5, color: "rgba(255,255,255,0.85)", fontWeight: "bold", letterSpacing: 0.5 }}>
+                  {docLang === "en" ? "PROGRAM OPTIONS" : "OPCIONES DE PROGRAMA"}
+                </Text>
+              </View>
+              <View style={{ backgroundColor: "#F1F5F9", borderBottomWidth: 0.5, borderBottomColor: "#DDE3EC", padding: "5 10", flexDirection: "row" }}>
+                {(docLang === "en"
+                  ? ["Program", "Tier", "Volume", "Price/Unit", "Frequency", "Duration"]
+                  : ["Programa", "Nivel", "Volumen", "Precio/Unid", "Frecuencia", "Duración"]
+                ).map((h, i) => (
+                  <Text key={h} style={{ flex: PM_COLW[i], fontSize: 6, color: "#64748B", fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5, textAlign: i > 1 ? "right" : "left" }}>{h}</Text>
+                ))}
+              </View>
+              {cdPrograms.map((prog, i) => (
+                <View key={i} style={{ flexDirection: "row", padding: "6 10", backgroundColor: i % 2 === 0 ? "#FFFFFF" : "#F7F9FC", borderBottomWidth: 0.5, borderBottomColor: "#E8ECF1" }}>
+                  <Text style={{ flex: PM_COLW[0], fontSize: 7.5, color: "#1B2A4A", fontWeight: "bold" }}>{prog.name || "—"}</Text>
+                  <View style={{ flex: PM_COLW[1], flexDirection: "row", alignItems: "center" }}>
+                    <View style={{ backgroundColor: TIER_COLORS_PDF[prog.tier] || "#64748B", borderRadius: 2, paddingHorizontal: 4, paddingVertical: 1 }}>
+                      <Text style={{ fontSize: 5.5, color: "#FFFFFF", fontWeight: "bold" }}>{TIER_LABELS_PDF[prog.tier] || prog.tier}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ flex: PM_COLW[2], fontSize: 7, color: "#374151", textAlign: "right" }}>{prog.volume ? `${prog.volume} ${prog.unit || "MT"}` : "—"}</Text>
+                  <Text style={{ flex: PM_COLW[3], fontSize: 7, color: "#059669", fontWeight: "bold", textAlign: "right" }}>{prog.price ? `${prog.currency || "USD"} ${prog.price}/${prog.unit || "MT"}` : "—"}</Text>
+                  <Text style={{ flex: PM_COLW[4], fontSize: 7, color: "#374151", textAlign: "right" }}>{FREQ_LABELS_PDF[prog.frequency] || prog.frequency || "—"}</Text>
+                  <Text style={{ flex: PM_COLW[5], fontSize: 7, color: "#374151", textAlign: "right" }}>{prog.duration ? `${prog.duration} ${docLang === "en" ? "mo" : "m"}` : "—"}</Text>
+                </View>
+              ))}
+              {cdPrograms.length > 1 && (
+                <View style={{ backgroundColor: "#F1F5F9", padding: "5 10", borderTopWidth: 1, borderTopColor: EXECUTIVE_COLORS.ACCENT_GOLD }}>
+                  <Text style={{ fontSize: 6.5, color: "#64748B", fontStyle: "italic" }}>
+                    {docLang === "en"
+                      ? `${cdPrograms.length} program options presented — buyer selects preferred tier during FCO negotiation`
+                      : `${cdPrograms.length} opciones de programa presentadas — el comprador selecciona el nivel preferido durante negociación FCO`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        } catch (pmErr) {
+          console.error("[PDF_RENDER] Program matrix crashed:", pmErr?.message);
+          return null;
         }})()}
 
         {/* Section 3: Price */}
