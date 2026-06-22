@@ -228,7 +228,7 @@ function ProgramOptionsPanel({ programs, onProgramsChange }) {
                   <div style={s.row3}>
                     <Field label="Currency">
                       <Sel value={prog.currency} onChange={(v) => updateProgram(prog.id, "currency", v)}>
-                        {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
                       </Sel>
                     </Field>
                     <Field label="Frequency">
