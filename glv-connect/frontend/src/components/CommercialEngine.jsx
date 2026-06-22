@@ -45,6 +45,220 @@ function newRowData() {
   return { id: _rid++, category: "", product: "", specs: {}, quantity: "", unitType: "", incoterms: ["CFR"], incotermPrices: {}, unitPrice: "", currency: "USD", deliveryFrequency: "ONE_SHIPMENT", numShipments: "1", contractDuration: "12", containerCapacity: "", containerType: "", origin: "Brazil" };
 }
 
+// ─── Program Options Engine ──────────────────────────────────────────────────
+const PROGRAM_TIERS = ["TRIAL", "COMMERCIAL", "STRATEGIC", "CUSTOM"];
+const TIER_LABELS = { TRIAL: "Trial", COMMERCIAL: "Commercial", STRATEGIC: "Strategic", CUSTOM: "Custom" };
+const TIER_COLORS = { TRIAL: "#f59e0b", COMMERCIAL: "#2563eb", STRATEGIC: "#7c3aed", CUSTOM: "#64748b" };
+const FREQUENCY_OPTIONS = ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL", "ONE_TIME"];
+const FREQ_LABELS = { MONTHLY: "Monthly", QUARTERLY: "Quarterly", SEMI_ANNUAL: "Semi-Annual", ANNUAL: "Annual", ONE_TIME: "One-Time" };
+
+let _pid = 1;
+function newProgram(overrides = {}) {
+  return { id: _pid++, name: "", tier: "COMMERCIAL", volume: "", unit: "MT", price: "", currency: "USD", frequency: "MONTHLY", duration: "12", notes: "", enabled: true, ...overrides };
+}
+
+const PROGRAM_TEMPLATES = {
+  STANDARD_3_TIER: {
+    label: "Standard 3-Tier",
+    desc: "Trial → Commercial → Strategic",
+    programs: [
+      { name: "Trial Program", tier: "TRIAL", volume: "", frequency: "ONE_TIME", duration: "1", notes: "Initial evaluation shipment" },
+      { name: "Commercial Program", tier: "COMMERCIAL", volume: "", frequency: "MONTHLY", duration: "12", notes: "Regular supply program" },
+      { name: "Strategic Program", tier: "STRATEGIC", volume: "", frequency: "MONTHLY", duration: "24", notes: "Long-term partnership" },
+    ],
+  },
+  SINGLE_PROGRAM: {
+    label: "Single Program",
+    desc: "One commercial program",
+    programs: [
+      { name: "Supply Program", tier: "COMMERCIAL", volume: "", frequency: "MONTHLY", duration: "12", notes: "" },
+    ],
+  },
+  GOVERNMENT_TENDER: {
+    label: "Government Tender",
+    desc: "Structured for institutional/govt",
+    programs: [
+      { name: "Tender Program", tier: "STRATEGIC", volume: "", frequency: "QUARTERLY", duration: "12", notes: "Government procurement tender" },
+    ],
+  },
+  CUSTOM: {
+    label: "Custom",
+    desc: "Start with a blank program",
+    programs: [
+      { name: "", tier: "COMMERCIAL", volume: "", frequency: "MONTHLY", duration: "12", notes: "" },
+    ],
+  },
+};
+
+function ProgramOptionsPanel({ programs, onProgramsChange }) {
+  const [expanded, setExpanded] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
+  const addFromTemplate = (templateKey) => {
+    const template = PROGRAM_TEMPLATES[templateKey];
+    const newPrograms = template.programs.map(p => newProgram(p));
+    onProgramsChange([...programs, ...newPrograms]);
+    setExpanded(true);
+  };
+
+  const updateProgram = (id, field, value) => {
+    onProgramsChange(programs.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const removeProgram = (id) => {
+    onProgramsChange(programs.filter(p => p.id !== id));
+    if (editingId === id) setEditingId(null);
+  };
+
+  const duplicateProgram = (id) => {
+    const source = programs.find(p => p.id === id);
+    if (!source) return;
+    const dup = newProgram({ ...source, name: source.name + " (Copy)" });
+    const idx = programs.findIndex(p => p.id === id);
+    const next = [...programs];
+    next.splice(idx + 1, 0, dup);
+    onProgramsChange(next);
+  };
+
+  const toggleEnabled = (id) => {
+    onProgramsChange(programs.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p));
+  };
+
+  const ps = {
+    panel: { ...s.section, borderLeft: "3px solid #1B2A4A" },
+    header: { display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" },
+    headerTitle: { fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: 0, display: "flex", alignItems: "center", gap: 8 },
+    badge: { fontSize: 10, fontWeight: 700, background: "#1B2A4A", color: "#fff", borderRadius: 10, padding: "2px 8px" },
+    chevron: { fontSize: 14, color: "var(--color-text-secondary)", transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0deg)" },
+    templateGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8, marginBottom: 16, marginTop: 12 },
+    templateBtn: (active) => ({ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--color-border-secondary)", background: active ? "#f0f4ff" : "var(--color-background-primary)", cursor: "pointer", textAlign: "left" }),
+    programCard: (enabled) => ({ background: enabled ? "var(--color-background-primary)" : "var(--color-background-secondary)", border: `0.5px solid ${enabled ? "var(--color-border-secondary)" : "var(--color-border-tertiary)"}`, borderRadius: 10, padding: "12px 14px", marginBottom: 8, opacity: enabled ? 1 : 0.6, transition: "opacity 0.2s" }),
+    tierBadge: (tier) => ({ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#fff", background: TIER_COLORS[tier] || "#64748b", borderRadius: 4, padding: "1px 7px", marginRight: 8 }),
+    actionBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "var(--color-text-secondary)", padding: "2px 6px" },
+  };
+
+  return (
+    <div style={ps.panel}>
+      <div style={ps.header} onClick={() => setExpanded(!expanded)}>
+        <p style={ps.headerTitle}>
+          Opciones de Programa / Program Options
+          {programs.length > 0 && <span style={ps.badge}>{programs.length}</span>}
+        </p>
+        <span style={ps.chevron}>▼</span>
+      </div>
+
+      {expanded && (
+        <div style={{ marginTop: 14 }}>
+          {/* Templates */}
+          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: 0.8 }}>
+            Quick Templates
+          </p>
+          <div style={ps.templateGrid}>
+            {Object.entries(PROGRAM_TEMPLATES).map(([key, tmpl]) => (
+              <button key={key} type="button" onClick={() => addFromTemplate(key)} style={ps.templateBtn(false)}>
+                <p style={{ fontSize: 12, fontWeight: 600, margin: "0 0 3px", color: "var(--color-text-primary)" }}>{tmpl.label}</p>
+                <p style={{ fontSize: 10, margin: 0, color: "var(--color-text-secondary)" }}>{tmpl.desc}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Program cards */}
+          {programs.map((prog) => (
+            <div key={prog.id} style={ps.programCard(prog.enabled)}>
+              {/* Card header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: editingId === prog.id ? 10 : 0 }}>
+                <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                  <span style={ps.tierBadge(prog.tier)}>{TIER_LABELS[prog.tier] || prog.tier}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)" }}>
+                    {prog.name || "(unnamed)"}
+                  </span>
+                  {prog.volume && (
+                    <span style={{ fontSize: 11, color: "var(--color-text-secondary)", marginLeft: 10 }}>
+                      {prog.volume} {prog.unit} — {FREQ_LABELS[prog.frequency] || prog.frequency}
+                    </span>
+                  )}
+                  {prog.price && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#059669", marginLeft: 10 }}>
+                      {prog.currency} {prog.price}/{prog.unit}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 2 }}>
+                  <button type="button" style={ps.actionBtn} onClick={() => setEditingId(editingId === prog.id ? null : prog.id)} title="Edit">✏️</button>
+                  <button type="button" style={ps.actionBtn} onClick={() => duplicateProgram(prog.id)} title="Duplicate">📋</button>
+                  <button type="button" style={ps.actionBtn} onClick={() => toggleEnabled(prog.id)} title={prog.enabled ? "Disable" : "Enable"}>
+                    {prog.enabled ? "🟢" : "⚪"}
+                  </button>
+                  <button type="button" style={{ ...ps.actionBtn, color: "#dc2626" }} onClick={() => removeProgram(prog.id)} title="Delete">✕</button>
+                </div>
+              </div>
+
+              {/* Inline edit form */}
+              {editingId === prog.id && (
+                <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 10 }}>
+                  <div style={s.row2}>
+                    <Field label="Program Name">
+                      <Inp value={prog.name} onChange={(v) => updateProgram(prog.id, "name", v)} placeholder="e.g. Trial Program" />
+                    </Field>
+                    <Field label="Tier">
+                      <Sel value={prog.tier} onChange={(v) => updateProgram(prog.id, "tier", v)}>
+                        {PROGRAM_TIERS.map(t => <option key={t} value={t}>{TIER_LABELS[t]}</option>)}
+                      </Sel>
+                    </Field>
+                  </div>
+                  <div style={s.row3}>
+                    <Field label="Volume">
+                      <Inp value={prog.volume} onChange={(v) => updateProgram(prog.id, "volume", v)} type="number" placeholder="0" min="0" />
+                    </Field>
+                    <Field label="Unit">
+                      <Sel value={prog.unit} onChange={(v) => updateProgram(prog.id, "unit", v)}>
+                        <option value="MT">MT</option>
+                        <option value="KG">KG</option>
+                        <option value="HEAD">Head</option>
+                        <option value="UNITS">Units</option>
+                        <option value="LITERS">Liters</option>
+                        <option value="BAGS">Bags</option>
+                        <option value="CONTAINERS">Containers</option>
+                      </Sel>
+                    </Field>
+                    <Field label="Price per Unit">
+                      <Inp value={prog.price} onChange={(v) => updateProgram(prog.id, "price", v)} type="number" placeholder="0.00" min="0" />
+                    </Field>
+                  </div>
+                  <div style={s.row3}>
+                    <Field label="Currency">
+                      <Sel value={prog.currency} onChange={(v) => updateProgram(prog.id, "currency", v)}>
+                        {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </Sel>
+                    </Field>
+                    <Field label="Frequency">
+                      <Sel value={prog.frequency} onChange={(v) => updateProgram(prog.id, "frequency", v)}>
+                        {FREQUENCY_OPTIONS.map(f => <option key={f} value={f}>{FREQ_LABELS[f]}</option>)}
+                      </Sel>
+                    </Field>
+                    <Field label="Duration (months)">
+                      <Inp value={prog.duration} onChange={(v) => updateProgram(prog.id, "duration", v)} type="number" placeholder="12" min="1" />
+                    </Field>
+                  </div>
+                  <Field label="Notes">
+                    <Inp value={prog.notes} onChange={(v) => updateProgram(prog.id, "notes", v)} placeholder="Optional notes for this program" />
+                  </Field>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Manual add button */}
+          <button type="button" onClick={() => { const p = newProgram(); onProgramsChange([...programs, p]); setEditingId(p.id); }}
+            style={{ width: "100%", padding: "8px", borderRadius: 8, border: "1px dashed var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 12, color: "var(--color-text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4 }}>
+            <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add Program Manually
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Field helpers ────────────────────────────────────────────────────────────
 function Field({ label, children, required }) {
   return (
@@ -1644,6 +1858,7 @@ export function CommercialEngine({ value, onChange }) {
   const [rowData, setRowData] = useState({});
   const [destination, setDestination] = useState(value?.destination || "");
   const [destinationPort, setDestinationPort] = useState(value?.destinationPort || "");
+  const [programs, setPrograms] = useState(() => value?.programs || []);
   const [destPortFallback, setDestPortFallback] = useState("");
 
   const availablePorts = getPortsForCountry(destination, destPortFallback);
@@ -1688,8 +1903,10 @@ export function CommercialEngine({ value, onChange }) {
       destination,
       destinationPort,
       origin: firstRow.origin || "Brazil",
+      // Program options (Phase 7A-S1)
+      programs: programs.length > 0 ? programs : undefined,
     });
-  }, [rowData, destination, destinationPort, rows]);
+  }, [rowData, destination, destinationPort, rows, programs]);
 
   return (
     <div>
@@ -1727,6 +1944,9 @@ export function CommercialEngine({ value, onChange }) {
         style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px dashed var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 13, color: "var(--color-text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}>
         <span style={{ fontSize: 18, fontWeight: 300 }}>+</span> Agregar otro producto al programa
       </button>
+
+      {/* Program Options — Phase 7A-S1 */}
+      <ProgramOptionsPanel programs={programs} onProgramsChange={setPrograms} />
 
       {/* Aggregate summary */}
       <AggregateSummary rows={rows} rowData={dataArray} />
