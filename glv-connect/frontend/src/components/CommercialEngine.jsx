@@ -90,7 +90,22 @@ const PROGRAM_TEMPLATES = {
   },
 };
 
-function ProgramOptionsPanel({ programs, onProgramsChange }) {
+function safeStr(v) { return (v != null && typeof v !== "object") ? String(v) : ""; }
+
+function ProgramOptionsPanel({ programs: rawPrograms, onProgramsChange }) {
+  const programs = rawPrograms.map(p => ({
+    id: p.id,
+    name: safeStr(p.name),
+    tier: safeStr(p.tier) || "COMMERCIAL",
+    volume: safeStr(p.volume),
+    unit: safeStr(p.unit) || "MT",
+    price: safeStr(p.price),
+    currency: safeStr(p.currency) || "USD",
+    frequency: safeStr(p.frequency) || "MONTHLY",
+    duration: safeStr(p.duration) || "12",
+    notes: safeStr(p.notes),
+    enabled: p.enabled !== false,
+  }));
   const [expanded, setExpanded] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -113,7 +128,8 @@ function ProgramOptionsPanel({ programs, onProgramsChange }) {
   const duplicateProgram = (id) => {
     const source = programs.find(p => p.id === id);
     if (!source) return;
-    const dup = newProgram({ ...source, name: source.name + " (Copy)" });
+    const { id: _srcId, ...rest } = source;
+    const dup = newProgram({ ...rest, name: (source.name || "") + " (Copy)" });
     const idx = programs.findIndex(p => p.id === id);
     const next = [...programs];
     next.splice(idx + 1, 0, dup);
@@ -228,7 +244,7 @@ function ProgramOptionsPanel({ programs, onProgramsChange }) {
                   <div style={s.row3}>
                     <Field label="Currency">
                       <Sel value={prog.currency} onChange={(v) => updateProgram(prog.id, "currency", v)}>
-                        {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
                       </Sel>
                     </Field>
                     <Field label="Frequency">
