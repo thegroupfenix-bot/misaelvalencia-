@@ -46,16 +46,44 @@ app.use((req, _res, next) => {
   next();
 });
 
-const ALLOWED_ORIGINS = (process.env.CLIENT_ORIGIN || "")
+const IS_PRODUCTION = (process.env.NODE_ENV || "").toLowerCase() === "production";
+
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_ORIGIN || "")
   .split(",")
   .map(o => o.trim())
   .filter(Boolean);
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (!IS_PRODUCTION) {
+    try {
+      const hostname = new URL(origin).hostname;
+      if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+      if (hostname.endsWith(".up.railway.app")) return true;
+    } catch { /* malformed origin — reject */ }
+  }
+  return false;
+}
+
+if (IS_PRODUCTION && ALLOWED_ORIGINS.length === 0) {
+  console.error("FATAL: ALLOWED_ORIGINS (or CLIENT_ORIGIN) is required in production.");
+  console.error("Example: ALLOWED_ORIGINS=https://glvservicesexp.com,https://www.glvservicesexp.com");
+  process.exit(1);
+}
+
+console.log(`[CORS] mode=${IS_PRODUCTION ? "PRODUCTION" : "DEVELOPMENT"}`);
+console.log(`[CORS] explicit origins: ${ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS.join(", ") : "(none)"}`);
+if (!IS_PRODUCTION) {
+  console.log("[CORS] auto-allowed in dev: localhost, 127.0.0.1, *.up.railway.app");
+}
+
 app.use(cors({
   origin(origin, cb) {
-    if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       cb(null, true);
     } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
       cb(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
