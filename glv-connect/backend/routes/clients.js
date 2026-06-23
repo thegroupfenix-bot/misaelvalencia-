@@ -9,6 +9,11 @@ const r2      = require("../storage/r2");
 
 const router = express.Router();
 
+const { rateLimit } = require("../middleware/rateLimiter");
+const pii = require("../utils/piiCrypto");
+
+const kycLimiter = rateLimit(15 * 60 * 1000, 10);
+
 // ─── Valid KYC status transitions ─────────────────────────────────────────────
 const KYC_STATUSES = [
   "PRE_REGISTRATION",
@@ -19,19 +24,43 @@ const KYC_STATUSES = [
   "ACTIVE_CLIENT",
 ];
 
+const KYC_MAX_BODY_SIZE = 50 * 1024;
+const GLV_CODE_REGEX = /^[A-Za-z0-9\-_]{2,50}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // ─── PUBLIC: Web KYC ingestion ────────────────────────────────────────────────
 // No auth required — called from public web portal (registro-clientes.html)
-router.post("/kyc", (req, res) => {
+router.post("/kyc", kycLimiter, (req, res) => {
   try {
     const body = req.body || {};
+
+    const rawSize = JSON.stringify(body).length;
+    if (rawSize > KYC_MAX_BODY_SIZE) {
+      return res.status(413).json({ error: "Payload excede el tamaño máximo permitido." });
+    }
+
     const { glv_code, empresa, email, submission_type } = body;
 
     if (!glv_code || !empresa || !email) {
       return res.status(400).json({ error: "glv_code, empresa y email son obligatorios." });
     }
 
+    if (!GLV_CODE_REGEX.test(glv_code)) {
+      return res.status(400).json({ error: "glv_code contiene caracteres no permitidos." });
+    }
+    if (typeof empresa !== "string" || empresa.length > 200) {
+      return res.status(400).json({ error: "empresa debe ser texto con máximo 200 caracteres." });
+    }
+    if (!EMAIL_REGEX.test(email) || email.length > 254) {
+      return res.status(400).json({ error: "email inválido." });
+    }
+    if (submission_type && !["CLIENT", "SUPPLIER", "BROKER"].includes(submission_type)) {
+      return res.status(400).json({ error: "submission_type inválido." });
+    }
+
     const submType = submission_type || "CLIENT";
     const rawJson  = JSON.stringify(body);
+    const encryptedJson = pii.isConfigured() ? pii.encrypt(rawJson) : rawJson;
     const clientIp = (req.headers["x-forwarded-for"] || req.ip || "").toString().split(",")[0].trim();
     const ua       = (req.headers["user-agent"] || "").slice(0, 512);
 
@@ -64,7 +93,7 @@ router.post("/kyc", (req, res) => {
         WHERE glv_code = ?
       `).run(
         comercial || empresa, empresa, pais || null, rep || null,
-        email, tel || null, nit || null, rawJson, glv_code
+        email, tel || null, nit || null, encryptedJson, glv_code
       );
       clientId = existing.id;
     } else {
@@ -76,7 +105,7 @@ router.post("/kyc", (req, res) => {
         VALUES ('buyer', ?, ?, ?, ?, ?, ?, ?, ?, 'UNASSIGNED', 'PRE_REGISTRATION', 'WEB_KYC', ?, 0, 0, 1)
       `).run(
         comercial || empresa, empresa, pais || null, rep || null,
-        email, tel || null, nit || null, glv_code, rawJson
+        email, tel || null, nit || null, glv_code, encryptedJson
       );
       clientId = ins.lastInsertRowid;
     }
@@ -206,7 +235,8 @@ router.get("/:id/kyc-data", requireLevel(65), (req, res) => {
 
     let parsedKycData = null;
     if (client.kyc_data) {
-      try { parsedKycData = JSON.parse(client.kyc_data); } catch (_) {}
+      const decrypted = pii.isConfigured() ? pii.decrypt(client.kyc_data) : client.kyc_data;
+      try { parsedKycData = JSON.parse(decrypted); } catch (_) {}
     }
 
     res.json({

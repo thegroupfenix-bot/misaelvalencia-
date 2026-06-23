@@ -11,8 +11,9 @@ process.on("uncaughtException", (err) => {
 });
 
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = "glv-connect-dev-secret-change-in-production-2026";
-  console.warn("WARNING: JWT_SECRET not set — using insecure default. Set it in Railway environment variables.");
+  console.error("FATAL: JWT_SECRET environment variable is not set. Server cannot start without it.");
+  console.error("Set JWT_SECRET in Railway environment variables or in your .env file.");
+  process.exit(1);
 }
 
 require("./db/database"); // run migrations + seed on startup
@@ -45,7 +46,21 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.use(cors({ origin: "*", credentials: false }));
+const ALLOWED_ORIGINS = (process.env.CLIENT_ORIGIN || "")
+  .split(",")
+  .map(o => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.set("trust proxy", 1);

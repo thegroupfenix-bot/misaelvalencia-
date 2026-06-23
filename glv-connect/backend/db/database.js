@@ -892,19 +892,37 @@ function seedPriceCenter() {
   console.log("✓ Price Center seed completed");
 }
 
+function generateBootstrapPassword() {
+  return require("crypto").randomBytes(16).toString("base64url");
+}
+
 function seedUsers() {
   const count = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
   if (count > 0) return;
 
+  const bootstrapPassword = process.env.SEED_ADMIN_PASSWORD || generateBootstrapPassword();
+  const isGenerated = !process.env.SEED_ADMIN_PASSWORD;
+
+  if (isGenerated) {
+    console.warn("╔══════════════════════════════════════════════════════════════╗");
+    console.warn("║  BOOTSTRAP: No SEED_ADMIN_PASSWORD env var found.           ║");
+    console.warn("║  Generated temporary admin password (change immediately):   ║");
+    console.warn(`║  User: mvalencia  Password: ${bootstrapPassword.padEnd(30)}║`);
+    console.warn("║  All other seed users get forced first-login password reset.║");
+    console.warn("╚══════════════════════════════════════════════════════════════╝");
+  }
+
+  const seedPassword = generateBootstrapPassword();
+
   const users = [
-    { username: "agent.rodriguez", password: "agent123",  role: "AGENTE",       name: "Carlos Rodríguez",         email: "c.rodriguez@glvservicesexp.com",    department: "Comercial", position: "Agente Internacional Sr." },
-    { username: "agent.silva",     password: "agent456",  role: "AGENTE",       name: "Ana Silva",                email: "a.silva@glvservicesexp.com",        department: "Comercial", position: "Agente Internacional" },
-    { username: "agent.park",      password: "agent789",  role: "AGENTE",       name: "Ji-hoon Park",             email: "j.park@glvservicesexp.com",         department: "Comercial", position: "Agente Asia-Pacífico" },
-    { username: "agent.osei",      password: "agentabc",  role: "AGENTE",       name: "Kwame Osei",               email: "k.osei@glvservicesexp.com",         department: "Comercial", position: "Agente Región África" },
-    { username: "agent.lima",      password: "agentdef",  role: "AGENTE",       name: "Valentina Lima",           email: "v.lima@glvservicesexp.com",         department: "Comercial", position: "Agente LATAM" },
-    { username: "mvalencia",       password: "dir2026!",  role: "SUPER_ADMIN",  name: "Misael Valencia Barahona", email: "mvalencia@glvglobalfoodservices.com", department: "Dirección", position: "CEO / Super Admin", first_login: 0 },
-    { username: "juridico",        password: "legal2026!",role: "COMPLIANCE",   name: "Departamento Jurídico",    email: "juridico@glvservicesexp.com",       department: "Legal" },
-    { username: "contabilidad",    password: "conta2026!",role: "ACCOUNTING",   name: "Departamento Financiero",  email: "contabilidad@glvservicesexp.com",   department: "Finanzas" },
+    { username: "agent.rodriguez", password: seedPassword,      role: "AGENTE",       name: "Carlos Rodríguez",         email: "c.rodriguez@glvservicesexp.com",    department: "Comercial", position: "Agente Internacional Sr." },
+    { username: "agent.silva",     password: seedPassword,      role: "AGENTE",       name: "Ana Silva",                email: "a.silva@glvservicesexp.com",        department: "Comercial", position: "Agente Internacional" },
+    { username: "agent.park",      password: seedPassword,      role: "AGENTE",       name: "Ji-hoon Park",             email: "j.park@glvservicesexp.com",         department: "Comercial", position: "Agente Asia-Pacífico" },
+    { username: "agent.osei",      password: seedPassword,      role: "AGENTE",       name: "Kwame Osei",               email: "k.osei@glvservicesexp.com",         department: "Comercial", position: "Agente Región África" },
+    { username: "agent.lima",      password: seedPassword,      role: "AGENTE",       name: "Valentina Lima",           email: "v.lima@glvservicesexp.com",         department: "Comercial", position: "Agente LATAM" },
+    { username: "mvalencia",       password: bootstrapPassword, role: "SUPER_ADMIN",  name: "Misael Valencia Barahona", email: "mvalencia@glvglobalfoodservices.com", department: "Dirección", position: "CEO / Super Admin", first_login: isGenerated ? 1 : 0 },
+    { username: "juridico",        password: seedPassword,      role: "COMPLIANCE",   name: "Departamento Jurídico",    email: "juridico@glvservicesexp.com",       department: "Legal" },
+    { username: "contabilidad",    password: seedPassword,      role: "ACCOUNTING",   name: "Departamento Financiero",  email: "contabilidad@glvservicesexp.com",   department: "Finanzas" },
   ];
 
   const insert = db.prepare(
