@@ -46,16 +46,31 @@ app.use((req, _res, next) => {
   next();
 });
 
+const IS_PRODUCTION = (process.env.NODE_ENV || "").toLowerCase() === "production";
+
 const ALLOWED_ORIGINS = (process.env.CLIENT_ORIGIN || "")
   .split(",")
   .map(o => o.trim())
   .filter(Boolean);
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (!IS_PRODUCTION && /\.up\.railway\.app$/.test(new URL(origin).hostname)) return true;
+  return false;
+}
+
+if (IS_PRODUCTION && ALLOWED_ORIGINS.length === 0) {
+  console.error("FATAL: CLIENT_ORIGIN is required in production. Set it to your allowed domain(s).");
+  process.exit(1);
+}
+
 app.use(cors({
   origin(origin, cb) {
-    if (!origin || ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       cb(null, true);
     } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
       cb(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
