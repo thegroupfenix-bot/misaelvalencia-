@@ -3,6 +3,7 @@ const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
 const { requireRole, requireLevel } = require("../middleware/rbac");
 const { sendDocumentEmail } = require("../utils/email");
+const pii = require("../utils/piiCrypto");
 
 const router = express.Router();
 router.use(authenticate);
@@ -73,7 +74,7 @@ function toRow(d) {
     customProductDesc: d.custom_product_desc,
     customUnit: d.custom_unit,
     fcoConfirmed: d.fco_confirmed,
-    clientIdDocB64: d.client_id_doc_b64,
+    clientIdDocB64: pii.isConfigured() ? pii.decrypt(d.client_id_doc_b64) : d.client_id_doc_b64,
     productCategory: d.product_category,
     lang: d.lang,
     commercialData: d.commercial_data ? (typeof d.commercial_data === "string" ? JSON.parse(d.commercial_data) : d.commercial_data) : null,
@@ -198,7 +199,7 @@ router.post("/", requireLevel(40), async (req, res) => {
     guarantee_type || null, guarantee_bank || null,
     parseInt(validity_days) || 15,
     custom_product_name || null, custom_product_desc || null, custom_unit || null,
-    fco_confirmed ? 1 : 0, client_id_doc_b64 || null,
+    fco_confirmed ? 1 : 0, (client_id_doc_b64 && pii.isConfigured()) ? pii.encrypt(client_id_doc_b64) : (client_id_doc_b64 || null),
     commercial_data ? JSON.stringify(commercial_data) : null
   );
 
