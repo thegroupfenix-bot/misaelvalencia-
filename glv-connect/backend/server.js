@@ -34,9 +34,10 @@ const clientsRouter     = require("./routes/clients");
 const operationsRouter  = require("./routes/operations");
 const financeRouter     = require("./routes/finance");
 const tasksRouter       = require("./routes/tasks");
-const priceCenterRouter = require("./routes/price-center");
-const mediaRouter       = require("./routes/media");
-const backupRouter      = require("./routes/backup");
+const priceCenterRouter           = require("./routes/price-center");
+const mediaRouter                 = require("./routes/media");
+const backupRouter                = require("./routes/backup");
+const commercialFoundationRouter  = require("./routes/commercial-foundation");
 
 const app = express();
 
@@ -117,9 +118,10 @@ app.use("/clients",      clientsRouter);
 app.use("/operations",   operationsRouter);
 app.use("/finance",      financeRouter);
 app.use("/tasks",        tasksRouter);
-app.use("/price-center", priceCenterRouter);
-app.use("/media",        mediaRouter);
-app.use("/backup",       backupRouter);
+app.use("/price-center",           priceCenterRouter);
+app.use("/media",                  mediaRouter);
+app.use("/backup",                 backupRouter);
+app.use("/commercial-foundation",  commercialFoundationRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
