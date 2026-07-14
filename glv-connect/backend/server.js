@@ -23,6 +23,8 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 
+const { requestLogger } = require("./middleware/requestLogger");
+
 const authRouter        = require("./routes/auth");
 const documentsRouter   = require("./routes/documents");
 const auditRouter       = require("./routes/audit");
@@ -40,11 +42,8 @@ const backupRouter      = require("./routes/backup");
 
 const app = express();
 
-// Log every request so we can confirm Express is receiving traffic
-app.use((req, _res, next) => {
-  console.log(`→ ${req.method} ${req.path}`);
-  next();
-});
+// Structured request logger — emits JSON per request, never logs PII or bodies
+app.use(requestLogger);
 
 const IS_PRODUCTION = (process.env.NODE_ENV || "").toLowerCase() === "production";
 

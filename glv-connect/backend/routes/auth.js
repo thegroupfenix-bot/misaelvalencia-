@@ -6,17 +6,28 @@ const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
 
-function buildPayload(user) {
+// JWT payload — kept slim (no PII). Auth middleware enriches req.user from DB.
+function buildJwtPayload(user) {
   return {
-    id: user.id,
+    sub: String(user.id),
+    id:       user.id,
     username: user.username,
-    role: user.role,
-    name: user.name,
-    email: user.email,
-    department: user.department || null,
-    position: user.position || null,
-    preferred_lang: user.preferred_lang || "es",
-    first_login: user.first_login || 0,
+    role:     user.role,
+  };
+}
+
+// Client-facing payload — full profile returned on login + GET /auth/me.
+function buildClientPayload(user) {
+  return {
+    id:                user.id,
+    username:          user.username,
+    role:              user.role,
+    name:              user.name,
+    email:             user.email,
+    department:        user.department || null,
+    position:          user.position  || null,
+    preferred_lang:    user.preferred_lang    || "es",
+    first_login:       user.first_login       || 0,
     profile_completed: user.profile_completed || 0,
   };
 }
@@ -35,20 +46,19 @@ router.post("/login", (req, res) => {
     return res.status(401).json({ error: "Credenciales incorrectas" });
   }
 
-  const payload = buildPayload(user);
-  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+  const token = jwt.sign(buildJwtPayload(user), process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "8h",
   });
 
   db.prepare("INSERT INTO audit_log (username, action, ip) VALUES (?, ?, ?)").run(user.username, "login", req.ip);
 
-  res.json({ token, user: payload });
+  res.json({ token, user: buildClientPayload(user) });
 });
 
 router.get("/me", authenticate, (req, res) => {
-  const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+  const user = db.prepare("SELECT * FROM users WHERE id = ? AND active = 1").get(req.user.id);
   if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
-  res.json(buildPayload(user));
+  res.json(buildClientPayload(user));
 });
 
 // POST /auth/change-password — first login or voluntary change
