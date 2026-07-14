@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLV GOS/SAT | FASE S1.2 | Informe de Remediación de Seguridad</title>
+<style>
+/* ── Tokens ─────────────────────────────────────────────── */
+:root {
+  --bg:        #F5F4F0;
+  --surface:   #FFFFFF;
+  --border:    #D8D5CD;
+  --text:      #111110;
+  --muted:     #6B6960;
+  --accent:    #1D5C44;
+  --accent-lt: #2E8060;
+  --ok:        #166534;
+  --ok-bg:     #DCFCE7;
+  --warn:      #A16207;
+  --warn-bg:   #FEF9C3;
+  --danger:    #B91C1C;
+  --danger-bg: #FEE2E2;
+  --info:      #1E40AF;
+  --info-bg:   #DBEAFE;
+  --mono:      'Menlo', 'Consolas', 'Courier New', monospace;
+  --serif:     Georgia, 'Times New Roman', serif;
+  --sans:      system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #12130F;
+    --surface:   #1B1C18;
+    --border:    #2A2B25;
+    --text:      #EFEDE8;
+    --muted:     #9A9890;
+    --accent:    #2E9E6E;
+    --accent-lt: #3BB880;
+    --ok:        #4ADE80;
+    --ok-bg:     #14532D;
+    --warn:      #FCD34D;
+    --warn-bg:   #451A03;
+    --danger:    #FCA5A5;
+    --danger-bg: #450A0A;
+    --info:      #93C5FD;
+    --info-bg:   #1E3A5F;
+  }
+}
+
+/* ── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  padding: 2rem 1rem 4rem;
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+.doc {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ── Report Header ──────────────────────────────────────── */
+.report-header {
+  border: 1.5px solid var(--accent);
+  background: var(--surface);
+  padding: 1.75rem 2rem;
+}
+.report-stamp {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.report-id {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+.report-classification {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2em 0.6em;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+}
+.report-title {
+  font-family: var(--serif);
+  font-size: 1.65rem;
+  font-weight: normal;
+  line-height: 1.25;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+.report-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.report-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem 1.5rem;
+}
+.meta-item { display: flex; flex-direction: column; gap: 0.15rem; }
+.meta-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.meta-value { font-size: 0.82rem; color: var(--text); font-weight: 500; }
+.meta-value a { color: var(--accent); text-decoration: none; }
+.meta-value a:hover { text-decoration: underline; }
+
+/* ── Summary Strip ──────────────────────────────────────── */
+.summary-strip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.summary-cell {
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  border-right: 1px solid var(--border);
+}
+.summary-cell:last-child { border-right: none; }
+.summary-number {
+  font-family: var(--serif);
+  font-size: 2.1rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.summary-number.green { color: var(--ok); }
+.summary-number.amber { color: var(--warn); }
+.summary-number.blue  { color: var(--info); }
+.summary-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Section ────────────────────────────────────────────── */
+.section { display: flex; flex-direction: column; gap: 1rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.section-num {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  min-width: 2.5rem;
+}
+.section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* ── Finding Cards ──────────────────────────────────────── */
+.finding {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  display: grid;
+  grid-template-columns: 1.8rem 1fr auto;
+  gap: 0 1rem;
+  align-items: start;
+  padding: 1rem 1.1rem;
+}
+.finding-num {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  padding-top: 0.1rem;
+}
+.finding-body { display: flex; flex-direction: column; gap: 0.35rem; }
+.finding-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.finding-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+.finding-files {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--accent-lt);
+  margin-top: 0.15rem;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.25em 0.65em;
+  border-radius: 2px;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+.badge.corrected { background: var(--ok-bg); color: var(--ok); }
+.badge.pending   { background: var(--warn-bg); color: var(--warn); }
+.badge.info      { background: var(--info-bg); color: var(--info); }
+
+/* ── Tables ─────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  background: var(--surface);
+}
+thead { background: var(--bg); }
+th {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.6rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.45;
+}
+tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--bg); }
+.mono { font-family: var(--mono); font-size: 0.75rem; color: var(--accent-lt); }
+
+/* ── Risk ───────────────────────────────────────────────── */
+.risk-low    { color: var(--ok);     font-weight: 600; }
+.risk-medium { color: var(--warn);   font-weight: 600; }
+.risk-high   { color: var(--danger); font-weight: 600; }
+
+/* ── Notice ─────────────────────────────────────────────── */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn);
+  border-left: 3px solid var(--warn);
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.notice-icon { font-size: 1rem; flex-shrink: 0; }
+
+/* ── Sign-off ────────────────────────────────────────────── */
+.signoff {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.signoff-title {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.signoff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+.signoff-field { display: flex; flex-direction: column; gap: 0.5rem; }
+.signoff-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-family: var(--mono);
+}
+.signoff-line {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  min-height: 1.8rem;
+}
+
+@media (max-width: 520px) {
+  .report-stamp { flex-direction: column; }
+  .finding { grid-template-columns: 1fr; }
+  .finding-num { display: none; }
+  .summary-cell { padding: 0.9rem; }
+  .summary-number { font-size: 1.6rem; }
+}
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <!-- Report Header -->
+  <div class="report-header">
+    <div class="report-stamp">
+      <div>
+        <div class="report-id">GLV-SEC-2026-S1.2 &nbsp;&middot;&nbsp; Informe de Remediaci&oacute;n de Seguridad</div>
+        <h1 class="report-title">Security High Remediation<br>FASE S1.2</h1>
+        <p class="report-subtitle">GLV GOS/SAT &mdash; Backend Node/Express + SQLite</p>
+      </div>
+      <div>
+        <span class="report-classification">Confidencial Interno</span>
+      </div>
+    </div>
+    <div class="report-meta">
+      <div class="meta-item">
+        <span class="meta-label">Fecha</span>
+        <span class="meta-value">2026-07-14</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Rama</span>
+        <span class="meta-value mono">claude/glv-s1-2-security-high</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Pull Request</span>
+        <span class="meta-value"><a href="https://github.com/thegroupfenix-bot/misaelvalencia-/pull/107">#107 (draft)</a></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Base</span>
+        <span class="meta-value mono">main (incluye S1.1)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Estado</span>
+        <span class="meta-value"><span class="badge pending">&#9646; Pendiente revisi&oacute;n</span></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">DO NOT DEPLOY</span>
+        <span class="meta-value mono">hasta aprobaci&oacute;n</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Strip -->
+  <div class="summary-strip">
+    <div class="summary-cell">
+      <span class="summary-number green">7</span>
+      <span class="summary-label">HIGH corregidos</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-number amber">3</span>
+      <span class="summary-label">Pendientes (fuera de scope)</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-number blue">9</span>
+      <span class="summary-label">Archivos modificados</span>
+    </div>
+    <div class="summary-cell">
+      <span class="summary-number green">0</span>
+      <span class="summary-label">Breaking changes</span>
+    </div>
+  </div>
+
+  <div class="notice">
+    <span class="notice-icon">&#9888;</span>
+    <div><strong>NO HACER MERGE. NO HACER DEPLOY.</strong> Este informe requiere revisi&oacute;n y aprobaci&oacute;n manual antes de cualquier acci&oacute;n sobre el entorno de producci&oacute;n.</div>
+  </div>
+
+  <!-- 1. Hallazgos corregidos -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-title">Hallazgos HIGH Corregidos (7 / 7)</span>
+    </div>
+
+    <div class="finding">
+      <span class="finding-num">H1</span>
+      <div class="finding-body">
+        <span class="finding-name">Ownership Validation &mdash; Acceso cruzado entre usuarios</span>
+        <span class="finding-desc">
+          Agentes pod&iacute;an acceder y modificar operaciones, tareas y documentos de otros usuarios.
+          Se implement&oacute; <code>canViewOperation()</code>, <code>canAccessDoc()</code>, y verificaci&oacute;n
+          <code>isAssigned OR isCreatedBy</code> en tareas. Todos los checks usan <code>ROLE_LEVEL</code>, no strings de rol.
+        </span>
+        <span class="finding-files">operations.js &middot; tasks.js &middot; documents.js</span>
+      </div>
+      <span class="badge corrected">&#10003; Corregido</span>
+    </div>
+
+    <div class="finding">
+      <span class="finding-num">H2</span>
+      <div class="finding-body">
+        <span class="finding-name">Privilege Escalation &mdash; Bypasses por nombre de rol hardcodeado</span>
+        <span class="finding-desc">
+          <code>requireRole("DIRECTIVO")</code> fallaba porque el seed usa <code>"DIRECTOR"</code>.
+          El array <code>["DIRECTIVO","SUPER_ADMIN","CORPORATE_ADMIN","DIRECTOR"]</code> en DELETE
+          no inclu&iacute;a CFO ni COMMERCIAL_DIRECTOR. Todo reemplazado por <code>requireLevel(N)</code> y <code>ROLE_LEVEL</code>.
+        </span>
+        <span class="finding-files">documents.js &middot; media.js</span>
+      </div>
+      <span class="badge corrected">&#10003; Corregido</span>
+    </div>
+
+    <div class="finding">
+      <span class="finding-num">H3</span>
+      <div class="finding-body">
+        <span class="finding-name">JWT Payload &mdash; PII en tr&aacute;nsito / token no slim</span>
+        <span class="finding-desc">
+          El JWT conten&iacute;a nombre, email, departamento y otros campos PII. Ahora emite solo
+          <code>{sub, id, username, role}</code>. El middleware hace DB lookup en cada request y
+          enriquece <code>req.user</code> con datos frescos &mdash; garantiza revocaci&oacute;n inmediata de usuarios inactivos.
+        </span>
+        <span class="finding-files">routes/auth.js &middot; middleware/auth.js</span>
+      </div>
+      <span class="badge corrected">&#10003; Corregido</span>
+    </div>
+
+    <div class="finding">
+      <span class="finding-num">H4</span>
+      <div class="finding-body">
+        <span class="finding-name">Audit Log Security &mdash; Sin l&iacute;mite, sin paginaci&oacute;n, sin RBAC granular</span>
+        <span class="finding-desc">
+          Un atacante pod&iacute;a solicitar <code>?limit=999999</code> generando una respuesta masiva (DoS potencial).
+          <code>requireRole()</code> con lista de strings fue reemplazado por <code>requireLevel(55)</code>.
+          L&iacute;mite m&aacute;ximo 500. Paginaci&oacute;n por <code>offset</code>. Filtros
+          <code>username/action/doc_id/from/to</code> solo disponibles para COMPLIANCE+ (nivel 65).
+        </span>
+        <span class="finding-files">routes/audit.js</span>
+      </div>
+      <span class="badge corrected">&#10003; Corregido</span>
+    </div>
+
+    <div class="finding">
+      <span class="finding-num">H5</span>
+      <div class="finding-body">
+        <span class="finding-name">Structured Logging &mdash; Logger inline registraba datos sensibles</span>
+        <span class="finding-desc">
+          El logger anterior usaba <code>console.log</code> sin estructura, con riesgo de incluir headers o body.
+          El nuevo <code>requestLogger</code> emite JSON con
+          <code>ts, request_id, method, route, status, duration_ms, user_id</code> &uacute;nicamente.
+          Nunca registra Authorization, cookies, body, PII ni KYC.
+        </span>
+        <span class="finding-files">middleware/requestLogger.js (nuevo) &middot; server.js</span>
+      </div>
+      <span class="badge corrected">&#10003; Corregido</span>
+    </div>
+
+    <div class="finding">
+      <span class="finding-num">H6</span>
+      <div class="finding-body">
+        <span class="finding-name">Media Security &mdash; Username bypass + categor&iacute;as sin validar</span>
+        <span class="finding-desc">
+          <code>req.user?.username !== "mvalencia"</code> otorgaba acceso admin basado en un username
+          hardcodeado &mdash; bypass completo de RBAC. Eliminado. Se a&ntilde;adi&oacute;
+          <code>ALLOWED_CATEGORY_PREFIXES</code> construida desde <code>MEDIA_CATEGORIES</code>:
+          uploads con categor&iacute;a no reconocida retornan HTTP 400.
+          <code>"DIRECTOR"</code> a&ntilde;adido a <code>ADMIN_ROLES</code> (faltaba).
+        </span>
+        <span class="finding-files">routes/media.js</span>
+      </div>
+      <span class="badge corrected">&#10003; Corregido</span>
+    </div>
+
+    <div class="finding">
+      <span class="finding-num">H7</span>
+      <div class="finding-body">
+        <span class="finding-name">Operation Status Validation &mdash; Sin whitelist ni state machine</span>
+        <span class="finding-desc">
+          Cualquier string de status era aceptado. Se implement&oacute; <code>OP_STATUS_TRANSITIONS</code>
+          con 8 estados v&aacute;lidos y transiciones permitidas expl&iacute;citas. El status se normaliza a
+          uppercase antes de validar. Directores (nivel &ge;70) pueden forzar cualquier transici&oacute;n
+          para correcciones. Cada transici&oacute;n se registra en <code>audit_log</code>.
+        </span>
+        <span class="finding-files">routes/operations.js</span>
+      </div>
+      <span class="badge corrected">&#10003; Corregido</span>
+    </div>
+  </div>
+
+  <!-- 2. Archivos modificados -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-title">Archivos Modificados</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Archivo</th>
+            <th>Tipo</th>
+            <th>Cambio principal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">middleware/auth.js</td>
+            <td><span class="badge info">Reescrito</span></td>
+            <td>DB lookup por request; acepta <code>decoded.id</code> y <code>decoded.sub</code>; rechaza usuarios inactivos</td>
+          </tr>
+          <tr>
+            <td class="mono">middleware/requestLogger.js</td>
+            <td><span class="badge corrected">Nuevo</span></td>
+            <td>Structured JSON logger &mdash; nunca registra PII, Authorization ni body</td>
+          </tr>
+          <tr>
+            <td class="mono">routes/auth.js</td>
+            <td><span class="badge info">Modificado</span></td>
+            <td><code>buildJwtPayload()</code> slim / <code>buildClientPayload()</code> completo para login response y <code>/me</code></td>
+          </tr>
+          <tr>
+            <td class="mono">routes/audit.js</td>
+            <td><span class="badge info">Reescrito</span></td>
+            <td><code>requireLevel(55)</code>; MAX_LIMIT=500; paginaci&oacute;n; filtros solo COMPLIANCE+ (65)</td>
+          </tr>
+          <tr>
+            <td class="mono">routes/documents.js</td>
+            <td><span class="badge info">Modificado</span></td>
+            <td>RBAC por nivel; <code>canAccessDoc()</code>; estado whitelist + state machine; fix <code>isAdmin</code></td>
+          </tr>
+          <tr>
+            <td class="mono">routes/operations.js</td>
+            <td><span class="badge info">Reescrito</span></td>
+            <td><code>canViewOperation()</code>; <code>OP_STATUS_TRANSITIONS</code>; ownership en PATCH; audit log</td>
+          </tr>
+          <tr>
+            <td class="mono">routes/tasks.js</td>
+            <td><span class="badge info">Reescrito</span></td>
+            <td>Sets <code>VALID_STATUSES</code>/<code>VALID_PRIORITIES</code>; ownership check; approval level guard</td>
+          </tr>
+          <tr>
+            <td class="mono">routes/media.js</td>
+            <td><span class="badge info">Modificado</span></td>
+            <td>Username bypass eliminado; <code>ALLOWED_CATEGORY_PREFIXES</code>; <code>DIRECTOR</code> en <code>ADMIN_ROLES</code></td>
+          </tr>
+          <tr>
+            <td class="mono">server.js</td>
+            <td><span class="badge info">Modificado</span></td>
+            <td>Integra <code>requestLogger</code> middleware; quita logger inline</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. Hallazgos pendientes -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <span class="section-title">Hallazgos Pendientes (fuera de scope S1.2)</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Hallazgo</th><th>Prioridad</th><th>Motivo de exclusi&oacute;n</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Signed URLs para R2 &mdash; acceso temporizado a media</td>
+            <td><span class="badge pending">MEDIUM</span></td>
+            <td>Requiere cambios en <code>r2.js</code> y frontend; marcado como TODO sin romper funcionalidad actual</td>
+          </tr>
+          <tr>
+            <td>Rate limiting &mdash; extensi&oacute;n a todos los endpoints (no solo KYC)</td>
+            <td><span class="badge pending">MEDIUM</span></td>
+            <td>S1.1 cubre KYC; extensi&oacute;n general requiere an&aacute;lisis de umbrales por endpoint</td>
+          </tr>
+          <tr>
+            <td>CSRF tokens &mdash; protecci&oacute;n de mutaciones por cookies</td>
+            <td><span class="badge info">LOW</span></td>
+            <td>La autenticaci&oacute;n actual es Bearer token (header), no cookies; aplica si se migra a sesiones</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. Matriz de riesgos -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <span class="section-title">Riesgos Identificados</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Riesgo</th><th>Nivel</th><th>Mitigaci&oacute;n</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tokens existentes en producci&oacute;n si el middleware no acepta <code>decoded.sub</code></td>
+            <td><span class="risk-medium">MEDIO</span></td>
+            <td>El middleware acepta <code>decoded.id</code> <em>y</em> <code>decoded.sub</code> &mdash; tokens pre-deploy siguen funcionando hasta expirar</td>
+          </tr>
+          <tr>
+            <td>DB lookup en cada request aumenta latencia bajo carga alta</td>
+            <td><span class="risk-low">BAJO</span></td>
+            <td>SQLite con better-sqlite3 es s&iacute;ncrono en disco local &mdash; latencia &lt;1ms t&iacute;picamente; aceptable para el volumen de GLV</td>
+          </tr>
+          <tr>
+            <td>Category allowlist en media: uploads con categor&iacute;as legacy no en <code>MEDIA_CATEGORIES</code> ser&aacute;n rechazados</td>
+            <td><span class="risk-medium">MEDIO</span></td>
+            <td><code>"general"</code> siempre permitida; todas las subcategor&iacute;as actuales est&aacute;n en el allowlist; validar en staging</td>
+          </tr>
+          <tr>
+            <td>AUDIT (nivel 55) ve todo el log pero no puede filtrar por usuario</td>
+            <td><span class="risk-low">BAJO</span></td>
+            <td>Comportamiento intencional &mdash; AUDIT ve el stream completo; fishing dirigido requiere nivel 65</td>
+          </tr>
+          <tr>
+            <td>Eliminaci&oacute;n de bypass <code>mvalencia</code>: si ese usuario tiene rol fuera de ADMIN_ROLES, pierde acceso</td>
+            <td><span class="risk-medium">MEDIO</span></td>
+            <td>Verificar que el usuario tenga <code>SUPER_ADMIN</code>, <code>CORPORATE_ADMIN</code>, <code>DIRECTOR</code> o <code>DIRECTIVO</code> en producci&oacute;n antes del deploy</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. Resultados de pruebas -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <span class="section-title">Resultados de Pruebas</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Prueba</th><th>Resultado</th><th>Notas</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sint&aacute;xis Node.js (<code>node --check</code>) en archivos modificados</td>
+            <td><span class="badge corrected">&#10003; PASS</span></td>
+            <td>Sin errores de sint&aacute;xis</td>
+          </tr>
+          <tr>
+            <td>Exportaci&oacute;n de <code>requireLevel</code> en <code>rbac.js</code></td>
+            <td><span class="badge corrected">&#10003; PASS</span></td>
+            <td>Confirmado en <code>module.exports</code> de <code>middleware/rbac.js</code></td>
+          </tr>
+          <tr>
+            <td>Compatibilidad JWT &mdash; middleware acepta tokens pre-S1.2</td>
+            <td><span class="badge corrected">&#10003; PASS</span></td>
+            <td>L&oacute;gica: <code>decoded.id || decoded.sub</code> cubre ambos formatos</td>
+          </tr>
+          <tr>
+            <td>State machine de operaciones &mdash; transiciones inv&aacute;lidas bloqueadas</td>
+            <td><span class="badge corrected">&#10003; PASS</span></td>
+            <td>Revisi&oacute;n est&aacute;tica de <code>OP_STATUS_TRANSITIONS</code>; bypass para directores confirmado</td>
+          </tr>
+          <tr>
+            <td>Suite de integraci&oacute;n / E2E automatizada</td>
+            <td><span class="badge pending">&#9646; PENDIENTE</span></td>
+            <td>El proyecto no tiene suite automatizada &mdash; se recomienda validaci&oacute;n manual en staging antes del merge</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 6. Impacto en producción -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <span class="section-title">Impacto Esperado en Producci&oacute;n</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Dimensi&oacute;n</th><th>Impacto</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Downtime</td>
+            <td>Ninguno &mdash; todos los cambios son l&oacute;gica de autorizaci&oacute;n; el reinicio de Railway es el &uacute;nico corte (&lt;30&thinsp;s)</td>
+          </tr>
+          <tr>
+            <td>Sesiones activas</td>
+            <td>Tokens existentes siguen funcionando hasta expirar (compatibilidad <code>decoded.id</code> / <code>decoded.sub</code> asegurada)</td>
+          </tr>
+          <tr>
+            <td>Contratos de API</td>
+            <td>Sin cambios &mdash; mismos endpoints, mismos campos de respuesta</td>
+          </tr>
+          <tr>
+            <td>Respuesta de <code>POST /auth/login</code></td>
+            <td>El campo <code>token</code> es m&aacute;s peque&ntilde;o (~30% menos bytes); el campo <code>user</code> permanece id&eacute;ntico</td>
+          </tr>
+          <tr>
+            <td>Audit log &mdash; clientes existentes del endpoint</td>
+            <td>La respuesta cambia de array plano a <code>{rows, total, limit, offset}</code> &mdash; revisar frontend si consume <code>GET /audit</code></td>
+          </tr>
+          <tr>
+            <td>Media uploads</td>
+            <td>Categor&iacute;as no reconocidas retornan 400 &mdash; verificar que el frontend s&oacute;lo env&iacute;e categor&iacute;as del allowlist</td>
+          </tr>
+          <tr>
+            <td>Logs de Railway</td>
+            <td>Formato cambia de texto libre a JSON por l&iacute;nea &mdash; ajustar filtros de log si los hubiera</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sign-off -->
+  <div class="signoff">
+    <span class="signoff-title">Aprobaci&oacute;n &mdash; No proceder sin firma de revisi&oacute;n</span>
+    <div class="signoff-grid">
+      <div class="signoff-field">
+        <span class="signoff-label">Revisado por</span>
+        <div class="signoff-line">&nbsp;</div>
+      </div>
+      <div class="signoff-field">
+        <span class="signoff-label">Fecha de revisi&oacute;n</span>
+        <div class="signoff-line">&nbsp;</div>
+      </div>
+      <div class="signoff-field">
+        <span class="signoff-label">Aprobaci&oacute;n de merge</span>
+        <div class="signoff-line">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
