@@ -1,0 +1,62 @@
+# ═══════════════════════════════════════════════════════════════
+# GLV Services SAS — Apache/LiteSpeed Configuration
+# URLs limpias + HTTPS + Caché + Seguridad
+# Compatible: LiteSpeed + cPanel + Apache mod_rewrite
+# ═══════════════════════════════════════════════════════════════
+
+Options -Indexes
+Options +FollowSymLinks
+Options +SymLinksIfOwnerMatch
+
+RewriteEngine On
+
+# ── HTTPS forzado ────────────────────────────────────────────
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ── Redirigir /index y /index.html a / ───────────────────────
+RewriteRule ^index\.html?$ / [R=301,L,NC]
+
+# ── Bloquear acceso directo a archivos .html ─────────────────
+# Si alguien pide /page.html redirigir a /page (SEO canonical)
+RewriteCond %{THE_REQUEST} \s/+([^.]+)\.html[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# ── Servir archivos existentes directamente ──────────────────
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ── URL limpia → archivo .html ───────────────────────────────
+RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_URI}.html -f
+RewriteRule ^([^.]+)$ $1.html [L]
+
+# ── 404 → index ──────────────────────────────────────────────
+ErrorDocument 404 /index.html
+
+# ── Caché recursos estáticos ─────────────────────────────────
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg        "access plus 1 month"
+  ExpiresByType image/png         "access plus 1 month"
+  ExpiresByType image/webp        "access plus 1 month"
+  ExpiresByType video/mp4         "access plus 1 month"
+  ExpiresByType text/css          "access plus 1 week"
+  ExpiresByType text/javascript   "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType text/html         "access plus 1 hour"
+</IfModule>
+
+# ── Compresión GZIP ──────────────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
+</IfModule>
+
+# ── Seguridad básica ─────────────────────────────────────────
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options  "nosniff"
+  Header always set X-Frame-Options          "SAMEORIGIN"
+  Header always set Referrer-Policy          "strict-origin-when-cross-origin"
+</IfModule>
