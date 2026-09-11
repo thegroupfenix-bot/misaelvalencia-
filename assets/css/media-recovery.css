@@ -1,0 +1,29 @@
+/* Keep restored media and public-page controls usable on narrow screens. */
+#glvVid {
+  object-fit: contain;
+  background: #000;
+}
+.glv-slide:hover #glvVid { transform: none; }
+
+@media (max-width: 640px) {
+  nav { padding-left: 1rem; padding-right: 1rem; gap: .5rem; }
+  nav .nav-logo, nav .nlogo { flex-shrink: 0; }
+  nav .nav-logo-sub, nav .nsub { display: none; }
+  nav .nav-right, nav .nright { min-width: 0; gap: .4rem; }
+  nav .nav-cta, nav .ncta { padding: .5rem .55rem; font-size: .68rem; letter-spacing: .02em; }
+  nav .nav-back, nav .nback { font-size: .7rem; letter-spacing: 0; }
+  nav .lang-drop-btn { padding: .4rem .45rem; }
+  .stabs { max-width: 100%; flex-wrap: wrap; }
+  .stabs .stab { white-space: normal; flex: 1 1 45%; }
+  .main > * { min-width: 0; }
+  .main .panel > div[style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; }
+  .main .slbl { overflow-wrap: anywhere; }
+  .holding-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .entity-card, .lstep, .pstep { min-width: 0; overflow-wrap: anywhere; }
+  .cortes-inner > * { min-width: 0; }
+  .cortes-eyebrow, .cortes-total-lbl { overflow-wrap: anywhere; }
+}
+
+@media(max-width:640px){.cortes-table{table-layout:fixed;width:100%;}.cortes-table th,.cortes-table td{padding:.55rem .3rem;white-space:normal;overflow-wrap:anywhere;}}
+
+@media(max-width:640px){.subnav-links{flex-wrap:wrap;min-width:0;max-width:100%;}}
