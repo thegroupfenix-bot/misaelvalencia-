@@ -1,0 +1,85 @@
+[
+  {
+    "archivo": "imagenes/fertilizantes/planta-fertilizantes.jpg",
+    "fuente_local": "C:\\Users\\USER\\.codex\\visualizations\\2026\\09\\09\\01a0871f-edd9-7b62-b4d9-1cafdef1f372\\agri\\planta.jpg",
+    "autor": "Utkarsh952348",
+    "fuente": "Wikimedia Commons",
+    "url_original": "https://commons.wikimedia.org/wiki/File:Fertiliser_Plant_Barauni.jpg",
+    "licencia": "CC0 1.0",
+    "url_licencia": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "tipo": "JPEG",
+    "dimensiones": [
+      1720,
+      957
+    ],
+    "sha256": "2e6a6b28b0d60b8f537232aa78c9afdf5b521ddb752ee9d5f7e742e82a48cc00",
+    "modificaciones": "Archivo JPEG copiado sin modificación; encuadre mediante CSS. Adaptaciones bajo la licencia original.",
+    "url_archivo_original": "https://upload.wikimedia.org/wikipedia/commons/6/67/Fertiliser_Plant_Barauni.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original"
+  },
+  {
+    "archivo": "imagenes/fertilizantes/empaque-fertilizantes.jpg",
+    "fuente_local": "C:\\Users\\USER\\.codex\\visualizations\\2026\\09\\09\\01a0871f-edd9-7b62-b4d9-1cafdef1f372\\agri\\empaque.jpg",
+    "autor": "Adrian S Pye",
+    "fuente": "Wikimedia Commons",
+    "url_original": "https://commons.wikimedia.org/wiki/File:Bags_and_bags_of_plant_fertilizer_-_geograph.org.uk_-_2222241.jpg",
+    "licencia": "CC BY-SA 2.0",
+    "url_licencia": "https://creativecommons.org/licenses/by-sa/2.0/",
+    "tipo": "JPEG",
+    "dimensiones": [
+      640,
+      480
+    ],
+    "sha256": "d4b4defd6d4c61e394f0244688e7aa9df67aa0ccda4ad680f8b7d477dfe8bc1e",
+    "modificaciones": "Archivo JPEG copiado sin modificación; encuadre mediante CSS. Adaptaciones bajo la licencia original.",
+    "url_archivo_original": "https://upload.wikimedia.org/wikipedia/commons/e/eb/Bags_and_bags_of_plant_fertilizer_-_geograph.org.uk_-_2222241.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original"
+  },
+  {
+    "archivo": "imagenes/fertilizantes/buque-granelero.jpg",
+    "fuente_local": "C:\\Users\\USER\\.codex\\visualizations\\2026\\09\\09\\01a0871f-edd9-7b62-b4d9-1cafdef1f372\\agri\\buque.jpg",
+    "autor": "Alet123",
+    "fuente": "Wikimedia Commons",
+    "url_original": "https://commons.wikimedia.org/wiki/File:Bulk_carrier_ship_view_from_top.jpg",
+    "licencia": "CC BY-SA 4.0",
+    "url_licencia": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "tipo": "MPO",
+    "dimensiones": [
+      4000,
+      3000
+    ],
+    "sha256": "0647be978053cdb109893840f4f536626e479afa692f4384afdf0d9e1fc7d49d",
+    "modificaciones": "Archivo JPEG copiado sin modificación; encuadre mediante CSS. Adaptaciones bajo la licencia original.",
+    "url_archivo_original": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Bulk_carrier_ship_view_from_top.jpg"
+  },
+  {
+    "archivo": "imagenes/fertilizantes/cultivos-riego.webp",
+    "fuente_local": "C:\\Users\\USER\\glvglobalfoodservices-produccion\\imagenes\\agribusiness\\cultivos-riego-agricultura-moderna.webp",
+    "autor": "USDA NRCS Texas",
+    "fuente": "Wikimedia Commons",
+    "url_original": "https://commons.wikimedia.org/wiki/File:Center_pivot_sprinkler_irrigation_system_located_on_a_winter_wheat_cover_crop_in_Morton,_Texas_(24746762399).jpg",
+    "licencia": "Dominio público",
+    "url_licencia": "https://commons.wikimedia.org/wiki/Template:PD-USGov-USDA",
+    "tipo": "WEBP",
+    "dimensiones": [
+      1920,
+      1200
+    ],
+    "sha256": "6e7bc79a378d053e870551f9f50991de66e11524b869baf58c4bf457bd9ae74f",
+    "modificaciones": "Copia sin cambios. WebP previamente recortados y convertidos en proyecto fuente. Recorte de presentación CSS; adaptaciones bajo la licencia original."
+  },
+  {
+    "archivo": "imagenes/fertilizantes/urea-granulos.webp",
+    "fuente_local": "C:\\Users\\USER\\glvglobalfoodservices-produccion\\imagenes\\agribusiness\\urea-n46-granulos-blancos.webp",
+    "autor": "LHcheM",
+    "fuente": "Wikimedia Commons",
+    "url_original": "https://commons.wikimedia.org/wiki/File:Sample_of_Urea.jpg",
+    "licencia": "CC BY-SA 3.0",
+    "url_licencia": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "tipo": "WEBP",
+    "dimensiones": [
+      1920,
+      1200
+    ],
+    "sha256": "8391b58f8e6b53b985c65b7c9ef661fbb715508e532eb419abc8e947457baeda",
+    "modificaciones": "Copia sin cambios. WebP previamente recortados y convertidos en proyecto fuente. Recorte de presentación CSS; adaptaciones bajo la licencia original."
+  }
+]

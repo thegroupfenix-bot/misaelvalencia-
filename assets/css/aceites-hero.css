@@ -1,0 +1,36 @@
+/* Give the complete Coco Harmony artwork its own centered area. */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  height: auto;
+  min-height: 100svh;
+  background: #101711;
+  padding: 100px 3vw 55px;
+  gap: 2vw;
+}
+.hero-content { order: 1; padding: 0 2vw; width: 100%; }
+.hero-bg {
+  order: 2;
+  position: relative;
+  inset: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+.hero-bg img {
+  width: 100%;
+  height: auto;
+  max-width: 540px;
+  max-height: 65svh;
+  object-fit: contain;
+  object-position: center center;
+}
+.hero-bg::after { display: none; }
+.hero-title { font-size: clamp(2.8rem, 4.8vw, 5rem); }
+@media (max-width: 760px) {
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 36px; padding: 110px 24px 48px; }
+  .hero-content { padding: 0; }
+  .hero-bg img { width: min(100%, 340px); max-height: 360px; }
+}

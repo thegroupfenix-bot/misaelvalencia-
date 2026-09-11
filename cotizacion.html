@@ -433,6 +433,8 @@ nav {
   fbq('track', 'PageView');
   </script>
   <!-- End Meta Pixel Code -->
+<link rel="stylesheet" href="/assets/css/agri-navigation.css?v=1">
+<script defer src="/assets/js/agri-navigation.js"></script>
 </head>
 <body class="lang-es">
   <!-- Meta Pixel fallback: only active when JavaScript is disabled. -->
@@ -458,6 +460,7 @@ nav {
       </ul>
     </div>
   </div>
+<details class="agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
 </nav>
 
 <!-- HEADER -->
@@ -887,7 +890,8 @@ nav {
         <div class="fg"><label>Email *</label><input type="email" id="gn_em" placeholder="correo@empresa.com"></div>
         <div class="fg"><label>WhatsApp / <span lang-es>Teléfono</span><span lang-en>Phone</span><span lang-pt-br>Telefone</span></label><input type="tel" id="gn_t" placeholder="+000 000 0000"></div>
       </div>
-      <div class="fg">
+      <div class="fg"><label for="gn_division"><span lang-es>División</span><span lang-en>Division</span><span lang-pt-br>Divisão</span><span lang-ar>القسم</span><span lang-zh>业务部门</span></label><select id="gn_division" name="division"><option value="">—</option><option value="fertilizantes" data-agri-es="Agronegocios y Fertilizantes" data-agri-en="Agribusiness and Fertilizers" data-agri-pt-br="Agronegócios e Fertilizantes" data-agri-ar="الأعمال الزراعية والأسمدة" data-agri-zh="农业与肥料">Agronegocios y Fertilizantes</option></select></div>
+<div class="fg">
         <label><span lang-es>Producto(s), cantidad(es) y destino(s) *</span><span lang-en>Product(s), quantity(ies) and destination(s) *</span><span lang-pt-br>Produto(s), quantidade(s) e destino(s) *</span><span lang-ar>المنتج(ات) والكمية والوجهة *</span><span lang-zh>产品、数量和目的地 *</span></label>
         <textarea id="gn_d" style="min-height:110px" data-ph-es="Describa: productos, cantidades, destinos, plazos, incoterms, requisitos Halal/Kosher, private label, etc..." data-ph-en="Describe: products, quantities, destinations, terms, incoterms, Halal/Kosher requirements, private label, etc..." data-ph-ar="صف: المنتجات، الكميات، الوجهات، الشروط، إنكوترمز، متطلبات حلال/كوشير، العلامة الخاصة..." data-ph-zh="请描述：产品、数量、目的地、条款、贸易条件、清真/洁食要求、自有品牌等..." placeholder="Describa: productos, cantidades, destinos, plazos, incoterms, requisitos Halal/Kosher, private label, etc..."></textarea>
       </div>
@@ -1929,7 +1933,7 @@ function gnSend(via) {
   var msg   = 'GLV - Cotizacion General\n\n'
     + 'Nombre: ' + n + ' - ' + gv('gn_ca') + '\nEmpresa: ' + e
     + '\nPais: ' + gv('gn_pa') + '\nEmail: ' + em + '\nTel: ' + gv('gn_t') + '\n\n'
-    + 'Detalle:\n' + d + '\n\nIncoterm: ' + gv('gn_i') + '\nPago: ' + gv('gn_pm')
+    + 'Division: ' + gv('gn_division') + '\nDetalle:\n' + d + '\n\nIncoterm: ' + gv('gn_i') + '\nPago: ' + gv('gn_pm')
     + '\nAgente: ' + aName;
   sendW3F('Cotizacion General - ' + e, msg, em);
   if (via === 'wa') {
@@ -1980,5 +1984,6 @@ window.addEventListener('scroll', function() {
 })();
 </script>
 <p class="media-reference-note" style="margin:0;padding:0.8rem 1.5rem;text-align:center;font-size:0.75rem;color:#94a3b8;background:#0d1724;">Portada para redes sociales: <a href="/imagenes/og-cover.jpg" style="color:inherit;text-decoration:underline;">Imagen de referencia</a>.</p>
+<div class="agri-footer-link"><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div>
 </body>
 </html>
