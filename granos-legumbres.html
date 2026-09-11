@@ -828,8 +828,27 @@ nav {
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/assets/css/media-recovery.css">
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window,document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '3555608311338299');
+  fbq('track', 'PageView');
+  </script>
+  <!-- End Meta Pixel Code -->
 </head>
 <body class="lang-es">
+  <!-- Meta Pixel fallback: only active when JavaScript is disabled. -->
+  <noscript><img height="1" width="1" style="display:none" alt=""
+    src="https://www.facebook.com/tr?id=3555608311338299&amp;ev=PageView&amp;noscript=1"
+  /></noscript>
 
 <!-- ─── NAV ─── -->
 <nav>
@@ -1229,7 +1248,7 @@ nav {
       </a>
     </div>
     <div class="video-player" id="granosVideoWrap">
-      <video webkit-playsinline playsinline controls id="granosVid" preload="metadata" poster="/imagenes/marca%20propia%20glv%20arroz%20aternal%20rice.jpeg" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;"
+      <video webkit-playsinline playsinline controls id="granosVid" preload="metadata" style="width:100%;height:100%;object-fit:contain;display:block;cursor:pointer;"
              poster="/imagenes/marca%20propia%20glv%20arroz%20aternal%20rice.jpeg">
         <source src="/imagenes/video%20llenado%20de%20contenedor%20con%20granos.mp4" type="video/mp4">
       </video>
@@ -1601,5 +1620,6 @@ window.addEventListener('scroll', function() {
 })();
 // === END GLV VIDEO ===
 </script>
+<p class="media-reference-note" style="margin:0;padding:0.8rem 1.5rem;text-align:center;font-size:0.75rem;color:#94a3b8;background:#0d1724;">Portada para redes sociales: <a href="/imagenes/og-cover.jpg" style="color:inherit;text-decoration:underline;">Imagen de referencia</a>.</p>
 </body>
 </html>
