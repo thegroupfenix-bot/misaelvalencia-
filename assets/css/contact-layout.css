@@ -1,0 +1,5 @@
+/* Keep contact links in the page flow on small screens, away from reading and forms. */
+@media(max-width:768px) {
+ .whatsapp-float,.wa-float,.waf { position:static!important; inset:auto!important; display:flex!important; flex-direction:row!important; flex-wrap:wrap; justify-content:center; align-items:center; gap:12px; width:auto!important; max-width:100%; margin:24px 16px; transform:none!important; }
+ .whatsapp-float>a,.wa-float>a,.waf>a { max-width:100%; }
+}

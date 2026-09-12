@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 560" role="img" aria-label="Colombia: Santa Marta, Barranquilla, Cartagena y Buenaventura">
+<rect width="640" height="560" fill="#0b1b24"/>
+<!-- Original schematic; positions are illustrative, not operational routes. -->
+<path d="M212 114 L238 103 259 74 283 78 309 50 349 42 333 67 321 87 342 105 343 143 376 151 400 170 425 174 423 207 450 232 446 261 493 290 484 327 496 360 460 365 436 403 406 435 359 460 334 489 299 469 283 429 246 409 226 373 203 358 190 321 159 295 151 265 159 231 157 194 180 178 191 147Z" fill="#234752" stroke="#93b3b4" stroke-width="2"/>
+<g fill="none" stroke="#d6bc7888" stroke-width="2" stroke-dasharray="5 6"><path d="M284 82L308 250M251 104L308 250M220 139L308 250M176 286L308 250"/></g>
+<g fill="#d6bc78" stroke="#0b1b24" stroke-width="3"><circle cx="284" cy="82" r="9"/><circle cx="251" cy="104" r="7"/><circle cx="220" cy="139" r="7"/><circle cx="176" cy="286" r="7"/></g>
+<circle cx="308" cy="250" r="8" fill="#5ea98f"/>
+<g fill="none" stroke="#d6bc78"><path d="M290 78L382 56H535"/><path d="M246 99L191 68H50"/><path d="M215 138L161 132H45"/><path d="M170 286L130 278H30"/></g>
+<g fill="#f3e6c4" font-family="Arial,sans-serif" font-size="26"><text x="383" y="45">01 Santa Marta</text><text x="50" y="58">03 Barranquilla</text><text x="45" y="121">02 Cartagena</text><text x="30" y="266">04 Buenaventura</text></g>
+<text x="302" y="341" text-anchor="middle" fill="#bed1d0" font-family="Arial,sans-serif" font-size="25" letter-spacing="3">COLOMBIA</text>
+</svg>
