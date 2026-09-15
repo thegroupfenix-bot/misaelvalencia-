@@ -81,5 +81,17 @@
     ],
     "sha256": "8391b58f8e6b53b985c65b7c9ef661fbb715508e532eb419abc8e947457baeda",
     "modificaciones": "Copia sin cambios. WebP previamente recortados y convertidos en proyecto fuente. Recorte de presentación CSS; adaptaciones bajo la licencia original."
+  },
+  {
+    "archivos": [
+      "puertos-colombia.svg",
+      "cobertura-glv.svg"
+    ],
+    "fuente": "Natural Earth, Admin 0 Countries 1:110m",
+    "url_original": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson",
+    "licencia": "Public domain",
+    "url_licencia": "https://www.naturalearthdata.com/about/terms-of-use/",
+    "sha256_fuente": "6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f",
+    "modificaciones": "SVG local con geometría de Sudamérica y Colombia, paleta GLV y conexiones portuarias ilustrativas. No representa rutas operativas."
   }
 ]

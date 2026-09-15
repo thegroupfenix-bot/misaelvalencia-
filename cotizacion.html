@@ -53,11 +53,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --gold:#C9A84C;--gold-light:#E8C97A;
+  --gold:#bfa66c;--gold-light:#d1bc88;
   --blue:#3a8fd4;--blue-dark:#0e52a0;
   --red:#c0392b;--green:#2d7a4f;
-  --dark:#0A0A0A;--dark2:#111111;--dark3:#1A1A1A;--mid:#2A2A2A;
-  --text:#E8E8E8;--dim:#888;--white:#FFFFFF;
+  --dark:#081a26;--dark2:#102633;--dark3:#16313f;--mid:#365363;
+  --text:#E8E8E8;--dim:#a7bdc9;--white:#FFFFFF;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
@@ -67,18 +67,18 @@ body.lang-es [lang-es],body.lang-en [lang-en],body.lang-ar [lang-ar],body.lang-z
 body.lang-ar{direction:rtl;}
 
 /* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.97);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(8,26,38,0.97);backdrop-filter:blur(14px);border-bottom:1px solid rgba(137,168,185,0.15);padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;}
 .nlogo{font-family:"Playfair Display",serif;font-size:1.2rem;font-weight:700;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:0.8rem;}
 .nsub{font-family:"Barlow Condensed",sans-serif;font-size:0.98rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--dim);line-height:1.3;}
 .nright{display:flex;align-items:center;gap:1rem;}
 .lsw{display:flex;gap:0.3rem;}
-.lb{background:none;border:1px solid rgba(201,168,76,0.25);color:var(--dim);font-size:0.98rem;font-weight:700;padding:0.25rem 0.55rem;cursor:pointer;transition:all 0.2s;font-family:"Barlow",sans-serif;}
+.lb{background:none;border:1px solid rgba(137,168,185,0.25);color:var(--dim);font-size:0.98rem;font-weight:700;padding:0.25rem 0.55rem;cursor:pointer;transition:all 0.2s;font-family:"Barlow",sans-serif;}
 .lb:hover,.lb.on{background:var(--gold);color:var(--dark);border-color:var(--gold);}
 .nback{font-size:1rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);text-decoration:none;transition:color 0.2s;}
 .nback:hover{color:var(--gold);}
 
 /* HEADER */
-.hdr{padding-top:64px;background:var(--dark2);border-bottom:1px solid rgba(201,168,76,0.1);}
+.hdr{padding-top:64px;background:var(--dark2);border-bottom:1px solid rgba(137,168,185,0.1);}
 .hdr-in{max-width:1300px;margin:0 auto;padding:4rem 4rem 3rem;display:grid;grid-template-columns:1fr auto;gap:3rem;align-items:center;}
 .htag{font-family:"Barlow Condensed",sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem;}
 .htag::before{content:"";display:block;width:22px;height:1px;background:var(--gold);}
@@ -86,10 +86,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .htitle em{font-style:italic;color:var(--gold);}
 .hsub{font-size:1rem;color:var(--dim);line-height:1.7;max-width:540px;margin-bottom:1.5rem;}
 .pprow{display:flex;flex-wrap:wrap;gap:0.6rem;}
-.pp{display:flex;align-items:center;gap:0.4rem;font-size:1rem;color:var(--dim);background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.15);padding:0.38rem 0.75rem;}
+.pp{display:flex;align-items:center;gap:0.4rem;font-size:1rem;color:var(--dim);background:rgba(137,168,185,0.05);border:1px solid rgba(137,168,185,0.15);padding:0.38rem 0.75rem;}
 .pp strong{color:var(--text);}
 .hcts{display:flex;flex-direction:column;gap:0.5rem;min-width:255px;}
-.hct{display:flex;align-items:center;gap:0.8rem;background:var(--dark);border:1px solid rgba(201,168,76,0.12);padding:0.8rem 1rem;text-decoration:none;transition:border-color 0.2s;}
+.hct{display:flex;align-items:center;gap:0.8rem;background:var(--dark);border:1px solid rgba(137,168,185,0.12);padding:0.8rem 1rem;text-decoration:none;transition:border-color 0.2s;}
 .hct:hover{border-color:var(--gold);}
 .hct-l{font-size:0.58rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);display:block;}
 .hct-v{font-size:1rem;color:var(--text);}
@@ -98,7 +98,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .main{max-width:1300px;margin:0 auto;padding:3rem 4rem;display:grid;grid-template-columns:1fr 300px;gap:3rem;align-items:start;}
 
 /* SECTION TABS */
-.stabs{display:flex;border-bottom:1px solid rgba(201,168,76,0.15);margin-bottom:2.5rem;overflow-x:auto;}
+.stabs{display:flex;border-bottom:1px solid rgba(137,168,185,0.15);margin-bottom:2.5rem;overflow-x:auto;}
 .stab{background:none;border:none;font-family:"Barlow Condensed",sans-serif;font-size:0.98rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);padding:0.8rem 1.4rem;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;margin-bottom:-1px;}
 .stab:hover{color:var(--gold);}
 .stab.on{color:var(--gold);border-bottom-color:var(--gold);}
@@ -108,7 +108,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 /* FORM COMMONS */
 .fg{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem;}
 .fg label{font-size:1rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);}
-.fg input,.fg select,.fg textarea{background:var(--dark2);border:1px solid rgba(201,168,76,0.18);color:var(--text);font-family:"Barlow",sans-serif;font-size:0.98rem;font-weight:300;padding:0.82rem 1rem;outline:none;transition:border-color 0.2s,background 0.2s;width:100%;appearance:none;}
+.fg input,.fg select,.fg textarea{background:var(--dark2);border:1px solid rgba(137,168,185,0.18);color:var(--text);font-family:"Barlow",sans-serif;font-size:0.98rem;font-weight:300;padding:0.82rem 1rem;outline:none;transition:border-color 0.2s,background 0.2s;width:100%;appearance:none;}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold);background:var(--dark3);}
 .fg input::placeholder,.fg textarea::placeholder{color:rgba(136,136,136,0.5);}
 .fg select{background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27%3E%3Cpath fill=%27%23C9A84C%27 d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;cursor:pointer;}
@@ -117,14 +117,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .fhint{font-size:0.98rem;color:var(--dim);}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
 .alert{padding:1rem 1.2rem;border-left:3px solid;margin-bottom:1.5rem;font-size:0.92rem;line-height:1.65;}
-.ag{background:rgba(201,168,76,0.06);border-color:var(--gold);color:var(--dim);}
+.ag{background:rgba(137,168,185,0.06);border-color:var(--gold);color:var(--dim);}
 .ab{background:rgba(58,143,212,0.06);border-color:var(--blue);color:var(--dim);}
 .alert strong{color:var(--text);}
 .slbl{font-size:0.98rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--blue);margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:1px solid rgba(58,143,212,0.12);display:flex;align-items:center;gap:0.6rem;}
 .slbl::before{content:"";display:block;width:14px;height:1px;background:var(--blue);}
 
 /* PRICING TIERS */
-.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(201,168,76,0.1);margin-bottom:1.5rem;}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(137,168,185,0.1);margin-bottom:1.5rem;}
 .tier{background:var(--dark2);padding:1.5rem 1rem;text-align:center;position:relative;cursor:pointer;transition:background 0.2s;}
 .tier:hover{background:var(--dark3);}
 .tier.sel{background:var(--dark3);outline:2px solid var(--gold);}
@@ -136,16 +136,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .tpay{font-size:0.98rem;color:var(--dim);line-height:1.4;}
 
 /* RESULT */
-.cres{background:var(--dark2);border:1px solid rgba(201,168,76,0.2);padding:2rem;margin-top:1.5rem;display:none;}
+.cres{background:var(--dark2);border:1px solid rgba(137,168,185,0.2);padding:2rem;margin-top:1.5rem;display:none;}
 .cres.show{display:block;}
 .rtit{font-size:0.98rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem;}
-.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(201,168,76,0.08);}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(137,168,185,0.08);}
 .rc{background:var(--dark3);padding:1rem 1.2rem;}
 .rl{font-size:0.95rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--dim);margin-bottom:0.3rem;}
 .rv{font-size:1.05rem;color:var(--white);font-weight:500;}
 .rv.big{font-family:"Playfair Display",serif;font-size:1.7rem;font-weight:900;color:var(--gold);}
 .rv.blue{color:var(--blue);}
-.rnote{font-size:1rem;color:var(--dim);line-height:1.55;border-top:1px solid rgba(201,168,76,0.08);padding-top:0.8rem;margin-top:1rem;}
+.rnote{font-size:1rem;color:var(--dim);line-height:1.55;border-top:1px solid rgba(137,168,185,0.08);padding-top:0.8rem;margin-top:1rem;}
 .infobox{margin-top:0.8rem;padding:0.85rem 1rem;border-left:3px solid;font-size:1rem;color:var(--dim);line-height:1.6;}
 .infobox.red{border-color:var(--red);background:rgba(192,57,43,0.06);}
 .infobox.blue{border-color:var(--blue);background:rgba(58,143,212,0.06);}
@@ -157,34 +157,34 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .bg:hover{background:var(--gold-light);}
 .bb{background:var(--blue);color:#fff;border:none;font-family:"Barlow",sans-serif;font-size:1rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 1.7rem;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:0.6rem;}
 .bb:hover{background:var(--blue-dark);}
-.bo{background:none;color:var(--dim);border:1px solid rgba(201,168,76,0.2);font-family:"Barlow",sans-serif;font-size:1rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 1.7rem;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:0.6rem;}
+.bo{background:none;color:var(--dim);border:1px solid rgba(137,168,185,0.2);font-family:"Barlow",sans-serif;font-size:1rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:0.9rem 1.7rem;cursor:pointer;transition:all 0.2s;display:inline-flex;align-items:center;gap:0.6rem;}
 .bo:hover{border-color:var(--gold);color:var(--gold);}
 
 /* CATALOG */
 .cat-filter{display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2rem;}
-.cfbtn{background:none;border:1px solid rgba(201,168,76,0.2);color:var(--dim);font-family:"Barlow Condensed",sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.38rem 0.85rem;cursor:pointer;transition:all 0.2s;}
-.cfbtn:hover,.cfbtn.on{background:rgba(201,168,76,0.1);color:var(--gold);border-color:var(--gold);}
+.cfbtn{background:none;border:1px solid rgba(137,168,185,0.2);color:var(--dim);font-family:"Barlow Condensed",sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.38rem 0.85rem;cursor:pointer;transition:all 0.2s;}
+.cfbtn:hover,.cfbtn.on{background:rgba(137,168,185,0.1);color:var(--gold);border-color:var(--gold);}
 .cat-section{margin-bottom:3rem;}
-.cat-title{font-family:"Barlow Condensed",sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);padding-bottom:0.6rem;border-bottom:1px solid rgba(201,168,76,0.12);margin-bottom:1rem;display:flex;align-items:center;gap:0.7rem;}
+.cat-title{font-family:"Barlow Condensed",sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);padding-bottom:0.6rem;border-bottom:1px solid rgba(137,168,185,0.12);margin-bottom:1rem;display:flex;align-items:center;gap:0.7rem;}
 .cat-title::before{content:"";display:block;width:16px;height:1px;background:var(--gold);}
-.prod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(201,168,76,0.07);}
+.prod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(137,168,185,0.07);}
 .prod-card{background:var(--dark2);padding:1.5rem 1.5rem;transition:background 0.2s;display:flex;flex-direction:column;}
 .prod-card:hover{background:var(--dark3);}
 .prod-name{font-size:1rem;font-weight:600;color:var(--white);margin-bottom:0.25rem;line-height:1.3;}
 .prod-origin{font-size:1rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue);margin-bottom:0.5rem;}
 .prod-detail{font-size:1rem;color:var(--dim);line-height:1.55;flex:1;margin-bottom:1rem;}
 .prod-tags{display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem;}
-.ptag{font-size:0.95rem;font-weight:700;letter-spacing:0.07em;border:1px solid rgba(201,168,76,0.2);color:var(--dim);padding:0.18rem 0.5rem;text-transform:uppercase;}
+.ptag{font-size:0.95rem;font-weight:700;letter-spacing:0.07em;border:1px solid rgba(137,168,185,0.2);color:var(--dim);padding:0.18rem 0.5rem;text-transform:uppercase;}
 .prod-cta{display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:auto;}
 .prod-btn{background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);color:#25D366;font-size:1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;transition:all 0.2s;text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem;font-family:"Barlow",sans-serif;}
 .prod-btn:hover{background:rgba(37,211,102,0.2);}
-.prod-btn-form{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);color:var(--gold);font-size:1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;transition:all 0.2s;font-family:"Barlow",sans-serif;}
-.prod-btn-form:hover{background:rgba(201,168,76,0.15);}
+.prod-btn-form{background:rgba(137,168,185,0.08);border:1px solid rgba(137,168,185,0.25);color:var(--gold);font-size:1rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;transition:all 0.2s;font-family:"Barlow",sans-serif;}
+.prod-btn-form:hover{background:rgba(137,168,185,0.15);}
 
 /* MODAL / QUICK FORM */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2000;align-items:center;justify-content:center;padding:1.5rem;}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(7,21,31,0.85);z-index:2000;align-items:center;justify-content:center;padding:1.5rem;}
 .modal-bg.show{display:flex;}
-.modal{background:var(--dark2);border:1px solid rgba(201,168,76,0.2);padding:2.5rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;position:relative;}
+.modal{background:var(--dark2);border:1px solid rgba(137,168,185,0.2);padding:2.5rem;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;position:relative;}
 .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--dim);font-size:1.3rem;cursor:pointer;transition:color 0.2s;}
 .modal-close:hover{color:var(--gold);}
 .modal-prod{font-family:"Playfair Display",serif;font-size:1.3rem;font-weight:700;color:var(--white);margin-bottom:0.3rem;}
@@ -198,7 +198,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 
 /* SIDEBAR */
 .sb{display:flex;flex-direction:column;gap:1.5rem;}
-.sc{background:var(--dark2);border:1px solid rgba(201,168,76,0.12);padding:1.8rem;}
+.sc{background:var(--dark2);border:1px solid rgba(137,168,185,0.12);padding:1.8rem;}
 .sc-t{font-family:"Barlow Condensed",sans-serif;font-size:0.98rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;display:flex;align-items:center;gap:0.6rem;}
 .sc-t::before{content:"";display:block;width:14px;height:1px;background:var(--gold);}
 .wac{display:flex;align-items:center;gap:0.9rem;background:#25D366;padding:1rem 1.1rem;text-decoration:none;transition:all 0.2s;margin-bottom:0.5rem;}
@@ -208,15 +208,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,10,10,0.
 .wac-n{font-size:0.9rem;font-weight:600;color:#fff;}
 .di{display:flex;align-items:center;gap:0.8rem;background:var(--dark3);padding:0.85rem 1rem;text-decoration:none;transition:background 0.2s;border-left:3px solid transparent;margin-bottom:1px;}
 .di:hover{background:var(--mid);border-left-color:var(--gold);}
-.di-n{font-family:"Playfair Display",serif;font-size:1.1rem;font-weight:900;color:rgba(201,168,76,0.2);flex-shrink:0;}
+.di-n{font-family:"Playfair Display",serif;font-size:1.1rem;font-weight:900;color:rgba(137,168,185,0.2);flex-shrink:0;}
 .di-nm{font-size:1rem;font-weight:600;color:var(--text);}
 .di-s{font-size:1rem;color:var(--dim);}
-.h24c{text-align:center;background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.25);}
+.h24c{text-align:center;background:rgba(137,168,185,0.05);border-color:rgba(137,168,185,0.25);}
 .n24{font-family:"Playfair Display",serif;font-size:3rem;font-weight:900;color:var(--gold);line-height:1;}
 .l24{font-size:1rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--dim);margin-top:0.4rem;}
 
 /* SUBNAV */
-.subnav{background:var(--dark2);border-top:1px solid rgba(201,168,76,0.1);padding:2rem 4rem;}
+.subnav{background:var(--dark2);border-top:1px solid rgba(137,168,185,0.1);padding:2rem 4rem;}
 .sni{max-width:1300px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;}
 .snl{display:flex;gap:1.5rem;}
 .snl a{color:var(--dim);text-decoration:none;font-size:0.9rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;transition:color 0.2s;}
@@ -354,7 +354,7 @@ nav {
 .lang-drop { position: relative; }
 .lang-drop-btn {
   background: none;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(137,168,185,0.3);
   color: rgba(200,200,200,0.82);
   font-family: 'Barlow', sans-serif;
   font-size: 0.82rem;
@@ -381,13 +381,13 @@ nav {
   background: rgba(12,12,20,0.98);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(201,168,76,0.2);
+  border: 1px solid rgba(137,168,185,0.2);
   list-style: none;
   padding: 0.3rem 0;
   margin: 0;
   min-width: 175px;
   z-index: 4000;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+  box-shadow: 0 8px 32px rgba(7,21,31,0.55);
 }
 .lang-drop.open .lang-drop-menu { display: block; }
 .lang-drop-menu li {
@@ -397,7 +397,7 @@ nav {
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  border-bottom: 1px solid rgba(201,168,76,0.06);
+  border-bottom: 1px solid rgba(137,168,185,0.06);
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -405,8 +405,8 @@ nav {
   list-style: none;
 }
 .lang-drop-menu li:last-child { border-bottom: none; }
-.lang-drop-menu li:hover { background: rgba(201,168,76,0.09); color: var(--gold); }
-.lang-drop-menu li.active { color: var(--gold); background: rgba(201,168,76,0.06); font-weight: 700; }
+.lang-drop-menu li:hover { background: rgba(137,168,185,0.09); color: var(--gold); }
+.lang-drop-menu li.active { color: var(--gold); background: rgba(137,168,185,0.06); font-weight: 700; }
 @media (max-width: 480px) {
   .lang-drop-menu { right: auto; left: 0; min-width: 160px; }
   .lang-drop-btn { font-size: 0.78rem; padding: 0.5rem 0.6rem; }
@@ -435,10 +435,10 @@ nav {
   <!-- End Meta Pixel Code -->
 <link rel="stylesheet" href="/assets/css/agri-navigation.css?v=1">
 <script defer src="/assets/js/agri-navigation.js"></script>
-<link rel="stylesheet" href="/assets/css/agri-commercial.css?v=3">
+<link rel="stylesheet" href="/assets/css/agri-commercial.css?v=20260915">
 <script defer src="/assets/js/agri-request.js?v=2"></script>
 <link rel="stylesheet" href="/assets/css/contact-layout.css?v=1">
-</head>
+<link rel="stylesheet" href="/assets/css/poultry-request.css?v=1"><script defer src="/assets/js/poultry-request.js?v=1"></script></head>
 <body class="lang-es">
   <!-- Meta Pixel fallback: only active when JavaScript is disabled. -->
   <noscript><img height="1" width="1" style="display:none" alt=""
@@ -463,7 +463,7 @@ nav {
       </ul>
     </div>
   </div>
-<details class="agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
+<details class="agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/pollo-colombiano"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></a><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
 </nav>
 
 <!-- HEADER -->
@@ -893,7 +893,8 @@ nav {
         <div class="fg"><label>Email *</label><input type="email" id="gn_em" placeholder="correo@empresa.com"></div>
         <div class="fg"><label>WhatsApp / <span lang-es>Teléfono</span><span lang-en>Phone</span><span lang-pt-br>Telefone</span></label><input type="tel" id="gn_t" placeholder="+000 000 0000"></div>
       </div>
-      <div class="fg"><label for="gn_division"><span lang-es>División</span><span lang-en>Division</span><span lang-pt-br>Divisão</span><span lang-ar>القسم</span><span lang-zh>业务部门</span></label><select id="gn_division" name="division"><option value="">—</option><option value="fertilizantes" data-agri-es="Agronegocios y Fertilizantes" data-agri-en="Agribusiness and Fertilizers" data-agri-pt-br="Agronegócios e Fertilizantes" data-agri-ar="الأعمال الزراعية والأسمدة" data-agri-zh="农业与肥料">Agronegocios y Fertilizantes</option></select></div>
+      <div class="fg"><label for="gn_division"><span lang-es>División</span><span lang-en>Division</span><span lang-pt-br>Divisão</span><span lang-ar>القسم</span><span lang-zh>业务部门</span></label><select id="gn_division" name="division"><option value="">—</option><option value="pollo-colombiano" data-agri-es="Pollo colombiano" data-agri-en="Colombian chicken" data-agri-pt-br="Frango colombiano" data-agri-ar="الدجاج الكولومبي" data-agri-zh="哥伦比亚鸡肉">Pollo colombiano</option><option value="fertilizantes" data-agri-es="Agronegocios y Fertilizantes" data-agri-en="Agribusiness and Fertilizers" data-agri-pt-br="Agronegócios e Fertilizantes" data-agri-ar="الأعمال الزراعية والأسمدة" data-agri-zh="农业与肥料">Agronegocios y Fertilizantes</option></select></div>
+<fieldset id="poultry-request" hidden><legend><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></legend><p class="poultry-quote-note"><span lang-es>Empresa, país y mensaje se completan en los campos generales de esta solicitud. Sujeto a validación sanitaria y comercial.</span><span lang-en>Enter company, country and message in this request’s general fields. Subject to sanitary and commercial validation.</span><span lang-pt-br>Preencha empresa, país e mensagem nos campos gerais desta solicitação. Sujeito à validação sanitária e comercial.</span><span lang-ar>أدخل الشركة والبلد والرسالة في الحقول العامة للطلب. يخضع للتحقق الصحي والتجاري.</span><span lang-zh>请在通用字段填写公司、国家及留言。须经卫生及商务核实。</span></p><div class="poultry-fields"><div class="fg"><label for="poultry_role"><span lang-es>Perfil comercial</span><span lang-en>Commercial role</span><span lang-pt-br>Perfil comercial</span><span lang-ar>الصفة التجارية</span><span lang-zh>商业角色</span></label><select id="poultry_role" name="poultry_role"><option value="">—</option><option value="buy" data-agri-es="Comprar pollo colombiano" data-agri-en="Buy Colombian chicken" data-agri-pt-br="Comprar frango colombiano" data-agri-ar="شراء الدجاج الكولومبي" data-agri-zh="购买哥伦比亚鸡肉">Comprar pollo colombiano</option><option value="sell" data-agri-es="Exportar tu pollo con GLV" data-agri-en="Export your chicken with GLV" data-agri-pt-br="Exportar seu frango com a GLV" data-agri-ar="صدّر دجاجك مع GLV" data-agri-zh="与 GLV 合作出口鸡肉">Exportar tu pollo con GLV</option></select></div><div class="fg"><label for="poultry_product"><span lang-es>Producto</span><span lang-en>Product</span><span lang-pt-br>Produto</span><span lang-ar>المنتج</span><span lang-zh>产品</span></label><input id="poultry_product" name="poultry_product" type="text" maxlength="200"></div><div class="fg"><label for="poultry_cut"><span lang-es>Corte o categoría</span><span lang-en>Cut or category</span><span lang-pt-br>Corte ou categoria</span><span lang-ar>القطعة أو الفئة</span><span lang-zh>分割或类别</span></label><select id="poultry_cut" name="poultry_cut"><option value="">—</option><option value="whole" data-agri-es="Pollo entero" data-agri-en="Whole chicken" data-agri-pt-br="Frango inteiro" data-agri-ar="دجاج كامل" data-agri-zh="整鸡">Pollo entero</option><option value="parts" data-agri-es="Partes de pollo" data-agri-en="Chicken parts" data-agri-pt-br="Partes de frango" data-agri-ar="أجزاء الدجاج" data-agri-zh="鸡肉部位">Partes de pollo</option><option value="breast" data-agri-es="Pechuga" data-agri-en="Breast" data-agri-pt-br="Peito" data-agri-ar="صدر الدجاج" data-agri-zh="鸡胸肉">Pechuga</option><option value="leg" data-agri-es="Pierna pernil" data-agri-en="Leg quarters" data-agri-pt-br="Coxa com sobrecoxa" data-agri-ar="أرباع الدجاج الخلفية" data-agri-zh="鸡腿四分体">Pierna pernil</option><option value="thigh" data-agri-es="Muslo" data-agri-en="Thigh" data-agri-pt-br="Sobrecoxa" data-agri-ar="فخذ الدجاج" data-agri-zh="鸡大腿">Muslo</option><option value="wings" data-agri-es="Alas" data-agri-en="Wings" data-agri-pt-br="Asas" data-agri-ar="الأجنحة" data-agri-zh="鸡翅">Alas</option><option value="feet" data-agri-es="Patas de pollo" data-agri-en="Chicken feet" data-agri-pt-br="Pés de frango" data-agri-ar="أقدام الدجاج" data-agri-zh="鸡爪">Patas de pollo</option><option value="offal" data-agri-es="Menudencias permitidas según mercado" data-agri-en="Offal permitted by destination market" data-agri-pt-br="Miúdos permitidos conforme o mercado" data-agri-ar="الأحشاء المسموح بها حسب السوق" data-agri-zh="目的市场允许的内脏">Menudencias permitidas según mercado</option><option value="special" data-agri-es="Cortes especiales según contrato" data-agri-en="Special cuts by contract" data-agri-pt-br="Cortes especiais conforme contrato" data-agri-ar="قطع خاصة حسب العقد" data-agri-zh="合同约定的特殊分割">Cortes especiales según contrato</option></select></div><div class="fg"><label for="poultry_volume"><span lang-es>Volumen estimado (toneladas)</span><span lang-en>Estimated volume (tonnes)</span><span lang-pt-br>Volume estimado (toneladas)</span><span lang-ar>الكمية التقديرية (طن)</span><span lang-zh>预计数量（吨）</span></label><input id="poultry_volume" name="poultry_volume" type="number" min="0.001" step="any"></div><div class="fg"><label for="poultry_destination"><span lang-es>País y puerto de destino</span><span lang-en>Destination country and port</span><span lang-pt-br>País e porto de destino</span><span lang-ar>بلد وميناء الوجهة</span><span lang-zh>目的国家与港口</span></label><input id="poultry_destination" name="poultry_destination" type="text" maxlength="200"></div><div class="fg"><label for="poultry_packaging"><span lang-es>Presentación y empaque</span><span lang-en>Format and packaging</span><span lang-pt-br>Apresentação e embalagem</span><span lang-ar>الشكل والتعبئة</span><span lang-zh>产品形式与包装</span></label><input id="poultry_packaging" name="poultry_packaging" type="text" maxlength="200"></div><div class="fg"><label for="poultry_temperature"><span lang-es>Congelado o refrigerado</span><span lang-en>Frozen or chilled</span><span lang-pt-br>Congelado ou resfriado</span><span lang-ar>مجمّد أو مبرّد</span><span lang-zh>冷冻或冷藏</span></label><select id="poultry_temperature" name="poultry_temperature"><option value="">—</option><option value="frozen" data-agri-es="Congelado" data-agri-en="Frozen" data-agri-pt-br="Congelado" data-agri-ar="مجمّد" data-agri-zh="冷冻">Congelado</option><option value="chilled" data-agri-es="Refrigerado, si aplica" data-agri-en="Chilled, where applicable" data-agri-pt-br="Resfriado, quando aplicável" data-agri-ar="مبرّد عند الانطباق" data-agri-zh="适用时冷藏">Refrigerado, si aplica</option></select></div></div></fieldset>
 <fieldset id="agri-request" hidden><legend><span lang-es>Alcance de su solicitud</span><span lang-en>Scope of your request</span><span lang-pt-br>Escopo da sua solicitação</span><span lang-ar>نطاق طلبكم</span><span lang-zh>您的需求范围</span></legend><p class="agri-form-note"><span lang-es>Seleccione una operación para cotizar. La logística nacional se cotiza y contrata por separado.</span><span lang-en>Select one operation for quotation. Domestic logistics is quoted and contracted separately.</span><span lang-pt-br>Selecione uma operação para cotar. A logística nacional é cotada e contratada separadamente.</span><span lang-ar>اختر عملية واحدة لطلب عرض سعر. تُسعّر الخدمات اللوجستية المحلية ويُتعاقد عليها بشكل منفصل.</span><span lang-zh>请选择需要报价的业务。境内物流单独报价并另行签约。</span></p><div class="fg"><label for="agri_service"><span lang-es>Servicio requerido.</span><span lang-en>Required service.</span><span lang-pt-br>Serviço solicitado.</span><span lang-ar>الخدمة المطلوبة.</span><span lang-zh>所需服务。</span></label><select id="agri_service" name="agri_service"><option value="" data-agri-es="Seleccione un servicio" data-agri-en="Select a service" data-agri-pt-br="Selecione um serviço" data-agri-ar="اختر خدمة" data-agri-zh="请选择服务">Seleccione un servicio</option><option value="international" data-agri-es="Suministro internacional de fertilizantes." data-agri-en="International fertilizer supply." data-agri-pt-br="Fornecimento internacional de fertilizantes." data-agri-ar="التوريد الدولي للأسمدة." data-agri-zh="肥料国际供应。">Suministro internacional de fertilizantes.</option><option value="colombia" data-agri-es="Gestión portuaria y nacionalización en Colombia." data-agri-en="Port management and customs clearance in Colombia." data-agri-pt-br="Gestão portuária e nacionalização na Colômbia." data-agri-ar="إدارة الموانئ والتخليص الجمركي في كولومبيا." data-agri-zh="哥伦比亚港口管理及进口清关。">Gestión portuaria y nacionalización en Colombia.</option><option value="domestic" data-agri-es="Logística nacional y entrega final." data-agri-en="Domestic logistics and final delivery." data-agri-pt-br="Logística nacional e entrega final." data-agri-ar="الخدمات اللوجستية المحلية والتسليم النهائي." data-agri-zh="境内物流及最终交付。">Logística nacional y entrega final.</option></select></div><div class="agri-fields"><div class="fg"><label for="agri_product"><span lang-es>Producto.</span><span lang-en>Product.</span><span lang-pt-br>Produto.</span><span lang-ar>المنتج.</span><span lang-zh>产品。</span></label><input id="agri_product" name="agri_product" type="text" maxlength="180"></div><div class="fg"><label for="agri_volume"><span lang-es>Volumen (toneladas).</span><span lang-en>Volume (tonnes).</span><span lang-pt-br>Volume (toneladas).</span><span lang-ar>الحجم (بالطن).</span><span lang-zh>数量（吨）。</span></label><input id="agri_volume" name="agri_volume" type="number" min="0" step="any"></div><div class="fg"><label for="agri_origin"><span lang-es>Origen de interés.</span><span lang-en>Preferred origin.</span><span lang-pt-br>Origem de interesse.</span><span lang-ar>المنشأ المطلوب.</span><span lang-zh>意向原产地。</span></label><input id="agri_origin" name="agri_origin" type="text" maxlength="180"></div><div class="fg"><label for="agri_port"><span lang-es>Puerto colombiano.</span><span lang-en>Colombian port.</span><span lang-pt-br>Porto colombiano.</span><span lang-ar>الميناء الكولومبي.</span><span lang-zh>哥伦比亚港口。</span></label><select id="agri_port" name="agri_port"><option value="">—</option><option>Santa Marta</option><option>Cartagena</option><option>Barranquilla</option><option>Buenaventura</option><option value="por-definir" data-agri-es="Otro / por definir" data-agri-en="Other / to be confirmed" data-agri-pt-br="Outro / a definir" data-agri-ar="آخر / يحدد لاحقاً" data-agri-zh="其他／待定">Otro / por definir</option></select></div><div class="fg"><label for="agri_importer"><span lang-es>Empresa importadora.</span><span lang-en>Importing company.</span><span lang-pt-br>Empresa importadora.</span><span lang-ar>الشركة المستوردة.</span><span lang-zh>进口企业。</span></label><input id="agri_importer" name="agri_importer" type="text" maxlength="180"></div><div class="fg"><label for="agri_city"><span lang-es>Ciudad de destino.</span><span lang-en>Destination city.</span><span lang-pt-br>Cidade de destino.</span><span lang-ar>مدينة الوجهة.</span><span lang-zh>目的地城市。</span></label><input id="agri_city" name="agri_city" type="text" maxlength="180"></div><div class="fg"><label for="agri_packaging"><span lang-es>Tipo de empaque.</span><span lang-en>Packaging type.</span><span lang-pt-br>Tipo de embalagem.</span><span lang-ar>نوع التعبئة.</span><span lang-zh>包装类型。</span></label><input id="agri_packaging" name="agri_packaging" type="text" maxlength="180"></div><div class="fg"><label for="agri_daily"><span lang-es>Capacidad diaria de retiro (toneladas/día).</span><span lang-en>Daily collection capacity (tonnes/day).</span><span lang-pt-br>Capacidade diária de retirada (toneladas/dia).</span><span lang-ar>الطاقة اليومية لسحب الشحنات (طن/يوم).</span><span lang-zh>每日提货能力（吨/日）。</span></label><input id="agri_daily" name="agri_daily" type="number" min="0" step="any"></div><div class="fg"><label for="agri_storage"><span lang-es>Días requeridos de almacenamiento.</span><span lang-en>Required storage days.</span><span lang-pt-br>Dias necessários de armazenamento.</span><span lang-ar>أيام التخزين المطلوبة.</span><span lang-zh>所需仓储天数。</span></label><input id="agri_storage" name="agri_storage" type="number" min="0" step="1"></div></div></fieldset>
 <div class="fg">
         <label><span lang-es>Producto(s), cantidad(es) y destino(s) *</span><span lang-en>Product(s), quantity(ies) and destination(s) *</span><span lang-pt-br>Produto(s), quantidade(s) e destino(s) *</span><span lang-ar>المنتج(ات) والكمية والوجهة *</span><span lang-zh>产品、数量和目的地 *</span></label>
@@ -1927,6 +1928,10 @@ function modalSendEmail() {
 // GENERAL FORM
 // ════════════════════════════════════════════
 function gnSend(via) {
+  if (gv('gn_division') === 'pollo-colombiano') {
+    var poultryInputs = document.querySelectorAll('#poultry-request input, #poultry-request select');
+    for (var poultryInput of poultryInputs) { if (!poultryInput.reportValidity()) return; }
+  }
   if (gv('gn_division') === 'fertilizantes') {
     var inputs = document.querySelectorAll('#agri-request input, #agri-request select');
     for (var input of inputs) { if (!input.reportValidity()) return; }
@@ -1941,7 +1946,7 @@ function gnSend(via) {
   var msg   = 'GLV - Cotizacion General\n\n'
     + 'Nombre: ' + n + ' - ' + gv('gn_ca') + '\nEmpresa: ' + e
     + '\nPais: ' + gv('gn_pa') + '\nEmail: ' + em + '\nTel: ' + gv('gn_t') + '\n\n'
-    + 'Division: ' + gv('gn_division') + '\n' + glvAgriQuoteDetails() + 'Detalle:\n' + d + '\n\nIncoterm: ' + gv('gn_i') + '\nPago: ' + gv('gn_pm')
+    + 'Division: ' + gv('gn_division') + '\n' + glvAgriQuoteDetails() + glvPoultryQuoteDetails() + 'Detalle:\n' + d + '\n\nIncoterm: ' + gv('gn_i') + '\nPago: ' + gv('gn_pm')
     + '\nAgente: ' + aName;
   sendW3F('Cotizacion General - ' + e, msg, em);
   if (via === 'wa') {

@@ -149,12 +149,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --gold: #C9A84C;
-  --gold-light: #E8C97A;
-  --dark: #0A0A0A;
-  --dark2: #111111;
-  --dark3: #1A1A1A;
-  --mid: #2A2A2A;
+  --gold: #bfa66c;
+  --gold-light: #d1bc88;
+  --dark: #081a26;
+  --dark2: #102633;
+  --dark3: #16313f;
+  --mid: #365363;
   --text: #E8E8E8;
   --text-dim: #999;
   --white: #FFFFFF;
@@ -192,9 +192,9 @@ nav {
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 1000;
-  background: rgba(10,10,10,0.95);
+  background: rgba(8,26,38,0.95);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(201,168,76,0.2);
+  border-bottom: 1px solid rgba(137,168,185,0.2);
   padding: 0 2rem;
   height: 64px;
   display: flex;
@@ -242,7 +242,7 @@ nav {
 }
 .lang-btn {
   background: none;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(137,168,185,0.3);
   color: var(--text-dim);
   font-size: 0.95rem;
   font-weight: 600;
@@ -290,11 +290,11 @@ nav {
   inset: 0;
   background: linear-gradient(
     to right,
-    rgba(10,10,10,0.97) 0%,
-    rgba(10,10,10,0.92) 38%,
-    rgba(10,10,10,0.55) 52%,
-    rgba(10,10,10,0.15) 65%,
-    rgba(10,10,10,0.05) 100%
+    rgba(8,26,38,0.97) 0%,
+    rgba(8,26,38,0.92) 38%,
+    rgba(8,26,38,0.55) 52%,
+    rgba(8,26,38,0.15) 65%,
+    rgba(8,26,38,0.05) 100%
   );
   z-index: 1;
   /* Curved SVG clip on the right edge of the dark overlay */
@@ -388,7 +388,7 @@ nav {
 .btn-primary:hover { background: var(--gold-light); transform: translateY(-1px); }
 
 .btn-secondary {
-  border: 1px solid rgba(201,168,76,0.4);
+  border: 1px solid rgba(137,168,185,0.4);
   color: var(--gold);
   text-decoration: none;
   font-size: 0.92rem;
@@ -399,13 +399,13 @@ nav {
   transition: all 0.2s;
   display: inline-block;
 }
-.btn-secondary:hover { border-color: var(--gold); background: rgba(201,168,76,0.1); }
+.btn-secondary:hover { border-color: var(--gold); background: rgba(137,168,185,0.1); }
 
 /* ─── STATS BAR ─── */
 .stats-bar {
   background: var(--dark2);
-  border-top: 1px solid rgba(201,168,76,0.15);
-  border-bottom: 1px solid rgba(201,168,76,0.15);
+  border-top: 1px solid rgba(137,168,185,0.15);
+  border-bottom: 1px solid rgba(137,168,185,0.15);
   padding: 2.5rem 4rem;
 }
 .stats-inner {
@@ -417,7 +417,7 @@ nav {
 }
 .stat {
   text-align: center;
-  border-right: 1px solid rgba(201,168,76,0.15);
+  border-right: 1px solid rgba(137,168,185,0.15);
   padding: 0 1.5rem;
 }
 .stat:last-child { border-right: none; }
@@ -499,9 +499,9 @@ nav {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 1px;
-  background: rgba(201,168,76,0.1);
+  background: rgba(137,168,185,0.1);
   margin-top: 4rem;
-  border: 1px solid rgba(201,168,76,0.1);
+  border: 1px solid rgba(137,168,185,0.1);
 }
 .entity-card {
   background: var(--dark2);
@@ -577,7 +577,7 @@ nav {
   aspect-ratio: 3/4;
   object-fit: cover;
   object-position: top center;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(137,168,185,0.3);
 }
 .ceo-photo::before {
   content: '';
@@ -586,7 +586,7 @@ nav {
   left: -1rem;
   right: 1rem;
   bottom: 1rem;
-  border: 1px solid rgba(201,168,76,0.15);
+  border: 1px solid rgba(137,168,185,0.15);
   z-index: -1;
 }
 .ceo-label {
@@ -610,7 +610,7 @@ nav {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1px;
-  background: rgba(201,168,76,0.1);
+  background: rgba(137,168,185,0.1);
   margin-top: 2rem;
 }
 .field-card {
@@ -644,7 +644,7 @@ nav {
 .ops-img-label {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  background: linear-gradient(transparent, rgba(7,21,31,0.85));
   padding: 2rem 1rem 0.8rem;
   font-size: 0.95rem;
   font-weight: 600;
@@ -666,7 +666,7 @@ nav {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
-  background: rgba(201,168,76,0.1);
+  background: rgba(137,168,185,0.1);
   margin-top: 4rem;
 }
 .div-card {
@@ -681,7 +681,7 @@ nav {
   font-family: 'Playfair Display', serif;
   font-size: 3.5rem;
   font-weight: 900;
-  color: rgba(201,168,76,0.15);
+  color: rgba(137,168,185,0.15);
   line-height: 1;
   margin-bottom: 1rem;
 }
@@ -718,7 +718,7 @@ nav {
   font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.08em;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(137,168,185,0.3);
   color: var(--text-dim);
   padding: 0.2rem 0.5rem;
   text-transform: uppercase;
@@ -784,11 +784,11 @@ nav {
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  background: rgba(201,168,76,0.12);
+  background: rgba(137,168,185,0.12);
   color: var(--gold);
   padding: 0.3rem 0.7rem;
   text-transform: uppercase;
-  border: 1px solid rgba(201,168,76,0.2);
+  border: 1px solid rgba(137,168,185,0.2);
 }
 
 /* ─── MARKETS SECTION ─── */
@@ -801,7 +801,7 @@ nav {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1px;
-  background: rgba(201,168,76,0.08);
+  background: rgba(137,168,185,0.08);
   margin-top: 4rem;
 }
 .market-card {
@@ -838,10 +838,10 @@ nav {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  background: rgba(201,168,76,0.08);
+  background: rgba(137,168,185,0.08);
   color: var(--text-dim);
   padding: 0.2rem 0.5rem;
-  border: 1px solid rgba(201,168,76,0.15);
+  border: 1px solid rgba(137,168,185,0.15);
   text-transform: uppercase;
 }
 
@@ -849,15 +849,15 @@ nav {
 .logistics-section {
   background: var(--dark2);
   padding: 7rem 4rem;
-  border-top: 1px solid rgba(201,168,76,0.1);
-  border-bottom: 1px solid rgba(201,168,76,0.1);
+  border-top: 1px solid rgba(137,168,185,0.1);
+  border-bottom: 1px solid rgba(137,168,185,0.1);
 }
 .logistics-inner { max-width: 1400px; margin: 0 auto; }
 .process-steps {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 1px;
-  background: rgba(201,168,76,0.08);
+  background: rgba(137,168,185,0.08);
   margin-top: 4rem;
 }
 .step {
@@ -869,7 +869,7 @@ nav {
   font-family: 'Playfair Display', serif;
   font-size: 2.5rem;
   font-weight: 900;
-  color: rgba(201,168,76,0.2);
+  color: rgba(137,168,185,0.2);
   line-height: 1;
   margin-bottom: 1rem;
 }
@@ -894,7 +894,7 @@ nav {
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.12em;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(137,168,185,0.3);
   color: var(--gold);
   padding: 0.4rem 0.9rem;
   text-transform: uppercase;
@@ -932,7 +932,7 @@ nav {
 .form-group textarea {
   width: 100%;
   background: var(--dark2);
-  border: 1px solid rgba(201,168,76,0.2);
+  border: 1px solid rgba(137,168,185,0.2);
   color: var(--text);
   font-family: 'Barlow', sans-serif;
   font-size: 1rem;
@@ -999,7 +999,7 @@ nav {
 /* ─── FOOTER ─── */
 footer {
   background: var(--dark2);
-  border-top: 1px solid rgba(201,168,76,0.15);
+  border-top: 1px solid rgba(137,168,185,0.15);
   padding: 4rem 4rem 2rem;
 }
 .footer-inner {
@@ -1011,7 +1011,7 @@ footer {
   grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 3rem;
   padding-bottom: 3rem;
-  border-bottom: 1px solid rgba(201,168,76,0.1);
+  border-bottom: 1px solid rgba(137,168,185,0.1);
 }
 .footer-logo {
   font-family: 'Playfair Display', serif;
@@ -1057,7 +1057,7 @@ footer {
 .redes-section {
   background: var(--dark2);
   padding: 7rem 4rem;
-  border-top: 1px solid rgba(201,168,76,0.1);
+  border-top: 1px solid rgba(137,168,185,0.1);
 }
 .redes-inner { max-width: 1400px; margin: 0 auto; }
 .redes-video-wrap {
@@ -1116,7 +1116,7 @@ footer {
   .hero-content { padding: 0 1.5rem; padding-top: 64px; }
   .hero-video-container::after { 
     -webkit-mask-image: none; mask-image: none;
-    background: rgba(10,10,10,0.75);
+    background: rgba(8,26,38,0.75);
   }
   .division-hero-content { grid-template-columns: 1fr; padding: 4rem 1.5rem; }
   .ops-grid { grid-template-columns: 1fr; }
@@ -1138,32 +1138,32 @@ footer {
 /* ─── DROPDOWN ─── */
 .nav-dropdown { position: relative; }
 .nav-drop-btn {
-  background: none; border: 1px solid rgba(201,168,76,0.3);
+  background: none; border: 1px solid rgba(137,168,185,0.3);
   color: var(--text-dim); font-family: "Barlow", sans-serif;
   font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; padding: 0.35rem 0.75rem;
   cursor: pointer; display: flex; align-items: center; gap: 0.4rem;
   transition: all 0.2s; white-space: nowrap;
 }
-.nav-drop-btn:hover { background: rgba(201,168,76,0.08); color: var(--gold); border-color: var(--gold); }
-.nav-drop-btn.active { background: rgba(201,168,76,0.1); color: var(--gold); border-color: var(--gold); }
+.nav-drop-btn:hover { background: rgba(137,168,185,0.08); color: var(--gold); border-color: var(--gold); }
+.nav-drop-btn.active { background: rgba(137,168,185,0.1); color: var(--gold); border-color: var(--gold); }
 .drop-arrow { font-size: 0.7rem; transition: transform 0.2s; }
 .nav-drop-btn.active .drop-arrow { transform: rotate(180deg); }
 .nav-dropdown-menu {
   display: none; position: absolute; top: calc(100% + 12px); right: 0;
   background: rgba(14,14,14,0.98); backdrop-filter: blur(20px);
-  border: 1px solid rgba(201,168,76,0.2); min-width: 300px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6); z-index: 2000;
+  border: 1px solid rgba(137,168,185,0.2); min-width: 300px;
+  box-shadow: 0 20px 60px rgba(7,21,31,0.6); z-index: 2000;
 }
 .nav-dropdown-menu.open { display: block; }
 .nav-dropdown-menu a {
   display: flex; align-items: flex-start; gap: 1rem;
   padding: 1rem 1.2rem; text-decoration: none; color: var(--text);
-  border-bottom: 1px solid rgba(201,168,76,0.06);
+  border-bottom: 1px solid rgba(137,168,185,0.06);
   transition: background 0.18s; font-size: 1rem;
 }
 .nav-dropdown-menu a:last-child { border-bottom: none; }
-.nav-dropdown-menu a:hover { background: rgba(201,168,76,0.07); }
+.nav-dropdown-menu a:hover { background: rgba(137,168,185,0.07); }
 .drop-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.1rem; }
 .drop-title { font-size: 0.9rem; font-weight: 600; color: var(--white); margin-bottom: 0.15rem; }
 .drop-sub { font-size: 0.75rem; color: var(--text-dim); }
@@ -1333,7 +1333,7 @@ nav {
 .lang-drop { position: relative; }
 .lang-drop-btn {
   background: none;
-  border: 1px solid rgba(201,168,76,0.3);
+  border: 1px solid rgba(137,168,185,0.3);
   color: rgba(200,200,200,0.82);
   font-family: 'Barlow', sans-serif;
   font-size: 0.82rem;
@@ -1360,13 +1360,13 @@ nav {
   background: rgba(12,12,20,0.98);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(201,168,76,0.2);
+  border: 1px solid rgba(137,168,185,0.2);
   list-style: none;
   padding: 0.3rem 0;
   margin: 0;
   min-width: 175px;
   z-index: 4000;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+  box-shadow: 0 8px 32px rgba(7,21,31,0.55);
 }
 .lang-drop.open .lang-drop-menu { display: block; }
 .lang-drop-menu li {
@@ -1376,7 +1376,7 @@ nav {
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  border-bottom: 1px solid rgba(201,168,76,0.06);
+  border-bottom: 1px solid rgba(137,168,185,0.06);
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -1384,8 +1384,8 @@ nav {
   list-style: none;
 }
 .lang-drop-menu li:last-child { border-bottom: none; }
-.lang-drop-menu li:hover { background: rgba(201,168,76,0.09); color: var(--gold); }
-.lang-drop-menu li.active { color: var(--gold); background: rgba(201,168,76,0.06); font-weight: 700; }
+.lang-drop-menu li:hover { background: rgba(137,168,185,0.09); color: var(--gold); }
+.lang-drop-menu li.active { color: var(--gold); background: rgba(137,168,185,0.06); font-weight: 700; }
 @media (max-width: 480px) {
   .lang-drop-menu { right: auto; left: 0; min-width: 160px; }
   .lang-drop-btn { font-size: 0.78rem; padding: 0.5rem 0.6rem; }
@@ -1414,7 +1414,7 @@ nav {
   <!-- End Meta Pixel Code -->
 <link rel="stylesheet" href="/assets/css/agri-navigation.css?v=1">
 <script defer src="/assets/js/agri-navigation.js"></script>
-<link rel="stylesheet" href="/assets/css/home-commercial.css?v=1">
+<link rel="stylesheet" href="/assets/css/home-commercial.css?v=20260915">
 <link rel="stylesheet" href="/assets/css/contact-layout.css?v=1">
 </head>
 <body class="lang-es">
@@ -1489,7 +1489,7 @@ nav {
       <span lang-es>Cotizar</span><span lang-en>Get Quote</span><span lang-pt-br>Solicitar Cotação</span><span lang-ar>اطلب عرضاً</span><span lang-zh>获取报价</span>
     </a>
   </div>
-<details class="agri-menu home-agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
+<details class="agri-menu home-agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/pollo-colombiano"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></a><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
 </nav>
 
 <!-- ─── HERO WITH CORPORATE VIDEO + CURVED REVEAL ─── -->
@@ -1498,7 +1498,7 @@ nav {
       <source src="/imagenes/video%20corporativo%20glv%20services.mp4" type="video/mp4">
     </video>
   </div><div class="hero-content"><div class="hero-text"><p class="hero-eyebrow"><span lang-es>GLV Services S.A.S. · Producción agroindustrial y exportación directa</span><span lang-en>GLV Services S.A.S. · Agroindustrial production and direct exports</span><span lang-pt-br>GLV Services S.A.S. · Produção agroindustrial e exportação direta</span><span lang-ar>GLV Services S.A.S. · الإنتاج الزراعي الصناعي والتصدير المباشر</span><span lang-zh>GLV Services S.A.S. · 农业产业化生产与直接出口</span></p><h1 class="hero-title"><span lang-es>Producimos alimentos y los exportamos al mundo.</span><span lang-en>We produce food and export it to the world.</span><span lang-pt-br>Produzimos alimentos e os exportamos para o mundo.</span><span lang-ar>ننتج الغذاء ونصدّره إلى العالم.</span><span lang-zh>我们生产食品，并出口到世界各地。</span></h1><p class="hero-subtitle"><span lang-es>GLV participa en la cría de animales, cultivos agrícolas, caña de azúcar, aceites, proteínas, granos, fertilizantes y soluciones de comercio internacional. Nuestra oferta nace de operación propia, aliados productivos directos y control documental desde el origen.</span><span lang-en>GLV is involved in animal breeding, agricultural crops, sugarcane, oils, proteins, grains, fertilizers and international trade solutions. Our offering is built on our own operations, direct production partners and documentation control from origin.</span><span lang-pt-br>A GLV participa da criação de animais, cultivos agrícolas, cana-de-açúcar, óleos, proteínas, grãos, fertilizantes e soluções de comércio internacional. Nossa oferta nasce de operação própria, parceiros produtivos diretos e controle documental desde a origem.</span><span lang-ar>تشارك GLV في تربية الحيوانات والمحاصيل الزراعية وقصب السكر والزيوت والبروتينات والحبوب والأسمدة وحلول التجارة الدولية. ويستند عرضنا إلى عملياتنا الخاصة وشركاء إنتاج مباشرين وضبط الوثائق منذ المنشأ.</span><span lang-zh>GLV 参与动物养殖、农作物、甘蔗、油脂、蛋白质、谷物、肥料及国际贸易解决方案。我们的供应依托自有运营、直接生产合作伙伴及从源头开始的文件管理。</span></p><p class="hero-support"><span lang-es>Vendemos líneas de exportación directas para compradores internacionales. Acompañamos cada operación con trazabilidad comercial, documentación, certificaciones aplicables y coordinación logística según el producto, el país y el acuerdo comercial.</span><span lang-en>We offer direct export product lines to international buyers. We support each transaction with commercial traceability, documentation, applicable certifications and logistics coordination according to the product, country and commercial agreement.</span><span lang-pt-br>Vendemos linhas de exportação diretas para compradores internacionais. Acompanhamos cada operação com rastreabilidade comercial, documentação, certificações aplicáveis e coordenação logística conforme o produto, o país e o acordo comercial.</span><span lang-ar>نبيع خطوط منتجات للتصدير المباشر للمشترين الدوليين. وندعم كل عملية بالتتبع التجاري والوثائق والشهادات المنطبقة والتنسيق اللوجستي وفق المنتج والبلد والاتفاق التجاري.</span><span lang-zh>我们向国际买家提供直接出口产品线。根据产品、国家及商务协议，为每项业务提供商业追溯、文件、适用认证及物流协调支持。</span></p><p class="hero-trust"><span lang-es>Menos intermediación. Más control de origen, operación y cumplimiento.</span><span lang-en>Fewer intermediaries. More control over origin, operations and compliance.</span><span lang-pt-br>Menos intermediação. Mais controle de origem, operação e conformidade.</span><span lang-ar>وسطاء أقل. تحكم أكبر في المنشأ والعمليات والامتثال.</span><span lang-zh>减少中间环节，更好地掌控源头、运营与合规。</span></p><div class="hero-btns"><a href="/cotizacion" class="btn-primary"><span lang-es>Cotizar productos</span><span lang-en>Request product pricing</span><span lang-pt-br>Cotar produtos</span><span lang-ar>طلب عرض أسعار المنتجات</span><span lang-zh>产品询价</span></a><a href="#lineas-produccion" class="btn-secondary"><span lang-es>Ver líneas de producción</span><span lang-en>Explore production lines</span><span lang-pt-br>Ver linhas de produção</span><span lang-ar>استعرض خطوط الإنتاج</span><span lang-zh>查看生产线</span></a></div><a class="hero-agri-link" href="/agronegocios-fertilizantes"><span lang-es>Fertilizantes / Agronegocios</span><span lang-en>Fertilizers / Agribusiness</span><span lang-pt-br>Fertilizantes / Agronegócios</span><span lang-ar>الأسمدة / الأعمال الزراعية</span><span lang-zh>肥料 / 农业业务</span> <span aria-hidden="true">↗</span></a><p class="hero-brand">Where Trust Moves Markets</p></div><div aria-hidden="true"></div></div></section>
-<section class="production-lines" id="lineas-produccion"><div class="production-wrap"><h2><span lang-es>Líneas de producción y exportación</span><span lang-en>Production and export lines</span><span lang-pt-br>Linhas de produção e exportação</span><span lang-ar>خطوط الإنتاج والتصدير</span><span lang-zh>生产与出口产品线</span></h2><p class="production-lead"><span lang-es>GLV conecta producción, origen y compradores internacionales mediante líneas comerciales que integran campo, alistamiento, documentación y exportación.</span><span lang-en>GLV connects production, origin and international buyers through commercial lines that integrate farming, preparation, documentation and exports.</span><span lang-pt-br>A GLV conecta produção, origem e compradores internacionais por meio de linhas comerciais que integram campo, preparação, documentação e exportação.</span><span lang-ar>تربط GLV الإنتاج والمنشأ والمشترين الدوليين عبر خطوط تجارية تجمع العمل الميداني والتجهيز والوثائق والتصدير.</span><span lang-zh>GLV 通过整合田间生产、备货、文件及出口的商业产品线，连接生产、源头与国际买家。</span></p><div class="production-grid"><a class="production-card" href="/animales-vivos"><span class="production-number" aria-hidden="true">01 ↗</span><h3><span lang-es>Animales vivos</span><span lang-en>Live animals</span><span lang-pt-br>Animais vivos</span><span lang-ar>الحيوانات الحية</span><span lang-zh>活体动物</span></h3><p><span lang-es>Cría, selección y exportación de animales vivos desde Brasil y otros orígenes autorizados.</span><span lang-en>Breeding, selection and export of live animals from Brazil and other authorized origins.</span><span lang-pt-br>Criação, seleção e exportação de animais vivos do Brasil e de outras origens autorizadas.</span><span lang-ar>تربية وانتقاء وتصدير الحيوانات الحية من البرازيل ومناشئ أخرى معتمدة.</span><span lang-zh>从巴西及其他获准产地开展活体动物养殖、筛选与出口。</span></p></a><a class="production-card" href="/animales-vivos"><span class="production-number" aria-hidden="true">02 ↗</span><h3><span lang-es>Carne en canal y cortes</span><span lang-en>Carcasses and meat cuts</span><span lang-pt-br>Carcaças e cortes de carne</span><span lang-ar>الذبائح وقطع اللحوم</span><span lang-zh>胴体与分割肉</span></h3><p><span lang-es>Procesamiento, canal, cortes y proteínas para compradores que requieren producto documentado y condiciones comerciales claras.</span><span lang-en>Processing, carcasses, cuts and proteins for buyers requiring documented products and clear commercial terms.</span><span lang-pt-br>Processamento, carcaças, cortes e proteínas para compradores que exigem produto documentado e condições comerciais claras.</span><span lang-ar>تجهيز وذبائح وقطع لحوم وبروتينات للمشترين الذين يحتاجون إلى منتجات موثقة وشروط تجارية واضحة.</span><span lang-zh>为需要产品文件和明确商务条款的买家提供加工、胴体、分割肉及蛋白质产品。</span></p></a><a class="production-card" href="/granos-legumbres"><span class="production-number" aria-hidden="true">03 ↗</span><h3><span lang-es>Granos y legumbres</span><span lang-en>Grains and pulses</span><span lang-pt-br>Grãos e leguminosas</span><span lang-ar>الحبوب والبقوليات</span><span lang-zh>谷物与豆类</span></h3><p><span lang-es>Abastecimiento agrícola, negociación directa y exportación de productos para industria, consumo y distribución.</span><span lang-en>Agricultural sourcing, direct negotiation and product exports for industry, consumption and distribution.</span><span lang-pt-br>Abastecimento agrícola, negociação direta e exportação de produtos para indústria, consumo e distribuição.</span><span lang-ar>توريد زراعي وتفاوض مباشر وتصدير منتجات للصناعة والاستهلاك والتوزيع.</span><span lang-zh>面向工业、消费及分销开展农产品采购、直接谈判与产品出口。</span></p></a><a class="production-card" href="/aceites-derivados"><span class="production-number" aria-hidden="true">04 ↗</span><h3><span lang-es>Aceites y derivados</span><span lang-en>Oils and derivatives</span><span lang-pt-br>Óleos e derivados</span><span lang-ar>الزيوت ومشتقاتها</span><span lang-zh>油脂及衍生产品</span></h3><p><span lang-es>Aceites vegetales y derivados trabajados con aliados productivos, presentaciones comerciales y gestión internacional.</span><span lang-en>Vegetable oils and derivatives developed with production partners, commercial packaging and international management.</span><span lang-pt-br>Óleos vegetais e derivados trabalhados com parceiros produtivos, apresentações comerciais e gestão internacional.</span><span lang-ar>زيوت نباتية ومشتقاتها بالتعاون مع شركاء إنتاج، بتعبئات تجارية وإدارة دولية.</span><span lang-zh>与生产伙伴合作经营植物油及衍生产品，提供商业包装与国际业务管理。</span></p></a><a class="production-card" href="/cotizacion?tab=general#tab-general"><span class="production-number" aria-hidden="true">05 ↗</span><h3><span lang-es>Azúcar y caña</span><span lang-en>Sugar and sugarcane</span><span lang-pt-br>Açúcar e cana</span><span lang-ar>السكر وقصب السكر</span><span lang-zh>糖与甘蔗</span></h3><p><span lang-es>Producción agrícola vinculada a caña de azúcar, abastecimiento y comercio internacional de azúcar según origen y disponibilidad.</span><span lang-en>Agricultural production linked to sugarcane, sourcing and international sugar trade according to origin and availability.</span><span lang-pt-br>Produção agrícola ligada à cana-de-açúcar, abastecimento e comércio internacional de açúcar conforme origem e disponibilidade.</span><span lang-ar>إنتاج زراعي مرتبط بقصب السكر وتوريد وتجارة دولية للسكر وفق المنشأ والتوافر.</span><span lang-zh>与甘蔗相关的农业生产，以及根据产地和供应情况开展食糖采购与国际贸易。</span></p></a><a class="production-card production-featured" href="/agronegocios-fertilizantes"><span class="production-number" aria-hidden="true">06 ↗</span><h3><span lang-es>Fertilizantes / Agronegocios</span><span lang-en>Fertilizers / Agribusiness</span><span lang-pt-br>Fertilizantes / Agronegócios</span><span lang-ar>الأسمدة / الأعمال الزراعية</span><span lang-zh>肥料 / 农业业务</span></h3><p><span lang-es>Fertilizantes consumidos en nuestra cadena agrícola y gestionados para clientes bajo acuerdos de suministro, nacionalización y logística.</span><span lang-en>Fertilizers used in our agricultural chain and managed for clients under supply, customs-clearance and logistics agreements.</span><span lang-pt-br>Fertilizantes utilizados em nossa cadeia agrícola e geridos para clientes sob acordos de fornecimento, nacionalização e logística.</span><span lang-ar>أسمدة تُستخدم في سلسلتنا الزراعية ونديرها للعملاء بموجب اتفاقيات التوريد والتخليص الجمركي والخدمات اللوجستية.</span><span lang-zh>肥料用于我们的农业生产链，并依照供应、进口清关及物流协议为客户安排相关业务。</span></p></a><a class="production-card" href="/proteinas-huevo"><span class="production-number" aria-hidden="true">07 ↗</span><h3><span lang-es>Proteínas y huevo</span><span lang-en>Proteins and eggs</span><span lang-pt-br>Proteínas e ovos</span><span lang-ar>البروتينات والبيض</span><span lang-zh>蛋白质与鸡蛋</span></h3><p><span lang-es>Proteínas, huevo y productos alimentarios con enfoque comercial, empaque y documentación según mercado.</span><span lang-en>Proteins, eggs and food products with market-specific commercial positioning, packaging and documentation.</span><span lang-pt-br>Proteínas, ovos e produtos alimentícios com foco comercial, embalagem e documentação conforme o mercado.</span><span lang-ar>بروتينات وبيض ومنتجات غذائية بتوجه تجاري وتعبئة ووثائق وفق السوق.</span><span lang-zh>根据市场需求，提供蛋白质、鸡蛋及食品的商业方案、包装与文件。</span></p></a></div></div></section><section class="production-origin"><div class="production-wrap"><h2><span lang-es>Venta directa desde operación y origen</span><span lang-en>Direct sales from operations and origin</span><span lang-pt-br>Venda direta da operação e da origem</span><span lang-ar>بيع مباشر من العمليات والمنشأ</span><span lang-zh>源自运营与产地的直接销售</span></h2><p class="production-lead"><span lang-es>Nuestro modelo reduce pasos innecesarios entre productor, operador y comprador. Cuando el producto nace de operación propia o de aliados directos, el cliente obtiene mejor lectura del origen, documentación más clara y una negociación comercial más ordenada.</span><span lang-en>Our model reduces unnecessary steps between producer, operator and buyer. When a product comes from our own operations or direct partners, the client gains a clearer view of origin, clearer documentation and a more structured commercial negotiation.</span><span lang-pt-br>Nosso modelo reduz etapas desnecessárias entre produtor, operador e comprador. Quando o produto nasce de operação própria ou de parceiros diretos, o cliente tem melhor compreensão da origem, documentação mais clara e uma negociação comercial mais organizada.</span><span lang-ar>يقلل نموذجنا الخطوات غير الضرورية بين المنتج والمشغّل والمشتري. وعندما يأتي المنتج من عملياتنا الخاصة أو شركائنا المباشرين، يحصل العميل على فهم أفضل للمنشأ ووثائق أوضح وتفاوض تجاري أكثر تنظيماً.</span><span lang-zh>我们的模式减少生产者、运营方与买家之间不必要的环节。当产品来自自有运营或直接合作伙伴时，客户能够更清晰地了解产地、获得更明确的文件，并开展更有序的商务谈判。</span></p><p class="production-majority"><span lang-es>Una parte mayoritaria de nuestras líneas comerciales nace de operación propia o aliados productivos directos.</span><span lang-en>Most of our commercial lines originate from our own operations or direct production partners.</span><span lang-pt-br>A maior parte de nossas linhas comerciais nasce de operação própria ou de parceiros produtivos diretos.</span><span lang-ar>ينشأ الجزء الأكبر من خطوطنا التجارية من عملياتنا الخاصة أو شركاء إنتاج مباشرين.</span><span lang-zh>我们的大部分商业产品线来自自有运营或直接生产合作伙伴。</span></p><div class="production-proof"><article><h3><span lang-es>Origen y producción</span><span lang-en>Origin and production</span><span lang-pt-br>Origem e produção</span><span lang-ar>المنشأ والإنتاج</span><span lang-zh>源头与生产</span></h3><p><span lang-es>Participación directa en campo, cría, cultivo o aliado productivo.</span><span lang-en>Direct involvement in farming, breeding, cultivation or a production partner.</span><span lang-pt-br>Participação direta no campo, criação, cultivo ou parceiro produtivo.</span><span lang-ar>مشاركة مباشرة في العمل الميداني أو التربية أو الزراعة أو مع شريك إنتاج.</span><span lang-zh>直接参与田间作业、养殖、种植或生产合作。</span></p></article><article><h3><span lang-es>Documentación</span><span lang-en>Documentation</span><span lang-pt-br>Documentação</span><span lang-ar>الوثائق</span><span lang-zh>文件</span></h3><p><span lang-es>Soporte comercial, sanitario, aduanero y logístico según producto y destino.</span><span lang-en>Commercial, sanitary, customs and logistics support according to product and destination.</span><span lang-pt-br>Suporte comercial, sanitário, aduaneiro e logístico conforme produto e destino.</span><span lang-ar>دعم تجاري وصحي وجمركي ولوجستي وفق المنتج والوجهة.</span><span lang-zh>根据产品及目的地提供商务、卫生、海关与物流支持。</span></p></article><article><h3><span lang-es>Exportación</span><span lang-en>Exports</span><span lang-pt-br>Exportação</span><span lang-ar>التصدير</span><span lang-zh>出口</span></h3><p><span lang-es>Coordinación internacional para compradores, distribuidores, industrias y operadores comerciales.</span><span lang-en>International coordination for buyers, distributors, industries and commercial operators.</span><span lang-pt-br>Coordenação internacional para compradores, distribuidores, indústrias e operadores comerciais.</span><span lang-ar>تنسيق دولي للمشترين والموزعين والصناعات والمشغّلين التجاريين.</span><span lang-zh>为买家、分销商、工业企业及贸易运营方提供国际协调。</span></p></article></div></div></section>
+<section class="production-lines" id="lineas-produccion"><div class="production-wrap"><h2><span lang-es>Líneas de producción y exportación</span><span lang-en>Production and export lines</span><span lang-pt-br>Linhas de produção e exportação</span><span lang-ar>خطوط الإنتاج والتصدير</span><span lang-zh>生产与出口产品线</span></h2><p class="production-lead"><span lang-es>GLV conecta producción, origen y compradores internacionales mediante líneas comerciales que integran campo, alistamiento, documentación y exportación.</span><span lang-en>GLV connects production, origin and international buyers through commercial lines that integrate farming, preparation, documentation and exports.</span><span lang-pt-br>A GLV conecta produção, origem e compradores internacionais por meio de linhas comerciais que integram campo, preparação, documentação e exportação.</span><span lang-ar>تربط GLV الإنتاج والمنشأ والمشترين الدوليين عبر خطوط تجارية تجمع العمل الميداني والتجهيز والوثائق والتصدير.</span><span lang-zh>GLV 通过整合田间生产、备货、文件及出口的商业产品线，连接生产、源头与国际买家。</span></p><div class="production-grid"><a class="production-card" href="/animales-vivos"><span class="production-number" aria-hidden="true">01 ↗</span><h3><span lang-es>Animales vivos</span><span lang-en>Live animals</span><span lang-pt-br>Animais vivos</span><span lang-ar>الحيوانات الحية</span><span lang-zh>活体动物</span></h3><p><span lang-es>Cría, selección y exportación de animales vivos desde Brasil y otros orígenes autorizados.</span><span lang-en>Breeding, selection and export of live animals from Brazil and other authorized origins.</span><span lang-pt-br>Criação, seleção e exportação de animais vivos do Brasil e de outras origens autorizadas.</span><span lang-ar>تربية وانتقاء وتصدير الحيوانات الحية من البرازيل ومناشئ أخرى معتمدة.</span><span lang-zh>从巴西及其他获准产地开展活体动物养殖、筛选与出口。</span></p></a><a class="production-card" href="/animales-vivos"><span class="production-number" aria-hidden="true">02 ↗</span><h3><span lang-es>Carne en canal y cortes</span><span lang-en>Carcasses and meat cuts</span><span lang-pt-br>Carcaças e cortes de carne</span><span lang-ar>الذبائح وقطع اللحوم</span><span lang-zh>胴体与分割肉</span></h3><p><span lang-es>Procesamiento, canal, cortes y proteínas para compradores que requieren producto documentado y condiciones comerciales claras.</span><span lang-en>Processing, carcasses, cuts and proteins for buyers requiring documented products and clear commercial terms.</span><span lang-pt-br>Processamento, carcaças, cortes e proteínas para compradores que exigem produto documentado e condições comerciais claras.</span><span lang-ar>تجهيز وذبائح وقطع لحوم وبروتينات للمشترين الذين يحتاجون إلى منتجات موثقة وشروط تجارية واضحة.</span><span lang-zh>为需要产品文件和明确商务条款的买家提供加工、胴体、分割肉及蛋白质产品。</span></p></a><a class="production-card" href="/granos-legumbres"><span class="production-number" aria-hidden="true">03 ↗</span><h3><span lang-es>Granos y legumbres</span><span lang-en>Grains and pulses</span><span lang-pt-br>Grãos e leguminosas</span><span lang-ar>الحبوب والبقوليات</span><span lang-zh>谷物与豆类</span></h3><p><span lang-es>Abastecimiento agrícola, negociación directa y exportación de productos para industria, consumo y distribución.</span><span lang-en>Agricultural sourcing, direct negotiation and product exports for industry, consumption and distribution.</span><span lang-pt-br>Abastecimento agrícola, negociação direta e exportação de produtos para indústria, consumo e distribuição.</span><span lang-ar>توريد زراعي وتفاوض مباشر وتصدير منتجات للصناعة والاستهلاك والتوزيع.</span><span lang-zh>面向工业、消费及分销开展农产品采购、直接谈判与产品出口。</span></p></a><a class="production-card" href="/aceites-derivados"><span class="production-number" aria-hidden="true">04 ↗</span><h3><span lang-es>Aceites y derivados</span><span lang-en>Oils and derivatives</span><span lang-pt-br>Óleos e derivados</span><span lang-ar>الزيوت ومشتقاتها</span><span lang-zh>油脂及衍生产品</span></h3><p><span lang-es>Aceites vegetales y derivados trabajados con aliados productivos, presentaciones comerciales y gestión internacional.</span><span lang-en>Vegetable oils and derivatives developed with production partners, commercial packaging and international management.</span><span lang-pt-br>Óleos vegetais e derivados trabalhados com parceiros produtivos, apresentações comerciais e gestão internacional.</span><span lang-ar>زيوت نباتية ومشتقاتها بالتعاون مع شركاء إنتاج، بتعبئات تجارية وإدارة دولية.</span><span lang-zh>与生产伙伴合作经营植物油及衍生产品，提供商业包装与国际业务管理。</span></p></a><a class="production-card" href="/cotizacion?tab=general#tab-general"><span class="production-number" aria-hidden="true">05 ↗</span><h3><span lang-es>Azúcar y caña</span><span lang-en>Sugar and sugarcane</span><span lang-pt-br>Açúcar e cana</span><span lang-ar>السكر وقصب السكر</span><span lang-zh>糖与甘蔗</span></h3><p><span lang-es>Producción agrícola vinculada a caña de azúcar, abastecimiento y comercio internacional de azúcar según origen y disponibilidad.</span><span lang-en>Agricultural production linked to sugarcane, sourcing and international sugar trade according to origin and availability.</span><span lang-pt-br>Produção agrícola ligada à cana-de-açúcar, abastecimento e comércio internacional de açúcar conforme origem e disponibilidade.</span><span lang-ar>إنتاج زراعي مرتبط بقصب السكر وتوريد وتجارة دولية للسكر وفق المنشأ والتوافر.</span><span lang-zh>与甘蔗相关的农业生产，以及根据产地和供应情况开展食糖采购与国际贸易。</span></p></a><a class="production-card production-featured" href="/agronegocios-fertilizantes"><span class="production-number" aria-hidden="true">06 ↗</span><h3><span lang-es>Fertilizantes / Agronegocios</span><span lang-en>Fertilizers / Agribusiness</span><span lang-pt-br>Fertilizantes / Agronegócios</span><span lang-ar>الأسمدة / الأعمال الزراعية</span><span lang-zh>肥料 / 农业业务</span></h3><p><span lang-es>Fertilizantes consumidos en nuestra cadena agrícola y gestionados para clientes bajo acuerdos de suministro, nacionalización y logística.</span><span lang-en>Fertilizers used in our agricultural chain and managed for clients under supply, customs-clearance and logistics agreements.</span><span lang-pt-br>Fertilizantes utilizados em nossa cadeia agrícola e geridos para clientes sob acordos de fornecimento, nacionalização e logística.</span><span lang-ar>أسمدة تُستخدم في سلسلتنا الزراعية ونديرها للعملاء بموجب اتفاقيات التوريد والتخليص الجمركي والخدمات اللوجستية.</span><span lang-zh>肥料用于我们的农业生产链，并依照供应、进口清关及物流协议为客户安排相关业务。</span></p></a><a class="production-card" href="/proteinas-huevo"><span class="production-number" aria-hidden="true">07 ↗</span><h3><span lang-es>Proteínas y huevo</span><span lang-en>Proteins and eggs</span><span lang-pt-br>Proteínas e ovos</span><span lang-ar>البروتينات والبيض</span><span lang-zh>蛋白质与鸡蛋</span></h3><p><span lang-es>Proteínas, huevo y productos alimentarios con enfoque comercial, empaque y documentación según mercado.</span><span lang-en>Proteins, eggs and food products with market-specific commercial positioning, packaging and documentation.</span><span lang-pt-br>Proteínas, ovos e produtos alimentícios com foco comercial, embalagem e documentação conforme o mercado.</span><span lang-ar>بروتينات وبيض ومنتجات غذائية بتوجه تجاري وتعبئة ووثائق وفق السوق.</span><span lang-zh>根据市场需求，提供蛋白质、鸡蛋及食品的商业方案、包装与文件。</span></p></a><a class="production-card" href="/pollo-colombiano"><span class="production-number" aria-hidden="true">08 ↗</span><h3><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></h3><p><span lang-es>Compra internacional y apoyo exportador para productores y procesadores colombianos.</span><span lang-en>International purchasing and export support for Colombian producers and processors.</span><span lang-pt-br>Compra internacional e apoio à exportação para produtores e processadores colombianos.</span><span lang-ar>شراء دولي ودعم التصدير للمنتجين والمصنّعين الكولومبيين.</span><span lang-zh>国际采购及面向哥伦比亚生产商和加工企业的出口支持。</span></p></a></div></div></section><section class="production-origin"><div class="production-wrap"><h2><span lang-es>Venta directa desde operación y origen</span><span lang-en>Direct sales from operations and origin</span><span lang-pt-br>Venda direta da operação e da origem</span><span lang-ar>بيع مباشر من العمليات والمنشأ</span><span lang-zh>源自运营与产地的直接销售</span></h2><p class="production-lead"><span lang-es>Nuestro modelo reduce pasos innecesarios entre productor, operador y comprador. Cuando el producto nace de operación propia o de aliados directos, el cliente obtiene mejor lectura del origen, documentación más clara y una negociación comercial más ordenada.</span><span lang-en>Our model reduces unnecessary steps between producer, operator and buyer. When a product comes from our own operations or direct partners, the client gains a clearer view of origin, clearer documentation and a more structured commercial negotiation.</span><span lang-pt-br>Nosso modelo reduz etapas desnecessárias entre produtor, operador e comprador. Quando o produto nasce de operação própria ou de parceiros diretos, o cliente tem melhor compreensão da origem, documentação mais clara e uma negociação comercial mais organizada.</span><span lang-ar>يقلل نموذجنا الخطوات غير الضرورية بين المنتج والمشغّل والمشتري. وعندما يأتي المنتج من عملياتنا الخاصة أو شركائنا المباشرين، يحصل العميل على فهم أفضل للمنشأ ووثائق أوضح وتفاوض تجاري أكثر تنظيماً.</span><span lang-zh>我们的模式减少生产者、运营方与买家之间不必要的环节。当产品来自自有运营或直接合作伙伴时，客户能够更清晰地了解产地、获得更明确的文件，并开展更有序的商务谈判。</span></p><p class="production-majority"><span lang-es>Una parte mayoritaria de nuestras líneas comerciales nace de operación propia o aliados productivos directos.</span><span lang-en>Most of our commercial lines originate from our own operations or direct production partners.</span><span lang-pt-br>A maior parte de nossas linhas comerciais nasce de operação própria ou de parceiros produtivos diretos.</span><span lang-ar>ينشأ الجزء الأكبر من خطوطنا التجارية من عملياتنا الخاصة أو شركاء إنتاج مباشرين.</span><span lang-zh>我们的大部分商业产品线来自自有运营或直接生产合作伙伴。</span></p><div class="production-proof"><article><h3><span lang-es>Origen y producción</span><span lang-en>Origin and production</span><span lang-pt-br>Origem e produção</span><span lang-ar>المنشأ والإنتاج</span><span lang-zh>源头与生产</span></h3><p><span lang-es>Participación directa en campo, cría, cultivo o aliado productivo.</span><span lang-en>Direct involvement in farming, breeding, cultivation or a production partner.</span><span lang-pt-br>Participação direta no campo, criação, cultivo ou parceiro produtivo.</span><span lang-ar>مشاركة مباشرة في العمل الميداني أو التربية أو الزراعة أو مع شريك إنتاج.</span><span lang-zh>直接参与田间作业、养殖、种植或生产合作。</span></p></article><article><h3><span lang-es>Documentación</span><span lang-en>Documentation</span><span lang-pt-br>Documentação</span><span lang-ar>الوثائق</span><span lang-zh>文件</span></h3><p><span lang-es>Soporte comercial, sanitario, aduanero y logístico según producto y destino.</span><span lang-en>Commercial, sanitary, customs and logistics support according to product and destination.</span><span lang-pt-br>Suporte comercial, sanitário, aduaneiro e logístico conforme produto e destino.</span><span lang-ar>دعم تجاري وصحي وجمركي ولوجستي وفق المنتج والوجهة.</span><span lang-zh>根据产品及目的地提供商务、卫生、海关与物流支持。</span></p></article><article><h3><span lang-es>Exportación</span><span lang-en>Exports</span><span lang-pt-br>Exportação</span><span lang-ar>التصدير</span><span lang-zh>出口</span></h3><p><span lang-es>Coordinación internacional para compradores, distribuidores, industrias y operadores comerciales.</span><span lang-en>International coordination for buyers, distributors, industries and commercial operators.</span><span lang-pt-br>Coordenação internacional para compradores, distribuidores, indústrias e operadores comerciais.</span><span lang-ar>تنسيق دولي للمشترين والموزعين والصناعات والمشغّلين التجاريين.</span><span lang-zh>为买家、分销商、工业企业及贸易运营方提供国际协调。</span></p></article></div></div></section>
 <!-- ─── STATS BAR ─── -->
 <div class="stats-bar">
   <div class="stats-inner">
@@ -1737,7 +1737,7 @@ nav {
 .glv-slide-caption {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  background: linear-gradient(transparent, rgba(7,21,31,0.85));
   padding: 2rem 1rem 0.8rem;
   font-size: 0.9rem;
   font-weight: 700;
@@ -1749,7 +1749,7 @@ nav {
 .glv-slide-caption small {
   display: block;
   font-size: 1rem;
-  color: #888;
+  color: #a7bdc9;
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0.04em;
@@ -2270,8 +2270,8 @@ nav {
 .social-section {
   background: var(--dark2);
   padding: 7rem 4rem;
-  border-top: 1px solid rgba(201,168,76,0.1);
-  border-bottom: 1px solid rgba(201,168,76,0.1);
+  border-top: 1px solid rgba(137,168,185,0.1);
+  border-bottom: 1px solid rgba(137,168,185,0.1);
 }
 .social-inner { max-width: 1400px; margin: 0 auto; }
 
@@ -2307,7 +2307,7 @@ nav {
 .social-photo-label {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  background: linear-gradient(transparent, rgba(7,21,31,0.85));
   padding: 1.5rem 0.9rem 0.7rem;
   font-size: 0.72rem;
   font-weight: 600;
@@ -2351,7 +2351,7 @@ nav {
 .social-pillar {
   background: var(--dark3);
   padding: 1.2rem 1.2rem;
-  border-top: 2px solid rgba(201,168,76,0.3);
+  border-top: 2px solid rgba(137,168,185,0.3);
   transition: border-color 0.2s;
 }
 .social-pillar:hover { border-color: var(--gold); }
@@ -2651,7 +2651,7 @@ nav {
   margin-right: auto;
   background: #000;
   line-height: 0;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(58,143,212,0.2);
+  box-shadow: 0 8px 40px rgba(7,21,31,0.7), 0 0 0 1px rgba(58,143,212,0.2);
 }
 .redes2-player-wrap video {
   width: 100%;
@@ -2700,9 +2700,9 @@ nav {
   pointer-events: none;
   z-index: 1;
   background: linear-gradient(to right,
-    rgba(10,10,10,0.88) 0%,
-    rgba(10,10,10,0.55) 35%,
-    rgba(10,10,10,0.0) 60%
+    rgba(8,26,38,0.88) 0%,
+    rgba(8,26,38,0.55) 35%,
+    rgba(8,26,38,0.0) 60%
   );
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0,0 L48,0 Q58,50 48,100 L0,100 Z'/%3E%3C/svg%3E");
   -webkit-mask-size: 100% 100%;
@@ -2770,7 +2770,7 @@ nav {
   inset: 0;
   display: flex; flex-direction: column; justify-content: flex-end;
   padding: 0.5rem 0.6rem;
-  background: linear-gradient(transparent 30%, rgba(0,0,0,0.8));
+  background: linear-gradient(transparent 30%, rgba(7,21,31,0.8));
 }
 .redes2-thumb-num {
   font-family: 'Playfair Display', serif;
@@ -2806,7 +2806,7 @@ nav {
   .redes2-thumbs { grid-template-columns: repeat(2,1fr); }
   .redes2-player-wrap video { max-height: none; }
   .redes2-overlay { -webkit-mask-image: none; mask-image: none;
-    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%); }
+    background: linear-gradient(to top, rgba(7,21,31,0.7) 0%, transparent 50%); }
   .redes2-meta { max-width: 90%; bottom: 0.5rem; }
 }
 </style>
