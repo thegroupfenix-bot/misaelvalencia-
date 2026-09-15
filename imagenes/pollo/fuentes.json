@@ -15,6 +15,20 @@
       "file": "../lote en bodega de partes de pollo.jpeg",
       "source": "Existing GLV repository media, reused unchanged",
       "rights": "User-authorized existing local media; source ownership should remain documented by GLV"
+    },
+    {
+      "file": "pechuga-referencia.webp",
+      "derived_from": "pechuga-referencia.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Raw_chicken_slices.jpg",
+      "author": "kakyusei",
+      "license": "CC0 1.0",
+      "sha256": "12a575c3767d50bb9dc326bf6f9a3b9b8dfce928b255519d0f442265f78e8a0c",
+      "dimensions": [
+        1600,
+        1067
+      ],
+      "bytes": 119564,
+      "processing": "Resize to 1600px, WebP quality 88; original retained unchanged"
     }
   ],
   "market_sources": [
