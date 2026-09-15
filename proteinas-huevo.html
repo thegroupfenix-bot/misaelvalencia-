@@ -876,6 +876,7 @@ nav {
 .protein-photo-pending{display:flex;align-items:center;justify-content:center}
 .protein-photo-pending figcaption{position:static;background:none;color:#aec3cf;text-align:center}
 @media(max-width:700px){.protein-visuals{grid-template-columns:1fr}.protein-visuals figure{max-height:240px}}
+.protein-card-link{display:block;color:inherit;text-decoration:none;cursor:pointer}.protein-card-link:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 </style>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -1297,9 +1298,9 @@ nav {
       </div>
 
       <!-- POLLO -->
-      <div class="protein-card">
+      <a class="protein-card protein-card-link" href="/pollo-colombiano">
         <span class="protein-icon" aria-hidden="true">02</span>
-        <div class="protein-name"><a href="/pollo-colombiano"><span lang-es>Pollo Certificado</span><span lang-en>Certified Chicken</span><span lang-pt-br>Frango Certificado</span><span lang-ar>دجاج معتمد</span><span lang-zh>认证鸡肉</span></a></div>
+        <div class="protein-name"><span lang-es>Pollo Certificado</span><span lang-en>Certified Chicken</span><span lang-pt-br>Frango Certificado</span><span lang-ar>دجاج معتمد</span><span lang-zh>认证鸡肉</span></div>
         <div class="protein-sub"><span lang-es>Entero · Partes · IQF</span><span lang-en>Whole · Parts · IQF</span><span lang-pt-br>Inteiro · Cortes · IQF</span><span lang-ar>كامل · أجزاء · IQF</span><span lang-zh>整鸡·部件·IQF</span></div>
         <p class="protein-desc">
           <span lang-es>Pollo entero y partes (pechuga, muslo, ala, pierna). Congelado IQF y fresco. MOQ 3 FTL. Origen Colombia y Brasil. ICA Colombia + MAPA Brasil. Canal vía GLV Florida LLC para mercado USA. Mercados activos: Caribe, Norte de África, Medio Oriente.</span>
@@ -1315,7 +1316,7 @@ nav {
           <span class="ptag">🇺🇸 GLV Florida</span>
           <span class="ptag">Cold Chain</span>
         </div>
-      </div>
+      </a>
 
       <!-- CERDO -->
       <div class="protein-card">
