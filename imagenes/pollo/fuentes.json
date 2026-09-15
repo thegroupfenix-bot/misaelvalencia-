@@ -1,0 +1,26 @@
+{
+  "checked": "2026-09-14",
+  "photos": [
+    {
+      "file": "pechuga-referencia.jpg",
+      "source": "https://commons.wikimedia.org/wiki/File:Raw_chicken_slices.jpg",
+      "download": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Raw_chicken_slices.jpg",
+      "author": "kakyusei",
+      "license": "CC0 1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sha256": "d6c09d78c873d4e6099ab3d3e887c9355c9d335150afd2a1c672f380538ec8b5",
+      "usage": "Reference photograph, not GLV inventory"
+    },
+    {
+      "file": "../lote en bodega de partes de pollo.jpeg",
+      "source": "Existing GLV repository media, reused unchanged",
+      "rights": "User-authorized existing local media; source ownership should remain documented by GLV"
+    }
+  ],
+  "market_sources": [
+    "https://www.ica.gov.co/noticias/colombia-exporta-pollo-japon-primera-vez",
+    "https://www.invima.gov.co/blog/sala-de-prensa-13/colombia-podra-exportar-carne-de-pollo-a-bahamas-272",
+    "https://www.ica.gov.co/noticias/11mercados-internacionales-exportacion-huevo-pollo"
+  ],
+  "gacc": "YA110000PDY110K805 supplied by owner; registration scope and validity require documentary confirmation before publication"
+}
