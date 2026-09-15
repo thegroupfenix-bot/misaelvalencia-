@@ -1065,7 +1065,7 @@ footer {
   position: relative;
   aspect-ratio: 16/9;
   overflow: hidden;
-  background: #000;
+  background: #07151f;
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
@@ -1151,7 +1151,7 @@ footer {
 .nav-drop-btn.active .drop-arrow { transform: rotate(180deg); }
 .nav-dropdown-menu {
   display: none; position: absolute; top: calc(100% + 12px); right: 0;
-  background: rgba(14,14,14,0.98); backdrop-filter: blur(20px);
+  background: rgba(11,30,42,0.98); backdrop-filter: blur(20px);
   border: 1px solid rgba(137,168,185,0.2); min-width: 300px;
   box-shadow: 0 20px 60px rgba(7,21,31,0.6); z-index: 2000;
 }
@@ -1189,7 +1189,7 @@ video[controls] {
   width: 100%;
   max-height: 560px;
   object-fit: contain;
-  background: #000;
+  background: #07151f;
 }
 /* Hero video — sin controles, ocupa todo */
 video.hero-video {
@@ -1204,7 +1204,7 @@ video.hero-video {
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: #000;
+  background: #07151f;
 }
 .video-responsive video {
   position: absolute;
@@ -1412,7 +1412,7 @@ nav {
   fbq('track', 'PageView');
   </script>
   <!-- End Meta Pixel Code -->
-<link rel="stylesheet" href="/assets/css/agri-navigation.css?v=1">
+<link rel="stylesheet" href="/assets/css/agri-navigation.css?v=20260915fix">
 <script defer src="/assets/js/agri-navigation.js"></script>
 <link rel="stylesheet" href="/assets/css/home-commercial.css?v=20260915">
 <link rel="stylesheet" href="/assets/css/contact-layout.css?v=1">
@@ -1440,6 +1440,7 @@ nav {
         <span class="drop-arrow">▾</span>
       </button>
       <div class="nav-dropdown-menu" id="navDropMenu">
+<a href="/pollo-colombiano" onclick="closeDrop()"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></a>
 <a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a>
         <a href="/estructura-corporativa" onclick="closeDrop()">
           <span class="drop-icon">🏢</span>
@@ -1530,7 +1531,7 @@ nav {
 </div>
 
 <!-- ─── HOLDING GLOBAL ─── -->
-<div style="background: var(--dark2); padding: 7rem 4rem; border-top: 1px solid rgba(201,168,76,0.08);">
+<div style="background: var(--dark2); padding: 7rem 4rem; border-top: 1px solid rgba(137,168,185,0.08);">
 <div style="max-width:1400px; margin:0 auto;">
   <p class="section-eyebrow"><span lang-es>Estructura Corporativa</span><span lang-en>Corporate Structure</span><span lang-pt-br>Estrutura Corporativa</span><span lang-ar>الهيكل المؤسسي</span><span lang-zh>公司架构</span></p>
   <h2 class="section-title">
@@ -1599,7 +1600,7 @@ nav {
     </div>
     <div>
       <!-- Origen correcto: Brasil, Chile, Uruguay, Argentina, Colombia -->
-      <div style="background:rgba(10,10,10,0.7);border:1px solid rgba(201,168,76,0.2);padding:2rem;">
+      <div style="background:rgba(10,10,10,0.7);border:1px solid rgba(137,168,185,0.2);padding:2rem;">
         <p style="font-size:0.9rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem;">
           <span lang-es>Origen Ovinos · Plantas de Proceso</span>
           <span lang-en>Ovine Origin · Processing Plants</span><span lang-pt-br>Origem Ovina · Plantas de Processamento</span>
@@ -1607,22 +1608,22 @@ nav {
           <span lang-zh>绵羊产地·加工厂</span>
         </p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1.5rem;">
-          <div style="background:rgba(201,168,76,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
+          <div style="background:rgba(137,168,185,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
             <div style="font-size:1.2rem;margin-bottom:0.3rem;">🇦🇷</div>
             <div style="font-size:1rem;font-weight:600;color:var(--text);">Argentina</div>
             <div style="font-size:1rem;color:var(--text-dim);">Origen · Planta proceso</div>
           </div>
-          <div style="background:rgba(201,168,76,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
+          <div style="background:rgba(137,168,185,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
             <div style="font-size:1.2rem;margin-bottom:0.3rem;">🇺🇾</div>
             <div style="font-size:1rem;font-weight:600;color:var(--text);">Uruguay</div>
             <div style="font-size:1rem;color:var(--text-dim);">Origen · Planta proceso</div>
           </div>
-          <div style="background:rgba(201,168,76,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
+          <div style="background:rgba(137,168,185,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
             <div style="font-size:1.2rem;margin-bottom:0.3rem;">🇧🇷</div>
             <div style="font-size:1rem;font-weight:600;color:var(--text);">Brasil</div>
             <div style="font-size:1rem;color:var(--text-dim);">Origen · Planta proceso</div>
           </div>
-          <div style="background:rgba(201,168,76,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
+          <div style="background:rgba(137,168,185,0.06);padding:0.8rem;border-left:2px solid var(--gold);">
             <div style="font-size:1.2rem;margin-bottom:0.3rem;">🇨🇱</div>
             <div style="font-size:1rem;font-weight:600;color:var(--text);">Chile</div>
             <div style="font-size:1rem;color:var(--text-dim);">Origen</div>
@@ -1676,7 +1677,7 @@ nav {
   align-items: center;
   justify-content: space-between;
   padding: 1.2rem 4rem;
-  background: #111;
+  background: #102633;
   border-bottom: 1px solid rgba(58,143,212,0.12);
 }
 .glv-carousel-label {
@@ -1715,7 +1716,7 @@ nav {
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
-  background: #000;
+  background: #07151f;
   /* width set by JS: 33.333vw desktop, 90vw mobile */
 }
 .glv-slide-inner {
@@ -1775,7 +1776,7 @@ nav {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.8rem 0;
-  background: #111;
+  background: #102633;
 }
 .glv-dot {
   width: 6px; height: 6px;
@@ -2294,7 +2295,7 @@ nav {
   position: relative;
   overflow: hidden;
   aspect-ratio: 4/3;
-  background: #000;
+  background: #07151f;
 }
 .social-photo.tall { grid-row: span 2; aspect-ratio: unset; min-height: 400px; }
 .social-photo img {
@@ -2649,7 +2650,7 @@ nav {
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
-  background: #000;
+  background: #07151f;
   line-height: 0;
   box-shadow: 0 8px 40px rgba(7,21,31,0.7), 0 0 0 1px rgba(58,143,212,0.2);
 }
@@ -2658,7 +2659,7 @@ nav {
   height: auto;        /* natural aspect ratio — no cropping */
   max-height: 506px;   /* 900 * 9/16 */
   display: block;
-  background: #000;
+  background: #07151f;
 }
 .redes2-ig-badge {
   position: absolute;
@@ -2751,7 +2752,7 @@ nav {
   position: relative;
   aspect-ratio: 16/9;
   overflow: hidden;
-  background: #000;
+  background: #07151f;
   cursor: pointer;
   border: 2px solid transparent;
   transition: border-color 0.2s;
