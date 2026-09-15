@@ -373,14 +373,14 @@ nav {
 /* ─── VIDEO SECTION ─── */
 .video-section {
   position:relative; overflow:hidden;
-  background:#000;
+  background:#07151f;
 }
 .video-split {
   display:grid; grid-template-columns:1fr 1fr;
   min-height:480px;
 }
 .video-player {
-  position:relative; overflow:hidden; background:#000;
+  position:relative; overflow:hidden; background:#07151f;
 }
 .video-player video {
   width:100%; height:100%; object-fit:cover; display:block;
@@ -693,7 +693,7 @@ video[controls] {
   width: 100%;
   max-height: 560px;
   object-fit: contain;
-  background: #000;
+  background: #07151f;
 }
 /* Hero video — sin controles, ocupa todo */
 video.hero-video {
@@ -708,7 +708,7 @@ video.hero-video {
   width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: #000;
+  background: #07151f;
 }
 .video-responsive video {
   position: absolute;
@@ -864,6 +864,18 @@ nav {
   .lang-drop-btn { font-size: 0.78rem; padding: 0.5rem 0.6rem; }
 }
 /* ── End Language Dropdown ── */
+
+/* Correct product associations; keep the existing three-column presentation. */
+.protein-icon{font-size:1rem;color:var(--gold);letter-spacing:.15em}
+.protein-name a{color:inherit;text-decoration:underline;text-decoration-color:#7898a8;text-underline-offset:5px}
+.protein-visuals{margin-top:3px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+.protein-visuals figure{margin:0;position:relative;overflow:hidden;aspect-ratio:16/9;max-height:280px;background:#102633;border:1px solid #365363}
+.protein-visuals a{display:block;height:100%;color:inherit}
+.protein-visuals img{width:100%;height:100%;object-fit:cover}
+.protein-visuals figcaption{position:absolute;bottom:0;left:0;right:0;padding:1.5rem 1rem .7rem;background:linear-gradient(transparent,#07151feb);font-size:.78rem;line-height:1.4;color:#edf2f4}
+.protein-photo-pending{display:flex;align-items:center;justify-content:center}
+.protein-photo-pending figcaption{position:static;background:none;color:#aec3cf;text-align:center}
+@media(max-width:700px){.protein-visuals{grid-template-columns:1fr}.protein-visuals figure{max-height:240px}}
 </style>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -885,7 +897,7 @@ nav {
   fbq('track', 'PageView');
   </script>
   <!-- End Meta Pixel Code -->
-<link rel="stylesheet" href="/assets/css/agri-navigation.css?v=1">
+<link rel="stylesheet" href="/assets/css/agri-navigation.css?v=20260915fix">
 <script defer src="/assets/js/agri-navigation.js"></script>
 </head>
 <body class="lang-es">
@@ -963,7 +975,7 @@ nav {
     </div>
   </div>
 </section>
-<section style="padding:40px 6%;background:#112633;border-block:1px solid #c9a84c44"><h2 style="color:#d6bc78"><span lang-es>Pollo colombiano para exportación.</span><span lang-en>Colombian chicken for export.</span><span lang-pt-br>Frango colombiano para exportação.</span><span lang-ar>الدجاج الكولومبي للتصدير.</span><span lang-zh>哥伦比亚鸡肉出口。</span></h2><p style="max-width:850px;margin:18px 0"><span lang-es>GLV Services S.A.S. conecta producción avícola colombiana con compradores internacionales. Trabajamos venta directa, documentación, mercados autorizados, alistamiento comercial y acompañamiento exportador para productos avícolas.</span><span lang-en>GLV Services S.A.S. connects Colombian poultry production with international buyers. We work on direct sales, documentation, authorized markets, commercial preparation and export support for poultry products.</span><span lang-pt-br>A GLV Services S.A.S. conecta a produção avícola colombiana a compradores internacionais. Trabalhamos venda direta, documentação, mercados autorizados, preparação comercial e apoio à exportação de produtos avícolas.</span><span lang-ar>تربط GLV Services S.A.S. إنتاج الدواجن الكولومبي بالمشترين الدوليين، عبر البيع المباشر والوثائق والأسواق المعتمدة والتجهيز التجاري ودعم التصدير.</span><span lang-zh>GLV Services S.A.S. 连接哥伦比亚禽类生产与国际买家，提供直接销售、文件管理、获准市场、商业备货及出口支持。</span></p><a href="/pollo-colombiano" style="display:inline-block;padding:14px 24px;background:#d6bc78;color:#0c1319;font-weight:bold"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span> ↗</a></section>
+<section style="padding:40px 6%;background:#112633;border-block:1px solid #bfa66c44"><h2 style="color:#c4ad78"><span lang-es>Pollo colombiano para exportación.</span><span lang-en>Colombian chicken for export.</span><span lang-pt-br>Frango colombiano para exportação.</span><span lang-ar>الدجاج الكولومبي للتصدير.</span><span lang-zh>哥伦比亚鸡肉出口。</span></h2><p style="max-width:850px;margin:18px 0"><span lang-es>GLV Services S.A.S. conecta producción avícola colombiana con compradores internacionales. Trabajamos venta directa, documentación, mercados autorizados, alistamiento comercial y acompañamiento exportador para productos avícolas.</span><span lang-en>GLV Services S.A.S. connects Colombian poultry production with international buyers. We work on direct sales, documentation, authorized markets, commercial preparation and export support for poultry products.</span><span lang-pt-br>A GLV Services S.A.S. conecta a produção avícola colombiana a compradores internacionais. Trabalhamos venda direta, documentação, mercados autorizados, preparação comercial e apoio à exportação de produtos avícolas.</span><span lang-ar>تربط GLV Services S.A.S. إنتاج الدواجن الكولومبي بالمشترين الدوليين، عبر البيع المباشر والوثائق والأسواق المعتمدة والتجهيز التجاري ودعم التصدير.</span><span lang-zh>GLV Services S.A.S. 连接哥伦比亚禽类生产与国际买家，提供直接销售、文件管理、获准市场、商业备货及出口支持。</span></p><a href="/pollo-colombiano" style="display:inline-block;padding:14px 24px;background:#c4ad78;color:#0b1e2a;font-weight:bold"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span> ↗</a></section>
 
 <!-- ─── STATS BAR ─── -->
 <div class="stats-bar">
@@ -1092,7 +1104,7 @@ nav {
         </div>
 
         <!-- Price reference -->
-        <div style="margin:1rem 0;padding:0.8rem 1rem;background:rgba(201,168,76,0.06);border-left:2px solid rgba(201,168,76,0.3);">
+        <div style="margin:1rem 0;padding:0.8rem 1rem;background:rgba(137,168,185,0.06);border-left:2px solid rgba(137,168,185,0.3);">
           <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);margin-bottom:0.6rem;">
             <span lang-es>Precio de Referencia FOB — Tipo A · Grade A Large</span>
             <span lang-en>FOB Reference Price — Grade A Large (50–63g)</span><span lang-pt-br>Preço FOB de Referência — Grau A Grande (50–63g)</span>
@@ -1223,16 +1235,16 @@ nav {
         <span lang-zh>提供带密封盖的透明塑料蛋托——适合零售和餐饮服务的高端展示。也提供标准纸箱和散装出口主箱。</span>
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:2rem;">
-        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
+        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(137,168,185,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
           <span lang-es>Cubeta plástica transparente</span><span lang-en>Transparent plastic tray</span><span lang-pt-br>Bandeja plástica transparente</span>
         </span>
-        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
+        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(137,168,185,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
           <span lang-es>Cartón estándar</span><span lang-en>Standard cardboard</span><span lang-pt-br>Papelão padrão</span>
         </span>
-        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
+        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(137,168,185,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
           <span lang-es>Caja master exportación</span><span lang-en>Export master box</span><span lang-pt-br>Caixa máster para exportação</span>
         </span>
-        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(201,168,76,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
+        <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.08em;border:1px solid rgba(137,168,185,0.3);color:var(--text-dim);padding:0.3rem 0.7rem;text-transform:uppercase;">
           <span lang-es>Marca privada disponible</span><span lang-en>Private label available</span><span lang-pt-br>Marca própria disponível</span>
         </span>
       </div>
@@ -1253,7 +1265,7 @@ nav {
       <span lang-ar>بيض · دجاج · <em>لحم خنزير</em></span>
       <span lang-zh>鸡蛋 · 鸡肉 · <em>猪肉</em></span>
     </h2>
-    <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.15);border-left:3px solid var(--gold);padding:1.2rem 1.5rem;margin-bottom:2rem;max-width:800px;">
+    <div style="background:rgba(137,168,185,0.06);border:1px solid rgba(137,168,185,0.15);border-left:3px solid var(--gold);padding:1.2rem 1.5rem;margin-bottom:2rem;max-width:800px;">
       <p style="font-size:0.88rem;color:var(--text-dim);line-height:1.6;">
         <span lang-es>⚠️ <strong style="color:var(--text)">Nota operativa:</strong> Pollo y Cerdo se procesan en plantas e instalaciones <strong style="color:var(--text)">100% independientes</strong> entre sí y completamente separadas de las operaciones de ovinos y bovinos Halal de la División IV. No hay contacto cruzado ni compartición de líneas.</span>
         <span lang-en>⚠️ <strong style="color:var(--text)">Operational note:</strong> Chicken and Pork are processed in <strong style="color:var(--text)">100% independent</strong> plants and facilities, completely separate from the Halal ovine and bovine operations of Division IV. No cross-contact or shared lines.</span><span lang-pt-br>⚠️ <strong style="color:var(--text)">Nota operacional:</strong> Frango e Suíno são processados em plantas e instalações <strong style="color:var(--text)">100% independentes</strong>, completamente separadas das operações Halal ovinas e bovinas da Divisão IV. Sem contato cruzado ou linhas compartilhadas.</span>
@@ -1265,7 +1277,7 @@ nav {
 
       <!-- HUEVO -->
       <div class="protein-card">
-        <span class="protein-icon">🥚</span>
+        <span class="protein-icon" aria-hidden="true">01</span>
         <div class="protein-name"><span lang-es>Huevo Fresco</span><span lang-en>Fresh Egg</span><span lang-pt-br>Ovo Fresco</span><span lang-ar>بيض طازج</span><span lang-zh>新鲜鸡蛋</span></div>
         <div class="protein-sub">Tipo A · Doble AA · Blanco · Marrón</div>
         <p class="protein-desc">
@@ -1286,8 +1298,8 @@ nav {
 
       <!-- POLLO -->
       <div class="protein-card">
-        <span class="protein-icon">🐔</span>
-        <div class="protein-name"><span lang-es>Pollo Certificado</span><span lang-en>Certified Chicken</span><span lang-pt-br>Frango Certificado</span><span lang-ar>دجاج معتمد</span><span lang-zh>认证鸡肉</span></div>
+        <span class="protein-icon" aria-hidden="true">02</span>
+        <div class="protein-name"><a href="/pollo-colombiano"><span lang-es>Pollo Certificado</span><span lang-en>Certified Chicken</span><span lang-pt-br>Frango Certificado</span><span lang-ar>دجاج معتمد</span><span lang-zh>认证鸡肉</span></a></div>
         <div class="protein-sub"><span lang-es>Entero · Partes · IQF</span><span lang-en>Whole · Parts · IQF</span><span lang-pt-br>Inteiro · Cortes · IQF</span><span lang-ar>كامل · أجزاء · IQF</span><span lang-zh>整鸡·部件·IQF</span></div>
         <p class="protein-desc">
           <span lang-es>Pollo entero y partes (pechuga, muslo, ala, pierna). Congelado IQF y fresco. MOQ 3 FTL. Origen Colombia y Brasil. ICA Colombia + MAPA Brasil. Canal vía GLV Florida LLC para mercado USA. Mercados activos: Caribe, Norte de África, Medio Oriente.</span>
@@ -1307,7 +1319,7 @@ nav {
 
       <!-- CERDO -->
       <div class="protein-card">
-        <span class="protein-icon">🐷</span>
+        <span class="protein-icon" aria-hidden="true">03</span>
         <div class="protein-name"><span lang-es>Cerdo Certificado</span><span lang-en>Certified Pork</span><span lang-pt-br>Suíno Certificado</span><span lang-ar>لحم خنزير معتمد</span><span lang-zh>认证猪肉</span></div>
         <div class="protein-sub"><span lang-es>Entero · Cortes · Procesado</span><span lang-en>Whole · Cuts · Processed</span><span lang-pt-br>Inteiro · Cortes · Processado</span><span lang-ar>كامل · قطع · معالج</span><span lang-zh>整猪·切割·加工</span></div>
         <p class="protein-desc">
@@ -1328,29 +1340,11 @@ nav {
 
     </div>
 
-    <!-- Pollo image -->
-    <div style="margin-top:3px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">
-      <div style="position:relative;overflow:hidden;aspect-ratio:16/9;max-height:280px;">
-        <img src="/imagenes/lote%20en%20bodega%20de%20partes%20de%20pollo.jpeg" alt="Partes de Pollo GLV"
-             style="width:100%;height:100%;object-fit:cover;transition:transform 0.6s;">
-        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:1.5rem 1rem 0.7rem;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);">
-          <span lang-es>Bodega Partes de Pollo</span><span lang-en>Chicken Parts Warehouse</span><span lang-pt-br>Armazém de Cortes de Frango</span>
-        </div>
-      </div>
-      <div style="position:relative;overflow:hidden;aspect-ratio:16/9;max-height:280px;">
-        <img src="/imagenes/carne%20enlatada.jpeg" alt="Carne Enlatada GLV"
-             style="width:100%;height:100%;object-fit:cover;transition:transform 0.6s;">
-        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:1.5rem 1rem 0.7rem;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);">
-          <span lang-es>Proteína Enlatada</span><span lang-en>Canned Protein</span><span lang-pt-br>Proteína Enlatada</span>
-        </div>
-      </div>
-      <div style="position:relative;overflow:hidden;aspect-ratio:16/9;max-height:280px;">
-        <img src="/imagenes/CARNE%20EN%20LATA.png" alt="Carne en Lata GLV"
-             style="width:100%;height:100%;object-fit:cover;transition:transform 0.6s;">
-        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:1.5rem 1rem 0.7rem;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);">
-          <span lang-es>Marca Propia · Lata</span><span lang-en>Private Label · Can</span><span lang-pt-br>Marca Própria · Lata</span>
-        </div>
-      </div>
+    <!-- Product-specific visuals, in the same order as the cards above. -->
+    <div class="protein-visuals" id="imagenes-proteinas">
+      <figure><img src="/imagenes/huevo%20blanco%20en%20bodega.jpeg" alt="Huevo fresco en bodega" loading="lazy"><figcaption><span lang-es>Huevo fresco · Bodega</span><span lang-en>Fresh eggs · Warehouse</span><span lang-pt-br>Ovos frescos · Armazém</span><span lang-ar>بيض طازج · مستودع</span><span lang-zh>新鲜鸡蛋 · 仓库</span></figcaption></figure>
+      <figure><a href="/pollo-colombiano"><img src="/imagenes/pollo/pechuga-referencia.webp" alt="Pechuga de pollo, imagen de referencia" loading="lazy"><figcaption><span lang-es>Pollo colombiano · Imagen de referencia</span><span lang-en>Colombian chicken · Reference image</span><span lang-pt-br>Frango colombiano · Imagem de referência</span><span lang-ar>الدجاج الكولومبي · صورة مرجعية</span><span lang-zh>哥伦比亚鸡肉 · 参考图片</span></figcaption></a></figure>
+      <figure class="protein-photo-pending"><figcaption><span lang-es>Cerdo · Fotografía pendiente de verificación</span><span lang-en>Pork · Photograph pending verification</span><span lang-pt-br>Suíno · Fotografia pendente de verificação</span><span lang-ar>لحم خنزير · الصورة بانتظار التحقق</span><span lang-zh>猪肉 · 照片待核验</span></figcaption></figure>
     </div>
   </div>
 </section>
@@ -1361,7 +1355,7 @@ nav {
     <p class="eyebrow eyebrow-blue"><span lang-es>Mercados Activos</span><span lang-en>Active Markets</span><span lang-pt-br>Mercados Ativos</span><span lang-ar>الأسواق النشطة</span><span lang-zh>活跃市场</span></p>
     <h2 class="sec-title">
       <span lang-es>149 contenedores. <em>8 mercados.</em></span>
-      <span lang-en">149 containers. <em>8 markets.</em></span><span lang-pt-br>149 contêineres. <em>8 mercados.</em></span>
+      <span lang-en>149 containers. <em>8 markets.</em></span><span lang-pt-br>149 contêineres. <em>8 mercados.</em></span>
       <span lang-ar>149 حاوية. <em>8 أسواق.</em></span>
       <span lang-zh>149个集装箱。<em>8个市场。</em></span>
     </h2>
@@ -1448,19 +1442,19 @@ nav {
         <div class="pstep-num">03</div>
         <span class="pstep-icon">📦</span>
         <div class="pstep-name"><span lang-es>Empaque & Paletizado</span><span lang-en>Packaging & Palletizing</span><span lang-pt-br>Embalagem & Paletização</span><span lang-ar>التعبئة والتلبيس</span><span lang-zh>包装与托盘</span></div>
-        <p class="pstep-desc"><span lang-es>360 ud/caja. 920 cajas/FCL. Paletizado certificado. Etiquetado según mercado destino.</span><span lang-en">360 units/box. 920 boxes/FCL. Certified palletizing. Labeling per destination market.</span><span lang-pt-br>360 unidades/caixa. 920 caixas/FCL. Paletização certificada. Rotulagem por mercado de destino.</span><span lang-ar>360 وحدة/صندوق. 920 صندوق/FCL. تلبيس معتمد.</span><span lang-zh>360个/箱。920箱/集装箱。认证托盘。按目标市场标签。</span></p>
+        <p class="pstep-desc"><span lang-es>360 ud/caja. 920 cajas/FCL. Paletizado certificado. Etiquetado según mercado destino.</span><span lang-en>360 units/box. 920 boxes/FCL. Certified palletizing. Labeling per destination market.</span><span lang-pt-br>360 unidades/caixa. 920 caixas/FCL. Paletização certificada. Rotulagem por mercado de destino.</span><span lang-ar>360 وحدة/صندوق. 920 صندوق/FCL. تلبيس معتمد.</span><span lang-zh>360个/箱。920箱/集装箱。认证托盘。按目标市场标签。</span></p>
       </div>
       <div class="pstep">
         <div class="pstep-num">04</div>
         <span class="pstep-icon">❄️</span>
         <div class="pstep-name"><span lang-es>Cadena de Frío</span><span lang-en>Cold Chain</span><span lang-pt-br>Cadeia de Frio</span><span lang-ar>سلسلة التبريد</span><span lang-zh>冷链</span></div>
-        <p class="pstep-desc"><span lang-es>Contenedor refrigerado 4–8°C. Registro continuo de temperatura. Alerta automática por desviación.</span><span lang-en">Refrigerated container 4–8°C. Continuous temperature log. Automatic deviation alert.</span><span lang-pt-br>Contêiner refrigerado 4–8°C. Registro contínuo de temperatura. Alerta automático de desvio.</span><span lang-ar>حاوية مبردة 4-8°C. سجل درجات الحرارة المستمر.</span><span lang-zh>4-8°C冷藏集装箱。持续温度记录。自动偏差警报。</span></p>
+        <p class="pstep-desc"><span lang-es>Contenedor refrigerado 4–8°C. Registro continuo de temperatura. Alerta automática por desviación.</span><span lang-en>Refrigerated container 4–8°C. Continuous temperature log. Automatic deviation alert.</span><span lang-pt-br>Contêiner refrigerado 4–8°C. Registro contínuo de temperatura. Alerta automático de desvio.</span><span lang-ar>حاوية مبردة 4-8°C. سجل درجات الحرارة المستمر.</span><span lang-zh>4-8°C冷藏集装箱。持续温度记录。自动偏差警报。</span></p>
       </div>
       <div class="pstep">
         <div class="pstep-num">05</div>
         <span class="pstep-icon">🚢</span>
         <div class="pstep-name"><span lang-es>Entrega al Comprador</span><span lang-en>Delivery to Buyer</span><span lang-pt-br>Entrega ao Comprador</span><span lang-ar>التسليم للمشتري</span><span lang-zh>交付买家</span></div>
-        <p class="pstep-desc"><span lang-es>FOB/CIF/CFR según acuerdo. Documentación completa: BL, COO, Cert. Sanitario, Packing List, Invoice.</span><span lang-en">FOB/CIF/CFR per agreement. Full documentation: BL, COO, Health Cert, Packing List, Invoice.</span><span lang-pt-br>FOB/CIF/CFR conforme acordo. Documentação completa: BL, COO, Certificado Sanitário, Packing List, Fatura.</span><span lang-ar>FOB/CIF/CFR حسب الاتفاق. وثائق كاملة: BL, COO, شهادة صحية.</span><span lang-zh>按协议FOB/CIF/CFR。完整单证：提单、原产地证、卫生证书、装箱单、发票。</span></p>
+        <p class="pstep-desc"><span lang-es>FOB/CIF/CFR según acuerdo. Documentación completa: BL, COO, Cert. Sanitario, Packing List, Invoice.</span><span lang-en>FOB/CIF/CFR per agreement. Full documentation: BL, COO, Health Cert, Packing List, Invoice.</span><span lang-pt-br>FOB/CIF/CFR conforme acordo. Documentação completa: BL, COO, Certificado Sanitário, Packing List, Fatura.</span><span lang-ar>FOB/CIF/CFR حسب الاتفاق. وثائق كاملة: BL, COO, شهادة صحية.</span><span lang-zh>按协议FOB/CIF/CFR。完整单证：提单、原产地证、卫生证书、装箱单、发票。</span></p>
       </div>
     </div>
   </div>
@@ -1493,15 +1487,15 @@ nav {
     <p class="eyebrow" style="justify-content:center;"><span lang-es>Habla con GLV hoy</span><span lang-en>Talk to GLV today</span><span lang-pt-br>Fale com a GLV hoje</span><span lang-ar>تحدث مع GLV اليوم</span><span lang-zh>今天联系GLV</span></p>
     <h2 class="cta-title">
       <span lang-es>¿Necesita <em>proteína certificada</em> para su mercado?</span>
-      <span lang-en">Need <em>certified protein</em> for your market?</span><span lang-pt-br>Precisa de <em>proteína certificada</em> para o seu mercado?</span>
+      <span lang-en>Need <em>certified protein</em> for your market?</span><span lang-pt-br>Precisa de <em>proteína certificada</em> para o seu mercado?</span>
       <span lang-ar>هل تحتاج <em>بروتيناً معتمداً</em> لسوقك؟</span>
       <span lang-zh>需要为您的市场<em>认证蛋白质</em>？</span>
     </h2>
     <p class="cta-sub">
       <span lang-es>GLV entrega cotizaciones formales en menos de 24 horas con especificaciones completas, documentación disponible y términos de pago claros. 149 contenedores de huevo exportados en 2024–2025 respaldan nuestra capacidad operativa.</span>
-      <span lang-en">GLV delivers formal quotes in under 24 hours with full specifications, available documentation and clear payment terms. 149 egg containers exported in 2024–2025 back our operational capacity.</span><span lang-pt-br>A GLV entrega cotações formais em menos de 24 horas com especificações completas, documentação disponível e condições de pagamento claras. 149 contêineres de ovos exportados em 2024–2025 confirmam nossa capacidade operacional.</span>
+      <span lang-en>GLV delivers formal quotes in under 24 hours with full specifications, available documentation and clear payment terms. 149 egg containers exported in 2024–2025 back our operational capacity.</span><span lang-pt-br>A GLV entrega cotações formais em menos de 24 horas com especificações completas, documentação disponível e condições de pagamento claras. 149 contêineres de ovos exportados em 2024–2025 confirmam nossa capacidade operacional.</span>
       <span lang-ar>تقدم GLV عروض أسعار رسمية في أقل من 24 ساعة مع مواصفات كاملة وشروط دفع واضحة. 149 حاوية بيض مُصدَّرة في 2024-2025.</span>
-      <span lang-zh">GLV在24小时内提供完整规格、可用文件和明确付款条款的正式报价。2024-2025年出口的149个鸡蛋集装箱支撑我们的运营能力。</span>
+      <span lang-zh>GLV在24小时内提供完整规格、可用文件和明确付款条款的正式报价。2024-2025年出口的149个鸡蛋集装箱支撑我们的运营能力。</span>
     </p>
     <div class="cta-btns">
       <a href="/cotizacion?tab=huevos" class="btn-gold" onclick="localStorage.setItem('glv-open-tab','huevos')">
