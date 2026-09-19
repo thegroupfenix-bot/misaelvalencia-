@@ -10,6 +10,13 @@ Options +SymLinksIfOwnerMatch
 
 RewriteEngine On
 
+# ── Rutas avícolas canónicas ─────────────────────────────────
+# Se eliminan parámetros de versiones históricas y se preserva la ruta pública.
+RewriteCond %{QUERY_STRING} ^v=20260915$ [NC]
+RewriteRule ^pollo-colombiano$ /pollo-colombiano? [R=301,L]
+RewriteCond %{QUERY_STRING} ^v=20260915$ [NC]
+RewriteRule ^pollo-brasil$ /pollo-brasil? [R=301,L]
+
 # ── Invalidar versiones cacheadas de navegación avícola ───────────────────
 # El Home histórico carga este recurso sin versión; se sirve la versión actual.
 RewriteCond %{QUERY_STRING} !^v=20260919$
@@ -38,8 +45,9 @@ RewriteRule ^ - [L]
 RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_URI}.html -f
 RewriteRule ^([^.]+)$ $1.html [L]
 
-# ── 404 → index ──────────────────────────────────────────────
-ErrorDocument 404 /index.html
+# ── Página 404 explícita ──────────────────────────────────────
+# Una ruta inexistente no debe aparentar ser el Home.
+ErrorDocument 404 /404.html
 
 # ── Caché recursos estáticos ─────────────────────────────────
 <IfModule mod_expires.c>
@@ -64,6 +72,7 @@ ErrorDocument 404 /index.html
 <IfModule mod_substitute.c>
   AddOutputFilterByType SUBSTITUTE text/html
   Substitute "s|/assets/js/agri-navigation.js?v=1|/assets/js/agri-navigation.js?v=20260919|ni"
+  Substitute "s|</head>|<link rel=\"stylesheet\" href=\"/assets/css/production-refinements.css?v=20260919\"><script defer src=\"/assets/js/production-refinements.js?v=20260919\"></script></head>|ni"
 </IfModule>
 
 # ── Seguridad básica ─────────────────────────────────────────

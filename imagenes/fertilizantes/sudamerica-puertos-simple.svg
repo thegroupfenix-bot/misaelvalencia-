@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 650" role="img" aria-labelledby="title desc">
+  <title id="title">Sudamérica y puertos colombianos</title>
+  <desc id="desc">Silueta geográfica simplificada de Sudamérica, con Colombia destacada y cuatro puertos señalados.</desc>
+  <metadata>Base geográfica: Natural Earth, dominio público. Simplificación cartográfica y diseño: GLV Services.</metadata>
+  <rect width="800" height="650" fill="#0b2431"/>
+  <path d="M326 62l74 3 84 33 66 50 49 73 18 84-10 66-35 64-42 52-23 78-38 67-37-25-16-70-27-69-36-48-36-50-25-61-23-48-38-41 18-43 47-25 17-46 43-25z" fill="#244b5d" stroke="#7f9eaa" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M235 113l36-20 48 11 29 29-4 39 31 22-19 39-41 12-37-24-39 9-30-34 10-42z" fill="#c4ad78" stroke="#f4e8c9" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M285 235l23 25 20 58 25 45 11 71 24 68 10 81-13 36-19-16-15-72-24-58-27-55-24-61-21-54z" fill="#244b5d" stroke="#7f9eaa" stroke-width="3" stroke-linejoin="round"/>
+  <g fill="#f5e5bb" stroke="#0b2431" stroke-width="2"><circle cx="278" cy="136" r="6"/><circle cx="286" cy="142" r="6"/><circle cx="295" cy="147" r="6"/><circle cx="248" cy="207" r="6"/></g>
+  <text x="82" y="122" fill="#eaf1f3" font-family="Arial, sans-serif" font-size="21" font-weight="700">Puertos colombianos</text>
+  <path d="M242 137H160M250 144H160M260 149H160M235 207H160" stroke="#c4ad78" stroke-width="2"/>
+  <text x="82" y="410" fill="#b7cad0" font-family="Arial, sans-serif" font-size="14">Cobertura comercial y gestión portuaria en Colombia.</text>
+</svg>
