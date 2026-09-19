@@ -41,6 +41,14 @@ RewriteRule ^ - [L]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
+# ── Rutas avícolas explícitas ─────────────────────────────────
+# LiteSpeed debe resolver estas páginas antes de la regla genérica de HTML.
+# Evita que una ruta limpia se trate como una página inexistente y termine
+# usando la respuesta de Inicio almacenada por el CDN.
+RewriteRule ^pollo/?$ pollo.html [END]
+RewriteRule ^pollo-colombiano/?$ pollo-colombiano.html [END]
+RewriteRule ^pollo-brasil/?$ pollo-brasil.html [END]
+
 # ── URL limpia → archivo .html ───────────────────────────────
 RewriteCond %{DOCUMENT_ROOT}/%{REQUEST_URI}.html -f
 RewriteRule ^([^.]+)$ $1.html [L]
