@@ -16,19 +16,21 @@
       poultry.innerHTML = '<span lang-es>Pollo / Avícola</span><span lang-en>Poultry</span><span lang-pt-br>Avícola</span><span lang-ar>الدواجن</span><span lang-zh>禽类</span>';
       panel.insertBefore(poultry, panel.firstChild);
     });
-    document.querySelectorAll('nav').forEach(function (nav) {
-      if (nav.querySelector('[data-glv-poultry-topnav]')) return;
-      var quote = nav.querySelector('a[href^="/cotizacion"]');
-      if (!quote) return;
-      var poultryTop = document.createElement('a');
-      poultryTop.href = '/pollo';
-      poultryTop.setAttribute('data-glv-poultry-topnav', 'true');
-      poultryTop.textContent = 'Pollo / Avícola';
-      poultryTop.style.cssText = 'white-space:nowrap;font-weight:700;text-decoration:none;';
-      quote.parentNode.insertBefore(poultryTop, quote);
+    document.querySelectorAll('.nav-links').forEach(function (menu) {
+      if (menu.querySelector('[data-glv-poultry-topnav]')) return;
+      var item = document.createElement('li');
+      item.setAttribute('data-glv-poultry-topnav', 'true');
+      item.innerHTML = '<a href="/pollo"><span lang-es>Pollo</span><span lang-en>Poultry</span><span lang-pt-br>Avícola</span><span lang-ar>الدواجن</span><span lang-zh>禽类</span></a>';
+      var glvMenu = menu.querySelector('.nav-dropdown');
+      menu.insertBefore(item, glvMenu || null);
     });
     document.querySelectorAll('a[href^="/pollo-colombiano"]').forEach(function (link) {
-      if (link.querySelector('h3')) link.href = '/pollo';
+      if (!link.querySelector('h3')) return;
+      link.href = '/pollo';
+      var title = link.querySelector('h3');
+      var copy = link.querySelector('p');
+      title.innerHTML = '<span lang-es>Pollo internacional</span><span lang-en>International poultry</span><span lang-pt-br>Frango internacional</span><span lang-ar>الدواجن الدولية</span><span lang-zh>国际禽类</span>';
+      copy.innerHTML = '<span lang-es>Opciones comerciales de Colombia y Brasil para elegir el origen de cada operación.</span><span lang-en>Commercial options from Colombia and Brazil to choose the origin for each operation.</span><span lang-pt-br>Opções comerciais da Colômbia e do Brasil para escolher a origem de cada operação.</span><span lang-ar>خيارات تجارية من كولومبيا والبرازيل لاختيار منشأ كل عملية.</span><span lang-zh>提供哥伦比亚和巴西商业选择，以确定每项业务的产地。</span>';
     });
     new MutationObserver(translate).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
     var params = new URLSearchParams(location.search);
