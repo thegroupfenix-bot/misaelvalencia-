@@ -24,6 +24,15 @@
       var glvMenu = menu.querySelector('.nav-dropdown');
       menu.insertBefore(item, glvMenu || null);
     });
+    document.querySelectorAll('nav .nav-right').forEach(function (tools) {
+      if (tools.querySelector('[data-glv-poultry-mobile]')) return;
+      var mobileLink = document.createElement('a');
+      mobileLink.href = '/pollo';
+      mobileLink.className = 'glv-poultry-mobile';
+      mobileLink.setAttribute('data-glv-poultry-mobile', 'true');
+      mobileLink.innerHTML = '<span lang-es>Pollo</span><span lang-en>Poultry</span><span lang-pt-br>Avícola</span><span lang-ar>الدواجن</span><span lang-zh>禽类</span>';
+      tools.insertBefore(mobileLink, tools.firstChild);
+    });
     document.querySelectorAll('a[href^="/pollo-colombiano"]').forEach(function (link) {
       if (!link.querySelector('h3')) return;
       link.href = '/pollo';
