@@ -59,6 +59,13 @@ ErrorDocument 404 /index.html
   AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
 </IfModule>
 
+# Entrega la versión actual de la navegación dentro de HTML que aún conserva
+# la referencia antigua ?v=1 en cachés intermedios.
+<IfModule mod_substitute.c>
+  AddOutputFilterByType SUBSTITUTE text/html
+  Substitute "s|/assets/js/agri-navigation.js?v=1|/assets/js/agri-navigation.js?v=20260919|ni"
+</IfModule>
+
 # ── Seguridad básica ─────────────────────────────────────────
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options  "nosniff"
