@@ -1928,7 +1928,7 @@ function modalSendEmail() {
 // GENERAL FORM
 // ════════════════════════════════════════════
 function gnSend(via) {
-  if (gv('gn_division') === 'pollo-colombiano') {
+  if (['pollo-colombiano','pollo-brasil'].includes(gv('gn_division'))) {
     var poultryInputs = document.querySelectorAll('#poultry-request input, #poultry-request select');
     for (var poultryInput of poultryInputs) { if (!poultryInput.reportValidity()) return; }
   }
