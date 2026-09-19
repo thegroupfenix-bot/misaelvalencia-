@@ -3,6 +3,8 @@ name: GLV-Connect PR Validation
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'glv-connect/**'
 
 jobs:
   # ── 1. Detect critical file modifications ──────────────────────────────────

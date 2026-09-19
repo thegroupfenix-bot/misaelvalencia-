@@ -1,0 +1,33 @@
+name: Website validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  static-site:
+    name: Static website checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate public HTML pages and clean routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          pages=(index.html animales-vivos.html aceites-derivados.html proteinas-huevo.html granos-legumbres.html estructura-corporativa.html cotizacion.html registro-clientes.html registro-proveedores.html colaboradores.html redes-sociales.html pollo.html pollo-colombiano.html pollo-brasil.html)
+          for page in "${pages[@]}"; do test -f "$page"; done
+          test -f .htaccess
+          test -f sitemap.xml
+          grep -q '3555608311338299' index.html
+          grep -q '3555608311338299' pollo.html
+          grep -q '3555608311338299' pollo-colombiano.html
+          grep -q '3555608311338299' pollo-brasil.html
+      - name: Validate local asset references
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f imagenes/pollo-brasil/planta-avicola-maringa.jpg
+          test -f imagenes/pollo-brasil/planta-avicola-maringa.webp
+          test -f imagenes/pollo-brasil/fuentes.json
