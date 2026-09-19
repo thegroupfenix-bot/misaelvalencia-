@@ -1,0 +1,21 @@
+{
+  "checked": "2026-09-19",
+  "photos": [
+    {
+      "file": "pollo/planta-procesamiento-referencia.jpg",
+      "description": "Procesamiento avícola; fotografía de referencia, sin afirmación de ubicación colombiana.",
+      "source": "https://commons.wikimedia.org/wiki/File:Poultry_processing_-_DPLA_-_6c15e2e840d66b154452f9ce0361e05c.jpg",
+      "author": "Department of Agriculture / National Archives and Records Administration",
+      "license": "Public domain",
+      "license_url": "https://commons.wikimedia.org/wiki/Commons:Licensing"
+    },
+    {
+      "file": "cerdo-procesamiento-referencia.jpg",
+      "description": "Planta de procesamiento porcino; fotografía de referencia.",
+      "source": "https://commons.wikimedia.org/wiki/File:20170428-OSEC-PJK-1677_(34000368270).jpg",
+      "author": "USDA, Preston Keres",
+      "license": "Public domain",
+      "license_url": "https://www.usa.gov/government-copyright"
+    }
+  ]
+}

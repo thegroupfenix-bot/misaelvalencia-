@@ -20,6 +20,11 @@
   if (location.pathname.indexOf('agronegocios-fertilizantes') !== -1) {
     var mapBrand = document.querySelector('#mapa-puertos .map-brand span');
     if (mapBrand) mapBrand.textContent = 'Sudamérica · Colombia';
+    var portsMap = document.querySelector('#mapa-puertos img');
+    if (portsMap) {
+      portsMap.src = '/imagenes/fertilizantes/sudamerica-puertos-simple.svg';
+      portsMap.alt = 'Sudamérica: puertos colombianos';
+    }
   }
   if (location.pathname.indexOf('pollo-colombiano') !== -1) {
     var poultryActions = document.querySelector('.poultry-hero .poultry-actions');
