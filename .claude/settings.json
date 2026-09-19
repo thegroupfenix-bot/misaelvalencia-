@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl * glvservicesexp.com*)",
+      "Bash(curl * www.glvservicesexp.com*)"
+    ]
+  },
+  "sandbox": {
+    "network": {
+      "allowedDomains": [
+        "glvservicesexp.com",
+        "www.glvservicesexp.com"
+      ]
+    }
+  }
+}
