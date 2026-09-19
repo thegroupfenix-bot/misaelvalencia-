@@ -17,4 +17,19 @@
   try { initial = localStorage.getItem('glv-lang') || 'es'; } catch (e) { /* Use Spanish by default. */ }
   setLanguage(initial);
   select.addEventListener('change', function () { setLanguage(this.value); });
+  if (location.pathname.indexOf('agronegocios-fertilizantes') !== -1) {
+    var mapBrand = document.querySelector('#mapa-puertos .map-brand span');
+    if (mapBrand) mapBrand.textContent = 'Sudamérica · Colombia';
+  }
+  if (location.pathname.indexOf('pollo-colombiano') !== -1) {
+    var poultryActions = document.querySelector('.poultry-hero .poultry-actions');
+    if (poultryActions && !poultryActions.querySelector('[data-poultry-brazil-link]')) {
+      var brazil = document.createElement('a');
+      brazil.href = '/pollo-brasil';
+      brazil.className = 'button';
+      brazil.setAttribute('data-poultry-brazil-link', 'true');
+      brazil.innerHTML = '<span lang-es>Ver pollo brasileño</span><span lang-en>See Brazilian chicken</span><span lang-pt-br>Ver frango brasileiro</span><span lang-ar>عرض الدجاج البرازيلي</span><span lang-zh>查看巴西鸡肉</span>';
+      poultryActions.appendChild(brazil);
+    }
+  }
 })();
