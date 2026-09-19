@@ -10,6 +10,11 @@ Options +SymLinksIfOwnerMatch
 
 RewriteEngine On
 
+# ── Invalidar la versión anterior de navegación avícola ───────────────────
+# Algunos navegadores y proxies conservaron agri-navigation.js?v=1.
+RewriteCond %{QUERY_STRING} (^|&)v=1(&|$)
+RewriteRule ^assets/js/agri-navigation\.js$ /assets/js/agri-navigation.js?v=20260919 [R=302,L,NE]
+
 # ── HTTPS forzado ────────────────────────────────────────────
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
