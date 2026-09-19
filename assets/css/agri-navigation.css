@@ -1,10 +1,31 @@
 .agri-menu{position:relative;font-size:.72rem;margin-inline-start:12px;color:var(--gold,#c9a84c);order:2}.agri-menu summary{cursor:pointer;list-style:none;border:1px solid #365363;padding:8px 10px;white-space:nowrap}.agri-menu summary:after{content:' +';}.agri-menu-panel{position:absolute;top:100%;right:0;background:#102633;border:1px solid #365363;width:260px;padding:18px;z-index:100;white-space:normal}.agri-menu-panel a{color:#edf2f4;text-decoration:none;font-size:.86rem}.agri-footer-link{padding:22px;text-align:center;background:#102633;border-top:1px solid #365363;font-size:.8rem}.agri-footer-link a{color:#c4ad78}.div-card-agri{grid-column:1 / -1;}
 .home-agri-menu { display: none; }
+.glv-poultry-mobile { display: none; }
 .div-card-agri { scroll-margin-top: 110px; }
 @media (max-width: 1100px) {
   .home-agri-menu { display: block; position: absolute; right: 16px; top: 100%; background: #102633; }
 }
 @media(min-width:900px){.div-card-agri{display:grid;grid-template-columns:80px 1fr 1.4fr;gap:10px 30px;align-items:start}.div-card-agri .div-num{grid-row:1 / 4}.div-card-agri .div-title{grid-column:2}.div-card-agri .div-subtitle{grid-column:2}.div-card-agri .div-desc{grid-column:3;grid-row:1 / 3}.div-card-agri .div-tags{grid-column:2}.div-card-agri .div-link{grid-column:3;align-self:end}}
 @media(max-width:640px){nav{gap:6px!important}.agri-menu{margin-inline-start:0;font-size:.6rem}.agri-menu summary{padding:7px 5px}nav .nav-right,nav .nright{gap:5px!important}nav .nav-back,nav .nback{font-size:.65rem!important}.agri-menu-panel{width:min(260px,85vw)}.div-card-agri{grid-column:auto}}
+
+@media(max-width:768px){
+  nav .nav-right { margin-left:auto; }
+  nav .nav-right .glv-poultry-mobile {
+    display:inline-flex;
+    align-items:center;
+    min-height:32px;
+    padding:0.38rem 0.55rem;
+    border:1px solid var(--gold,#c9a84c);
+    color:var(--gold,#c9a84c);
+    font-size:0.68rem;
+    font-weight:700;
+    letter-spacing:0.06em;
+    line-height:1;
+    text-decoration:none;
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+  nav .nav-right .nav-cta { display:none; }
+}
 
 .agri-menu-panel a{display:block;padding:10px 0}.agri-menu-panel a+a{border-top:1px solid #365363}.agri-menu-panel a:hover,.agri-menu-panel a:focus-visible{color:#c4ad78}
