@@ -4,7 +4,8 @@
   var valid = ['es', 'en', 'pt-br', 'ar', 'zh'];
   function setLanguage(lang) {
     if (!valid.includes(lang)) lang = 'es';
-    document.body.className = 'lang-' + lang;
+    valid.forEach(function (candidate) { document.body.classList.remove('lang-' + candidate); });
+    document.body.classList.add('lang-' + lang);
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     select.value = lang;
