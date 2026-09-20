@@ -1,0 +1,11 @@
+/* Palette-only layer for legacy divisions. It uses existing section markers, leaving language scripts untouched. */
+body:has(.gallery-section),body:has(.gallery-aceites),body:has(.video-section){--dark:#081a26;--dark2:#0b2431;--dark3:#102c3a;--mid:#183746;--text-dim:#aebdc5;background:#081a26;color:#e8eef1}
+body:has(.gallery-section) nav,body:has(.gallery-aceites) nav,body:has(.video-section) nav{background:rgba(8,26,38,.96);border-bottom-color:rgba(69,101,117,.7)}
+body:has(.gallery-aceites) .hero-bg{background:#0b2431}
+body:has(.gallery-section) .hero-bg::after,body:has(.gallery-aceites) .hero-bg::after,body:has(.video-section) .hero-bg::after{background:linear-gradient(to right,rgba(8,26,38,.97) 0%,rgba(8,26,38,.86) 42%,rgba(8,26,38,.32) 68%,rgba(8,26,38,0) 100%)}
+body:has(.gallery-section) .gallery-section,body:has(.gallery-section) .video-feature,body:has(.gallery-section) .markets-section,body:has(.gallery-aceites) .coco-section,body:has(.gallery-aceites) .marca-section,body:has(.video-section) .video-section,body:has(.video-section) .marca-section{background:#0b2431}
+body:has(.gallery-section) .process-step,body:has(.gallery-section) .mkt-card,body:has(.gallery-aceites) .coco-product,body:has(.gallery-aceites) .aceite-card,body:has(.video-section) .bean-card,body:has(.video-section) .video-content{background:#102c3a;border-color:#456575}
+body:has(.gallery-section) .gallery-masonry,body:has(.gallery-section) .markets-grid,body:has(.gallery-aceites) .gallery-aceites,body:has(.video-section) .beans-grid{background:#183746}
+body:has(.gallery-section) .gal-item,body:has(.gallery-section) .video-feature-player,body:has(.gallery-aceites) .gal-item,body:has(.gallery-aceites) .marca-img,body:has(.video-section) .video-player,body:has(.video-section) .marca-img{background:#102c3a}
+body:has(.gallery-section) .media-reference-note,body:has(.gallery-aceites) .media-reference-note,body:has(.video-section) .media-reference-note{background:#0b2431!important}
+@media(max-width:768px){body:has(.gallery-section) .hero-bg::after,body:has(.gallery-aceites) .hero-bg::after,body:has(.video-section) .hero-bg::after{background:rgba(8,26,38,.84)}}
