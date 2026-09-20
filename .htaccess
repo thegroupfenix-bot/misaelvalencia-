@@ -85,6 +85,11 @@ ErrorDocument 404 /404.html
 
 # ── Seguridad básica ─────────────────────────────────────────
 <IfModule mod_headers.c>
+  # Borra una redirección 301 histórica que algunos navegadores conservaron
+  # para /pollo-colombiano. Solo se emite al llegar al Inicio; tras ello el
+  # siguiente clic usa la resolución canónica definida arriba.
+  SetEnvIf Request_URI "^/$" clear_glv_route_cache
+  Header always set Clear-Site-Data "\"cache\"" env=clear_glv_route_cache
   Header always set X-Content-Type-Options  "nosniff"
   Header always set X-Frame-Options          "SAMEORIGIN"
   Header always set Referrer-Policy          "strict-origin-when-cross-origin"
