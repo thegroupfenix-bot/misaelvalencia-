@@ -19,8 +19,8 @@ RewriteRule ^pollo-brasil$ /pollo-brasil? [R=301,L]
 
 # ── Invalidar versiones cacheadas de navegación avícola ───────────────────
 # El Home histórico carga este recurso sin versión; se sirve la versión actual.
-RewriteCond %{QUERY_STRING} !^v=20260919$
-RewriteRule ^assets/js/agri-navigation\.js$ /assets/js/agri-navigation.js?v=20260919 [R=302,L,NE]
+RewriteCond %{QUERY_STRING} !^v=20260920$
+RewriteRule ^assets/js/agri-navigation\.js$ /assets/js/agri-navigation.js?v=20260920 [R=302,L,NE]
 
 # ── HTTPS forzado ────────────────────────────────────────────
 RewriteCond %{HTTPS} off
@@ -46,6 +46,7 @@ RewriteRule ^ - [L]
 # Evita que una ruta limpia se trate como una página inexistente y termine
 # usando la respuesta de Inicio almacenada por el CDN.
 RewriteRule ^pollo/?$ pollo.html [END]
+RewriteRule ^pollo-colombiano$ /pollo-colombiano/ [R=302,L]
 RewriteRule ^pollo-colombiano/?$ pollo-colombiano.html [END]
 RewriteRule ^pollo-brasil/?$ pollo-brasil.html [END]
 
@@ -79,7 +80,7 @@ ErrorDocument 404 /404.html
 # la referencia antigua ?v=1 en cachés intermedios.
 <IfModule mod_substitute.c>
   AddOutputFilterByType SUBSTITUTE text/html
-  Substitute "s|/assets/js/agri-navigation.js?v=1|/assets/js/agri-navigation.js?v=20260919|ni"
+  Substitute "s|/assets/js/agri-navigation.js?v=1|/assets/js/agri-navigation.js?v=20260920|ni"
   Substitute "s|</head>|<link rel=\"stylesheet\" href=\"/assets/css/production-refinements.css?v=20260919\"><script defer src=\"/assets/js/production-refinements.js?v=20260919\"></script></head>|ni"
 </IfModule>
 
