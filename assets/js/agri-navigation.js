@@ -41,6 +41,9 @@
       title.innerHTML = '<span lang-es>Pollo internacional</span><span lang-en>International poultry</span><span lang-pt-br>Frango internacional</span><span lang-ar>الدواجن الدولية</span><span lang-zh>国际禽类</span>';
       copy.innerHTML = '<span lang-es>Opciones comerciales de Colombia y Brasil para elegir el origen de cada operación.</span><span lang-en>Commercial options from Colombia and Brazil to choose the origin for each operation.</span><span lang-pt-br>Opções comerciais da Colômbia e do Brasil para escolher a origem de cada operação.</span><span lang-ar>خيارات تجارية من كولومبيا والبرازيل لاختيار منشأ كل عملية.</span><span lang-zh>提供哥伦比亚和巴西商业选择，以确定每项业务的产地。</span>';
     });
+    document.querySelectorAll('a[href^="/pollo-colombiano"]').forEach(function (link) {
+      if (!link.querySelector('h3')) link.href = '/pollo-colombiano/';
+    });
     new MutationObserver(translate).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
     var params = new URLSearchParams(location.search);
     if (params.get('division') === 'fertilizantes') {
