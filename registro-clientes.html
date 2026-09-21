@@ -389,11 +389,11 @@ nav {
     <span class="code-icon">🔐</span>
     <div class="code-text">
       <strong><span lang-es>Código Único de Cliente GLV</span><span lang-en>GLV Unique Client Code</span><span lang-pt-br>Código Único de Cliente GLV</span><span lang-ar>رمز العميل الفريد GLV</span><span lang-zh>GLV唯一客户代码</span></strong><br>
-      <span lang-es>Al completar el registro exitosamente recibirá su código <strong>GLV-CLI-######</strong> generado al instante por correo. Este código identifica su empresa en todos los documentos GLV: cotizaciones, contratos, BL, facturas y certificados. Guárdelo con cuidado.</span>
-      <span lang-en>Upon successful registration you will receive a code in format <strong>GLV-CLI-######</strong> by email. This code identifies your company in all GLV documents: quotes, contracts, BL, invoices and certificates. Keep it safe.</span>
-      <span lang-pt-br>Ao concluir o cadastro com sucesso, você receberá um código no formato <strong>GLV-CLI-######</strong> por e-mail. Este código identifica sua empresa em todos os documentos GLV: cotações, contratos, BL, faturas e certificados. Guarde-o com cuidado.</span>
-      <span lang-ar>عند إتمام التسجيل بنجاح ستتلقى رمزاً بتنسيق <strong>GLV-CLI-######</strong> عبر البريد الإلكتروني.</span>
-      <span lang-zh>注册成功后，您将收到格式为<strong>GLV-CLI-######</strong>的代码。此代码在所有GLV文件中标识您的公司。</span>
+      <span lang-es>Al completar el registro exitosamente recibirá su código <strong>GLV-CL-AAAA-000001</strong> generado al instante por correo. Este código identifica su empresa en todos los documentos GLV: cotizaciones, contratos, BL, facturas y certificados. Guárdelo con cuidado.</span>
+      <span lang-en>Upon successful registration you will receive a code in format <strong>GLV-CL-AAAA-000001</strong> by email. This code identifies your company in all GLV documents: quotes, contracts, BL, invoices and certificates. Keep it safe.</span>
+      <span lang-pt-br>Ao concluir o cadastro com sucesso, você receberá um código no formato <strong>GLV-CL-AAAA-000001</strong> por e-mail. Este código identifica sua empresa em todos os documentos GLV: cotações, contratos, BL, faturas e certificados. Guarde-o com cuidado.</span>
+      <span lang-ar>عند إتمام التسجيل بنجاح ستتلقى رمزاً بتنسيق <strong>GLV-CL-AAAA-000001</strong> عبر البريد الإلكتروني.</span>
+      <span lang-zh>注册成功后，您将收到格式为<strong>GLV-CL-AAAA-000001</strong>的代码。此代码在所有GLV文件中标识您的公司。</span>
     </div>
   </div>
 
@@ -683,54 +683,9 @@ setLang(localStorage.getItem("glv-lang")||"es");
 
 
 // ── WEB3FORMS SUBMISSION ──
-function sendW3F(subject, body, replyEmail) {
-  var fd = new FormData();
-  fd.append('access_key', '9445937b-ca0d-4d86-b2c0-ee992bffdabe');
-  fd.append('subject', 'GLV Web: ' + subject);
-  fd.append('message', body);
-  fd.append('from_name', 'GLV Services SAS Website');
-  if(replyEmail) fd.append('replyto', replyEmail);
-  fd.append('botcheck', '');
-  fetch('https://api.web3forms.com/submit', {
-    method: 'POST',
-    body: fd
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    if(d.success){
-      console.log('GLV W3F sent:', subject);
-    } else {
-      console.warn('W3F issue:', d.message);
-    }
-  })
-  .catch(function(e){ console.warn('W3F error:', e); });
-}
 
-function sendW3F(subject, body, onSuccess) {
-  var formData = new FormData();
-  formData.append('access_key', '9445937b-ca0d-4d86-b2c0-ee992bffdabe');
-  formData.append('subject', subject);
-  formData.append('message', body);
-  formData.append('from_name', 'GLV Services SAS - Web');
-  fetch('https://api.web3forms.com/submit', {
-    method: 'POST',
-    body: formData
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data){
-    if(data.success) {
-      console.log('W3F sent OK');
-      if(onSuccess) onSuccess();
-    } else {
-      console.warn('W3F error:', data);
-      if(onSuccess) onSuccess(); // still show success to user
-    }
-  })
-  .catch(function(err){
-    console.warn('W3F network error:', err);
-    if(onSuccess) onSuccess(); // still proceed
-  });
-}
+
+
 
 window.addEventListener("scroll",function(){
   document.querySelector("nav").style.boxShadow=window.scrollY>40?"0 4px 28px rgba(0,0,0,0.6)":"none";
@@ -739,13 +694,7 @@ window.addEventListener("scroll",function(){
 function gv(id){var e=document.getElementById(id);return e?e.value:"";}
 
 // ── GLV CODE GENERATOR ──────────────────────────────────────
-function glvGenCode(prefix) {
-  var now  = new Date();
-  var yy   = String(now.getFullYear()).slice(-2);
-  var mm   = String(now.getMonth() + 1).padStart(2, '0');
-  var rand = String(Math.floor(1000 + Math.random() * 9000));
-  return 'GLV-' + prefix + '-' + yy + mm + rand;
-}
+
 
 // ════════════════════════════════════════════════════════════
 // WEB_KYC_TO_GOS_PRE_REGISTRATION_V1
@@ -934,71 +883,16 @@ function markSynced(data) {
 
 // ────────────────────────────────────────────────────────────
 function submitKYC(){
-  var empresa=gv("k_empresa"),email=gv("k_email"),tel=gv("k_tel"),nit=gv("k_nit");
-  if(!empresa||!email||!tel||!nit){alert(MSG[currentLang()].required);return;}
-  var c1=document.getElementById("k_check1").checked;
-  var c2=document.getElementById("k_check2").checked;
-  var c3=document.getElementById("k_check3").checked;
-  if(!c1||!c2||!c3){alert(MSG[currentLang()].declarations);return;}
-  var msg="GLV - REGISTRO KYC CLIENTE\n\n"
-    +"EMPRESA: "+empresa+"\nNombre comercial: "+gv("k_comercial")
-    +"\nNIT/Tax ID: "+nit+"\nPais: "+gv("k_pais")+"\nCiudad: "+gv("k_ciudad")
-    +"\nFundacion: "+gv("k_fundacion")+"\nDireccion: "+gv("k_direccion")
-    +"\nWeb: "+gv("k_web")+"\nActividad: "+gv("k_actividad")
-    +"\n\nREPRESENTANTE: "+gv("k_rep")+" - "+gv("k_cargo")
-    +"\nEmail: "+email+"\nTel/WA: "+tel
-    +"\nDocumento: "+gv("k_doc_tipo")+" "+gv("k_doc_num")
-    +"\n\nPERFIL: "+gv("k_tipo_comprador")
-    +"\nVolumen: "+gv("k_volumen")+"\nMercados: "+gv("k_mercados")
-    +"\nProductos interes: "+gv("k_productos")
-    +"\n\nREFERENCIAS: "+gv("k_ref1")+" / "+gv("k_ref2")
-    +"\nBanco: "+gv("k_banco")
-    +"\n\nDECLARACIONES KYC: Todas aceptadas.";
-    var codCLI = glvGenCode('CLI');
-  msg += '\nCODIGO ASIGNADO: ' + codCLI;
-  sendW3F('Registro Cliente KYC ' + codCLI + ' — ' + empresa, msg, email);
-  window.open('https://wa.me/573160865294?text=' + encodeURIComponent(msg), '_blank');
-  document.getElementById('cliCodeDisplay').textContent = '🏷 ' + codCLI;
-  document.getElementById('kycForm').style.display = 'none';
-  document.getElementById('kycSuccess').classList.add('show');
-  window.scrollTo({top:0, behavior:'smooth'});
-  // ── GOS PRE-REGISTRATION PIPELINE ────────────────────────
-  var clientRecord = buildClientRecord(codCLI, {
-    empresa:   empresa,
-    comercial: gv('k_comercial'),
-    pais:      gv('k_pais'),
-    ciudad:    gv('k_ciudad'),
-    email:     email,
-    tel:       tel,
-    web:       gv('k_web'),
-    rep:       gv('k_rep')
-  });
-  saveClientRecord(clientRecord);
-  updateGosStatusPanel(clientRecord);
-  // ── FASE 6: Enviar al ERP (con fallback a localStorage) ──
-  var formBody = {
-    nit:           nit,
-    comercial:     gv('k_comercial'),
-    pais:          gv('k_pais'),
-    ciudad:        gv('k_ciudad'),
-    fundacion:     gv('k_fundacion'),
-    direccion:     gv('k_direccion'),
-    web:           gv('k_web'),
-    actividad:     gv('k_actividad'),
-    tipo_comprador: gv('k_tipo_comprador'),
-    volumen:       gv('k_volumen'),
-    mercados:      gv('k_mercados'),
-    proveedores:   gv('k_proveedores'),
-    productos:     gv('k_productos'),
-    cargo:         gv('k_cargo'),
-    doc_tipo:      gv('k_doc_tipo'),
-    doc_num:       gv('k_doc_num'),
-    ref1:          gv('k_ref1'),
-    ref2:          gv('k_ref2'),
-    banco:         gv('k_banco')
-  };
-  sendToERP(clientRecord, formBody);
-  // ─────────────────────────────────────────────────────────
+  return GLVForms.submit('client', {success:function(result){
+    document.getElementById('cliCodeDisplay').textContent = '🏷 ' + result.code;
+    document.getElementById('kycForm').style.display = 'none';
+    document.getElementById('kycSuccess').classList.add('show');
+    var record = buildClientRecord(result.code, {empresa:gv('k_empresa'),comercial:gv('k_comercial'),pais:gv('k_pais'),ciudad:gv('k_ciudad'),email:gv('k_email'),tel:gv('k_tel'),web:gv('k_web'),rep:gv('k_rep')});
+    record.registrationDate = result.registeredAt;
+    record._displayDate = new Date(result.registeredAt).toLocaleString('es-CO', {timeZone:'America/Bogota'});
+    updateGosStatusPanel(record);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }});
 }
 </script>
 <script>
@@ -1044,5 +938,7 @@ function submitKYC(){
 </script>
 <p class="media-reference-note" style="margin:0;padding:0.8rem 1.5rem;text-align:center;font-size:0.75rem;color:#94a3b8;background:#0d1724;">Portada para redes sociales: <a href="/assets/og/glv-kyc-cover.png" style="color:inherit;text-decoration:underline;">Imagen de referencia</a>.</p>
 <div class="agri-footer-link"><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div>
+<script src="/assets/js/glv-forms-config.js"></script>
+<script src="/assets/js/glv-forms.js"></script>
 </body>
 </html>
