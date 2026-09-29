@@ -18,7 +18,7 @@
     catalog:{root:'quoteModal',source:'/cotizacion',email:'m_em',required:['m_n','m_e','m_em']},
     home:{root:'.quote-form',source:'/',email:'email',required:['nombre','empresa','email','division','mensaje']}
   };
-  let bridge, bridgeOrigin, channel, ready, pending, inFlight=false;
+  let ready, inFlight=false;
   const statuses = new Map();
   function lang() {try{return localStorage.getItem('glv-lang') || 'es';}catch(_){return 'es';}}
   function status(root,key,code) {
@@ -29,22 +29,27 @@
     el.dir=lang()==='ar'?'rtl':'auto';
   }
   function randomHex() {return Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('');}
-  function initBridge() {
-    if(ready)return ready;
+  function endpointURL() {
     const endpoint=window.GLV_FORMS_CONFIG && window.GLV_FORMS_CONFIG.endpoint;
-    if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint || ''))return Promise.reject(new Error('NOT_CONFIGURED'));
-    channel=randomHex();
-    ready=new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error('BRIDGE_TIMEOUT')),30000);
-      window.addEventListener('message',function receive(event){
-        const d=event.data;
-        if(!d || d.channel!==channel || !/^https:\/\/(?:[a-z0-9-]+[.-])?script\.googleusercontent\.com$/.test(event.origin))return;
-        if(d.type==='GLV_READY' && !bridge){bridge=event.source;bridgeOrigin=event.origin;clearTimeout(timer);resolve();}
-        else if(d.type==='GLV_RESULT' && event.source===bridge && event.origin===bridgeOrigin && pending && d.requestId===pending.id){const finish=pending.finish;pending=null;finish(d.result);}
-      });
-      const frame=document.createElement('iframe');frame.hidden=true;frame.title='GLV forms service';frame.referrerPolicy='no-referrer';
-      frame.src=endpoint+'?origin='+encodeURIComponent(location.origin)+'&channel='+channel;document.body.appendChild(frame);
-    });
+    if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint || ''))throw new Error('NOT_CONFIGURED');
+    return endpoint;
+  }
+  async function requestJSON(url,options={}) {
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),90000);
+    try {
+      const response=await fetch(url,{...options,credentials:'omit',redirect:'follow',signal:controller.signal});
+      if(!response.ok)throw new Error('SERVICE_HTTP');
+      return await response.json();
+    } finally {clearTimeout(timer);}
+  }
+  function initChallenge() {
+    if(ready)return ready;
+    const endpoint=endpointURL(),channel=randomHex();
+    ready=requestJSON(endpoint+'?transport=json&origin='+encodeURIComponent(location.origin)+'&channel='+channel).then(value=>{
+      if(!value || value.ok!==true || value.origin!==location.origin || value.channel!==channel || !Number.isFinite(value.issued) || typeof value.signature!=='string')throw new Error('INVALID_CHALLENGE');
+      return value;
+    }).catch(error=>{ready=null;throw error;});
     return ready;
   }
   async function retryId(kind,fields) {
@@ -76,19 +81,18 @@
     const buttons=Array.from(root.querySelectorAll('button')).map(el=>[el,el.disabled]);buttons.forEach(([el])=>{el.disabled=true;});
     status(root,'pending');
     try {
-      await initBridge();
+      let challenge=await initChallenge();
+      if(Date.now()-challenge.issued>82800000){ready=null;challenge=await initChallenge();}
+      const delay=Math.max(0,3200-(Date.now()-challenge.issued));
+      if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
       const id=await retryId(kind,fields);
-      const result=await new Promise((resolve,reject)=>{
-        const timer=setTimeout(()=>{pending=null;reject(new Error('TIMEOUT'));},90000);
-        const requestId=crypto.randomUUID();
-        pending={id:requestId,finish:value=>{clearTimeout(timer);resolve(value);}};
-        bridge.postMessage({type:'GLV_SUBMIT',channel,requestId,payload:{kind,source:spec.source,retryId:id,fields,website:root.querySelector('[name="glv_website"]')?.value || ''}},bridgeOrigin);
-      });
+      const payload={...challenge,kind,email:email.value.trim().toLowerCase(),source:spec.source,retryId:id,fields,website:root.querySelector('[name="glv_website"]')?.value || ''};
+      const result=await requestJSON(endpointURL(),{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)});
       if(!result || result.ok!==true || !/^GLV-(CL|PRV|COT)-\d{4}-\d{6}$/.test(result.code || '') || result.mailStatus!=='SENT'){
         status(root,result && result.code?'review':'error',result && result.code);return false;
       }
       status(root,'success',result.code);
-      if(options.success)options.success(result);
+      if(typeof options.success==='function')options.success(result);
       return result;
     } catch(err){status(root,err.message==='NOT_CONFIGURED'?'setup':'error');return false;}
     finally{delete root.dataset.glvSending;inFlight=false;buttons.forEach(([el,disabled])=>{el.disabled=disabled;});}
@@ -99,7 +103,7 @@
       const trap=document.createElement('input');trap.name='glv_website';trap.type='text';trap.tabIndex=-1;trap.autocomplete='off';trap.setAttribute('aria-hidden','true');
       trap.style.cssText='position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);';root.appendChild(trap);
     });
-    if(window.GLV_FORMS_CONFIG?.endpoint)initBridge().catch(()=>{});
+    if(window.GLV_FORMS_CONFIG?.endpoint)initChallenge().catch(()=>{});
     new MutationObserver(()=>{statuses.forEach((value,el)=>{el.textContent=(messages[lang()]||messages.es)[value.key]+(value.code||'');el.dir=lang()==='ar'?'rtl':'auto';});}).observe(document.body,{attributes:true,attributeFilter:['class','dir','lang']});
   }
   window.GLVForms={submit,status};

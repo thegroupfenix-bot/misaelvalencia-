@@ -20,7 +20,8 @@ function fixture() {
   const properties=new Map([['GLV_SHEET_ID','private-test-sheet'],['GLV_SIGNING_SECRET','test-only-secret'],['GLV_MODE','TEST']]);
   const mails=[];let owner='serviciosglvsas@gmail.com',failAt=0,quota=100,locked=false;
   const context={console,Date,JSON,Object,String,Number,Math,Error,
-    Session:{getEffectiveUser:()=>({getEmail:()=>owner})},
+    Session:{getEffectiveUser:()=>({getEmail:()=>owner}),getActiveUser:()=>({getEmail:()=>owner})},
+    ContentService:{MimeType:{JSON:'application/json'},createTextOutput:value=>({value,setMimeType(){return this;}})},
     PropertiesService:{getScriptProperties:()=>({getProperty:k=>properties.get(k),setProperty:(k,v)=>properties.set(k,v)})},
     SpreadsheetApp:{openById:()=>({getSheetByName:n=>sheets[n]}),flush(){}},
     LockService:{getScriptLock:()=>({tryLock(){if(locked)return false;locked=true;return true;},releaseLock(){locked=false;}})},
@@ -57,6 +58,18 @@ test('all nine form variants save complete data and send exactly three emails',(
 test('identical retry returns same number without sending again',()=>{
   const f=fixture(),p=f.payload(),a=f.context.submitForm(p),b=f.context.submitForm(p);
   assert.equal(a.code,b.code);assert.equal(b.ok,true);assert.equal(f.mails.length,3);assert.equal(f.sheets.Clientes.rows.length,2);
+});
+test('HTTP JSON transport validates challenge and rejects malformed submissions',()=>{
+  const f=fixture();
+  assert.equal(JSON.parse(f.context.doPost({postData:{contents:'invalid'}}).value).ok,false);
+  assert.equal(JSON.parse(f.context.doGet({parameter:{transport:'json',origin:'https://evil.example',channel:'a'.repeat(32)}}).value).ok,false);
+  const challenge=JSON.parse(f.context.doGet({parameter:{transport:'json',origin:'https://glvservicesexp.com',channel:'a'.repeat(32)}}).value);
+  assert.equal(challenge.ok,true);assert.ok(challenge.signature);
+  const p=f.payload();
+  const result=JSON.parse(f.context.doPost({postData:{contents:JSON.stringify(p)}}).value);
+  assert.equal(result.ok,true);assert.equal(f.mails.length,3);
+  assert.equal(JSON.parse(f.context.doPost({postData:{contents:JSON.stringify(p)}}).value).code,result.code);
+  assert.equal(f.mails.length,3);
 });
 test('changed payload with same retry id rejected; independent requests get distinct numbers',()=>{
   const f=fixture(),p=f.payload(),a=f.context.submitForm(p);p.fields.k_tel='another';
@@ -123,7 +136,7 @@ function browserFixture(result,endpoint='https://script.google.com/macros/s/test
   const document={readyState:'loading',addEventListener(){},getElementById:id=>id==='genForm'?root:null,createElement:tag=>({tag,dataset:{},style:{},setAttribute(){}}),body:{appendChild(frame){const channel=new URL(frame.src).searchParams.get('channel');setImmediate(()=>listeners.forEach(fn=>fn({origin:'https://n-test-script.googleusercontent.com',source:bridge,data:{type:'GLV_READY',channel}})));}}};
   const bridge={postMessage(message){requests.push(message);setImmediate(()=>listeners.forEach(fn=>fn({origin:'https://n-test-script.googleusercontent.com',source:bridge,data:{type:'GLV_RESULT',channel:message.channel,requestId:message.requestId,result}})));}};
   const window={GLV_FORMS_CONFIG:{endpoint},addEventListener:(type,fn)=>listeners.push(fn)};
-  const context={window,document,location:{origin:'http://127.0.0.1:8799'},crypto:crypto.webcrypto,TextEncoder,URL,setTimeout,clearTimeout,console,MutationObserver:class{},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)}};
+  const context={window,document,location:{origin:'http://127.0.0.1:8799'},crypto:crypto.webcrypto,TextEncoder,URL,setTimeout,clearTimeout,console,AbortController,fetch:async(url,options)=>{if(options.method==='POST'){requests.push({payload:JSON.parse(options.body)});return {ok:true,json:async()=>result};}const u=new URL(url);return {ok:true,json:async()=>({ok:true,origin:u.searchParams.get('origin'),channel:u.searchParams.get('channel'),issued:Date.now()-5000,signature:'test-signature'})};},MutationObserver:class{},localStorage:{getItem:k=>store.get(k),setItem:(k,v)=>store.set(k,v)}};
   vm.createContext(context);vm.runInContext(fs.readFileSync('assets/js/glv-forms.js','utf8'),context);
   return {forms:window.GLVForms,requests,root,inputs,buttons,status:()=>statusNode?.textContent};
 }
@@ -132,13 +145,19 @@ test('browser refuses success when endpoint is not activated',async()=>{
   const r=await f.forms.submit('quote',{success(){success=true;}});
   assert.equal(r,false);assert.equal(success,false);assert.equal(f.requests.length,0);assert.match(f.status(),/pendiente de activación/);assert.equal(f.buttons[0].disabled,false);
 });
-test('browser waits for authenticated bridge response and preserves retry id',async()=>{
+test('browser waits for JSON confirmation and preserves retry id',async()=>{
   const f=browserFixture({ok:true,code:'GLV-COT-2026-000001',mailStatus:'SENT'});let calls=0;
   const first=f.forms.submit('quote',{success(){calls++;}});assert.equal(calls,0);assert.equal(f.buttons[0].disabled,true);
   assert.equal(await f.forms.submit('quote'),false);
   await first;assert.equal(calls,1);assert.match(f.status(),/GLV-COT-2026-000001/);
   await f.forms.submit('quote');assert.equal(f.requests[0].payload.retryId,f.requests[1].payload.retryId);
   assert.equal(f.requests[0].payload.fields.gn_em,'serviciosglvsas@gmail.com');
+  assert.equal(f.requests[0].payload.email,'serviciosglvsas@gmail.com');
+});
+test('non-function success option does not turn a confirmed submission into failure',async()=>{
+  const f=browserFixture({ok:true,code:'GLV-COT-2026-000001',mailStatus:'SENT'});
+  assert.equal((await f.forms.submit('quote',{success:'serviciosglvsas@gmail.com'})).ok,true);
+  assert.match(f.status(),/Solicitud recibida/);
 });
 test('browser does not show success for partial delivery',async()=>{
   const f=browserFixture({ok:false,error:'MAIL_QUOTA',code:'GLV-COT-2026-000001'});let success=false;

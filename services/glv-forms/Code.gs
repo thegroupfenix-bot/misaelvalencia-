@@ -39,6 +39,40 @@ function setup_() {
   return book.getUrl();
 }
 
+// Editor entry point: private helpers are hidden from the Apps Script run menu.
+// Anonymous Web App callers have no active-user email and cannot initialize.
+function initializeGLV() {
+  if (Session.getActiveUser().getEmail().toLowerCase() !== GLV_OWNER) throw new Error('OWNER_REQUIRED');
+  var url = setup_();
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('GLV_MODE') === 'TEST') props.setProperty('GLV_TEST_ORIGIN','http://127.0.0.1:8799');
+  console.log(url);
+  return url;
+}
+
+// Owner-only controlled mail test. Repeated runs preserve the same request ID.
+function runControlledGLVTest() {
+  if (Session.getActiveUser().getEmail().toLowerCase() !== GLV_OWNER) throw new Error('OWNER_REQUIRED');
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('GLV_MODE') !== 'TEST') throw new Error('TEST_MODE_REQUIRED');
+  var id = props.getProperty('GLV_CONTROLLED_TEST_ID');
+  if (!id) { id = Utilities.getUuid(); props.setProperty('GLV_CONTROLLED_TEST_ID',id); }
+  var origin = 'https://glvservicesexp.com', channel = '0123456789abcdef0123456789abcdef', issued = Date.now()-5000;
+  var result = submitForm({kind:'home',email:GLV_OWNER,source:'/',retryId:id,origin:origin,channel:channel,issued:issued,signature:sign_(origin+'|'+channel+'|'+issued),website:'',fields:{nombre:'PRUEBA TÉCNICA GLV',empresa:'PRUEBA TÉCNICA',email:GLV_OWNER,division:'Granos',mensaje:'PRUEBA TÉCNICA GLV. Verificación de almacenamiento y tres correos. Sin solicitud comercial.'}});
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+// Run only after mailbox receipt and browser submission have been verified.
+function activateGLVLive() {
+  if (Session.getActiveUser().getEmail().toLowerCase() !== GLV_OWNER) throw new Error('OWNER_REQUIRED');
+  owner_();
+  var props=PropertiesService.getScriptProperties();
+  if (!props.getProperty('GLV_SHEET_ID') || !props.getProperty('GLV_SIGNING_SECRET')) throw new Error('NOT_CONFIGURED');
+  props.setProperty('GLV_MODE','LIVE');
+  console.log('GLV_MODE=LIVE');
+}
+
 function origins_() {
   var extra = PropertiesService.getScriptProperties().getProperty('GLV_TEST_ORIGIN');
   return ['https://glvservicesexp.com','https://www.glvservicesexp.com'].concat(extra && PropertiesService.getScriptProperties().getProperty('GLV_MODE') === 'TEST' ? [extra] : []);
@@ -50,11 +84,28 @@ function sign_(value) {
 }
 function doGet(e) {
   var p = e && e.parameter || {};
+  if (p.transport === 'json') return challengeJSON_(p);
   if (origins_().indexOf(p.origin) < 0 || !/^[a-f0-9]{32}$/.test(p.channel || '')) return HtmlService.createHtmlOutput('GLV forms service');
   var template = HtmlService.createTemplateFromFile('Bridge');
   var issued = Date.now();
   template.config = JSON.stringify({origin:p.origin,channel:p.channel,issued:issued,signature:sign_(p.origin+'|'+p.channel+'|'+issued)}).replace(/</g,'\\u003c');
   return template.evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function json_(value) {
+  return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON);
+}
+function challengeJSON_(p) {
+  if (origins_().indexOf(p.origin) < 0 || !/^[a-f0-9]{32}$/.test(p.channel || '')) return json_({ok:false,error:'INVALID_ORIGIN'});
+  var issued = Date.now();
+  return json_({ok:true,origin:p.origin,channel:p.channel,issued:issued,signature:sign_(p.origin+'|'+p.channel+'|'+issued)});
+}
+function doPost(e) {
+  try {
+    var raw = e && e.postData && e.postData.contents;
+    if (!raw || raw.length > 45000) return json_({ok:false,error:'INVALID_REQUEST'});
+    return json_(submitForm(JSON.parse(raw)));
+  } catch (_) { return json_({ok:false,error:'INVALID_REQUEST'}); }
 }
 
 function normalize_(p) {
