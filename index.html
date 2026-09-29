@@ -3045,29 +3045,9 @@ const savedLang = localStorage.getItem('glv-lang') || 'es';
 setLang(savedLang);
 
 // ─── QUOTE FORM ───
-function handleQuoteSubmit(e) {
+function handleQuoteSubmit(e){
   e.preventDefault();
-  const form = e.target;
-  const data = new FormData(form);
-  const nombre = data.get('nombre');
-  const empresa = data.get('empresa');
-  const email = data.get('email');
-  const telefono = data.get('telefono');
-  const division = data.get('division');
-  const destino = data.get('destino');
-  const mensaje = data.get('mensaje');
-
-  const waMsg = encodeURIComponent(
-    `*GLV Services — Solicitud de Cotización*\n\n` +
-    `👤 Nombre: ${nombre}\n` +
-    `🏢 Empresa/País: ${empresa}\n` +
-    `📧 Email: ${email}\n` +
-    `📱 Teléfono: ${telefono}\n` +
-    `📦 División: ${division}\n` +
-    `🌍 Destino: ${destino}\n` +
-    `📝 Detalle: ${mensaje}`
-  );
-  window.open(`https://wa.me/573160865294?text=${waMsg}`, '_blank');
+  GLVForms.submit('home');
   return false;
 }
 
@@ -3335,5 +3315,7 @@ window.addEventListener('scroll', () => {
 // === END GLV VIDEO ===
 </script>
 <p class="media-reference-note" style="margin:0;padding:0.8rem 1.5rem;text-align:center;font-size:0.75rem;color:#94a3b8;background:#0d1724;">Portada para redes sociales: <a href="/assets/og/og-glv-corporate.png" style="color:inherit;text-decoration:underline;">Imagen de referencia</a>.</p>
+<script src="/assets/js/glv-forms-config.js"></script>
+<script src="/assets/js/glv-forms.js"></script>
 </body>
 </html>

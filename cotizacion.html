@@ -910,7 +910,7 @@ nav {
           <select id="gn_pm"><option>L/C</option><option>T/T</option><option>SBLC</option><option>CAD</option><option>D/P</option><option>Por definir</option></select>
         </div>
       </div>
-      
+
       <div class="fg" style="margin-top:0.5rem;">
         <label style="font-size:0.75rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);">
           <span lang-es>🤝 Seleccione su Agente GLV *</span>
@@ -1074,19 +1074,7 @@ var AGENTS = [
 // ════════════════════════════════════════════
 // WEB3FORMS — single clean definition
 // ════════════════════════════════════════════
-function sendW3F(subject, body, replyEmail) {
-  var fd = new FormData();
-  fd.append('access_key', '9445937b-ca0d-4d86-b2c0-ee992bffdabe');
-  fd.append('subject', 'GLV Web: ' + subject);
-  fd.append('message', body);
-  fd.append('from_name', 'GLV Services SAS Website');
-  if (replyEmail) fd.append('replyto', replyEmail);
-  fd.append('botcheck', '');
-  fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd })
-    .then(function(r) { return r.json(); })
-    .then(function(d) { console.log('W3F:', d.success ? 'sent OK' : d.message); })
-    .catch(function(e) { console.warn('W3F error:', e); });
-}
+
 
 // ════════════════════════════════════════════
 // AUTO-OPEN TAB
@@ -1550,27 +1538,20 @@ function genPDF() {
   setTimeout(function() { w.print(); }, 700);
 }
 
-function ovWA() {
-  if (!gv('ov_nombre') || !gv('ov_empresa')) {
-    alert(MSG[currentLang()].ovContactReq);
-    document.getElementById('ov_nombre').focus();
-    return;
-  }
-  var msg = buildOvMsg();
-  if (!msg) { alert(MSG[currentLang()].noTierWA); return; }
-  var agent = getSelectedAgent('ov_agent');
-  sendToAgent(agent, 'Cotizacion Ovinos Vivos', msg);
-  sendW3F('Cotizacion Ovinos Vivos', msg, gv('ov_email'));
+function ovWA(){
+  var msg=buildOvMsg();
+  if(!msg){alert(MSG[currentLang()].noTierWA);return;}
+  return GLVForms.submit('sheep',{extra:{_summary:msg},success:function(result){
+    sendToAgent(getSelectedAgent('ov_agent'),'GLV '+result.code,msg+'\nNúmero GLV: '+result.code);
+  }});
 }
 
-function ovEmail() {
-  var msg = buildOvMsg();
-  if (!msg) { alert(MSG[currentLang()].noTierWA); return; }
-  var ref = 'GLV-OV-' + Date.now().toString().slice(-6);
-  sendW3F('Cotizacion Ovinos ' + ref, msg, gv('ov_email'));
-  window.location.href = 'mailto:info@glvservicesexp.com'
-    + '?subject=' + encodeURIComponent('Cotizacion Ovinos ' + ref)
-    + '&body='    + encodeURIComponent(msg);
+function ovEmail(){
+  var msg=buildOvMsg();
+  if(!msg){alert(MSG[currentLang()].noTierWA);return;}
+  return GLVForms.submit('sheep',{extra:{_summary:msg},success:function(result){
+
+  }});
 }
 
 // ════════════════════════════════════════════
@@ -1755,27 +1736,20 @@ function genEggPDF() {
   setTimeout(function() { w.print(); }, 700);
 }
 
-function eggWA() {
-  if (!gv('eg_nombre') || !gv('eg_empresa')) {
-    alert(MSG[currentLang()].eggContactReq);
-    document.getElementById('eg_nombre').focus();
-    return;
-  }
-  var msg = buildEggMsg();
-  if (!msg) { alert(MSG[currentLang()].noMarketWA); return; }
-  var agent = getSelectedAgent('eg_agent');
-  sendToAgent(agent, 'Cotizacion Huevo FCL', msg);
-  sendW3F('Cotizacion Huevo FCL', msg, gv('eg_email'));
+function eggWA(){
+  var msg=buildEggMsg();
+  if(!msg){alert(MSG[currentLang()].noMarketWA);return;}
+  return GLVForms.submit('eggs',{extra:{_summary:msg},success:function(result){
+    sendToAgent(getSelectedAgent('eg_agent'),'GLV '+result.code,msg+'\nNúmero GLV: '+result.code);
+  }});
 }
 
-function eggEmail() {
-  var msg = buildEggMsg();
-  if (!msg) { alert(MSG[currentLang()].noMarketEmail); return; }
-  var ref = 'GLV-HV-' + Date.now().toString().slice(-6);
-  sendW3F('Cotizacion Huevo ' + ref, msg, gv('eg_email'));
-  window.location.href = 'mailto:info@glvservicesexp.com'
-    + '?subject=' + encodeURIComponent('Cotizacion Huevo FCL ' + ref)
-    + '&body='    + encodeURIComponent(msg);
+function eggEmail(){
+  var msg=buildEggMsg();
+  if(!msg){alert(MSG[currentLang()].noMarketEmail);return;}
+  return GLVForms.submit('eggs',{extra:{_summary:msg},success:function(result){
+
+  }});
 }
 
 // ════════════════════════════════════════════
@@ -1888,56 +1862,29 @@ function modalMsg() {
     + '\nDestino/Cantidad: ' + gv('m_d') + '\nObservaciones: ' + gv('m_o')
     + '\n\nPor favor enviar precio CIF, specs tecnicas y condiciones de pago.';
 }
-function modalSendWA() {
-  if (!gv('m_n')) { alert(MSG[currentLang()].modalName); return; }
-  sendW3F('Catalogo - ' + mProdName, modalMsg(), gv('m_em'));
-  window.open('https://wa.me/573160865294?text=' + encodeURIComponent(modalMsg()), '_blank');
-  closeModal();
+function modalSendWA(){
+  return GLVForms.submit('catalog',{extra:{_product:mProdName},success:function(result){
+    window.open('https://wa.me/573160865294?text='+encodeURIComponent(modalMsg()+'\nNúmero GLV: '+result.code),'_blank');
+  }});
 }
-function modalSendEmail() {
-  sendW3F('Catalogo - ' + mProdName, modalMsg(), gv('m_em'));
-  window.location.href = 'mailto:info@glvservicesexp.com'
-    + '?subject=' + encodeURIComponent('Cotizacion GLV - ' + mProdName)
-    + '&body='    + encodeURIComponent(modalMsg());
-  closeModal();
+function modalSendEmail(){
+  return GLVForms.submit('catalog',{extra:{_product:mProdName},success:function(result){
+
+  }});
 }
 
 // ════════════════════════════════════════════
 // GENERAL FORM
 // ════════════════════════════════════════════
-function gnSend(via) {
-  if (['pollo-colombiano','pollo-brasil'].includes(gv('gn_division'))) {
-    var poultryInputs = document.querySelectorAll('#poultry-request input, #poultry-request select');
-    for (var poultryInput of poultryInputs) { if (!poultryInput.reportValidity()) return; }
-  }
-  if (gv('gn_division') === 'fertilizantes') {
-    var inputs = document.querySelectorAll('#agri-request input, #agri-request select');
-    for (var input of inputs) { if (!input.reportValidity()) return; }
-  }
-  var n  = gv('gn_n');
-  var e  = gv('gn_e');
-  var em = gv('gn_em');
-  var d  = gv('gn_d');
-  if (!n || !e || !em || !d) { alert(MSG[currentLang()].required); return; }
-  var agent = getSelectedAgent('gn_agent');
-  var aName = agent ? agent.name : 'No seleccionado';
-  var msg   = 'GLV - Cotizacion General\n\n'
-    + 'Nombre: ' + n + ' - ' + gv('gn_ca') + '\nEmpresa: ' + e
-    + '\nPais: ' + gv('gn_pa') + '\nEmail: ' + em + '\nTel: ' + gv('gn_t') + '\n\n'
-    + 'Division: ' + gv('gn_division') + '\n' + glvAgriQuoteDetails() + glvPoultryQuoteDetails() + 'Detalle:\n' + d + '\n\nIncoterm: ' + gv('gn_i') + '\nPago: ' + gv('gn_pm')
-    + '\nAgente: ' + aName;
-  sendW3F('Cotizacion General - ' + e, msg, em);
-  if (via === 'wa') {
-    sendToAgent(agent, 'Cotizacion General - ' + e, msg);
-  } else {
-    window.location.href = 'mailto:info@glvservicesexp.com'
-      + '?subject=' + encodeURIComponent('Cotizacion General GLV - ' + e)
-      + '&body='    + encodeURIComponent(msg);
-  }
-  var form = document.getElementById('genForm');
-  var succ = document.getElementById('genSuccess');
-  if (form) form.style.display = 'none';
-  if (succ) { succ.classList.add('show'); succ.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+function gnSend(via){
+  return GLVForms.submit('quote',{success:function(result){
+    var succ=document.getElementById('genSuccess');
+    GLVForms.status(succ,'success',result.code);
+    document.getElementById('genForm').style.display='none';
+    succ.classList.add('show');
+    succ.scrollIntoView({behavior:'smooth',block:'center'});
+    if(via==='wa')sendToAgent(getSelectedAgent('gn_agent'),'GLV '+result.code,'Número GLV: '+result.code+'\nEmpresa: '+gv('gn_e')+'\n'+gv('gn_d')+'\n'+glvAgriQuoteDetails()+glvPoultryQuoteDetails());
+  }});
 }
 
 // ════════════════════════════════════════════
@@ -1976,5 +1923,7 @@ window.addEventListener('scroll', function() {
 </script>
 <p class="media-reference-note" style="margin:0;padding:0.8rem 1.5rem;text-align:center;font-size:0.75rem;color:#94a3b8;background:#0d1724;">Portada para redes sociales: <a href="/imagenes/og-cover.jpg" style="color:inherit;text-decoration:underline;">Imagen de referencia</a>.</p>
 <div class="agri-footer-link"><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div>
+<script src="/assets/js/glv-forms-config.js"></script>
+<script src="/assets/js/glv-forms.js"></script>
 </body>
 </html>

@@ -559,7 +559,7 @@ nav {
           <button class="bg" onclick="submitSVC()">🔧 <span lang-es>Enviar Registro</span><span lang-en>Submit Registration</span><span lang-pt-br>Enviar Cadastro</span><span lang-ar>إرسال التسجيل</span><span lang-zh>提交注册</span></button>
           <a href="https://wa.me/573160865294" target="_blank" class="bb">💬 🇨🇴 WhatsApp</a>
         </div>
-        <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Revisión en 3–7 días. Código GLV-SVC asignado al enviar.</span><span lang-en>Confidential. Review in 3–7 days. GLV-SVC code assigned on submit.</span><span lang-pt-br>Confidencial. Revisão em 3–7 dias. Código GLV-SVC atribuído ao enviar.</span><span lang-ar>سري. مراجعة في 3–7 أيام. رمز GLV-SVC يُعيَّن عند الإرسال.</span><span lang-zh>保密。3–7天审查。提交时分配GLV-SVC代码。</span></p>
+        <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Revisión en 3–7 días. Código GLV-PRV asignado al enviar.</span><span lang-en>Confidential. Review in 3–7 days. GLV-PRV code assigned on submit.</span><span lang-pt-br>Confidencial. Revisão em 3–7 dias. Código GLV-PRV atribuído ao enviar.</span><span lang-ar>سري. مراجعة في 3–7 أيام. رمز GLV-PRV يُعيَّن عند الإرسال.</span><span lang-zh>保密。3–7天审查。提交时分配GLV-PRV代码。</span></p>
       </div>
     </div>
   </div>
@@ -688,7 +688,7 @@ nav {
         <a href="https://wa.me/573160865294" target="_blank" class="bb">💬 🇨🇴 WhatsApp</a>
         <a href="https://wa.me/5511946610038" target="_blank" class="bb">💬 🇧🇷 WhatsApp</a>
       </div>
-      <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Lo contactaremos si su servicio encaja con las necesidades de GLV. Código <strong>GLV-OTR-######</strong> generado al enviar.</span><span lang-en>Confidential. We will contact you if your service fits GLV's needs. Code <strong>GLV-OTR-######</strong> generated on submit.</span><span lang-pt-br>Confidencial. Entraremos em contato se seu serviço se encaixar nas necessidades da GLV. Código <strong>GLV-OTR-######</strong> gerado ao enviar.</span><span lang-ar>سري. سنتواصل معك إذا كانت خدمتك تتوافق مع احتياجات GLV. يُنشأ رمز <strong>GLV-OTR-######</strong> عند الإرسال.</span><span lang-zh>保密。如您的服务符合GLV需求，我们将与您联系。提交时生成代码<strong>GLV-OTR-######</strong>。</span></p>
+      <p style="font-size:0.88rem;color:var(--dim);margin-top:1rem;">🔒 <span lang-es>Confidencial. Lo contactaremos si su servicio encaja con las necesidades de GLV. Código <strong>GLV-PRV-AAAA-000001</strong> generado al enviar.</span><span lang-en>Confidential. We will contact you if your service fits GLV's needs. Code <strong>GLV-PRV-AAAA-000001</strong> generated on submit.</span><span lang-pt-br>Confidencial. Entraremos em contato se seu serviço se encaixar nas necessidades da GLV. Código <strong>GLV-PRV-AAAA-000001</strong> gerado ao enviar.</span><span lang-ar>سري. سنتواصل معك إذا كانت خدمتك تتوافق مع احتياجات GLV. يُنشأ رمز <strong>GLV-PRV-AAAA-000001</strong> عند الإرسال.</span><span lang-zh>保密。如您的服务符合GLV需求，我们将与您联系。提交时生成代码<strong>GLV-PRV-AAAA-000001</strong>。</span></p>
     </div>
   </div>
 
@@ -713,19 +713,7 @@ nav {
 
 <script>
 // ── WEB3FORMS ──
-function sendW3F(subject, body, replyEmail) {
-  var fd = new FormData();
-  fd.append('access_key', '9445937b-ca0d-4d86-b2c0-ee992bffdabe');
-  fd.append('subject', 'GLV Web: ' + subject);
-  fd.append('message', body);
-  fd.append('from_name', 'GLV Services SAS Website');
-  if(replyEmail) fd.append('replyto', replyEmail);
-  fd.append('botcheck', '');
-  fetch('https://api.web3forms.com/submit', {method:'POST', body:fd})
-    .then(function(r){ return r.json(); })
-    .then(function(d){ console.log('W3F:', d.success ? 'OK' : d.message); })
-    .catch(function(e){ console.warn('W3F error:', e); });
-}
+
 
 // ── MSG DICTIONARY ──
 var MSG = {
@@ -893,92 +881,33 @@ function showBox(id){ var e = document.getElementById(id); if(e){ e.style.displa
 
 
 // ── GLV CODE GENERATOR ──────────────────────────────────────
-function glvGenCode(prefix) {
-  var now  = new Date();
-  var yy   = String(now.getFullYear()).slice(-2);
-  var mm   = String(now.getMonth() + 1).padStart(2, '0');
-  var rand = String(Math.floor(1000 + Math.random() * 9000));
-  return 'GLV-' + prefix + '-' + yy + mm + rand;
-}
+
 // ────────────────────────────────────────────────────────────
 // ── SUBMIT PRODUCTS ──
 function submitPRV(){
-  var empresa = gv('p_empresa'), email = gv('p_email'), nit = gv('p_nit');
-  if(!empresa || !email || !nit){ alert(MSG[currentLang()].required); return; }
-  if(!document.getElementById('p_check1').checked || !document.getElementById('p_check2').checked){
-    alert(MSG[currentLang()].declarations); return;
-  }
-  var certs = [];
-  ['ica','mapa','haccp','ifs','halal','usda'].forEach(function(c){
-    var el = document.getElementById('c_' + c);
-    if(el && el.checked) certs.push(c.toUpperCase());
-  });
-  var msg = 'GLV - REGISTRO PROVEEDOR PRODUCTOS\n\n'
-    + 'EMPRESA: ' + empresa + '\nPais: ' + gv('p_pais') + '\nNIT: ' + nit
-    + '\nDireccion: ' + gv('p_direccion') + '\nWeb: ' + gv('p_web')
-    + '\nProductos: ' + gv('p_productos')
-    + '\n\nREPRESENTANTE: ' + gv('p_rep') + ' - ' + gv('p_cargo')
-    + '\nEmail: ' + email + '\nTel: ' + gv('p_tel')
-    + '\nCapacidad: ' + gv('p_capacidad') + '\nExportacion: ' + gv('p_export')
-    + '\nCertificaciones: ' + (certs.length ? certs.join(', ') : 'No indicadas')
-    + '\nCondiciones: ' + gv('p_condiciones')
-    + '\n\nDeclaraciones: Aceptadas.';
-  var codPRV = glvGenCode('PRV');
-  msg += '\nCODIGO PROVISIONAL: ' + codPRV;
-  sendW3F('Registro Proveedor Productos ' + codPRV + ' — ' + empresa, msg, email);
-  window.open('https://wa.me/573160865294?text=' + encodeURIComponent(msg), '_blank');
-  window.location.href = 'mailto:info@glvservicesexp.com?subject=' + encodeURIComponent('Proveedor GLV - ' + empresa) + '&body=' + encodeURIComponent(msg);
-  document.getElementById('prvCodeDisplay').textContent = '🏷 ' + codPRV;
-  hide('prvForm');
-  showBox('prvSuccess');
+  return GLVForms.submit('supplier', {success:function(result){
+    document.getElementById('prvCodeDisplay').textContent = '🏷 ' + result.code;
+    hide('prvForm');
+    showBox('prvSuccess');
+  }});
 }
 
 // ── SUBMIT LOGISTICS SERVICE ──
 function submitSVC(){
-  var empresa = gv('sv_empresa'), email = gv('sv_email');
-  if(!empresa || !email){ alert(MSG[currentLang()].requiredSVC); return; }
-  var sel  = document.getElementById('svcType');
-  var tipo = sel ? sel.options[sel.selectedIndex].text : '—';
-  var msg  = 'GLV - REGISTRO PROVEEDOR SERVICIOS LOGISTICOS\n\n'
-    + 'TIPO: ' + tipo + '\n\nEMPRESA: ' + empresa
-    + '\nPais: ' + gv('sv_pais') + '\nEmail: ' + email
-    + '\nTel: ' + gv('sv_tel') + '\nRepresentante: ' + gv('sv_rep')
-    + '\nWeb: ' + gv('sv_web') + '\nDescripcion: ' + gv('sv_desc')
-    + '\n\nDeclaracion: Enviada.';
-  var codSVC = glvGenCode('SVC');
-  msg += '\nCODIGO PROVISIONAL: ' + codSVC;
-  sendW3F('Registro Proveedor Servicio ' + codSVC + ' — ' + empresa, msg, email);
-  window.open('https://wa.me/573160865294?text=' + encodeURIComponent(msg), '_blank');
-  window.location.href = 'mailto:info@glvservicesexp.com?subject=' + encodeURIComponent('Proveedor Servicio GLV - ' + empresa) + '&body=' + encodeURIComponent(msg);
-  document.getElementById('svcCodeDisplay').textContent = '🏷 ' + codSVC;
-  hide('svcForm');
-  showBox('svcSuccess');
+  return GLVForms.submit('service', {success:function(result){
+    document.getElementById('svcCodeDisplay').textContent = '🏷 ' + result.code;
+    hide('svcForm');
+    showBox('svcSuccess');
+  }});
 }
 
 // ── SUBMIT OTROS ──
 function submitOtro(){
-  var empresa = gv('ot_empresa'), email = gv('ot_email');
-  if(!empresa || !email){ alert(MSG[currentLang()].requiredOtro); return; }
-  if(!document.getElementById('ot_check').checked){ alert(MSG[currentLang()].declarationsOtro); return; }
-  var sel  = document.getElementById('otroType');
-  var tipo = sel ? sel.options[sel.selectedIndex].text : 'No especificado';
-  var msg  = 'GLV - REGISTRO PROVEEDOR GENERAL\n\n'
-    + 'CATEGORIA: ' + tipo + '\n\nEMPRESA: ' + empresa
-    + '\nRepresentante: ' + gv('ot_rep') + '\nPais/Ciudad: ' + gv('ot_pais')
-    + '\nEmail: ' + email + '\nTel: ' + gv('ot_tel')
-    + '\nWeb: ' + gv('ot_web')
-    + '\n\nSERVICIO: ' + gv('ot_descripcion')
-    + '\nTARIFA: ' + gv('ot_tarifa') + '\nTIEMPO: ' + gv('ot_tiempo')
-    + '\nPROPUESTA: ' + gv('ot_valor')
-    + '\n\nDeclaracion: Aceptada.';
-  var codOTR = glvGenCode('OTR');
-  msg += '\nCODIGO PROVISIONAL: ' + codOTR;
-  sendW3F('Registro Proveedor General ' + codOTR + ' — ' + empresa, msg, email);
-  window.open('https://wa.me/573160865294?text=' + encodeURIComponent(msg), '_blank');
-  window.location.href = 'mailto:info@glvservicesexp.com?subject=' + encodeURIComponent('Proveedor General GLV - ' + empresa) + '&body=' + encodeURIComponent(msg);
-  document.getElementById('otrCodeDisplay').textContent = '🏷 ' + codOTR;
-  hide('otroForm');
-  showBox('otroSuccess');
+  return GLVForms.submit('other', {success:function(result){
+    document.getElementById('otrCodeDisplay').textContent = '🏷 ' + result.code;
+    hide('otroForm');
+    showBox('otroSuccess');
+  }});
 }
 
 window.addEventListener('scroll', function(){
@@ -1027,5 +956,7 @@ window.addEventListener('scroll', function(){
 // === END GLV VIDEO ===
 </script>
 <div class="agri-footer-link"><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div>
+<script src="/assets/js/glv-forms-config.js"></script>
+<script src="/assets/js/glv-forms.js"></script>
 </body>
 </html>
