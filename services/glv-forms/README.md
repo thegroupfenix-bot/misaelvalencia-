@@ -54,3 +54,13 @@ Las funciones administrativas terminadas en `_` no son RPC públicos. `initializ
 Pruebas con servicios Google simulados: nueve variantes, tres correos, privacidad, idempotencia, secuencia compartida y restaurada, cuota y fallo parcial, propietario, campos, origen, honeypot, tiempo, límites, bloqueo, fórmulas de Sheets y sintaxis HTML. No envían correos. La prueba real desde Home produjo GLV-COT-2026-000002; la hoja confirmó SENT en los tres canales, Gmail mostró aviso interno y confirmación, y la propietaria confirmó recepción en contabilidad. El reintento devolvió el mismo número sin nueva fila.
 
 Fuentes oficiales: [Web Apps](https://developers.google.com/apps-script/guides/web), [HTML Service RPC](https://developers.google.com/apps-script/guides/html/communication), [LockService](https://developers.google.com/apps-script/reference/lock/lock-service), [MailApp](https://developers.google.com/apps-script/reference/mail/mail-app).
+
+## Verificación de correo (30 septiembre 2026)
+
+Clientes y todas las categorías de proveedores se guardan PENDIENTE sin número. Se envía únicamente al solicitante un código de seis dígitos; la hoja conserva HMAC, vencimiento (15 minutos), intentos (cinco por código), último envío y estado. Reenvío mínimo 60 segundos; máximo cinco códigos por registro. No se registra el código legible en datos, respuestas ni correos internos. Las cotizaciones siguen directas.
+
+La verificación correcta se persiste antes de reservar el consecutivo bajo ScriptLock. Reintentos y solicitudes idénticas reutilizan registro y número. Los registros anteriores numerados se conservan. Tras verificar se envían las tres confirmaciones con el mismo número; el solicitante recibe bienvenida y enlaces oficiales. La pantalla de código incluye los cinco idiomas y RTL.
+
+Actualizar la implementación existente con una versión nueva; conservar URL /exec, propietario, hoja, propiedades, permisos y secuencias. No ejecutar setup para crear otra hoja ni reiniciar contadores. Las columnas P:X se añaden a Clientes y Proveedores al primer uso.
+
+Validación automatizada: node --test tests/glv-forms.test.cjs. Pruebas reales pendientes de registrar tras la publicación controlada; usar únicamente datos PRUEBA TÉCNICA GLV y serviciosglvsas@gmail.com.
