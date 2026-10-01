@@ -77,7 +77,7 @@
     if(verificationPanel)verificationPanel.close();
     const dialog=document.createElement('dialog');
     dialog.setAttribute('aria-labelledby','glv-verification-title');
-    dialog.style.cssText='box-sizing:border-box;width:min(94vw,520px);max-height:90dvh;overflow:auto;padding:clamp(20px,5vw,36px);background:#0b2332;color:#edf3f7;border:1px solid #526b7d;border-radius:12px;font-family:inherit;';
+    dialog.style.cssText='box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(94vw,520px);max-height:90dvh;overflow:auto;padding:clamp(20px,5vw,36px);background:#0b2332;color:#edf3f7;border:1px solid #526b7d;border-radius:12px;font-family:inherit;';
     dialog.innerHTML='<form><h2 id="glv-verification-title" data-v="title"></h2><p data-v="intro"></p><label for="glv-verification-code" data-v="label"></label><input id="glv-verification-code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" minlength="6" required dir="ltr"><p role="status" aria-live="polite"></p><button type="submit" data-v="verify"></button><button type="button" data-resend></button><button type="button" data-back data-v="back"></button></form>';
     const form=dialog.querySelector('form'),input=dialog.querySelector('input'),note=dialog.querySelector('[role="status"]'),resend=dialog.querySelector('[data-resend]'),back=dialog.querySelector('[data-back]'),verify=dialog.querySelector('[type="submit"]');
     input.style.cssText='box-sizing:border-box;display:block;width:100%;margin:12px 0;padding:14px;font:inherit;font-size:24px;letter-spacing:.3em;background:#122f40;color:#fff;border:1px solid #819baa;border-radius:6px;';
