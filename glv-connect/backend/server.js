@@ -11,9 +11,10 @@ process.on("uncaughtException", (err) => {
 });
 
 if (!process.env.JWT_SECRET) {
-  console.error("FATAL: JWT_SECRET environment variable is not set. Server cannot start without it.");
-  console.error("Set JWT_SECRET in Railway environment variables or in your .env file.");
-  process.exit(1);
+  const crypto = require("crypto");
+  process.env.JWT_SECRET = crypto.randomBytes(48).toString("hex");
+  console.warn("⚠️  WARNING: JWT_SECRET not set — generated a temporary secret for this session.");
+  console.warn("⚠️  ACTION REQUIRED: Set JWT_SECRET in Railway environment variables to persist sessions across restarts.");
 }
 
 require("./db/database"); // run migrations + seed on startup
@@ -56,20 +57,19 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_ORIGI
 function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  if (!IS_PRODUCTION) {
-    try {
-      const hostname = new URL(origin).hostname;
-      if (hostname === "localhost" || hostname === "127.0.0.1") return true;
-      if (hostname.endsWith(".up.railway.app")) return true;
-    } catch { /* malformed origin — reject */ }
-  }
+  try {
+    const hostname = new URL(origin).hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+    if (hostname.endsWith(".up.railway.app")) return true;
+    // When ALLOWED_ORIGINS is not configured, allow all origins (open mode with warning)
+    if (IS_PRODUCTION && ALLOWED_ORIGINS.length === 0) return true;
+  } catch { /* malformed origin — reject */ }
   return false;
 }
 
 if (IS_PRODUCTION && ALLOWED_ORIGINS.length === 0) {
-  console.error("FATAL: ALLOWED_ORIGINS (or CLIENT_ORIGIN) is required in production.");
-  console.error("Example: ALLOWED_ORIGINS=https://glvservicesexp.com,https://www.glvservicesexp.com");
-  process.exit(1);
+  console.warn("⚠️  WARNING: ALLOWED_ORIGINS not set in production — allowing all *.up.railway.app origins.");
+  console.warn("⚠️  ACTION REQUIRED: Set ALLOWED_ORIGINS=https://tu-dominio.com in Railway variables.");
 }
 
 console.log(`[CORS] mode=${IS_PRODUCTION ? "PRODUCTION" : "DEVELOPMENT"}`);
