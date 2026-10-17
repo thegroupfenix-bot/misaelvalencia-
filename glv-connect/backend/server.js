@@ -153,14 +153,19 @@ app.use((err, _req, res, _next) => {
   if (!res.headersSent) res.status(500).json({ error: "Error interno del servidor" });
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(Number(PORT), "0.0.0.0", () => {
-  console.log(`GLV-Connect API en puerto ${PORT}`);
-  console.log(`PORT env: ${process.env.PORT ?? "(not set, defaulting to 3001)"}`);
-  console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
-  console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
-  console.log(`BUILD_TS: ${BUILD_TS}`);
-});
+// Only bind to a port when run directly — supertest creates its own server
+if (require.main === module) {
+  const PORT = process.env.PORT || 8080;
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`GLV-Connect API en puerto ${PORT}`);
+    console.log(`PORT env: ${process.env.PORT ?? "(not set, defaulting to 3001)"}`);
+    console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
+    console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+    console.log(`BUILD_TS: ${BUILD_TS}`);
+  });
+}
+
+module.exports = app;
 
 // Start backup scheduler (only if R2 configured) — 5s after start
 setTimeout(() => {
