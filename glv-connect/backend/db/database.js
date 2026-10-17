@@ -259,6 +259,11 @@ try {
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 
+// ─── Phase 0: user–client linkage + permanent GLV code ────────────────────────
+safeAlter("ALTER TABLE users ADD COLUMN linked_client_id INTEGER REFERENCES clients(id)");
+safeAlter("ALTER TABLE clients ADD COLUMN glv_code_permanent TEXT");
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_glv_code_perm ON clients(glv_code_permanent) WHERE glv_code_permanent IS NOT NULL"); } catch(_) {}
+
 // ─── clients GOS / KYC extension (Sprint 1) ──────────────────────────────────
 safeAlter("ALTER TABLE clients ADD COLUMN glv_code TEXT");
 safeAlter("ALTER TABLE clients ADD COLUMN lead_status TEXT DEFAULT 'UNASSIGNED'");
@@ -716,6 +721,43 @@ db.exec(`
   );
 `);
 
+// ─── Phase 0: login rate-limiting + password reset + GLV code sequences ───────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS login_attempts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    identifier    TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    locked_until  TEXT,
+    last_attempt  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_login_attempts_identifier ON login_attempts(identifier);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash      TEXT NOT NULL UNIQUE,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at      TEXT NOT NULL,
+    used_at         TEXT,
+    created_from_ip TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens(token_hash);
+  CREATE INDEX IF NOT EXISTS idx_prt_user  ON password_reset_tokens(user_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS glv_code_sequences (
+    entity_code TEXT PRIMARY KEY,
+    last_seq    INTEGER NOT NULL DEFAULT 0,
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-CO', 0);
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-US', 0);
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-BR', 0);
+`);
+
 // ─── Seed default users ───────────────────────────────────────────────────────
 function seedPriceCenter() {
   const catCount = db.prepare("SELECT COUNT(*) AS c FROM pc_categories").get().c;
@@ -964,6 +1006,26 @@ function seedUsers() {
 seedUsers();
 seedPriceCenter();
 seedGos06Catalogs();
+
+// ─── getMigrationStatus ───────────────────────────────────────────────────────
+function getMigrationStatus() {
+  const checkTable = (table) => {
+    try { db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get(); return true; } catch (_) { return false; }
+  };
+  const checkColumn = (table, col) => {
+    try { return db.prepare(`PRAGMA table_info(${table})`).all().some(r => r.name === col); } catch (_) { return false; }
+  };
+  return {
+    login_attempts:             checkTable("login_attempts"),
+    password_reset_tokens:      checkTable("password_reset_tokens"),
+    glv_code_sequences:         checkTable("glv_code_sequences"),
+    users_linked_client_id:     checkColumn("users", "linked_client_id"),
+    clients_glv_code_permanent: checkColumn("clients", "glv_code_permanent"),
+    clients_kyc_status:         checkColumn("clients", "kyc_status"),
+    documents_commercial_data:  checkColumn("documents", "commercial_data"),
+  };
+}
+db.getMigrationStatus = getMigrationStatus;
 
 module.exports = db;
 

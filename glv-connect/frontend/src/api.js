@@ -14,6 +14,7 @@ async function request(method, path, body, signal) {
     res = await fetch(`${BASE}${path}`, {
       method,
       headers,
+      credentials: "include", // Phase 0: send httpOnly cookie on every request
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
     });
@@ -32,8 +33,11 @@ async function request(method, path, body, signal) {
 export const api = {
   // Auth
   login:          (username, password) => request("POST", "/auth/login", { username, password }),
+  logout:         () => request("POST", "/auth/logout"),
   me:             () => request("GET", "/auth/me"),
   changePassword: (data) => request("POST", "/auth/change-password", data),
+  forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
+  resetPassword:  (token, newPassword) => request("POST", "/auth/reset-password", { token, newPassword }),
 
   // Documents
   getDocs:      (type) => request("GET", `/documents${type ? `?type=${type}` : ""}`),

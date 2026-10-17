@@ -99,8 +99,8 @@ router.patch("/users/:id", (req, res) => {
 // POST /admin/users/:id/reset-password — reset to temp password
 router.post("/users/:id/reset-password", (req, res) => {
   const { temporary_password } = req.body;
-  if (!temporary_password || temporary_password.length < 6) {
-    return res.status(400).json({ error: "La contraseña temporal debe tener al menos 6 caracteres" });
+  if (!temporary_password || temporary_password.length < 12) {
+    return res.status(400).json({ error: "La contraseña temporal debe tener al menos 12 caracteres" });
   }
 
   const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.params.id);

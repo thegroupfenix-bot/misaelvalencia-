@@ -19,10 +19,11 @@ if (!process.env.JWT_SECRET) {
 
 require("./db/database"); // run migrations + seed on startup
 
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const fs = require("fs");
+const express      = require("express");
+const cors         = require("cors");
+const cookieParser = require("cookie-parser");
+const path         = require("path");
+const fs           = require("fs");
 
 const authRouter        = require("./routes/auth");
 const documentsRouter   = require("./routes/documents");
@@ -91,6 +92,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
 app.set("trust proxy", 1);
 
 // Health check first — before all other routes
@@ -101,6 +103,7 @@ app.get("/health", (_req, res) => {
     const mediaCount = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
     const userCount  = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
     dbInfo = { media_assets: mediaCount, users: userCount };
+    try { dbInfo.migrations = db.getMigrationStatus(); } catch (_) {}
   } catch (e) { dbInfo = { error: e.message }; }
   res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS, db: dbInfo });
 });

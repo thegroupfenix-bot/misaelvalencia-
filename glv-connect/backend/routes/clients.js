@@ -6,6 +6,11 @@ const db      = require("../db/database");
 const { authenticate }         = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 const r2      = require("../storage/r2");
+const { generateGlvCode }      = require("../utils/glvCode");
+
+function isClientUser(user) {
+  return user.role === "CLIENT" || user.role === "SUPPLIER";
+}
 
 const router = express.Router();
 
@@ -157,6 +162,12 @@ router.use(authenticate);
 
 // ─── GET /clients — list active clients (excludes WEB_KYC leads not yet activated) ──
 router.get("/", (req, res) => {
+  // CLIENT/SUPPLIER roles can only see their own linked client
+  if (isClientUser(req.user)) {
+    if (!req.user.linked_client_id) return res.json([]);
+    const c = db.prepare("SELECT * FROM clients WHERE id = ?").get(req.user.linked_client_id);
+    return res.json(c ? [c] : []);
+  }
   const { type } = req.query;
   let q = `
     SELECT
@@ -207,6 +218,10 @@ router.get("/leads", requireLevel(65), (req, res) => {
 router.get("/:id", (req, res) => {
   const c = db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id);
   if (!c) return res.status(404).json({ error: "Cliente no encontrado" });
+  // CLIENT/SUPPLIER roles can only see their own linked client
+  if (isClientUser(req.user) && req.user.linked_client_id !== c.id) {
+    return res.status(403).json({ error: "Acceso denegado" });
+  }
   res.json(c);
 });
 
@@ -262,7 +277,7 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       });
     }
 
-    const client = db.prepare("SELECT id, glv_code, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    const client = db.prepare("SELECT id, glv_code, glv_code_permanent, kyc_status FROM clients WHERE id = ?").get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
 
     const updates = [];
@@ -284,6 +299,14 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
     if (kyc_status === "ACTIVE_CLIENT") {
       updates.push("lead_status = 'QUALIFIED'");
       updates.push("active = 1");
+      // Auto-generate permanent GLV code if not already assigned
+      if (!client.glv_code_permanent) {
+        try {
+          const permCode = generateGlvCode("GLV-CO");
+          updates.push("glv_code_permanent = ?");
+          vals.push(permCode);
+        } catch (_) {}
+      }
     }
 
     if (updates.length === 0) {
