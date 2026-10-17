@@ -716,6 +716,157 @@ db.exec(`
   );
 `);
 
+// ─── COMMERCIAL INTELLIGENCE FOUNDATION V2 — FASE 0 ─────────────────────────
+// Additive-only tables. No existing tables, routes, or logic are modified.
+// Existing code (product_master, pc_products, media_profiles, PaymentTermsRegistry,
+// ProductIntelligenceRegistry) continues to function unchanged.
+// New architecture layer reads from these tables; migration is progressive and opt-in.
+
+// 1. Global Product Registry — unified source of truth for all products
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gpr_products (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_code      TEXT    NOT NULL UNIQUE,
+    category_code     TEXT    NOT NULL,
+    subcategory_code  TEXT,
+    name_es           TEXT    NOT NULL,
+    name_en           TEXT    NOT NULL,
+    name_fr           TEXT,
+    name_zh           TEXT,
+    name_ar           TEXT,
+    hs_code           TEXT,
+    calc_mode         TEXT    NOT NULL DEFAULT 'unit',
+    default_unit      TEXT,
+    container_capacity REAL,
+    moq_value         REAL,
+    moq_unit          TEXT,
+    origin_countries  TEXT    NOT NULL DEFAULT '[]',
+    certifications    TEXT    NOT NULL DEFAULT '[]',
+    market_segments   TEXT    NOT NULL DEFAULT '[]',
+    reefer_required   INTEGER NOT NULL DEFAULT 0,
+    frozen_required   INTEGER NOT NULL DEFAULT 0,
+    cargo_type        TEXT    NOT NULL DEFAULT 'Dry Cargo',
+    shelf_life        TEXT,
+    active            INTEGER NOT NULL DEFAULT 1,
+    migration_status  TEXT    NOT NULL DEFAULT 'PENDING',
+    source_pm_code    TEXT    REFERENCES product_master(product_code),
+    source_pc_id      INTEGER REFERENCES pc_products(id),
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_gpr_category        ON gpr_products(category_code);
+  CREATE INDEX IF NOT EXISTS idx_gpr_migration       ON gpr_products(migration_status);
+  CREATE INDEX IF NOT EXISTS idx_gpr_active          ON gpr_products(active);
+`);
+
+// 2. Product Specifications — flexible key-value spec store per product
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gpr_specifications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id  INTEGER NOT NULL REFERENCES gpr_products(id) ON DELETE CASCADE,
+    spec_key    TEXT    NOT NULL,
+    spec_value  TEXT    NOT NULL,
+    spec_type   TEXT    NOT NULL DEFAULT 'text',
+    unit        TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(product_id, spec_key)
+  );
+  CREATE INDEX IF NOT EXISTS idx_gpr_spec_product ON gpr_specifications(product_id);
+`);
+
+// 3. Product Intelligence Profiles — replaces hardcoded ProductIntelligenceRegistry.js
+db.exec(`
+  CREATE TABLE IF NOT EXISTS pi_profiles (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_code          TEXT    NOT NULL UNIQUE,
+    executive_description TEXT,
+    certification_profile TEXT    NOT NULL DEFAULT '[]',
+    compliance_badges     TEXT    NOT NULL DEFAULT '[]',
+    timeline_min_days     INTEGER,
+    timeline_max_days     INTEGER,
+    timeline_notes        TEXT,
+    logistics_mode        TEXT,
+    logistics_notes       TEXT,
+    market_applications   TEXT    NOT NULL DEFAULT '[]',
+    intelligence_version  TEXT    NOT NULL DEFAULT '1.0',
+    active                INTEGER NOT NULL DEFAULT 1,
+    created_at            TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at            TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_pi_product ON pi_profiles(product_code);
+  CREATE INDEX IF NOT EXISTS idx_pi_active  ON pi_profiles(active);
+`);
+
+// 4. Media Intelligence Assets — extends media_profiles with versioning, expiry, multi-language
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mi_assets (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_code    TEXT    NOT NULL,
+    asset_role      TEXT    NOT NULL DEFAULT 'MAIN',
+    media_asset_id  INTEGER REFERENCES media_assets(id),
+    language_code   TEXT    NOT NULL DEFAULT 'ALL',
+    version         INTEGER NOT NULL DEFAULT 1,
+    valid_from      TEXT,
+    valid_until     TEXT,
+    priority        INTEGER NOT NULL DEFAULT 100,
+    approved_by     INTEGER REFERENCES users(id),
+    approved_at     TEXT,
+    status          TEXT    NOT NULL DEFAULT 'ACTIVE',
+    notes           TEXT,
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_mi_product ON mi_assets(product_code);
+  CREATE INDEX IF NOT EXISTS idx_mi_status  ON mi_assets(status);
+  CREATE INDEX IF NOT EXISTS idx_mi_role    ON mi_assets(asset_role);
+`);
+
+// 5. Commercial Rules — replaces scattered PaymentTermsRegistry, PricingGovernanceRegistry
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cr_rules (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_code       TEXT    NOT NULL UNIQUE,
+    rule_type       TEXT    NOT NULL,
+    category_scope  TEXT    NOT NULL DEFAULT 'ALL',
+    product_scope   TEXT    NOT NULL DEFAULT 'ALL',
+    min_volume      REAL,
+    max_volume      REAL,
+    rule_config     TEXT    NOT NULL DEFAULT '{}',
+    priority        INTEGER NOT NULL DEFAULT 100,
+    active          INTEGER NOT NULL DEFAULT 1,
+    valid_from      TEXT,
+    valid_until     TEXT,
+    created_by      INTEGER REFERENCES users(id),
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cr_type   ON cr_rules(rule_type);
+  CREATE INDEX IF NOT EXISTS idx_cr_active ON cr_rules(active);
+`);
+
+// 6. Document Intelligence Requirements — per-category required fields, validations, PDF sections
+db.exec(`
+  CREATE TABLE IF NOT EXISTS di_requirements (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    req_code        TEXT    NOT NULL UNIQUE,
+    category_code   TEXT    NOT NULL,
+    product_scope   TEXT    NOT NULL DEFAULT 'ALL',
+    req_type        TEXT    NOT NULL,
+    req_key         TEXT    NOT NULL,
+    req_label_es    TEXT    NOT NULL,
+    req_label_en    TEXT,
+    is_mandatory    INTEGER NOT NULL DEFAULT 1,
+    validation_rule TEXT,
+    pdf_section     TEXT,
+    display_order   INTEGER NOT NULL DEFAULT 100,
+    active          INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_di_category ON di_requirements(category_code);
+  CREATE INDEX IF NOT EXISTS idx_di_type     ON di_requirements(req_type);
+  CREATE INDEX IF NOT EXISTS idx_di_active   ON di_requirements(active);
+`);
+
 // ─── Seed default users ───────────────────────────────────────────────────────
 function seedPriceCenter() {
   const catCount = db.prepare("SELECT COUNT(*) AS c FROM pc_categories").get().c;
@@ -964,6 +1115,7 @@ function seedUsers() {
 seedUsers();
 seedPriceCenter();
 seedGos06Catalogs();
+seedCommercialFoundationV2();
 
 module.exports = db;
 
@@ -1149,4 +1301,392 @@ function seedGos06Catalogs() {
     ["EC","Ecuador","Ecuador","Americas","South America",-1.83,-78.18],
     ["CA","Canada","Canadá","Americas","North America",56.13,-106.35],
   ].forEach(r => insCC.run(...r)))();
+}
+
+// ─── COMMERCIAL INTELLIGENCE FOUNDATION V2 — FASE 0 seed ─────────────────────
+function seedCommercialFoundationV2() {
+  const existingGPR = db.prepare("SELECT COUNT(*) AS c FROM gpr_products").get().c;
+  if (existingGPR > 0) return;
+
+  // ── 1. Global Product Registry seed ─────────────────────────────────────────
+  const insGPR = db.prepare(`
+    INSERT OR IGNORE INTO gpr_products
+      (product_code, category_code, subcategory_code, name_es, name_en, name_fr, name_zh, name_ar,
+       hs_code, calc_mode, default_unit, container_capacity, moq_value, moq_unit,
+       origin_countries, certifications, market_segments,
+       reefer_required, frozen_required, cargo_type, shelf_life, migration_status, source_pm_code)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `);
+
+  db.transaction(() => {
+    // Live Animals
+    insGPR.run("CATTLE","LIVE_ANIMALS",null,"Bovinos","Cattle (Bovine)","Bétail bovin","牛","الماشية البقرية",
+      "0102.29.00","live-animals","HEAD",null,100,"HEAD",
+      '["Brazil","Australia","Colombia","Uruguay","Argentina"]',
+      '["MAPA","Halal","Zoosanitario","SGS"]',
+      '["General B2B","Institutional"]',
+      0,0,"Live Animals","Según protocolo cuarentena","PENDING","CATTLE");
+    insGPR.run("SHEEP","LIVE_ANIMALS",null,"Ovinos","Sheep (Ovine)","Moutons","绵羊","الأغنام",
+      "0104.10.10","live-animals","HEAD",null,500,"HEAD",
+      '["Brazil","Australia","New Zealand","Uruguay"]',
+      '["MAPA","DAFF","Halal","Zoosanitario"]',
+      '["General B2B","Institutional"]',
+      0,0,"Live Animals","Según protocolo cuarentena","PENDING","SHEEP");
+    insGPR.run("GOAT","LIVE_ANIMALS",null,"Caprinos","Goat (Caprine)","Chèvres","山羊","الماعز",
+      "0104.20.10","live-animals","HEAD",null,200,"HEAD",
+      '["Brazil","Australia","South Africa"]',
+      '["MAPA","DAFF","Halal","Zoosanitario"]',
+      '["General B2B","Institutional"]',
+      0,0,"Live Animals","Según protocolo cuarentena","PENDING","GOAT");
+
+    // Oils
+    insGPR.run("PALM_OIL","OILS",null,"Aceite de Palma","Palm Oil","Huile de palme","棕榈油","زيت النخيل",
+      "1511.90.00","bag-weight","MT",20,100,"MT",
+      '["Colombia","Malaysia","Indonesia"]',
+      '["Halal","RSPO","ISO"]',
+      '["General B2B","Food Service","Institutional"]',
+      0,0,"ISO Tank","18 meses","PENDING","PALM_OIL");
+    insGPR.run("SOYBEAN_OIL","OILS",null,"Aceite de Soja","Soybean Oil","Huile de soja","大豆油","زيت فول الصويا",
+      "1507.90.00","bag-weight","MT",20,100,"MT",
+      '["Brazil","Argentina"]',
+      '["MAPA","ANVISA","Halal","Kosher"]',
+      '["General B2B","Food Service","Institutional"]',
+      0,0,"ISO Tank","12 meses","PENDING","SOYBEAN_OIL");
+    insGPR.run("SUNFLOWER_OIL","OILS",null,"Aceite de Girasol","Sunflower Oil","Huile de tournesol","葵花籽油","زيت عباد الشمس",
+      "1512.19.00","bag-weight","MT",20,100,"MT",
+      '["Argentina","Ukraine","Russia"]',
+      '["SENASA","Halal","HACCP"]',
+      '["General B2B","Food Service"]',
+      0,0,"ISO Tank","12 meses","PENDING","SUNFLOWER_OIL");
+
+    // Commodities
+    insGPR.run("SOYBEANS","COMMODITIES",null,"Soja en Grano","Soybeans","Soja","大豆","فول الصويا",
+      "1201.90.00","bag-weight","MT",27,1000,"MT",
+      '["Brazil","Argentina","Paraguay"]',
+      '["MAPA","ABIOVE"]',
+      '["General B2B","Institutional"]',
+      0,0,"Dry Cargo","6 meses en silo","PENDING","SOYBEANS");
+    insGPR.run("CORN","COMMODITIES",null,"Maíz Amarillo","Corn (Yellow Maize)","Maïs jaune","黄玉米","الذرة الصفراء",
+      "1005.90.10","bag-weight","MT",27,1000,"MT",
+      '["Brazil","Argentina","USA","Paraguay"]',
+      '["MAPA","USDA"]',
+      '["General B2B","Institutional"]',
+      0,0,"Dry Cargo","3 meses seco","PENDING","CORN");
+    insGPR.run("RICE","COMMODITIES",null,"Arroz Blanco","White Rice","Riz blanc","白米","الأرز الأبيض",
+      "1006.30.10","bag-weight","MT",27,100,"MT",
+      '["India","Vietnam","Thailand","Pakistan"]',
+      '["HACCP","FSSAI","Halal"]',
+      '["General B2B","Institutional","Food Service"]',
+      0,0,"Dry Cargo","12 meses","PENDING","RICE");
+    insGPR.run("WHEAT","COMMODITIES",null,"Trigo","Wheat","Blé","小麦","القمح",
+      "1001.99.00","bag-weight","MT",27,1000,"MT",
+      '["Russia","Ukraine","USA","Canada","Australia"]',
+      '["HACCP","Halal"]',
+      '["General B2B","Institutional"]',
+      0,0,"Dry Cargo","6 meses","PENDING","WHEAT");
+    insGPR.run("SUGAR","COMMODITIES",null,"Azúcar Blanca IC-45","Sugar ICUMSA-45","Sucre blanc","白糖","السكر الأبيض",
+      "1701.99.00","bag-weight","MT",27,1000,"MT",
+      '["Brazil"]',
+      '["MAPA","ISO","Halal","Kosher"]',
+      '["General B2B","Food Service","Institutional"]',
+      0,0,"Dry Cargo","24 meses","PENDING",null);
+
+    // Fruit Products (not yet in product_master — new to registry)
+    insGPR.run("MANGO","FRUIT_PRODUCTS",null,"Mango Tommy Atkins","Mango","Mangue","芒果","المانجو",
+      "0804.50.00","packaging-weight","MT",18,2,"MT",
+      '["Colombia","Brazil","Peru"]',
+      '["GlobalG.A.P.","ICA"]',
+      '["General B2B","Retail Distribution","Food Service"]',
+      1,0,"Refrigerated Cargo","21 días cadena de frío","PENDING",null);
+    insGPR.run("PINEAPPLE","FRUIT_PRODUCTS",null,"Piña MD2","Pineapple MD2","Ananas MD2","菠萝","الأناناس",
+      "0804.30.00","packaging-weight","MT",15,2,"MT",
+      '["Colombia","Costa Rica","Brazil"]',
+      '["GlobalG.A.P.","Halal"]',
+      '["General B2B","Retail Distribution","Food Service"]',
+      1,0,"Refrigerated Cargo","21 días","PENDING",null);
+    insGPR.run("PASSION_FRUIT","FRUIT_PRODUCTS",null,"Maracuyá / Maracujá","Passion Fruit","Fruit de la passion","百香果","فاكهة العاطفة",
+      "0810.90.10","packaging-weight","MT",15,0.3,"MT",
+      '["Colombia","Brazil","Ecuador"]',
+      '["INVIMA","ICA","BPA"]',
+      '["General B2B","Food Service","Institutional"]',
+      0,0,"Refrigerated Cargo","30 días fresco / 12 meses pulpa","PENDING",null);
+  })();
+
+  // ── 2. Product Intelligence Profiles seed ───────────────────────────────────
+  const insPI = db.prepare(`
+    INSERT OR IGNORE INTO pi_profiles
+      (product_code, executive_description, certification_profile, compliance_badges,
+       timeline_min_days, timeline_max_days, timeline_notes,
+       logistics_mode, logistics_notes, market_applications)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
+  `);
+
+  db.transaction(() => {
+    insPI.run("CATTLE",
+      "Bovinos vivos para exportación internacional. Operaciones de alto valor con requerimientos zoosanitarios estrictos y protocolos de bienestar animal.",
+      '["MAPA","ADAPEC","Halal","SGS Inspection","Zoosanitario MAPA"]',
+      '["LIVE_EXPORT","HALAL_CERTIFIED","SGS_VERIFIED"]',
+      45,90,"Incluye cuarentena pre-embarque (21-45 días) + tiempo de tránsito marítimo","SEA",
+      "Buques especializados para ganado vivo (livestock vessels). Requerimientos IMSBC y OIE.",
+      '["Middle East","Southeast Asia","North Africa","West Africa"]');
+    insPI.run("SHEEP",
+      "Ovinos vivos para exportación. Alta demanda en mercados Halal del Oriente Medio y África. Principal especie exportada por GLV.",
+      '["MAPA","DAFF","Halal Internacional","SGS","INAC"]',
+      '["LIVE_EXPORT","HALAL_CERTIFIED","ESCAS_COMPLIANT"]',
+      30,75,"Cuarentena 30-45 días (Brasil/Australia). Certificación SGS obligatoria.","SEA",
+      "Livestock vessels con capacidad 5,000-20,000 cabezas. Sistemas de ventilación y alimentación a bordo.",
+      '["Middle East","North Africa","West Africa","Southeast Asia"]');
+    insPI.run("GOAT",
+      "Caprinos vivos para exportación. Alta valoración en mercados Halal. Creciente demanda en Oriente Medio y Sudeste Asiático.",
+      '["MAPA","DAFF","Halal","Zoosanitario"]',
+      '["LIVE_EXPORT","HALAL_CERTIFIED"]',
+      30,60,"Cuarentena mínima 21 días. Certificación veterinaria MAPA/DAFF.","SEA",
+      "Transporte combinado con ovinos en la mayoría de operaciones.",
+      '["Middle East","Southeast Asia","West Africa"]');
+    insPI.run("PALM_OIL",
+      "Aceite de palma RBD para uso industrial y alimentario. Producto fundamental en mercados de commodities. Alta liquidez global.",
+      '["RSPO","ISO 9001","Halal","HACCP","FOSFA"]',
+      '["RSPO_CERTIFIED","HALAL_CERTIFIED","HACCP"]',
+      15,30,"Lead time desde confirmación de pedido hasta embarque FOB.","SEA",
+      "ISO Tank 20ft o Flexitank. Temperatura controlada 35-40°C para mantener fluidez.",
+      '["Food Processing","Oleochemicals","Biofuel","General Industrial"]');
+    insPI.run("SOYBEAN_OIL",
+      "Aceite de soja degomado y refinado. Sustituto competitivo del aceite de palma. Alta demanda en mercados regulados.",
+      '["MAPA","ANVISA","Halal","Kosher","FOSFA","HACCP"]',
+      '["HALAL_CERTIFIED","KOSHER_CERTIFIED","HACCP"]',
+      15,25,"Producción y embarque desde Brasil/Argentina. Spot o contrato.","SEA",
+      "ISO Tank o Flexitank. Sin restricciones de temperatura en destinos templados.",
+      '["Food Processing","Food Service","Industrial","Retail"]');
+    insPI.run("SUNFLOWER_OIL",
+      "Aceite de girasol refinado alto oleico y estándar. Alta demanda en Europa y Oriente Medio. Origen principal Argentina y Ucrania.",
+      '["SENASA","USDA","Halal","HACCP","FOSFA"]',
+      '["HALAL_CERTIFIED","HACCP"]',
+      15,30,"Spot o forward. Sensible a temporada de cosecha.","SEA",
+      "ISO Tank o Flexitank. Alta oleico no requiere temperatura controlada.",
+      '["Food Processing","Food Service","Retail","Industrial"]');
+    insPI.run("SOYBEANS",
+      "Soja en grano GMO y Non-GMO. Commodity de alto volumen. Principal proteína vegetal para industria de alimentos balanceados.",
+      '["MAPA","ABIOVE","CAS","HACCP","Non-GMO Verified"]',
+      '["PHYTOSANITARY","GRAIN_CERTIFIED"]',
+      10,20,"Disponibilidad según cosecha. Principales temporadas: Brasil mar-jul, Argentina abr-ago.","SEA",
+      "Granel en bulk carriers o contenedores 20ft con flexi-bag.",
+      '["Animal Feed","Crushing Industry","Food Processing","Biofuel"]');
+    insPI.run("CORN",
+      "Maíz amarillo No.2 CBOT standard. Commodity de alto volumen. Principal cereal para pienso animal y etanol.",
+      '["MAPA","USDA","SENASA","HACCP"]',
+      '["PHYTOSANITARY","GRAIN_CERTIFIED"]',
+      10,20,"Disponibilidad todo el año. Cosecha Brasil feb-jul, Argentina abr-sep.","SEA",
+      "Granel en bulk carriers o contenedores 20ft.",
+      '["Animal Feed","Ethanol","Starch Industry","Food Processing"]');
+    insPI.run("RICE",
+      "Arroz blanco 5% broken. Producto de alta demanda en mercados de Africa, Oriente Medio y Asia. Multiple origins disponibles.",
+      '["HACCP","FSSAI","Halal","Kosher","USDA"]',
+      '["HALAL_CERTIFIED","PHYTOSANITARY"]',
+      15,30,"Disponibilidad permanente desde múltiples orígenes.","SEA",
+      "Sacos 50kg paletizados o Big Bags 1MT. FCL o LCL según volumen.",
+      '["Institutional","Food Service","Retail","Humanitarian Aid"]');
+    insPI.run("MANGO",
+      "Mango Tommy Atkins y Keitt de exportación. Fruta tropical de alta demanda en mercados premium de Europa y Asia.",
+      '["GlobalG.A.P.","ICA Fitosanitario","BPA","HACCP"]',
+      '["GLOBALGAP_CERTIFIED","PHYTOSANITARY"]',
+      7,21,"Temporada principal Colombia nov-mar. Lead time desde empaque hasta destino.","SEA",
+      "Cadena de frío continua 7-12°C. Reefer containers 40ft REEFER.",
+      '["Premium Retail","Food Service","Processing Industry"]');
+    insPI.run("PINEAPPLE",
+      "Piña MD2 Gold de exportación. Variedad de alta dulzura y bajo contenido de ácidos. Lider en mercados premium globales.",
+      '["GlobalG.A.P.","HACCP","BRC","ICA"]',
+      '["GLOBALGAP_CERTIFIED","PHYTOSANITARY"]',
+      7,21,"Producción todo el año desde Colombia y Costa Rica.","SEA",
+      "Reefer containers 40ft. Temperatura 7-10°C durante tránsito.",
+      '["Premium Retail","Food Service","Processing"]');
+    insPI.run("PASSION_FRUIT",
+      "Maracuyá fresco y pulpa IQF. Fruta tropical de alta demanda en industria de bebidas y mercados premium. Colombia es principal exportador regional.",
+      '["INVIMA","ICA Fitosanitario","BPA","HACCP"]',
+      '["PHYTOSANITARY","HACCP"]',
+      7,30,"Fresco: 7-14 días. Pulpa IQF: disponibilidad permanente.","SEA",
+      "Fresco en reefer; pulpa IQF en frozen containers -18°C.",
+      '["Beverage Industry","Food Service","Premium Retail","Industrial"]');
+  })();
+
+  // ── 3. Commercial Rules seed (from PaymentTermsRegistry.js) ─────────────────
+  const insCR = db.prepare(`
+    INSERT OR IGNORE INTO cr_rules
+      (rule_code, rule_type, category_scope, product_scope, min_volume, max_volume, rule_config, priority)
+    VALUES (?,?,?,?,?,?,?,?)
+  `);
+
+  db.transaction(() => {
+    // Payment tiers — all categories except LIVE_ANIMALS
+    insCR.run("PAY_TT_100","PAYMENT","ALL","ALL",null,999.99,
+      JSON.stringify({
+        code:"PAY-TT-100",label:"100% T/T Advance",instruments:[{type:"TT",pct:100,timing:"before_shipment"}],
+        description:"Pago total por transferencia bancaria antes del embarque",
+        applies_when:"volume < 1000 MT"
+      }),10);
+    insCR.run("PAY_5050_TT","PAYMENT","ALL","ALL",1000,12499.99,
+      JSON.stringify({
+        code:"PAY-5050-TT",label:"50% TT + 50% on BL",instruments:[{type:"TT",pct:50,timing:"before_shipment"},{type:"TT",pct:50,timing:"on_bl"}],
+        description:"50% anticipo TT + 50% contra BL",
+        applies_when:"1000 MT ≤ volume < 12500 MT"
+      }),20);
+    insCR.run("PAY_3070_SBLC","PAYMENT","ALL","ALL",12500,null,
+      JSON.stringify({
+        code:"PAY-3070-SBLC",label:"30% TT + 70% SBLC",instruments:[{type:"TT",pct:30,timing:"before_shipment"},{type:"SBLC",pct:70,timing:"on_delivery"}],
+        description:"30% TT anticipo + 70% SBLC a la vista",
+        applies_when:"volume ≥ 12500 MT"
+      }),30);
+
+    // Live Animals specific payment terms
+    insCR.run("PAY_AV_1","PAYMENT","LIVE_ANIMALS","ALL",null,null,
+      JSON.stringify({
+        code:"PAGO-AV-1",label:"70% TT + 30% SBLC (Live Animals Standard)",
+        instruments:[{type:"TT",pct:70,timing:"before_shipment"},{type:"SBLC",pct:30,timing:"on_arrival"}],
+        description:"Estándar para exportación animales vivos",
+        applies_when:"default for LIVE_ANIMALS"
+      }),10);
+    insCR.run("PAY_AV_2","PAYMENT","LIVE_ANIMALS","ALL",null,null,
+      JSON.stringify({
+        code:"PAGO-AV-2",label:"100% SBLC (Live Animals Sovereign Buyer)",
+        instruments:[{type:"SBLC",pct:100,timing:"on_loading"}],
+        description:"Para compradores soberanos o estatales. SBLC 100% al cargar.",
+        applies_when:"sovereign or state buyer"
+      }),20);
+    insCR.run("PAY_AV_3","PAYMENT","LIVE_ANIMALS","ALL",null,null,
+      JSON.stringify({
+        code:"PAGO-AV-3",label:"50% TT + 50% on Arrival (Live Animals Trusted)",
+        instruments:[{type:"TT",pct:50,timing:"before_shipment"},{type:"TT",pct:50,timing:"on_arrival"}],
+        description:"Para contrapartes con historial verificado. Requiere aprobación DIRECTOR.",
+        applies_when:"trusted counterparty with verified track record"
+      }),30);
+
+    // Pricing governance rules (from PricingGovernanceRegistry.js)
+    insCR.run("PRICE_MARGIN_AGENTE","PRICING","ALL","ALL",null,null,
+      JSON.stringify({
+        code:"MARGIN-AGENTE",min_margin_pct:3,max_margin_pct:8,
+        description:"Margen comercial estándar para AGENTE",
+        requires_approval_above_pct:8
+      }),100);
+    insCR.run("PRICE_MARGIN_DIRECTOR","PRICING","ALL","ALL",null,null,
+      JSON.stringify({
+        code:"MARGIN-DIRECTOR",min_margin_pct:1,max_margin_pct:15,
+        description:"Margen extendido para DIRECTOR y superiores",
+        requires_approval_above_pct:15
+      }),90);
+    insCR.run("PRICE_INCOTERM_DEFAULT","INCOTERM","ALL","ALL",null,null,
+      JSON.stringify({
+        code:"INCOTERM-DEFAULT",default:"CFR",
+        allowed:["FOB","CFR","CIF","DDP","DAP","FAS"],
+        live_animals_allowed:["FOB"],
+        description:"Incoterms permitidos por tipo de producto"
+      }),100);
+  })();
+
+  // ── 4. Document Intelligence Requirements seed ───────────────────────────────
+  const insDI = db.prepare(`
+    INSERT OR IGNORE INTO di_requirements
+      (req_code, category_code, product_scope, req_type, req_key,
+       req_label_es, req_label_en, is_mandatory, validation_rule, pdf_section, display_order)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+  `);
+
+  db.transaction(() => {
+    // ── LIVE_ANIMALS required fields ───────────────────────────────────────────
+    insDI.run("LA_HEADCOUNT","LIVE_ANIMALS","ALL","FIELD","headcount",
+      "Número de Cabezas","Number of Heads",1,
+      JSON.stringify({type:"integer",min:1}),"commercial_table",10);
+    insDI.run("LA_AVG_WEIGHT","LIVE_ANIMALS","ALL","FIELD","avg_weight",
+      "Peso Promedio (kg)","Average Weight (kg)",1,
+      JSON.stringify({type:"number",min:0.1}),"commercial_table",20);
+    insDI.run("LA_PRICE_KG","LIVE_ANIMALS","ALL","FIELD","price_per_kg",
+      "Precio por KG (USD)","Price per KG (USD)",1,
+      JSON.stringify({type:"number",min:0.01}),"commercial_table",30);
+    insDI.run("LA_SPECIES","LIVE_ANIMALS","ALL","FIELD","product",
+      "Especie","Species",1,
+      JSON.stringify({type:"string",allowed:["CATTLE","SHEEP","GOAT"]}),"commercial_table",40);
+    insDI.run("LA_VET_CERT","LIVE_ANIMALS","ALL","COMPLIANCE","vet_certificate",
+      "Certificado Zoosanitario","Veterinary Certificate",1,
+      JSON.stringify({type:"document",issuer:"MAPA/DAFF/SENASA"}),"compliance_section",50);
+    insDI.run("LA_QUARANTINE","LIVE_ANIMALS","ALL","COMPLIANCE","quarantine_protocol",
+      "Protocolo de Cuarentena","Quarantine Protocol",1,
+      JSON.stringify({type:"document",min_days:21}),"compliance_section",60);
+    insDI.run("LA_HALAL","LIVE_ANIMALS","ALL","COMPLIANCE","halal_certificate",
+      "Certificado Halal","Halal Certificate",0,
+      JSON.stringify({type:"document",issuer:"accredited_halal_body"}),"compliance_section",70);
+    insDI.run("LA_PDF_LIVESTOCK","LIVE_ANIMALS","ALL","PDF_SECTION","livestock_section",
+      "Sección Ganado Vivo en PDF","Livestock Section in PDF",1,
+      null,"live_animals_block",80);
+
+    // ── OILS required fields ───────────────────────────────────────────────────
+    insDI.run("OIL_VOLUME","OILS","ALL","FIELD","quantity_mt",
+      "Volumen (MT)","Volume (MT)",1,
+      JSON.stringify({type:"number",min:20}),"commercial_table",10);
+    insDI.run("OIL_PRICE_MT","OILS","ALL","FIELD","price_per_mt",
+      "Precio por MT (USD)","Price per MT (USD)",1,
+      JSON.stringify({type:"number",min:0.01}),"commercial_table",20);
+    insDI.run("OIL_FFA","OILS","ALL","FIELD","ffa_max",
+      "Acidez Libre Máx (FFA %)","Max Free Fatty Acid (FFA %)",1,
+      JSON.stringify({type:"number",max:0.5}),"quality_specs",30);
+    insDI.run("OIL_TRANSPORT","OILS","ALL","FIELD","transport_mode",
+      "Modalidad de Transporte","Transport Mode",1,
+      JSON.stringify({type:"string",allowed:["ISO Tank","Flexitank","Bulk Tanker"]}),"logistics_section",40);
+    insDI.run("OIL_HALAL","OILS","ALL","COMPLIANCE","halal_certificate",
+      "Certificado Halal","Halal Certificate",0,
+      JSON.stringify({type:"document"}),"compliance_section",50);
+
+    // ── COMMODITIES (grains/sugar) required fields ─────────────────────────────
+    insDI.run("COM_VOLUME","COMMODITIES","ALL","FIELD","quantity_mt",
+      "Volumen (MT)","Volume (MT)",1,
+      JSON.stringify({type:"number",min:100}),"commercial_table",10);
+    insDI.run("COM_PRICE_MT","COMMODITIES","ALL","FIELD","price_per_mt",
+      "Precio por MT (USD)","Price per MT (USD)",1,
+      JSON.stringify({type:"number",min:0.01}),"commercial_table",20);
+    insDI.run("COM_MOISTURE","COMMODITIES","ALL","FIELD","moisture_max",
+      "Humedad Máxima (%)","Max Moisture (%)",1,
+      JSON.stringify({type:"number",max:15}),"quality_specs",30);
+    insDI.run("COM_PHYTO","COMMODITIES","ALL","COMPLIANCE","phytosanitary_certificate",
+      "Certificado Fitosanitario","Phytosanitary Certificate",1,
+      JSON.stringify({type:"document",issuer:"national_agri_authority"}),"compliance_section",40);
+    insDI.run("COM_SUGAR_ICUMSA","COMMODITIES","SUGAR","FIELD","icumsa_grade",
+      "Grado ICUMSA","ICUMSA Grade",1,
+      JSON.stringify({type:"string",allowed:["ICUMSA-45","ICUMSA-100","ICUMSA-150"]}),"quality_specs",50);
+    insDI.run("COM_SOY_GMO","COMMODITIES","SOYBEANS","FIELD","gmo_status",
+      "Estado OGM","GMO Status",1,
+      JSON.stringify({type:"string",allowed:["GMO","Non-GMO IP"]}),"quality_specs",60);
+
+    // ── FRUIT_PRODUCTS required fields ─────────────────────────────────────────
+    insDI.run("FP_VOLUME","FRUIT_PRODUCTS","ALL","FIELD","quantity_mt",
+      "Volumen (MT)","Volume (MT)",1,
+      JSON.stringify({type:"number",min:0.3}),"commercial_table",10);
+    insDI.run("FP_PRICE_MT","FRUIT_PRODUCTS","ALL","FIELD","price_per_mt",
+      "Precio por MT (USD)","Price per MT (USD)",1,
+      JSON.stringify({type:"number",min:0.01}),"commercial_table",20);
+    insDI.run("FP_COLD_CHAIN","FRUIT_PRODUCTS","ALL","COMPLIANCE","cold_chain_cert",
+      "Cadena de Frío Certificada","Cold Chain Certificate",1,
+      JSON.stringify({type:"document"}),"logistics_section",30);
+    insDI.run("FP_GLOBALGAP","FRUIT_PRODUCTS","ALL","COMPLIANCE","globalgap_certificate",
+      "Certificación GlobalG.A.P.","GlobalG.A.P. Certificate",0,
+      JSON.stringify({type:"document"}),"compliance_section",40);
+    insDI.run("FP_PHYTO","FRUIT_PRODUCTS","ALL","COMPLIANCE","phytosanitary_certificate",
+      "Certificado Fitosanitario","Phytosanitary Certificate",1,
+      JSON.stringify({type:"document"}),"compliance_section",50);
+
+    // ── ALL categories — standard commercial fields ─────────────────────────────
+    insDI.run("ALL_INCOTERM","ALL","ALL","FIELD","incoterm",
+      "Incoterm","Incoterm",1,
+      JSON.stringify({type:"string",allowed:["FOB","CFR","CIF","DDP","DAP","FAS"]}),"header",10);
+    insDI.run("ALL_CURRENCY","ALL","ALL","FIELD","currency",
+      "Moneda","Currency",1,
+      JSON.stringify({type:"string",allowed:["USD","EUR","AED","CNY"]}),"header",20);
+    insDI.run("ALL_ORIGIN","ALL","ALL","FIELD","origin",
+      "País de Origen","Country of Origin",1,
+      JSON.stringify({type:"string",minLength:2}),"header",30);
+    insDI.run("ALL_DESTINATION","ALL","ALL","FIELD","destination",
+      "País de Destino","Destination Country",1,
+      JSON.stringify({type:"string",minLength:2}),"header",40);
+    insDI.run("ALL_PAYMENT","ALL","ALL","FIELD","payment_method",
+      "Condiciones de Pago","Payment Terms",1,
+      JSON.stringify({type:"string"}),"commercial_table",50);
+  })();
+
+  console.log("✓ Commercial Intelligence Foundation V2 (FASE 0) seed completed");
 }
