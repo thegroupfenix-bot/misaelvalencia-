@@ -1,12 +1,33 @@
 const express = require("express");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
-const { requireRole, requireLevel } = require("../middleware/rbac");
+const { requireLevel, ROLE_LEVEL, DIRECTORS } = require("../middleware/rbac");
 const { sendDocumentEmail } = require("../utils/email");
 const pii = require("../utils/piiCrypto");
 
 const router = express.Router();
 router.use(authenticate);
+
+// ─── Document status whitelist + valid transitions ────────────────────────────
+const ALLOWED_DOC_STATUSES = new Set([
+  "Emitido", "Pendiente", "Firmado", "Activo", "Rechazado", "Cancelado", "Archivado",
+]);
+const DOC_STATUS_TRANSITIONS = {
+  "Emitido":   ["Pendiente", "Firmado", "Rechazado", "Cancelado"],
+  "Pendiente": ["Firmado", "Rechazado", "Cancelado"],
+  "Firmado":   ["Activo", "Cancelado"],
+  "Activo":    ["Cancelado"],
+  "Rechazado": [],  // terminal
+  "Cancelado": [],  // terminal
+  "Archivado": [],  // terminal
+};
+
+// Ownership: directors+ can access any doc; others only own docs (by username)
+function canAccessDoc(doc, user) {
+  if (DIRECTORS.has(user.role)) return true;
+  if ((ROLE_LEVEL[user.role] || 0) >= 70) return true;
+  return doc.agent === user.username;
+}
 
 const PRICE_TABLE = {
   "UAE":                   { port: "Jebel Ali / Port Rashid, Dubai",   price: 5.70, transit: "25–28" },
@@ -81,11 +102,12 @@ function toRow(d) {
   };
 }
 
-// GET /documents  — AGENTE sees own docs; DIRECTIVO sees all
+// GET /documents — restricted users see only their own docs (by agent username)
 router.get("/", (req, res) => {
   const { type } = req.query;
+  const isRestricted = (ROLE_LEVEL[req.user.role] || 0) < 70;
   let stmt;
-  if (req.user.role === "AGENTE") {
+  if (isRestricted) {
     stmt = type
       ? db.prepare("SELECT * FROM documents WHERE agent = ? AND type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC")
       : db.prepare("SELECT * FROM documents WHERE agent = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC");
@@ -103,11 +125,9 @@ router.get("/", (req, res) => {
 
 // GET /documents/:id
 router.get("/:id", (req, res) => {
-  const doc = db
-    .prepare("SELECT * FROM documents WHERE id = ?")
-    .get(req.params.id);
+  const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
-  if (req.user.role === "AGENTE" && doc.agent !== req.user.username) {
+  if (!canAccessDoc(doc, req.user)) {
     return res.status(403).json({ error: "Acceso denegado" });
   }
   res.json(toRow(doc));
@@ -137,8 +157,8 @@ router.post("/", requireLevel(40), async (req, res) => {
   if (!["SCO", "FCO", "SPA"].includes(type)) {
     return res.status(400).json({ error: "Tipo inválido" });
   }
-  if (type === "SPA" && req.user.role !== "DIRECTIVO") {
-    return res.status(403).json({ error: "Solo DIRECTIVO puede crear SPA" });
+  if (type === "SPA" && (ROLE_LEVEL[req.user.role] || 0) < 75) {
+    return res.status(403).json({ error: "Solo DIRECTOR o superior puede crear SPA" });
   }
 
   const isChina = effectiveDestination?.toLowerCase().includes("china");
@@ -216,18 +236,34 @@ router.post("/", requireLevel(40), async (req, res) => {
   res.status(201).json(newDoc);
 });
 
-// PATCH /documents/:id/status  — DIRECTIVO only
-router.patch("/:id/status", requireRole("DIRECTIVO"), (req, res) => {
+// PATCH /documents/:id/status — DIRECTOR+ (level 75) only
+router.patch("/:id/status", requireLevel(75), (req, res) => {
   const { status } = req.body;
-  if (!status) return res.status(400).json({ error: "status requerido" });
+  if (!status || typeof status !== "string") {
+    return res.status(400).json({ error: "status requerido" });
+  }
+  if (!ALLOWED_DOC_STATUSES.has(status)) {
+    return res.status(400).json({
+      error: `Estado inválido: "${status}". Estados permitidos: ${[...ALLOWED_DOC_STATUSES].join(", ")}`,
+    });
+  }
 
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
 
+  const current = doc.status || "Emitido";
+  const allowed = DOC_STATUS_TRANSITIONS[current] || [];
+
+  // SUPER_ADMIN can force any transition for corrections
+  if (req.user.role !== "SUPER_ADMIN" && !allowed.includes(status)) {
+    return res.status(400).json({
+      error: `Transición inválida: "${current}" → "${status}". Transiciones permitidas: ${allowed.join(", ") || "(ninguna — estado terminal)"}`,
+    });
+  }
+
   db.prepare("UPDATE documents SET status = ? WHERE id = ?").run(status, req.params.id);
-  db.prepare(
-    "INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)"
-  ).run(req.user.username, `status → ${status}`, req.params.id, req.ip);
+  db.prepare("INSERT INTO audit_log (username, action, doc_id, ip) VALUES (?, ?, ?, ?)")
+    .run(req.user.username, `doc_status: ${current} → ${status}`, req.params.id, req.ip);
 
   res.json(toRow(db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id)));
 });
@@ -240,7 +276,7 @@ router.delete("/:id", requireLevel(40), (req, res) => {
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
   if (doc.deleted) return res.status(410).json({ error: "Documento ya eliminado" });
 
-  const isAdmin = ["DIRECTIVO", "SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTOR"].includes(req.user.role);
+  const isAdmin = (ROLE_LEVEL[req.user.role] || 0) >= 70;
   const isOwner = doc.agent === req.user.username;
 
   if (!isAdmin && !isOwner) {
