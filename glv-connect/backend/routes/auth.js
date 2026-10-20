@@ -36,6 +36,7 @@ function buildPayload(user) {
     preferred_lang: user.preferred_lang || "es",
     first_login: user.first_login || 0,
     profile_completed: user.profile_completed || 0,
+    linked_client_id: user.linked_client_id || null,
   };
 }
 
@@ -95,6 +96,10 @@ router.post("/login", (req, res) => {
   const identifier = `${(req.ip || "").slice(0, 45)}:${username.toLowerCase()}`;
   const rl = checkRateLimit(identifier);
   if (rl.blocked) {
+    try {
+      db.prepare("INSERT INTO audit_log (username, action, ip) VALUES (?, ?, ?)")
+        .run(username.toLowerCase(), "LOGIN_BRUTE_FORCE_BLOCKED", (req.ip || "").slice(0, 45));
+    } catch (_) {}
     return res.status(429).json({ error: "Cuenta bloqueada temporalmente. Intenta más tarde.", lockedUntil: rl.lockedUntil });
   }
 

@@ -4,6 +4,7 @@ const { authenticate } = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL, DIRECTORS } = require("../middleware/rbac");
 const { sendDocumentEmail } = require("../utils/email");
 const pii = require("../utils/piiCrypto");
+const { genId } = require("../utils/docId");
 
 const router = express.Router();
 router.use(authenticate);
@@ -52,12 +53,6 @@ function lookupDestInfo(destination) {
   return {};
 }
 
-function genId(type) {
-  const count = db
-    .prepare("SELECT COUNT(*) AS c FROM documents WHERE type = ?")
-    .get(type).c;
-  return `${type}-GLV-2026-${String(count + 2).padStart(3, "0")}`;
-}
 
 function toRow(d) {
   return {
@@ -195,7 +190,7 @@ router.post("/", requireLevel(40), async (req, res) => {
   }
   const totalValue = (totalKg && pricePerKg ? totalKg * pricePerKg : null) || cdContractValue || null;
 
-  const id = genId(type);
+  const id = genId(type, db);
   const status = type === "SPA" ? "Activo" : "Emitido";
   const date = new Date().toISOString().split("T")[0];
 
