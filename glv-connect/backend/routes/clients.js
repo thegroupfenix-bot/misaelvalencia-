@@ -18,6 +18,7 @@ const { rateLimit } = require("../middleware/rateLimiter");
 const pii = require("../utils/piiCrypto");
 
 const kycLimiter = rateLimit(15 * 60 * 1000, 10);
+const IS_PROD = (process.env.NODE_ENV || "").toLowerCase() === "production";
 
 // ─── Valid KYC status transitions ─────────────────────────────────────────────
 const KYC_STATUSES = [
@@ -42,6 +43,12 @@ router.post("/kyc", kycLimiter, (req, res) => {
     const rawSize = JSON.stringify(body).length;
     if (rawSize > KYC_MAX_BODY_SIZE) {
       return res.status(413).json({ error: "Payload excede el tamaño máximo permitido." });
+    }
+
+    // Reject in production when PII encryption key is missing — never store plaintext KYC data in prod
+    if (IS_PROD && !pii.isConfigured()) {
+      console.error("[POST /clients/kyc] PII_ENCRYPTION_KEY no configurada en producción — registro rechazado");
+      return res.status(503).json({ error: "Servicio temporalmente no disponible. Contacte a soporte." });
     }
 
     const { glv_code, empresa, email, submission_type } = body;
@@ -69,11 +76,11 @@ router.post("/kyc", kycLimiter, (req, res) => {
     const clientIp = (req.headers["x-forwarded-for"] || req.ip || "").toString().split(",")[0].trim();
     const ua       = (req.headers["user-agent"] || "").slice(0, 512);
 
-    // 1. Guardar en kyc_submissions (staging)
+    // 1. Guardar en kyc_submissions (staging) — always store encrypted data
     const sub = db.prepare(`
       INSERT INTO kyc_submissions (submission_type, glv_code, raw_data, ip_address, user_agent, status)
       VALUES (?, ?, ?, ?, ?, 'PENDING')
-    `).run(submType, glv_code, rawJson, clientIp, ua);
+    `).run(submType, glv_code, encryptedJson, clientIp, ua);
     const submissionId = sub.lastInsertRowid;
 
     // 2. Verificar si ya existe cliente con ese glv_code
@@ -299,13 +306,13 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
     if (kyc_status === "ACTIVE_CLIENT") {
       updates.push("lead_status = 'QUALIFIED'");
       updates.push("active = 1");
-      // Auto-generate permanent GLV code if not already assigned
+      // Auto-generate permanent GLV code if not already assigned.
+      // generateGlvCode throws on failure — error propagates to outer catch,
+      // aborting before the UPDATE runs so the client is never activated without a code.
       if (!client.glv_code_permanent) {
-        try {
-          const permCode = generateGlvCode("GLV-CO");
-          updates.push("glv_code_permanent = ?");
-          vals.push(permCode);
-        } catch (_) {}
+        const permCode = generateGlvCode("GLV-CO");
+        updates.push("glv_code_permanent = ?");
+        vals.push(permCode);
       }
     }
 

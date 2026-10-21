@@ -88,6 +88,17 @@ describe("Document ID — year", () => {
     const nB = parseInt(b.split("-").pop(), 10);
     assert.ok(nB >= nA, "counter should be non-decreasing");
   });
+
+  test("genId produces 10 distinct IDs with no duplicates (atomic sequence)", () => {
+    const db = getDb();
+    const { genId } = require("../utils/docId");
+    const ids = [];
+    for (let i = 0; i < 10; i++) {
+      ids.push(genId("SCO", db, new Date("2026-05-01")));
+    }
+    const unique = new Set(ids);
+    assert.equal(unique.size, 10, `all 10 IDs must be distinct — got: ${ids.join(", ")}`);
+  });
 });
 
 // ─── 2. Client A/B isolation ──────────────────────────────────────────────────
@@ -147,20 +158,32 @@ describe("Client isolation — A cannot access B", () => {
     assert.equal(res.status, 403, "CLIENT role cannot access kyc-data endpoint");
   });
 
-  test("documents list: client A only sees own documents", async () => {
+  test("documents list: client A only sees documents linked via client_id FK", async () => {
     const db = getDb();
-    // Insert a document belonging to client_alpha (agent field = username)
+    // Insert one document per client using client_id FK (the authoritative isolation mechanism)
     db.prepare(`
-      INSERT INTO documents (id, type, status, client, agent, date, destination, product)
-      VALUES (?, 'SCO', 'Emitido', 'Company Alpha', 'client_alpha', date('now'), 'UAE', 'Live sheep')
-    `).run("SCO-GLV-2026-T01");
+      INSERT INTO documents (id, type, status, client, client_id, agent, date, destination, product)
+      VALUES (?, 'SCO', 'Emitido', 'Company Alpha', ?, 'staff_agent', date('now'), 'UAE', 'Live sheep')
+    `).run("SCO-GLV-2026-T01", clientAId);
+    db.prepare(`
+      INSERT INTO documents (id, type, status, client, client_id, agent, date, destination, product)
+      VALUES (?, 'SCO', 'Emitido', 'Company Beta', ?, 'staff_agent', date('now'), 'UAE', 'Live cattle')
+    `).run("SCO-GLV-2026-T02", clientBId);
 
-    const res = await agentA.get("/documents");
-    assert.equal(res.status, 200);
-    const ids = res.body.map(d => d.id || d.agent);
-    // All returned docs should be agent=client_alpha
-    const foreign = res.body.filter(d => d.agent !== "client_alpha");
-    assert.equal(foreign.length, 0, "client A should not see other agents' documents");
+    const resA = await agentA.get("/documents");
+    assert.equal(resA.status, 200);
+    assert.ok(resA.body.some(d => d.id === "SCO-GLV-2026-T01"), "client A should see own document");
+    assert.ok(!resA.body.some(d => d.id === "SCO-GLV-2026-T02"), "client A must NOT see client B document");
+  });
+
+  test("client A GET /documents/:docBId returns 403", async () => {
+    const res = await agentA.get("/documents/SCO-GLV-2026-T02");
+    assert.equal(res.status, 403, "client A must not access client B document directly");
+  });
+
+  test("client B GET /documents/:docAId returns 403", async () => {
+    const res = await agentB.get("/documents/SCO-GLV-2026-T01");
+    assert.equal(res.status, 403, "client B must not access client A document directly");
   });
 });
 
@@ -496,10 +519,12 @@ describe("Migrations — Phase 0 schema completeness", () => {
       ["login_attempts",        "login_attempts table"],
       ["password_reset_tokens", "password_reset_tokens table"],
       ["glv_code_sequences",    "glv_code_sequences table"],
+      ["doc_id_sequences",           "doc_id_sequences table (Phase B — atomic doc IDs)"],
       ["users_linked_client_id",     "users.linked_client_id column"],
       ["clients_glv_code_permanent", "clients.glv_code_permanent column"],
       ["clients_kyc_status",         "clients.kyc_status column"],
       ["documents_commercial_data",  "documents.commercial_data column"],
+      ["documents_client_id",        "documents.client_id column (Phase B — client isolation FK)"],
     ];
     for (const [key, label] of checks) {
       assert.ok(status[key], `${label} should exist`);

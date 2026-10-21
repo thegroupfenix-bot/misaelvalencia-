@@ -18,18 +18,26 @@ const DOC_STATUS_TRANSITIONS = {
   "Pendiente": ["Firmado", "Rechazado", "Cancelado"],
   "Firmado":   ["Activo", "Cancelado"],
   "Activo":    ["Cancelado"],
-  "Rechazado": [],  // terminal
-  "Cancelado": [],  // terminal
-  "Archivado": [],  // terminal
+  "Rechazado": [],
+  "Cancelado": [],
+  "Archivado": [],
 };
 
-// Ownership: directors+ can access any doc; others only own docs (by username)
+/**
+ * Access control:
+ * - Directors/managers (level >= 70): any document
+ * - AGENTE/lower staff: own documents (agent = username)
+ * - CLIENT/SUPPLIER: only documents linked to their linked_client_id
+ */
 function canAccessDoc(doc, user) {
-  if (DIRECTORS.has(user.role)) return true;
   if ((ROLE_LEVEL[user.role] || 0) >= 70) return true;
+  if (user.role === "CLIENT" || user.role === "SUPPLIER") {
+    return user.linked_client_id != null && doc.client_id === user.linked_client_id;
+  }
   return doc.agent === user.username;
 }
 
+// ─── Authoritative price table (single source of truth — same as PRICE_TABLE) ─
 const PRICE_TABLE = {
   "UAE":                   { port: "Jebel Ali / Port Rashid, Dubai",   price: 5.70, transit: "25–28" },
   "Saudi Arabia (East)":   { port: "Port of Dammam",                   price: 5.80, transit: "27–30" },
@@ -39,7 +47,6 @@ const PRICE_TABLE = {
   "China":                 { port: "Port of Shanghai / Tianjin",       price: 5.65, transit: "32–38" },
 };
 
-// Fuzzy lookup: handles "United Arab Emirates", "Saudi Arabia", full country names
 function lookupDestInfo(destination) {
   if (!destination) return {};
   if (PRICE_TABLE[destination]) return PRICE_TABLE[destination];
@@ -47,12 +54,25 @@ function lookupDestInfo(destination) {
   if (d.includes("arab emirate") || d.includes("uae") || d.includes("dubai") || d.includes("abu dhabi")) return PRICE_TABLE["UAE"];
   if (d.includes("saudi") && (d.includes("east") || d.includes("dammam"))) return PRICE_TABLE["Saudi Arabia (East)"];
   if (d.includes("saudi") && (d.includes("west") || d.includes("jeddah"))) return PRICE_TABLE["Saudi Arabia (West)"];
-  if (d.includes("saudi")) return PRICE_TABLE["Saudi Arabia (East)"]; // default
+  if (d.includes("saudi")) return PRICE_TABLE["Saudi Arabia (East)"];
   if (d.includes("china")) return PRICE_TABLE["China"];
   if (d.includes("turk") || d.includes("türk")) return PRICE_TABLE["Türkiye (South)"];
   return {};
 }
 
+/**
+ * Look up authoritative price from pc_products by product name/slug.
+ * Returns null if product not found.
+ */
+function lookupProductPrice(productName) {
+  if (!productName) return null;
+  try {
+    const row = db.prepare(
+      "SELECT cif_price, fob_price FROM pc_products WHERE LOWER(name_es) = LOWER(?) OR LOWER(commercial_name) = LOWER(?) LIMIT 1"
+    ).get(productName, productName);
+    return row ? (row.cif_price || row.fob_price || null) : null;
+  } catch { return null; }
+}
 
 function toRow(d) {
   return {
@@ -60,6 +80,7 @@ function toRow(d) {
     type: d.type,
     status: d.status,
     client: d.client,
+    clientId: d.client_id,
     clientCountry: d.client_country,
     clientRepresentative: d.client_representative,
     clientEmail: d.client_email,
@@ -97,24 +118,34 @@ function toRow(d) {
   };
 }
 
-// GET /documents — restricted users see only their own docs (by agent username)
+// GET /documents
 router.get("/", (req, res) => {
   const { type } = req.query;
-  const isRestricted = (ROLE_LEVEL[req.user.role] || 0) < 70;
-  let stmt;
-  if (isRestricted) {
-    stmt = type
-      ? db.prepare("SELECT * FROM documents WHERE agent = ? AND type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC")
-      : db.prepare("SELECT * FROM documents WHERE agent = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC");
-    const rows = type
-      ? stmt.all(req.user.username, type)
-      : stmt.all(req.user.username);
-    return res.json(rows.map(toRow));
+  const level = ROLE_LEVEL[req.user.role] || 0;
+  const isClient = req.user.role === "CLIENT" || req.user.role === "SUPPLIER";
+
+  let rows;
+  if (isClient) {
+    // CLIENT/SUPPLIER: only documents linked to their client record
+    const cid = req.user.linked_client_id;
+    if (!cid) return res.json([]);
+    const sql = type
+      ? "SELECT * FROM documents WHERE client_id = ? AND type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC"
+      : "SELECT * FROM documents WHERE client_id = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC";
+    rows = type ? db.prepare(sql).all(cid, type) : db.prepare(sql).all(cid);
+  } else if (level < 70) {
+    // AGENTE / restricted staff: own documents by agent username
+    const sql = type
+      ? "SELECT * FROM documents WHERE agent = ? AND type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC"
+      : "SELECT * FROM documents WHERE agent = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC";
+    rows = type ? db.prepare(sql).all(req.user.username, type) : db.prepare(sql).all(req.user.username);
+  } else {
+    // Directors and above: all documents
+    const sql = type
+      ? "SELECT * FROM documents WHERE type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC"
+      : "SELECT * FROM documents WHERE (deleted = 0 OR deleted IS NULL) ORDER BY date DESC";
+    rows = type ? db.prepare(sql).all(type) : db.prepare(sql).all();
   }
-  stmt = type
-    ? db.prepare("SELECT * FROM documents WHERE type = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY date DESC")
-    : db.prepare("SELECT * FROM documents WHERE (deleted = 0 OR deleted IS NULL) ORDER BY date DESC");
-  const rows = type ? stmt.all(type) : stmt.all();
   res.json(rows.map(toRow));
 });
 
@@ -135,16 +166,21 @@ router.post("/", requireLevel(40), async (req, res) => {
     clientEmail, clientPhone, destination, product,
     headcount, avgWeight, origin, paymentMethod,
     observations, parentId,
-    // Extended fields
     payment_option, doc_trigger, has_guarantee, guarantee_type, guarantee_bank,
     validity_days, custom_product_name, custom_product_desc, custom_unit,
     fco_confirmed, client_id_doc_b64,
     commercial_data,
+    // client_id may be provided explicitly when agent selects from client list
+    client_id: clientIdParam,
   } = req.body;
 
-  // Derive product from commercial_data if not provided directly
-  const effectiveProduct = product || (commercial_data?.rows?.[0]?.category) || (commercial_data?.category) || null;
-  const effectiveDestination = destination || commercial_data?.destination || null;
+  const cdData = (typeof commercial_data === "string")
+    ? (() => { try { return JSON.parse(commercial_data); } catch { return {}; } })()
+    : (commercial_data || {});
+  const cdRow0 = cdData?.rows?.[0] || {};
+
+  const effectiveProduct     = product || cdRow0.category || cdData.category || null;
+  const effectiveDestination = destination || cdData.destination || null;
 
   if (!type || !client || !effectiveProduct || !effectiveDestination) {
     return res.status(400).json({ error: "Faltan campos obligatorios: type, client, product/commercial_data, destination" });
@@ -156,55 +192,55 @@ router.post("/", requireLevel(40), async (req, res) => {
     return res.status(403).json({ error: "Solo DIRECTOR o superior puede crear SPA" });
   }
 
-  const isChina = effectiveDestination?.toLowerCase().includes("china");
+  // ─── Resolve client_id ──────────────────────────────────────────────────────
+  // Use explicitly passed client_id, or look up by clientEmail, or by company name.
+  let resolvedClientId = clientIdParam ? parseInt(clientIdParam, 10) : null;
+  if (!resolvedClientId && clientEmail) {
+    const cl = db.prepare("SELECT id FROM clients WHERE email = ? AND active = 1 LIMIT 1").get(clientEmail);
+    if (cl) resolvedClientId = cl.id;
+  }
+  if (!resolvedClientId) {
+    const cl = db.prepare("SELECT id FROM clients WHERE (name = ? OR company = ?) AND active = 1 LIMIT 1").get(client, client);
+    if (cl) resolvedClientId = cl.id;
+  }
+
+  // ─── Backend price recalculation — never trust commercial_data totals ───────
+  const isChina = effectiveDestination.toLowerCase().includes("china");
   const exporter = isChina ? "GLV Services SAS (Colombia)" : "GLV Global Food Services LLC (Miami, FL)";
-  const domain = isChina ? "glvservicesexp.com" : "glvglobalfoodservices.com";
+  const domain   = isChina ? "glvservicesexp.com" : "glvglobalfoodservices.com";
   const gaccNote = isChina ? "GACC No. YA11000PDY110K805" : null;
   const effectiveOrigin = isChina ? "Colombia" : (origin || "Brazil");
 
   const destInfo = lookupDestInfo(effectiveDestination);
 
-  // Read unit price from CommercialEngine data when not in PRICE_TABLE
-  const cdData = (typeof commercial_data === "string") ? (() => { try { return JSON.parse(commercial_data); } catch { return {}; } })() : (commercial_data || {});
-  const cdRow0 = cdData?.rows?.[0] || {};
-  const cdInc  = (cdRow0.incoterms || ["CFR"])[0];
-  const cdUnitPrice = parseFloat(cdRow0.incotermPrices?.[cdInc] || cdRow0.unitPrice || 0);
-  const cdAvgWeight = parseFloat(cdRow0.specs?.avgWeight || cdRow0.avgWeight || 0);
-  const cdHeadCount = parseFloat(cdRow0.specs?.headCount || cdRow0.quantity || headcount || 0);
+  // Price hierarchy: PRICE_TABLE (authoritative) → pc_products catalog → null
+  const catalogPrice = lookupProductPrice(effectiveProduct || custom_product_name);
+  const pricePerKg   = destInfo.price ?? catalogPrice ?? null;
 
-  const pricePerKg = destInfo.price || cdUnitPrice || null;
-  const effectiveAvgWeight = parseFloat(avgWeight) || cdAvgWeight || null;
-  const effectiveHeadcount = parseFloat(headcount) || cdHeadCount || null;
-  const totalKg = (effectiveHeadcount || 0) * (effectiveAvgWeight || 0);
+  // Quantity from explicit params only — never from commercial_data.summary
+  const effectiveAvgWeight  = parseFloat(avgWeight) || parseFloat(cdRow0.specs?.avgWeight || cdRow0.avgWeight || 0) || null;
+  const effectiveHeadcount  = parseFloat(headcount) || parseFloat(cdRow0.specs?.headCount || cdRow0.quantity || 0) || null;
+  const totalKg             = (effectiveHeadcount || 0) * (effectiveAvgWeight || 0);
 
-  // Contract value: try summary → recompute from raw
-  let cdContractValue = cdData?.summary?.contractValue || cdRow0?.summary?.contractValue || 0;
-  if (cdContractValue === 0 && cdHeadCount > 0 && cdUnitPrice > 0) {
-    const avW = cdAvgWeight || parseFloat(avgWeight) || 45;
-    const shipV = cdHeadCount * avW * cdUnitPrice;
-    const freq  = cdRow0.deliveryFrequency || "ONE_SHIPMENT";
-    const spY   = freq === "MONTHLY" ? 12 : freq === "QUARTERLY" ? 4 : freq === "BIMONTHLY" ? 6 : parseFloat(cdRow0.numShipments || 1);
-    const dur   = parseFloat(cdRow0.contractDuration || 12);
-    const mV    = freq === "ONE_SHIPMENT" ? shipV : shipV * spY / 12;
-    cdContractValue = mV * dur;
-  }
-  const totalValue = (totalKg && pricePerKg ? totalKg * pricePerKg : null) || cdContractValue || null;
+  // Recalculate total from authoritative price. Do NOT use commercial_data.summary.contractValue.
+  const totalValue = (totalKg > 0 && pricePerKg != null) ? totalKg * pricePerKg : null;
 
-  const id = genId(type, db);
+  const id     = genId(type, db);
   const status = type === "SPA" ? "Activo" : "Emitido";
-  const date = new Date().toISOString().split("T")[0];
+  const date   = new Date().toISOString().split("T")[0];
 
   db.prepare(`
     INSERT INTO documents
-      (id, type, status, client, client_country, client_representative, client_email, client_phone,
+      (id, type, status, client, client_id, client_country, client_representative, client_email, client_phone,
        agent, date, destination, product, headcount, avg_weight, price_per_kg, origin,
        total_value, payment_method, exporter, domain, gacc_note, parent_id, observations,
        payment_option, doc_trigger, has_guarantee, guarantee_type, guarantee_bank,
        validity_days, custom_product_name, custom_product_desc, custom_unit,
        fco_confirmed, client_id_doc_b64, commercial_data)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
-    id, type, status, client, clientCountry || null, clientRepresentative || null,
+    id, type, status, client, resolvedClientId || null,
+    clientCountry || null, clientRepresentative || null,
     clientEmail || null, clientPhone || null,
     req.user.username, date, effectiveDestination, effectiveProduct,
     effectiveHeadcount, effectiveAvgWeight, pricePerKg,
@@ -214,7 +250,8 @@ router.post("/", requireLevel(40), async (req, res) => {
     guarantee_type || null, guarantee_bank || null,
     parseInt(validity_days) || 15,
     custom_product_name || null, custom_product_desc || null, custom_unit || null,
-    fco_confirmed ? 1 : 0, (client_id_doc_b64 && pii.isConfigured()) ? pii.encrypt(client_id_doc_b64) : (client_id_doc_b64 || null),
+    fco_confirmed ? 1 : 0,
+    (client_id_doc_b64 && pii.isConfigured()) ? pii.encrypt(client_id_doc_b64) : (client_id_doc_b64 || null),
     commercial_data ? JSON.stringify(commercial_data) : null
   );
 
@@ -249,7 +286,6 @@ router.patch("/:id/status", requireLevel(75), (req, res) => {
   const current = doc.status || "Emitido";
   const allowed = DOC_STATUS_TRANSITIONS[current] || [];
 
-  // SUPER_ADMIN can force any transition for corrections
   if (req.user.role !== "SUPER_ADMIN" && !allowed.includes(status)) {
     return res.status(400).json({
       error: `Transición inválida: "${current}" → "${status}". Transiciones permitidas: ${allowed.join(", ") || "(ninguna — estado terminal)"}`,
@@ -264,8 +300,6 @@ router.patch("/:id/status", requireLevel(75), (req, res) => {
 });
 
 // DELETE /documents/:id — soft delete
-// AGENTE: can only delete own docs with status "Emitido" (not signed/active)
-// DIRECTIVO/ADMIN: can delete any doc
 router.delete("/:id", requireLevel(40), (req, res) => {
   const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
   if (!doc) return res.status(404).json({ error: "Documento no encontrado" });

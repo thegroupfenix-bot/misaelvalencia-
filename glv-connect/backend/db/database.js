@@ -721,6 +721,20 @@ db.exec(`
   );
 `);
 
+// ─── Phase 0 / Fix: atomic document ID sequences ─────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS doc_id_sequences (
+    type     TEXT PRIMARY KEY,
+    last_seq INTEGER NOT NULL DEFAULT 0
+  );
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('SCO', 0);
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('FCO', 0);
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('SPA', 0);
+`);
+
+// documents: FK to clients for proper portal access control
+safeAlter("ALTER TABLE documents ADD COLUMN client_id INTEGER REFERENCES clients(id)");
+
 // ─── Phase 0: login rate-limiting + password reset + GLV code sequences ───────
 db.exec(`
   CREATE TABLE IF NOT EXISTS login_attempts (
@@ -1019,10 +1033,12 @@ function getMigrationStatus() {
     login_attempts:             checkTable("login_attempts"),
     password_reset_tokens:      checkTable("password_reset_tokens"),
     glv_code_sequences:         checkTable("glv_code_sequences"),
+    doc_id_sequences:           checkTable("doc_id_sequences"),
     users_linked_client_id:     checkColumn("users", "linked_client_id"),
     clients_glv_code_permanent: checkColumn("clients", "glv_code_permanent"),
     clients_kyc_status:         checkColumn("clients", "kyc_status"),
     documents_commercial_data:  checkColumn("documents", "commercial_data"),
+    documents_client_id:        checkColumn("documents", "client_id"),
   };
 }
 db.getMigrationStatus = getMigrationStatus;

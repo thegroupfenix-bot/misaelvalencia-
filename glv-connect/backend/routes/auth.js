@@ -120,7 +120,8 @@ router.post("/login", (req, res) => {
   setCookie(res, token);
   db.prepare("INSERT INTO audit_log (username, action, ip) VALUES (?, ?, ?)").run(user.username, "login", req.ip);
 
-  res.json({ token, user: payload });
+  // Return user payload only — token is in httpOnly cookie, never in response body
+  res.json({ user: payload });
 });
 
 // ── POST /auth/logout ────────────────────────────────────────────────────────

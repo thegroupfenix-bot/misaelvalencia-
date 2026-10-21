@@ -1,20 +1,16 @@
 const BASE = import.meta.env.VITE_API_URL || "https://misaelvalencia-production.up.railway.app";
 
-function getToken() {
-  return localStorage.getItem("glv_token");
-}
-
+// Authentication is exclusively via httpOnly cookie set by the server.
+// No token is stored in localStorage or sent in headers from the browser.
 async function request(method, path, body, signal) {
   const headers = { "Content-Type": "application/json" };
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   let res;
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
       headers,
-      credentials: "include", // Phase 0: send httpOnly cookie on every request
+      credentials: "include",
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
     });
@@ -88,10 +84,9 @@ export const api = {
   deleteClientDocument: (id, docId)  => request("DELETE", `/clients/${id}/documents/${docId}`),
   getClientDocumentUrl: (id, docId)  => request("GET",    `/clients/${id}/documents/${docId}/url`),
   uploadClientDocument: (id, formData) => {
-    const token = localStorage.getItem("glv_token");
     return fetch(`${BASE}/clients/${id}/documents/upload`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     }).then(async r => {
       const json = await r.json();
@@ -146,10 +141,9 @@ export const api = {
   },
   getMediaItem:        (id) => request("GET", `/media/${id}`),
   uploadMedia:         (formData) => {
-    const token = localStorage.getItem("glv_token");
     return fetch(`${BASE}/media/upload`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     }).then(r => r.json());
   },

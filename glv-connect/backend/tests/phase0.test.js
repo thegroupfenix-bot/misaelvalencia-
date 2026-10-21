@@ -38,10 +38,10 @@ describe("Phase 0 — Auth", () => {
     agent = request.agent(app);
   });
 
-  test("login with correct credentials returns token and sets cookie", async () => {
+  test("login with correct credentials returns user payload and sets httpOnly cookie (no token in body)", async () => {
     const res = await loginAs(agent);
     assert.equal(res.status, 200);
-    assert.ok(res.body.token, "should return JWT token");
+    assert.ok(!res.body.token, "token must NOT be in response body — httpOnly cookie only");
     assert.ok(res.body.user, "should return user payload");
     const cookie = res.headers["set-cookie"];
     assert.ok(cookie && cookie.some(c => c.startsWith("glv_token=")), "should set glv_token cookie");
