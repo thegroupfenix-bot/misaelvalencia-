@@ -86,6 +86,22 @@ describe("Phase 0 — Auth", () => {
     assert.ok(res.body.ok);
   });
 
+  test("change-password response must NOT contain token — cookie only", async () => {
+    await loginAs(agent);
+    const res = await agent.post("/auth/change-password").send({
+      currentPassword: "TestPass12345!",
+      newPassword: "AuditPass99999!",
+    });
+    assert.equal(res.status, 200, "change-password should succeed");
+    assert.ok(!("token" in res.body), "token must NOT appear in change-password response body");
+    assert.ok(res.body.ok, "response should include ok: true");
+    const cookie = res.headers["set-cookie"];
+    assert.ok(
+      cookie && cookie.some(c => c.startsWith("glv_token=")),
+      "refreshed session cookie must be present after password change"
+    );
+  });
+
   test("GET /auth/me returns user when authenticated via cookie", async () => {
     await loginAs(agent); // re-login with fresh password
     const res = await agent.get("/auth/me");

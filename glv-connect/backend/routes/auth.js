@@ -172,7 +172,7 @@ router.post("/change-password", authenticate, (req, res) => {
   });
   setCookie(res, token);
 
-  res.json({ ok: true, token, message: "Contraseña actualizada" });
+  res.json({ ok: true, message: "Contraseña actualizada" });
 });
 
 // ── POST /auth/forgot-password ───────────────────────────────────────────────
