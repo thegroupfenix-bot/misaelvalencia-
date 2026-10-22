@@ -122,10 +122,14 @@ router.post("/kyc", kycLimiter, (req, res) => {
       clientId = ins.lastInsertRowid;
     }
 
-    // 3. Marcar submission como procesada
+    // 3. Marcar submission como procesada y eliminar raw_data sensible.
+    // Los datos KYC ya están cifrados en clients.kyc_data.
+    // El marcador "[CLEARED]" confirma que los datos fueron eliminados intencionalmente;
+    // la columna tiene restricción NOT NULL (no modificable en SQLite sin migración).
     db.prepare(`
       UPDATE kyc_submissions
-      SET status = 'PROCESSED', processed_at = datetime('now'), mapped_to_id = ?
+      SET status = 'PROCESSED', processed_at = datetime('now'), mapped_to_id = ?,
+          raw_data = '[CLEARED]'
       WHERE id = ?
     `).run(clientId, submissionId);
 
@@ -306,21 +310,36 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
     if (kyc_status === "ACTIVE_CLIENT") {
       updates.push("lead_status = 'QUALIFIED'");
       updates.push("active = 1");
-      // Auto-generate permanent GLV code if not already assigned.
-      // generateGlvCode throws on failure — error propagates to outer catch,
-      // aborting before the UPDATE runs so the client is never activated without a code.
-      if (!client.glv_code_permanent) {
-        const permCode = generateGlvCode("GLV-CO");
-        updates.push("glv_code_permanent = ?");
-        vals.push(permCode);
-      }
     }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: "Sin campos para actualizar." });
     }
 
-    db.prepare(`UPDATE clients SET ${updates.join(", ")} WHERE id = ?`).run(...vals, req.params.id);
+    if (kyc_status === "ACTIVE_CLIENT" && !client.glv_code_permanent) {
+      // Atomic: sequence increment + client UPDATE in a single SAVEPOINT so that
+      // a UNIQUE constraint violation on glv_code_permanent rolls back both the
+      // sequence and the activation — the client stays inactive on any failure.
+      const spName = `sp_activate_${client.id}`;
+      db.exec(`SAVEPOINT "${spName}"`);
+      try {
+        const nowStr = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const year   = new Date().getFullYear();
+        const seqRow = db.prepare(
+          "UPDATE glv_code_sequences SET last_seq = last_seq + 1, updated_at = ? WHERE entity_code = 'GLV-CO' RETURNING last_seq"
+        ).get(nowStr);
+        if (!seqRow) throw new Error("GLV-CO sequence not found — check glv_code_sequences table");
+        updates.push("glv_code_permanent = ?");
+        vals.push(`GLV-CO-CLI-${year}-${String(seqRow.last_seq).padStart(5, "0")}`);
+        db.prepare(`UPDATE clients SET ${updates.join(", ")} WHERE id = ?`).run(...vals, req.params.id);
+        db.exec(`RELEASE SAVEPOINT "${spName}"`);
+      } catch (saveErr) {
+        try { db.exec(`ROLLBACK TO SAVEPOINT "${spName}"`); } catch (_) {}
+        throw saveErr;
+      }
+    } else {
+      db.prepare(`UPDATE clients SET ${updates.join(", ")} WHERE id = ?`).run(...vals, req.params.id);
+    }
 
     const actionMap = {
       UNDER_REVIEW:        "KYC_ASSIGNED",

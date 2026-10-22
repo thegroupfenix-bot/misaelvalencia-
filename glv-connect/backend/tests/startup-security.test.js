@@ -82,10 +82,105 @@ describe("JWT_SECRET — production startup guard", () => {
   });
 });
 
-// ─── 2. CORS origin policy ────────────────────────────────────────────────────
+// ─── 2. CORS — startup validation of ALLOWED_ORIGINS ─────────────────────────
+
+describe("CORS — ALLOWED_ORIGINS startup validation (subprocess)", () => {
+  const serverPath = path.join(__dirname, "../server.js");
+  const baseEnv = {
+    PATH:       process.env.PATH || "/usr/bin:/bin",
+    DB_PATH:    ":memory:",
+    NODE_ENV:   "production",
+    JWT_SECRET: require("crypto").randomBytes(32).toString("hex"),
+  };
+
+  test("exits with code 1 when ALLOWED_ORIGINS contains an HTTP origin in production", () => {
+    const result = spawnSync(process.execPath, [serverPath], {
+      env: { ...baseEnv, ALLOWED_ORIGINS: "http://malicious.com" },
+      timeout: 8000,
+    });
+    assert.equal(result.status, 1, "server must exit 1 when ALLOWED_ORIGINS has HTTP origin in production");
+    const output = result.stderr.toString() + result.stdout.toString();
+    assert.ok(output.toUpperCase().includes("FATAL"), "output must contain FATAL");
+  });
+
+  test("exits with code 1 when ALLOWED_ORIGINS contains an invalid URL in production", () => {
+    const result = spawnSync(process.execPath, [serverPath], {
+      env: { ...baseEnv, ALLOWED_ORIGINS: "not-a-url" },
+      timeout: 8000,
+    });
+    assert.equal(result.status, 1, "server must exit 1 when ALLOWED_ORIGINS has invalid URL in production");
+    const output = result.stderr.toString() + result.stdout.toString();
+    assert.ok(output.toUpperCase().includes("FATAL"), "output must contain FATAL");
+  });
+
+  test("exits with code 1 when ALLOWED_ORIGINS contains origin with path in production", () => {
+    const result = spawnSync(process.execPath, [serverPath], {
+      env: { ...baseEnv, ALLOWED_ORIGINS: "https://app.example.com/some/path" },
+      timeout: 8000,
+    });
+    assert.equal(result.status, 1, "server must exit 1 when ALLOWED_ORIGINS has path component in production");
+    const output = result.stderr.toString() + result.stdout.toString();
+    assert.ok(output.toUpperCase().includes("FATAL"), "output must contain FATAL");
+  });
+
+  test("does NOT exit when ALLOWED_ORIGINS is a valid HTTPS canonical origin in production", () => {
+    const result = spawnSync(process.execPath, [serverPath], {
+      env: { ...baseEnv, ALLOWED_ORIGINS: "https://app.glvglobalfoodservices.com" },
+      timeout: 3000,
+    });
+    assert.notEqual(result.status, 1, "valid HTTPS origin must not cause startup failure");
+  });
+});
+
+// ─── 3. CORS origin policy (unit tests) ──────────────────────────────────────
 
 describe("CORS — origin policy (unit tests via makeOriginChecker)", () => {
-  const { makeOriginChecker } = require("../utils/corsOrigin");
+  const { validateAndNormalizeOrigins, makeOriginChecker } = require("../utils/corsOrigin");
+
+  describe("validateAndNormalizeOrigins — production validation", () => {
+    test("throws on HTTP origin in production", () => {
+      assert.throws(
+        () => validateAndNormalizeOrigins(["http://evil.com"], true),
+        /FATAL/,
+        "must throw FATAL for HTTP origin in production"
+      );
+    });
+
+    test("throws on invalid URL in production", () => {
+      assert.throws(
+        () => validateAndNormalizeOrigins(["not-a-url"], true),
+        /FATAL/,
+        "must throw FATAL for invalid URL in production"
+      );
+    });
+
+    test("throws on origin with path component in production", () => {
+      assert.throws(
+        () => validateAndNormalizeOrigins(["https://app.example.com/path"], true),
+        /FATAL/,
+        "must throw FATAL for origin with path in production"
+      );
+    });
+
+    test("returns canonical list for valid HTTPS origins", () => {
+      const result = validateAndNormalizeOrigins(
+        ["https://app.glvglobalfoodservices.com", "https://portal.glvglobalfoodservices.com"],
+        true
+      );
+      assert.deepEqual(result, [
+        "https://app.glvglobalfoodservices.com",
+        "https://portal.glvglobalfoodservices.com",
+      ]);
+    });
+
+    test("deduplicates origins", () => {
+      const result = validateAndNormalizeOrigins(
+        ["https://app.example.com", "https://app.example.com"],
+        true
+      );
+      assert.equal(result.length, 1);
+    });
+  });
 
   describe("production mode — explicit ALLOWED_ORIGINS list", () => {
     const check = makeOriginChecker(
@@ -116,6 +211,16 @@ describe("CORS — origin policy (unit tests via makeOriginChecker)", () => {
     test("no-origin request is allowed (same-origin, curl, server-to-server)", () => {
       assert.ok(check(undefined), "undefined origin (no header) must be allowed");
       assert.ok(check(null),      "null origin must be allowed");
+    });
+
+    test("HTTP origin is rejected even if it happens to match a domain in the list", () => {
+      // Safety net: makeOriginChecker must validate incoming origin protocol
+      // regardless of how the allowedOrigins list was constructed
+      const checkWithHttp = makeOriginChecker(
+        ["http://evil.com"],  // simulates misconfigured list bypassing startup validation
+        true
+      );
+      assert.ok(!checkWithHttp("http://evil.com"), "http: incoming origin must be rejected in production");
     });
   });
 

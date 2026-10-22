@@ -67,16 +67,26 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_ORIGI
   .map(o => o.trim())
   .filter(Boolean);
 
-const { makeOriginChecker } = require("./utils/corsOrigin");
-const isAllowedOrigin = makeOriginChecker(ALLOWED_ORIGINS, IS_PRODUCTION);
+const { validateAndNormalizeOrigins, makeOriginChecker } = require("./utils/corsOrigin");
 
-if (IS_PRODUCTION && ALLOWED_ORIGINS.length === 0) {
+let VALIDATED_ORIGINS;
+try {
+  VALIDATED_ORIGINS = validateAndNormalizeOrigins(ALLOWED_ORIGINS, IS_PRODUCTION);
+} catch (err) {
+  console.error(`FATAL: ${err.message}`);
+  console.error("ACTION: Fix ALLOWED_ORIGINS in Railway environment variables (https: URLs only, no paths or wildcards).");
+  process.exit(1);
+}
+
+const isAllowedOrigin = makeOriginChecker(VALIDATED_ORIGINS, IS_PRODUCTION);
+
+if (IS_PRODUCTION && VALIDATED_ORIGINS.length === 0) {
   console.warn("⚠️  WARNING: ALLOWED_ORIGINS not set in production — all cross-origin requests will be rejected.");
   console.warn("⚠️  ACTION REQUIRED: Set ALLOWED_ORIGINS=https://app.glvglobalfoodservices.com in Railway variables.");
 }
 
 console.log(`[CORS] mode=${IS_PRODUCTION ? "PRODUCTION" : "DEVELOPMENT"}`);
-console.log(`[CORS] explicit origins: ${ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS.join(", ") : "(none)"}`);
+console.log(`[CORS] explicit origins: ${VALIDATED_ORIGINS.length ? VALIDATED_ORIGINS.join(", ") : "(none)"}`);
 if (!IS_PRODUCTION) {
   console.log("[CORS] auto-allowed in dev: localhost, 127.0.0.1, *.up.railway.app");
 }
