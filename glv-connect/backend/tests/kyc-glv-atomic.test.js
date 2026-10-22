@@ -2,8 +2,10 @@
  * KYC seguro y código GLV atómico — suite de pruebas
  *
  * Cubre:
- *   - Producción rechaza KYC cuando falta PII_ENCRYPTION_KEY
- *   - raw_data en kyc_submissions queda NULL después de procesar
+ *   - Producción rechaza KYC cuando PII_ENCRYPTION_KEY es inválida (no hex) → 503
+ *   - Producción rechaza KYC cuando PII_ENCRYPTION_KEY falta → 503
+ *   - Producción acepta KYC con clave hex válida → 201, kyc_data cifrado
+ *   - raw_data en kyc_submissions queda '[CLEARED]' después de procesar
  *   - Los datos KYC se almacenan cifrados en clients.kyc_data
  *   - Código GLV generado dentro de SAVEPOINT: un fallo revierte activación
  *   - Restricción UNIQUE en glv_code_permanent impide duplicados
@@ -19,13 +21,16 @@
 "use strict";
 
 const { test, describe, before } = require("node:test");
-const assert = require("node:assert/strict");
+const assert   = require("node:assert/strict");
+const { spawnSync } = require("child_process");
+const path     = require("path");
+const crypto   = require("crypto");
 
 process.env.DB_PATH    = ":memory:";
 process.env.JWT_SECRET = "kyc-glv-atomic-test-secret-xyzABCDEF123456";
 process.env.NODE_ENV   = "test";
 // Enable PII encryption for most tests
-const TEST_PII_KEY = require("crypto").randomBytes(32).toString("hex");
+const TEST_PII_KEY = crypto.randomBytes(32).toString("hex");
 process.env.PII_ENCRYPTION_KEY = TEST_PII_KEY;
 
 const request = require("supertest");
@@ -33,6 +38,26 @@ const app     = require("../server");
 const db      = require("../db/database");
 const bcrypt  = require("bcryptjs");
 const pii     = require("../utils/piiCrypto");
+
+const PROBE_SCRIPT  = path.join(__dirname, "helpers/kyc-prod-probe.js");
+const PROD_BASE_ENV = {
+  PATH:       process.env.PATH || "/usr/bin:/bin",
+  DB_PATH:    ":memory:",
+  NODE_ENV:   "production",
+  JWT_SECRET: "probe-jwt-secret-at-least-32-chars-long-xyz",
+};
+
+// The probe script mixes server console.log output with the JSON result in stdout.
+// The JSON result is always the last line that starts with '{'.
+function parseProbeOutput(spawnResult) {
+  const lines = spawnResult.stdout.toString().trim().split("\n");
+  const jsonLine = [...lines].reverse().find(l => l.trim().startsWith("{"));
+  if (!jsonLine) {
+    const stderr = spawnResult.stderr.toString().slice(0, 500);
+    throw new Error(`Probe produced no JSON output. stderr: ${stderr}`);
+  }
+  return JSON.parse(jsonLine.trim());
+}
 
 // ─── Login helper ─────────────────────────────────────────────────────────────
 
@@ -45,28 +70,87 @@ async function loginAsAdmin() {
   return agent;
 }
 
-// ─── 1. KYC — guard de producción ────────────────────────────────────────────
+// ─── 1. KYC — guards de producción (subprocess con servidor real) ─────────────
 
-describe("KYC — producción rechaza registro sin PII_ENCRYPTION_KEY", () => {
-  test("returns 503 in production when PII_ENCRYPTION_KEY is unset", () => {
-    // We cannot restart the actual server in a different NODE_ENV here,
-    // so we test the guard logic directly through the module in a simulated prod env.
-    // We patch process.env temporarily.
-    const original_env  = process.env.NODE_ENV;
-    const original_key  = process.env.PII_ENCRYPTION_KEY;
+describe("KYC — guardia de producción via subprocess (servidor real NODE_ENV=production)", () => {
+  test("returns 503 when PII_ENCRYPTION_KEY has 64 non-hex characters", () => {
+    // "zzzz..." is 64 chars but not valid hex — previously passed isConfigured()
+    const invalidKey = "z".repeat(64);
+    const result = spawnSync(process.execPath, [PROBE_SCRIPT], {
+      env:     { ...PROD_BASE_ENV, PII_ENCRYPTION_KEY: invalidKey },
+      timeout: 15000,
+    });
+    const parsed = parseProbeOutput(result);
+    assert.equal(parsed.status, 503,
+      `POST /clients/kyc must return 503 with 64-char non-hex PII key — got ${parsed.status}: ${JSON.stringify(parsed.body)}`
+    );
+  });
 
-    process.env.NODE_ENV          = "production";
-    process.env.PII_ENCRYPTION_KEY = "";
+  test("returns 503 when PII_ENCRYPTION_KEY is empty (missing)", () => {
+    const result = spawnSync(process.execPath, [PROBE_SCRIPT], {
+      env:     { ...PROD_BASE_ENV, PII_ENCRYPTION_KEY: "" },
+      timeout: 15000,
+    });
+    const parsed = parseProbeOutput(result);
+    assert.equal(parsed.status, 503,
+      `POST /clients/kyc must return 503 with empty PII key — got ${parsed.status}`
+    );
+  });
 
-    // Re-read the guard value from the module — it reads env at call time via isConfigured()
-    const { isConfigured } = require("../utils/piiCrypto");
-    const IS_PROD = (process.env.NODE_ENV || "").toLowerCase() === "production";
-    const guardTriggered = IS_PROD && !isConfigured();
+  test("returns 503 when PII_ENCRYPTION_KEY is too short (not 64 hex chars)", () => {
+    const shortKey = "deadbeef".repeat(4); // 32 chars, not 64
+    const result = spawnSync(process.execPath, [PROBE_SCRIPT], {
+      env:     { ...PROD_BASE_ENV, PII_ENCRYPTION_KEY: shortKey },
+      timeout: 15000,
+    });
+    const parsed = parseProbeOutput(result);
+    assert.equal(parsed.status, 503,
+      `POST /clients/kyc must return 503 with 32-char PII key — got ${parsed.status}`
+    );
+  });
 
-    process.env.NODE_ENV          = original_env;
-    process.env.PII_ENCRYPTION_KEY = original_key;
+  test("returns 201 and encrypts kyc_data with a valid 64-char hex PII key", () => {
+    const validKey = crypto.randomBytes(32).toString("hex"); // exactly 64 lowercase hex chars
+    const result = spawnSync(process.execPath, [PROBE_SCRIPT], {
+      env:     { ...PROD_BASE_ENV, PII_ENCRYPTION_KEY: validKey },
+      timeout: 15000,
+    });
+    const parsed = parseProbeOutput(result);
+    assert.equal(parsed.status, 201,
+      `POST /clients/kyc must return 201 with valid PII key — got ${parsed.status}: ${JSON.stringify(parsed.body)}`
+    );
+    assert.ok(parsed.body.ok, "response must include ok: true");
+    assert.ok(parsed.body.client_id, "response must include client_id");
+  });
 
-    assert.ok(guardTriggered, "guard must trigger when NODE_ENV=production and PII_ENCRYPTION_KEY is empty");
+  test("pii.isConfigured() returns false for 64-char non-hex string", () => {
+    const originalKey = process.env.PII_ENCRYPTION_KEY;
+    process.env.PII_ENCRYPTION_KEY = "z".repeat(64);
+    const result = pii.isConfigured();
+    process.env.PII_ENCRYPTION_KEY = originalKey;
+    assert.equal(result, false, "isConfigured() must return false for non-hex 64-char string");
+  });
+
+  test("pii.isConfigured() returns true for valid 64-char hex string", () => {
+    const originalKey = process.env.PII_ENCRYPTION_KEY;
+    process.env.PII_ENCRYPTION_KEY = crypto.randomBytes(32).toString("hex");
+    const result = pii.isConfigured();
+    process.env.PII_ENCRYPTION_KEY = originalKey;
+    assert.equal(result, true, "isConfigured() must return true for valid 64-char hex string");
+  });
+
+  test("503 response does not expose PII key, payload, or error details", () => {
+    const invalidKey = "z".repeat(64);
+    const result = spawnSync(process.execPath, [PROBE_SCRIPT], {
+      env:     { ...PROD_BASE_ENV, PII_ENCRYPTION_KEY: invalidKey },
+      timeout: 15000,
+    });
+    const parsed = parseProbeOutput(result);
+    assert.equal(parsed.status, 503);
+    const bodyStr = JSON.stringify(parsed.body);
+    assert.ok(!bodyStr.includes("PII_ENCRYPTION_KEY"), "503 response must not mention PII_ENCRYPTION_KEY");
+    assert.ok(!bodyStr.includes("GLV-PROBE"), "503 response must not echo submitted data");
+    assert.ok(!bodyStr.includes("encrypt"), "503 response must not reveal internal error details");
   });
 });
 
