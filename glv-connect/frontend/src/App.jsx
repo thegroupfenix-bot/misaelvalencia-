@@ -16,6 +16,7 @@ import ClientDetailPage from "./components/ClientDetailPage.jsx";
 import { FinanceView } from "./components/FinanceView.jsx";
 import { TasksView } from "./components/TasksView.jsx";
 import CommercialWorkspace from "./components/CommercialWorkspace.jsx";
+import OperationsLogistics from "./components/OperationsLogistics.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
@@ -246,6 +247,7 @@ function Portal() {
         {view === "media-center"  && <MediaCenter user={user} />}
         {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
         {view === "commercial"   && <CommercialWorkspace user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view === "operations-logistics" && <OperationsLogistics user={user} setView={safeSetView} showNotif={showNotif} />}
         {view?.startsWith?.("commercial-quote:") && <CommercialWorkspace user={user} setView={safeSetView} showNotif={showNotif} initialQuoteId={view.split(":")[1]} />}
         {view === "audit"        && hasAuditAccess && <AuditLog />}
         {view === "usuarios"     && isDirector && <UsersPanel />}
@@ -381,7 +383,8 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
     { id: "price-center", icon: "ti-database",         label: "Price Center" },
     ...(!isAgentOnly ? [{ id: "media-center", icon: "ti-photo",            label: "Media Center" }] : []),
     ...(!isMediaOnly ? [{ id: "tasks",        icon: "ti-checklist",        label: "Tareas & Calidad" }] : []),
-    ...(!isMediaOnly ? [{ id: "commercial",   icon: "ti-chart-bar",        label: "Comercial" }] : []),
+    ...(!isMediaOnly ? [{ id: "commercial",          icon: "ti-chart-bar",  label: "Comercial" }] : []),
+    ...(!isMediaOnly ? [{ id: "operations-logistics", icon: "ti-ship",       label: "Operaciones" }] : []),
     ...(isDirector ? [
       { id: "spa",      icon: "ti-file-certificate", label: "SPA / Contratos" },
       { id: "usuarios", icon: "ti-users",            label: "Usuarios" },
