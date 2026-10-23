@@ -1066,6 +1066,129 @@ seedUsers();
 seedPriceCenter();
 seedGos06Catalogs();
 
+// ─── Commercial Engine tables ─────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_price_matrix (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id           INTEGER REFERENCES pc_products(id),
+    product_code         TEXT,
+    origin_country       TEXT    NOT NULL,
+    destination_country  TEXT    NOT NULL,
+    incoterm             TEXT    NOT NULL DEFAULT 'CIF',
+    currency             TEXT    NOT NULL DEFAULT 'USD',
+    unit                 TEXT    NOT NULL DEFAULT 'kg',
+    base_cost            REAL    NOT NULL,
+    freight_cost         REAL    NOT NULL DEFAULT 0,
+    insurance_cost       REAL    NOT NULL DEFAULT 0,
+    operational_cost     REAL    NOT NULL DEFAULT 0,
+    target_margin        REAL    NOT NULL DEFAULT 0.15,
+    min_authorized_price REAL    NOT NULL,
+    sale_price           REAL    NOT NULL,
+    valid_from           TEXT    NOT NULL,
+    valid_until          TEXT,
+    status               TEXT    NOT NULL DEFAULT 'ACTIVE',
+    created_by           TEXT,
+    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cpm_route ON commercial_price_matrix(origin_country, destination_country, incoterm);
+  CREATE INDEX IF NOT EXISTS idx_cpm_product ON commercial_price_matrix(product_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_rules (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id        INTEGER REFERENCES pc_products(id),
+    product_code      TEXT,
+    origin_country    TEXT,
+    destination_country TEXT,
+    incoterm          TEXT,
+    min_volume        REAL,
+    min_volume_unit   TEXT    NOT NULL DEFAULT 'kg',
+    currency          TEXT    NOT NULL DEFAULT 'USD',
+    min_price_floor   REAL,
+    max_discount_pct  REAL    NOT NULL DEFAULT 0,
+    valid_from        TEXT    NOT NULL,
+    valid_until       TEXT,
+    status            TEXT    NOT NULL DEFAULT 'ACTIVE',
+    notes             TEXT,
+    created_by        TEXT,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_quotes (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_number         TEXT    NOT NULL UNIQUE,
+    status               TEXT    NOT NULL DEFAULT 'DRAFT',
+    price_locked         INTEGER NOT NULL DEFAULT 0,
+    product_id           INTEGER REFERENCES pc_products(id),
+    product_code         TEXT,
+    product_name_es      TEXT,
+    quantity             REAL    NOT NULL,
+    unit                 TEXT    NOT NULL DEFAULT 'kg',
+    origin_country       TEXT    NOT NULL,
+    destination_country  TEXT    NOT NULL,
+    incoterm             TEXT    NOT NULL DEFAULT 'CIF',
+    currency             TEXT    NOT NULL DEFAULT 'USD',
+    client_id            INTEGER REFERENCES clients(id),
+    payment_conditions   TEXT,
+    validity_days        INTEGER NOT NULL DEFAULT 15,
+    valid_until          TEXT,
+    base_cost            REAL,
+    freight_cost         REAL,
+    insurance_cost       REAL,
+    operational_cost     REAL,
+    total_cost_per_unit  REAL,
+    target_margin        REAL,
+    price_per_unit       REAL,
+    total_value          REAL,
+    min_authorized_price REAL,
+    matrix_id            INTEGER REFERENCES commercial_price_matrix(id),
+    rule_id              INTEGER REFERENCES commercial_rules(id),
+    doc_id               TEXT    REFERENCES documents(id),
+    internal_notes       TEXT,
+    calculated_by        TEXT,
+    calculated_at        TEXT,
+    submitted_by         TEXT,
+    submitted_at         TEXT,
+    approved_by          TEXT,
+    approved_at          TEXT,
+    rejected_by          TEXT,
+    rejected_at          TEXT,
+    rejection_reason     TEXT,
+    created_by           TEXT,
+    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cq_client ON commercial_quotes(client_id);
+  CREATE INDEX IF NOT EXISTS idx_cq_status ON commercial_quotes(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_quote_audit (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_id    INTEGER NOT NULL REFERENCES commercial_quotes(id),
+    action      TEXT    NOT NULL,
+    actor       TEXT    NOT NULL,
+    actor_role  TEXT,
+    before_json TEXT,
+    after_json  TEXT,
+    result      TEXT    NOT NULL DEFAULT 'OK',
+    detail      TEXT,
+    ts          TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cqa_quote ON commercial_quote_audit(quote_id);
+`);
+
+// Add QUOTE sequence to doc_id_sequences (idempotent)
+db.exec("INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('QUOTE', 0)");
+
+// Add quote_id FK to documents (idempotent)
+safeAlter("ALTER TABLE documents ADD COLUMN quote_id INTEGER REFERENCES commercial_quotes(id)");
+
 // ─── getMigrationStatus ───────────────────────────────────────────────────────
 function getMigrationStatus() {
   const checkTable = (table) => {
@@ -1073,6 +1196,9 @@ function getMigrationStatus() {
   };
   const checkColumn = (table, col) => {
     try { return db.prepare(`PRAGMA table_info(${table})`).all().some(r => r.name === col); } catch (_) { return false; }
+  };
+  const checkSeq = (type) => {
+    try { return !!db.prepare("SELECT 1 FROM doc_id_sequences WHERE type = ?").get(type); } catch (_) { return false; }
   };
   return {
     login_attempts:             checkTable("login_attempts"),
@@ -1084,6 +1210,13 @@ function getMigrationStatus() {
     clients_kyc_status:         checkColumn("clients", "kyc_status"),
     documents_commercial_data:  checkColumn("documents", "commercial_data"),
     documents_client_id:        checkColumn("documents", "client_id"),
+    commercial_price_matrix:    checkTable("commercial_price_matrix"),
+    commercial_rules:           checkTable("commercial_rules"),
+    commercial_quotes:          checkTable("commercial_quotes"),
+    commercial_quote_audit:     checkTable("commercial_quote_audit"),
+    commercial_quotes_doc_id:   checkColumn("commercial_quotes", "doc_id"),
+    documents_quote_id:         checkColumn("documents", "quote_id"),
+    doc_id_sequences_quote:     checkSeq("QUOTE"),
   };
 }
 db.getMigrationStatus = getMigrationStatus;
