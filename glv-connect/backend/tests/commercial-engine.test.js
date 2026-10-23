@@ -8,8 +8,8 @@ const assert = require("node:assert/strict");
 const request = require("supertest");
 
 // ── test-only env guards ───────────────────────────────────────────────────────
+process.env.DB_PATH   = ":memory:";
 process.env.NODE_ENV  = "test";
-process.env.JWT_SECRET = "commercialtestsecret1234567890abcdef";
 
 const app = require("../server");
 const db  = require("../db/database");
@@ -21,16 +21,22 @@ function loginAs(username, password = "Admin1234!") {
     .send({ username, password })
     .then(r => {
       if (r.status !== 200) throw new Error(`Login ${username} failed: ${r.status} ${JSON.stringify(r.body)}`);
-      return r.body.token || r.headers["set-cookie"];
+      // Cookie-only auth: return set-cookie array (no bearer token in body)
+      return r.headers["set-cookie"];
     });
 }
 
-function auth(token) {
-  if (Array.isArray(token)) return (req) => req.set("Cookie", token);
-  return (req) => req.set("Authorization", `Bearer ${token}`);
+function auth(cookies) {
+  return (req) => req.set("Cookie", cookies);
 }
 
-// ── fixture setup ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// All commercial tests are wrapped in a single describe to scope before/after
+// hooks and prevent root-level state pollution in combined test runs.
+// ══════════════════════════════════════════════════════════════════════════════
+describe("Commercial Engine", () => {
+
+// ── fixture state ──────────────────────────────────────────────────────────────
 let directorToken, agenteToken, clientToken;
 let matrixId, ruleId, quoteId;
 
@@ -413,3 +419,5 @@ describe("Suite 8 — CLIENT portal: filtered read-only, no internal data", () =
     assert.ok(!("audit" in r.body), "CLIENT must not see audit trail");
   });
 });
+
+}); // end describe("Commercial Engine")
