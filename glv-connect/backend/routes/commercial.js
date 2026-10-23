@@ -31,7 +31,7 @@ function quoteAudit(quoteId, action, actor, actorRole, before, after, result, de
 
 function sanitizeForClient(quote) {
   const { base_cost, freight_cost, insurance_cost, operational_cost,
-          target_margin, internal_notes, min_authorized_price,
+          total_cost_per_unit, target_margin, internal_notes, min_authorized_price,
           matrix_id, rule_id, ...pub } = quote;
   return pub;
 }
@@ -424,7 +424,8 @@ router.post("/quotes/:id/calculate", requireLevel(40), (req, res) => {
       });
     }
 
-    // Find applicable commercial rule (product-specific first, then route-level)
+    // Find applicable commercial rule (product-specific first, then route-level).
+    // Rules are only applicable when: active, not expired, AND min_volume is met by this order.
     const rule = db.prepare(`
       SELECT * FROM commercial_rules
       WHERE status = 'ACTIVE'
@@ -434,10 +435,12 @@ router.post("/quotes/:id/calculate", requireLevel(40), (req, res) => {
         AND (incoterm = ? OR incoterm IS NULL)
         AND valid_from <= date('now')
         AND (valid_until IS NULL OR valid_until >= date('now'))
+        AND (min_volume IS NULL OR min_volume <= ?)
       ORDER BY product_id DESC, id DESC LIMIT 1
     `).get(
       quote.product_id || null,
-      quote.origin_country, quote.destination_country, quote.incoterm
+      quote.origin_country, quote.destination_country, quote.incoterm,
+      quote.quantity
     );
 
     // All price values come exclusively from the authorized matrix

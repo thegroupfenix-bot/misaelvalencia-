@@ -1197,6 +1197,9 @@ function getMigrationStatus() {
   const checkColumn = (table, col) => {
     try { return db.prepare(`PRAGMA table_info(${table})`).all().some(r => r.name === col); } catch (_) { return false; }
   };
+  const checkSeq = (type) => {
+    try { return !!db.prepare("SELECT 1 FROM doc_id_sequences WHERE type = ?").get(type); } catch (_) { return false; }
+  };
   return {
     login_attempts:             checkTable("login_attempts"),
     password_reset_tokens:      checkTable("password_reset_tokens"),
@@ -1207,6 +1210,13 @@ function getMigrationStatus() {
     clients_kyc_status:         checkColumn("clients", "kyc_status"),
     documents_commercial_data:  checkColumn("documents", "commercial_data"),
     documents_client_id:        checkColumn("documents", "client_id"),
+    commercial_price_matrix:    checkTable("commercial_price_matrix"),
+    commercial_rules:           checkTable("commercial_rules"),
+    commercial_quotes:          checkTable("commercial_quotes"),
+    commercial_quote_audit:     checkTable("commercial_quote_audit"),
+    commercial_quotes_doc_id:   checkColumn("commercial_quotes", "doc_id"),
+    documents_quote_id:         checkColumn("documents", "quote_id"),
+    doc_id_sequences_quote:     checkSeq("QUOTE"),
   };
 }
 db.getMigrationStatus = getMigrationStatus;

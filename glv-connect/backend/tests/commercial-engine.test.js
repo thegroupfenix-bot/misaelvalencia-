@@ -38,6 +38,7 @@ describe("Commercial Engine", () => {
 
 // ── fixture state ──────────────────────────────────────────────────────────────
 let directorToken, agenteToken, clientToken;
+let agentCommToken, managerToken, superAdminToken;
 let matrixId, ruleId, quoteId;
 
 before(async () => {
@@ -57,6 +58,24 @@ before(async () => {
     VALUES ('test_agente', ?, 'AGENTE', 'Test Agente', 'agente@test.glv', 1, 0, 1)
   `).run(hash);
 
+  // COMMERCIAL_AGENT (level 42) — new role
+  db.prepare(`
+    INSERT OR IGNORE INTO users (username, password, role, name, email, active, first_login, profile_completed)
+    VALUES ('test_comm_agent', ?, 'COMMERCIAL_AGENT', 'Test Comm Agent', 'cagent@test.glv', 1, 0, 1)
+  `).run(hash);
+
+  // COMMERCIAL_MANAGER (level 72) — new role, can approve
+  db.prepare(`
+    INSERT OR IGNORE INTO users (username, password, role, name, email, active, first_login, profile_completed)
+    VALUES ('test_comm_manager', ?, 'COMMERCIAL_MANAGER', 'Test Comm Manager', 'cmanager@test.glv', 1, 0, 1)
+  `).run(hash);
+
+  // SUPER_ADMIN (level 100) — can approve
+  db.prepare(`
+    INSERT OR IGNORE INTO users (username, password, role, name, email, active, first_login, profile_completed)
+    VALUES ('test_super_adm', ?, 'SUPER_ADMIN', 'Test Super Admin', 'sadm@test.glv', 1, 0, 1)
+  `).run(hash);
+
   // CLIENT (level 20) with linked client
   const clientRow = db.prepare(
     "INSERT OR IGNORE INTO clients (type, name, country, active) VALUES ('buyer', 'GLV-TEST-CLIENT-001', 'SA', 1)"
@@ -69,13 +88,18 @@ before(async () => {
     VALUES ('test_client_ext', ?, 'CLIENT', 'Test Client External', 'client@test.glv', 1, 0, 1, ?)
   `).run(hash, linkedClientId);
 
-  directorToken = await loginAs("test_director");
-  agenteToken   = await loginAs("test_agente");
-  clientToken   = await loginAs("test_client_ext");
+  directorToken  = await loginAs("test_director");
+  agenteToken    = await loginAs("test_agente");
+  clientToken    = await loginAs("test_client_ext");
+  agentCommToken = await loginAs("test_comm_agent");
+  managerToken   = await loginAs("test_comm_manager");
+  superAdminToken = await loginAs("test_super_adm");
 });
 
 after(() => {
   // Cleanup all test data (order matters for FK constraints)
+  try { db.prepare("UPDATE documents SET quote_id = NULL WHERE id LIKE 'SCO-TEST-LINK-%'").run(); } catch (_) {}
+  try { db.prepare("DELETE FROM documents WHERE id LIKE 'SCO-TEST-LINK-%'").run(); } catch (_) {}
   try { db.prepare("DELETE FROM commercial_quote_audit WHERE actor LIKE 'test_%'").run(); } catch (_) {}
   try { db.prepare("DELETE FROM commercial_quotes WHERE created_by LIKE 'test_%'").run(); } catch (_) {}
   try { db.prepare("DELETE FROM commercial_rules WHERE created_by LIKE 'test_%'").run(); } catch (_) {}
@@ -405,7 +429,7 @@ describe("Suite 8 — CLIENT portal: filtered read-only, no internal data", () =
 
     const FORBIDDEN_FIELDS = [
       "base_cost", "freight_cost", "insurance_cost", "operational_cost",
-      "target_margin", "internal_notes", "min_authorized_price",
+      "total_cost_per_unit", "target_margin", "internal_notes", "min_authorized_price",
       "matrix_id", "rule_id",
     ];
     for (const field of FORBIDDEN_FIELDS) {
@@ -417,6 +441,332 @@ describe("Suite 8 — CLIENT portal: filtered read-only, no internal data", () =
     assert.ok("total_value" in r.body, "total_value must be visible to CLIENT");
     // audit trail must NOT be present for CLIENT
     assert.ok(!("audit" in r.body), "CLIENT must not see audit trail");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Suite 9 — COMMERCIAL_AGENT RBAC: can draft quotes, cannot approve or modify rules
+// ══════════════════════════════════════════════════════════════════════════════
+describe("Suite 9 — COMMERCIAL_AGENT: can draft, cannot approve or modify rules", () => {
+  let agentDraftId;
+
+  test("COMMERCIAL_AGENT can create a DRAFT quote", async () => {
+    const r = await auth(agentCommToken)(request(app)
+      .post("/commercial/quotes")
+      .send({
+        origin_country: "AR",
+        destination_country: "SA",
+        incoterm: "CIF",
+        currency: "USD",
+        quantity: 3000,
+        unit: "kg",
+      }));
+    assert.strictEqual(r.status, 201, JSON.stringify(r.body));
+    assert.strictEqual(r.body.status, "DRAFT");
+    agentDraftId = r.body.id;
+  });
+
+  test("COMMERCIAL_AGENT can calculate a quote (level >= 40)", async () => {
+    const r = await auth(agentCommToken)(request(app)
+      .post(`/commercial/quotes/${agentDraftId}/calculate`));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.ok(r.body.price_per_unit > 0, "price must be calculated");
+  });
+
+  test("COMMERCIAL_AGENT can submit a quote to PENDING_APPROVAL", async () => {
+    const r = await auth(agentCommToken)(request(app)
+      .post(`/commercial/quotes/${agentDraftId}/submit`));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.status, "PENDING_APPROVAL");
+  });
+
+  test("COMMERCIAL_AGENT cannot approve a quote (level 42 < 70)", async () => {
+    const r = await auth(agentCommToken)(request(app)
+      .post(`/commercial/quotes/${agentDraftId}/approve`));
+    assert.strictEqual(r.status, 403, "COMMERCIAL_AGENT must be denied approval");
+  });
+
+  test("COMMERCIAL_AGENT cannot create a price matrix entry (level 42 < 70)", async () => {
+    const r = await auth(agentCommToken)(request(app)
+      .post("/commercial/price-matrix")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", base_cost: 1.00 }));
+    assert.strictEqual(r.status, 403, "COMMERCIAL_AGENT must not create price matrix");
+  });
+
+  test("COMMERCIAL_AGENT cannot modify commercial rules (level 42 < 70)", async () => {
+    const r = await auth(agentCommToken)(request(app)
+      .post("/commercial/rules")
+      .send({ min_price_floor: 0.01, max_discount_pct: 0 }));
+    assert.strictEqual(r.status, 403, "COMMERCIAL_AGENT must not create/modify rules");
+  });
+
+  test("COMMERCIAL_AGENT cannot patch price matrix (level 42 < 70)", async () => {
+    const r = await auth(agentCommToken)(request(app)
+      .patch(`/commercial/price-matrix/${matrixId}`)
+      .send({ base_cost: 0.01 }));
+    assert.strictEqual(r.status, 403, "COMMERCIAL_AGENT must not patch price matrix");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Suite 10 — COMMERCIAL_MANAGER and SUPER_ADMIN can approve within their permissions
+// ══════════════════════════════════════════════════════════════════════════════
+describe("Suite 10 — COMMERCIAL_MANAGER and SUPER_ADMIN can approve quotes", () => {
+  let managerQuoteId, superQuoteId;
+
+  before(async () => {
+    // Create + calculate + submit a quote for manager approval
+    const q1 = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 8000, unit: "kg" }));
+    managerQuoteId = q1.body.id;
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${managerQuoteId}/calculate`));
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${managerQuoteId}/submit`));
+
+    // Create + calculate + submit a quote for super admin approval
+    const q2 = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 9000, unit: "kg" }));
+    superQuoteId = q2.body.id;
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${superQuoteId}/calculate`));
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${superQuoteId}/submit`));
+  });
+
+  test("COMMERCIAL_MANAGER (level 72) can approve a PENDING_APPROVAL quote", async () => {
+    const r = await auth(managerToken)(request(app)
+      .post(`/commercial/quotes/${managerQuoteId}/approve`));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.status, "APPROVED");
+    assert.strictEqual(r.body.price_locked, 1);
+    assert.ok(r.body.approved_by === "test_comm_manager", "approved_by must reflect COMMERCIAL_MANAGER");
+  });
+
+  test("SUPER_ADMIN (level 100) can approve a PENDING_APPROVAL quote", async () => {
+    const r = await auth(superAdminToken)(request(app)
+      .post(`/commercial/quotes/${superQuoteId}/approve`));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.status, "APPROVED");
+    assert.strictEqual(r.body.price_locked, 1);
+    assert.ok(r.body.approved_by === "test_super_adm", "approved_by must reflect SUPER_ADMIN");
+  });
+
+  test("COMMERCIAL_MANAGER can also create a price matrix entry (level 72 >= 70)", async () => {
+    const r = await auth(managerToken)(request(app)
+      .post("/commercial/price-matrix")
+      .send({
+        origin_country: "BR", destination_country: "SA",
+        incoterm: "FOB", base_cost: 3.00, target_margin: 0.18, valid_from: "2026-01-01",
+      }));
+    assert.strictEqual(r.status, 201, JSON.stringify(r.body));
+    // cleanup — remove it
+    if (r.body.id) {
+      db.prepare("DELETE FROM commercial_price_matrix WHERE id = ?").run(r.body.id);
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Suite 11 — Expired, inactive, and out-of-volume rules do not restrict quotes
+// ══════════════════════════════════════════════════════════════════════════════
+describe("Suite 11 — Expired, inactive, and out-of-volume rules do not restrict quotes", () => {
+  test("Expired rule (valid_until in past) does not block quote calculation", async () => {
+    // Create a rule with a past valid_until and an impossibly high min_price_floor
+    await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "AR", destination_country: "SA", incoterm: "CIF",
+        min_price_floor: 9999.00,
+        valid_from: "2020-01-01",
+        valid_until: "2020-12-31",   // expired in the past
+        max_discount_pct: 0,
+      }));
+
+    const createR = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 1000, unit: "kg" }));
+    assert.strictEqual(createR.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${createR.body.id}/calculate`));
+    assert.strictEqual(calcR.status, 200,
+      `Expired rule must not block calculation — got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.ok(calcR.body.price_per_unit > 0, "price_per_unit must be set by matrix");
+  });
+
+  test("Inactive rule (status=INACTIVE) does not block quote calculation", async () => {
+    // Create an inactive rule with impossibly high min_price_floor
+    const ruleR = await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "AR", destination_country: "SA", incoterm: "CIF",
+        min_price_floor: 9999.00, max_discount_pct: 0,
+        valid_from: "2026-01-01",
+      }));
+    assert.strictEqual(ruleR.status, 201);
+    // Deactivate the rule
+    await auth(directorToken)(request(app)
+      .patch(`/commercial/rules/${ruleR.body.id}`)
+      .send({ status: "INACTIVE" }));
+
+    const createR = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 1500, unit: "kg" }));
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${createR.body.id}/calculate`));
+    assert.strictEqual(calcR.status, 200,
+      `Inactive rule must not block calculation — got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+  });
+
+  test("Out-of-volume rule (min_volume > quantity) does not restrict quote", async () => {
+    // Rule only applies for orders >= 99999 kg; quote is 500 kg — rule must not apply
+    await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "AR", destination_country: "SA", incoterm: "CIF",
+        min_volume: 99999, min_volume_unit: "kg",
+        min_price_floor: 9999.00, max_discount_pct: 0,
+        valid_from: "2026-01-01",
+      }));
+
+    const createR = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 500, unit: "kg" }));
+    assert.strictEqual(createR.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${createR.body.id}/calculate`));
+    assert.strictEqual(calcR.status, 200,
+      `Out-of-volume rule must not block small-quantity quote — got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.ok(calcR.body.price_per_unit > 0, "price must be calculated from matrix");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Suite 12 — SCO/FCO/SPA existing documents receive versioned quote without duplication
+// ══════════════════════════════════════════════════════════════════════════════
+describe("Suite 12 — SCO/FCO/SPA linked to approved quote without duplicating documents", () => {
+  let linkQuoteId, scoDocId, fcoDocId;
+
+  before(async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    scoDocId = `SCO-TEST-LINK-${Date.now()}`;
+    fcoDocId = `FCO-TEST-LINK-${Date.now()}`;
+
+    // Insert test documents directly (existing SCO and FCO)
+    db.prepare(`
+      INSERT INTO documents (id, type, status, client, agent, date, destination, product)
+      VALUES (?, 'SCO', 'active', 'Link Test Client', 'test_agente', ?, 'SA', 'Beef')
+    `).run(scoDocId, today);
+    db.prepare(`
+      INSERT INTO documents (id, type, status, client, agent, date, destination, product)
+      VALUES (?, 'FCO', 'active', 'Link Test Client', 'test_agente', ?, 'SA', 'Beef')
+    `).run(fcoDocId, today);
+
+    // Create, calculate, submit, approve a quote for linking
+    const qr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 6000, unit: "kg" }));
+    linkQuoteId = qr.body.id;
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${linkQuoteId}/calculate`));
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${linkQuoteId}/submit`));
+    await auth(directorToken)(request(app).post(`/commercial/quotes/${linkQuoteId}/approve`));
+  });
+
+  test("Approved quote can be linked to an existing SCO document", async () => {
+    const r = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${linkQuoteId}/link-document`)
+      .send({ doc_id: scoDocId }));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.doc_id, scoDocId, "quote.doc_id must reference the SCO");
+
+    // Verify the document itself got quote_id set (reverse FK)
+    const doc = db.prepare("SELECT quote_id FROM documents WHERE id = ?").get(scoDocId);
+    assert.strictEqual(doc.quote_id, linkQuoteId, "documents.quote_id must point to the approved quote");
+  });
+
+  test("Linking does not duplicate the document — document count stays the same", async () => {
+    const countBefore = db.prepare("SELECT COUNT(*) AS c FROM documents WHERE id = ?").get(scoDocId).c;
+    // link again (idempotent update)
+    await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${linkQuoteId}/link-document`)
+      .send({ doc_id: scoDocId }));
+    const countAfter = db.prepare("SELECT COUNT(*) AS c FROM documents WHERE id = ?").get(scoDocId).c;
+    assert.strictEqual(countAfter, countBefore, "Document must not be duplicated on re-link");
+  });
+
+  test("Approved quote can also be linked to an FCO document", async () => {
+    const r = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${linkQuoteId}/link-document`)
+      .send({ doc_id: fcoDocId }));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.strictEqual(r.body.doc_id, fcoDocId);
+  });
+
+  test("Only SCO/FCO/SPA document types can be linked — other types are rejected at the DB level", () => {
+    // The documents table CHECK constraint enforces type IN ('SCO','FCO','SPA')
+    // so any attempt to insert a different type is rejected before link-document can be called
+    assert.throws(
+      () => db.prepare(
+        "INSERT INTO documents (id, type, status, client, agent, date, destination, product) VALUES (?, 'INVOICE', 'active', 'C', 'A', '2026-01-01', 'SA', 'Beef')"
+      ).run('INV-TEST-001'),
+      /CHECK constraint/,
+      "DB must reject non-SCO/FCO/SPA document types"
+    );
+  });
+
+  test("Non-APPROVED quote cannot be linked to a document", async () => {
+    const draftR = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "AR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 200, unit: "kg" }));
+    const draftId = draftR.body.id;
+
+    const r = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${draftId}/link-document`)
+      .send({ doc_id: scoDocId }));
+    assert.strictEqual(r.status, 409, "DRAFT quote must not be linkable to a document");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Suite 13 — CLIENT response excludes total_cost_per_unit; migration status complete
+// ══════════════════════════════════════════════════════════════════════════════
+describe("Suite 13 — total_cost_per_unit excluded from CLIENT response; migration completeness", () => {
+  test("total_cost_per_unit is absent from CLIENT-visible quote (cost data not leaked)", async () => {
+    // quoteId (from Suite 4/6) was approved and linked to test_client_ext's client
+    // Create a fresh quote linked to the test client and approve it
+    const linkedClientId = db.prepare(
+      "SELECT linked_client_id FROM users WHERE username = 'test_client_ext'"
+    ).get().linked_client_id;
+
+    const qr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({
+        origin_country: "AR", destination_country: "SA", incoterm: "CIF",
+        currency: "USD", quantity: 1200, unit: "kg",
+        client_id: linkedClientId,
+      }));
+    const tqId = qr.body.id;
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${tqId}/calculate`));
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${tqId}/submit`));
+    await auth(directorToken)(request(app).post(`/commercial/quotes/${tqId}/approve`));
+
+    const r = await auth(clientToken)(request(app).get(`/commercial/quotes/${tqId}`));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+    assert.ok(!("total_cost_per_unit" in r.body),
+      "CLIENT response must NOT include total_cost_per_unit — internal cost must stay hidden");
+    assert.ok("price_per_unit" in r.body, "CLIENT may see price_per_unit");
+    assert.ok("total_value" in r.body, "CLIENT may see total_value");
+  });
+
+  test("getMigrationStatus reports all commercial engine tables present", () => {
+    const status = db.getMigrationStatus();
+    assert.ok(status.commercial_price_matrix,  "commercial_price_matrix must exist");
+    assert.ok(status.commercial_rules,          "commercial_rules must exist");
+    assert.ok(status.commercial_quotes,         "commercial_quotes must exist");
+    assert.ok(status.commercial_quote_audit,    "commercial_quote_audit must exist");
+    assert.ok(status.commercial_quotes_doc_id,  "commercial_quotes.doc_id column must exist");
+    assert.ok(status.documents_quote_id,        "documents.quote_id column must exist");
+    assert.ok(status.doc_id_sequences_quote,    "QUOTE sequence in doc_id_sequences must exist");
   });
 });
 
