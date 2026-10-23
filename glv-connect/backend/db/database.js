@@ -772,6 +772,31 @@ db.exec(`
   INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-BR', 0);
 `);
 
+// ─── Migration: clear plaintext PII from clients inserted via WEB_KYC ────────
+// PII fields (company, representative, email, phone, tax_id) must reside only in
+// clients.kyc_data (AES-256-GCM). Rows that already have kyc_data (encrypted backup)
+// are safe to clear; rows without kyc_data are legacy and remain untouched to avoid
+// data loss — they should be reviewed manually.
+{
+  // Add tracking column first (idempotent — ALTER TABLE is a no-op if column exists)
+  try { db.exec("ALTER TABLE clients ADD COLUMN pii_cleared_at TEXT"); } catch (_) {}
+  const updated = db.prepare(`
+    UPDATE clients
+    SET company        = NULL,
+        representative = NULL,
+        email          = NULL,
+        phone          = NULL,
+        tax_id         = NULL,
+        pii_cleared_at = datetime('now')
+    WHERE registration_source = 'WEB_KYC'
+      AND kyc_data IS NOT NULL
+      AND pii_cleared_at IS NULL
+  `).run();
+  if (updated.changes > 0) {
+    console.log(`[DB] PII migration: cleared plaintext PII from ${updated.changes} WEB_KYC client record(s).`);
+  }
+}
+
 // ─── Seed default users ───────────────────────────────────────────────────────
 function seedPriceCenter() {
   const catCount = db.prepare("SELECT COUNT(*) AS c FROM pc_categories").get().c;
