@@ -259,6 +259,11 @@ try {
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 
+// ─── Phase 0: user–client linkage + permanent GLV code ────────────────────────
+safeAlter("ALTER TABLE users ADD COLUMN linked_client_id INTEGER REFERENCES clients(id)");
+safeAlter("ALTER TABLE clients ADD COLUMN glv_code_permanent TEXT");
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_glv_code_perm ON clients(glv_code_permanent) WHERE glv_code_permanent IS NOT NULL"); } catch(_) {}
+
 // ─── clients GOS / KYC extension (Sprint 1) ──────────────────────────────────
 safeAlter("ALTER TABLE clients ADD COLUMN glv_code TEXT");
 safeAlter("ALTER TABLE clients ADD COLUMN lead_status TEXT DEFAULT 'UNASSIGNED'");
@@ -716,6 +721,102 @@ db.exec(`
   );
 `);
 
+// ─── Phase 0 / Fix: atomic document ID sequences ─────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS doc_id_sequences (
+    type     TEXT PRIMARY KEY,
+    last_seq INTEGER NOT NULL DEFAULT 0
+  );
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('SCO', 0);
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('FCO', 0);
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('SPA', 0);
+`);
+
+// documents: FK to clients for proper portal access control
+safeAlter("ALTER TABLE documents ADD COLUMN client_id INTEGER REFERENCES clients(id)");
+
+// ─── Phase 0: login rate-limiting + password reset + GLV code sequences ───────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS login_attempts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    identifier    TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    locked_until  TEXT,
+    last_attempt  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_login_attempts_identifier ON login_attempts(identifier);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash      TEXT NOT NULL UNIQUE,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at      TEXT NOT NULL,
+    used_at         TEXT,
+    created_from_ip TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens(token_hash);
+  CREATE INDEX IF NOT EXISTS idx_prt_user  ON password_reset_tokens(user_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS glv_code_sequences (
+    entity_code TEXT PRIMARY KEY,
+    last_seq    INTEGER NOT NULL DEFAULT 0,
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-CO', 0);
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-US', 0);
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-BR', 0);
+`);
+
+// ─── Migration: clear plaintext PII from clients inserted via WEB_KYC ────────
+// PII fields (company, representative, email, phone, tax_id) must reside only in
+// clients.kyc_data (AES-256-GCM). Rows that already have kyc_data (encrypted backup)
+// are safe to clear; rows without kyc_data are legacy and remain untouched to avoid
+// data loss — they should be reviewed manually.
+{
+  // Add tracking column first (idempotent — ALTER TABLE is a no-op if column exists)
+  try { db.exec("ALTER TABLE clients ADD COLUMN pii_cleared_at TEXT"); } catch (_) {}
+  const updated = db.prepare(`
+    UPDATE clients
+    SET company        = NULL,
+        representative = NULL,
+        email          = NULL,
+        phone          = NULL,
+        tax_id         = NULL,
+        pii_cleared_at = datetime('now')
+    WHERE registration_source = 'WEB_KYC'
+      AND kyc_data IS NOT NULL
+      AND pii_cleared_at IS NULL
+  `).run();
+  if (updated.changes > 0) {
+    console.log(`[DB] PII migration: cleared plaintext PII from ${updated.changes} WEB_KYC client record(s).`);
+  }
+}
+
+// ─── Migration: clear PII from clients.name for WEB_KYC records ──────────────
+// clients.name previously stored comercial || empresa (company name = PII).
+// It must now store only the GLV code (technical identifier, not derived from KYC data).
+// Tracked separately from pii_cleared_at so records already migrated by the prior
+// migration are also handled.
+{
+  try { db.exec("ALTER TABLE clients ADD COLUMN name_pii_cleared_at TEXT"); } catch (_) {}
+  const nameUpdated = db.prepare(`
+    UPDATE clients
+    SET name               = COALESCE(glv_code, name),
+        name_pii_cleared_at = datetime('now')
+    WHERE registration_source = 'WEB_KYC'
+      AND kyc_data IS NOT NULL
+      AND name_pii_cleared_at IS NULL
+  `).run();
+  if (nameUpdated.changes > 0) {
+    console.log(`[DB] PII migration (name): replaced empresa in clients.name with glv_code for ${nameUpdated.changes} WEB_KYC record(s).`);
+  }
+}
+
 // ─── Seed default users ───────────────────────────────────────────────────────
 function seedPriceCenter() {
   const catCount = db.prepare("SELECT COUNT(*) AS c FROM pc_categories").get().c;
@@ -964,6 +1065,28 @@ function seedUsers() {
 seedUsers();
 seedPriceCenter();
 seedGos06Catalogs();
+
+// ─── getMigrationStatus ───────────────────────────────────────────────────────
+function getMigrationStatus() {
+  const checkTable = (table) => {
+    try { db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get(); return true; } catch (_) { return false; }
+  };
+  const checkColumn = (table, col) => {
+    try { return db.prepare(`PRAGMA table_info(${table})`).all().some(r => r.name === col); } catch (_) { return false; }
+  };
+  return {
+    login_attempts:             checkTable("login_attempts"),
+    password_reset_tokens:      checkTable("password_reset_tokens"),
+    glv_code_sequences:         checkTable("glv_code_sequences"),
+    doc_id_sequences:           checkTable("doc_id_sequences"),
+    users_linked_client_id:     checkColumn("users", "linked_client_id"),
+    clients_glv_code_permanent: checkColumn("clients", "glv_code_permanent"),
+    clients_kyc_status:         checkColumn("clients", "kyc_status"),
+    documents_commercial_data:  checkColumn("documents", "commercial_data"),
+    documents_client_id:        checkColumn("documents", "client_id"),
+  };
+}
+db.getMigrationStatus = getMigrationStatus;
 
 module.exports = db;
 

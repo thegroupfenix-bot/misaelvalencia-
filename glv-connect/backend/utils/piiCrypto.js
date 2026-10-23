@@ -6,10 +6,18 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
+// Validates that the key is exactly 64 lowercase/uppercase hex characters (32 bytes).
+// A 64-char string of non-hex characters (e.g. "zzzz...") would pass a length-only
+// check but produce a 0-filled or truncated key — so we require a valid hex pattern.
+const HEX_64_RE = /^[0-9a-f]{64}$/i;
+
 function getKey() {
   const hex = process.env.PII_ENCRYPTION_KEY;
-  if (!hex || hex.length !== 64) {
-    throw new Error("PII_ENCRYPTION_KEY must be a 64-char hex string (32 bytes). Generate with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
+  if (!hex || !HEX_64_RE.test(hex)) {
+    throw new Error(
+      "PII_ENCRYPTION_KEY must be a 64-char hexadecimal string (32 bytes). " +
+      "Generate with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
   }
   return Buffer.from(hex, "hex");
 }
@@ -44,7 +52,7 @@ function decrypt(ciphertext) {
 
 function isConfigured() {
   const hex = process.env.PII_ENCRYPTION_KEY;
-  return !!(hex && hex.length === 64);
+  return !!(hex && HEX_64_RE.test(hex));
 }
 
 module.exports = { encrypt, decrypt, isConfigured };

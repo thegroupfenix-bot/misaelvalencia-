@@ -38,8 +38,6 @@ function AuthProvider({ children }) {
   const [lang, setLang] = useState("es");
 
   useEffect(() => {
-    const token = localStorage.getItem("glv_token");
-    if (!token) { setLoading(false); return; }
     const PROFILE_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
     api.me()
       .then(async (u) => {
@@ -49,7 +47,7 @@ function AuthProvider({ children }) {
           try { setAgentProfile(await api.getProfile()); } catch {}
         }
       })
-      .catch(() => localStorage.removeItem("glv_token"))
+      .catch(() => {/* no active session — stay on login */})
       .finally(() => setLoading(false));
   }, []);
 
@@ -58,15 +56,14 @@ function AuthProvider({ children }) {
   }, [user?.preferred_lang]);
 
   const login = async (username, password) => {
-    const { token, user: u } = await api.login(username, password);
-    localStorage.setItem("glv_token", token);
+    const { user: u } = await api.login(username, password);
     setUser(u);
     if (u?.preferred_lang) setLang(u.preferred_lang);
     return u;
   };
 
   const logout = () => {
-    localStorage.removeItem("glv_token");
+    api.logout().catch(() => {});
     setUser(null);
     setAgentProfile(null);
   };

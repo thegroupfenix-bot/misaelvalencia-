@@ -10,19 +10,32 @@ process.on("uncaughtException", (err) => {
   console.error("UNCAUGHT EXCEPTION:", err.message, err.stack);
 });
 
-if (!process.env.JWT_SECRET) {
+// ── Startup security guards ──────────────────────────────────────────────────
+const _IS_PROD_BOOT = (process.env.NODE_ENV || "").toLowerCase() === "production";
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === "") {
+  if (_IS_PROD_BOOT) {
+    console.error("FATAL: JWT_SECRET is not set. Refusing to start in production.");
+    console.error("ACTION: Set a strong JWT_SECRET (≥32 random hex characters) in Railway environment variables.");
+    process.exit(1);
+  }
   const crypto = require("crypto");
   process.env.JWT_SECRET = crypto.randomBytes(48).toString("hex");
-  console.warn("⚠️  WARNING: JWT_SECRET not set — generated a temporary secret for this session.");
+  console.warn("⚠️  WARNING: JWT_SECRET not set — generated an ephemeral secret (dev/test only).");
   console.warn("⚠️  ACTION REQUIRED: Set JWT_SECRET in Railway environment variables to persist sessions across restarts.");
+} else if (_IS_PROD_BOOT && process.env.JWT_SECRET.length < 32) {
+  console.error(`FATAL: JWT_SECRET is too short (${process.env.JWT_SECRET.length} chars; minimum 32). Refusing to start in production.`);
+  console.error("ACTION: Replace JWT_SECRET with a strong value in Railway environment variables.");
+  process.exit(1);
 }
 
 require("./db/database"); // run migrations + seed on startup
 
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const fs = require("fs");
+const express      = require("express");
+const cors         = require("cors");
+const cookieParser = require("cookie-parser");
+const path         = require("path");
+const fs           = require("fs");
 
 const authRouter        = require("./routes/auth");
 const documentsRouter   = require("./routes/documents");
@@ -54,26 +67,26 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_ORIGI
   .map(o => o.trim())
   .filter(Boolean);
 
-function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  if (ALLOWED_ORIGINS.includes(origin)) return true;
-  try {
-    const hostname = new URL(origin).hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1") return true;
-    if (hostname.endsWith(".up.railway.app")) return true;
-    // When ALLOWED_ORIGINS is not configured, allow all origins (open mode with warning)
-    if (IS_PRODUCTION && ALLOWED_ORIGINS.length === 0) return true;
-  } catch { /* malformed origin — reject */ }
-  return false;
+const { validateAndNormalizeOrigins, makeOriginChecker } = require("./utils/corsOrigin");
+
+let VALIDATED_ORIGINS;
+try {
+  VALIDATED_ORIGINS = validateAndNormalizeOrigins(ALLOWED_ORIGINS, IS_PRODUCTION);
+} catch (err) {
+  console.error(`FATAL: ${err.message}`);
+  console.error("ACTION: Fix ALLOWED_ORIGINS in Railway environment variables (https: URLs only, no paths or wildcards).");
+  process.exit(1);
 }
 
-if (IS_PRODUCTION && ALLOWED_ORIGINS.length === 0) {
-  console.warn("⚠️  WARNING: ALLOWED_ORIGINS not set in production — allowing all *.up.railway.app origins.");
-  console.warn("⚠️  ACTION REQUIRED: Set ALLOWED_ORIGINS=https://tu-dominio.com in Railway variables.");
+const isAllowedOrigin = makeOriginChecker(VALIDATED_ORIGINS, IS_PRODUCTION);
+
+if (IS_PRODUCTION && VALIDATED_ORIGINS.length === 0) {
+  console.warn("⚠️  WARNING: ALLOWED_ORIGINS not set in production — all cross-origin requests will be rejected.");
+  console.warn("⚠️  ACTION REQUIRED: Set ALLOWED_ORIGINS=https://app.glvglobalfoodservices.com in Railway variables.");
 }
 
 console.log(`[CORS] mode=${IS_PRODUCTION ? "PRODUCTION" : "DEVELOPMENT"}`);
-console.log(`[CORS] explicit origins: ${ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS.join(", ") : "(none)"}`);
+console.log(`[CORS] explicit origins: ${VALIDATED_ORIGINS.length ? VALIDATED_ORIGINS.join(", ") : "(none)"}`);
 if (!IS_PRODUCTION) {
   console.log("[CORS] auto-allowed in dev: localhost, 127.0.0.1, *.up.railway.app");
 }
@@ -91,6 +104,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
 app.set("trust proxy", 1);
 
 // Health check first — before all other routes
@@ -101,6 +115,7 @@ app.get("/health", (_req, res) => {
     const mediaCount = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
     const userCount  = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
     dbInfo = { media_assets: mediaCount, users: userCount };
+    try { dbInfo.migrations = db.getMigrationStatus(); } catch (_) {}
   } catch (e) { dbInfo = { error: e.message }; }
   res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS, db: dbInfo });
 });
@@ -150,14 +165,19 @@ app.use((err, _req, res, _next) => {
   if (!res.headersSent) res.status(500).json({ error: "Error interno del servidor" });
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(Number(PORT), "0.0.0.0", () => {
-  console.log(`GLV-Connect API en puerto ${PORT}`);
-  console.log(`PORT env: ${process.env.PORT ?? "(not set, defaulting to 3001)"}`);
-  console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
-  console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
-  console.log(`BUILD_TS: ${BUILD_TS}`);
-});
+// Only bind to a port when run directly — supertest creates its own server
+if (require.main === module) {
+  const PORT = process.env.PORT || 8080;
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`GLV-Connect API en puerto ${PORT}`);
+    console.log(`PORT env: ${process.env.PORT ?? "(not set, defaulting to 3001)"}`);
+    console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
+    console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+    console.log(`BUILD_TS: ${BUILD_TS}`);
+  });
+}
+
+module.exports = app;
 
 // Start backup scheduler (only if R2 configured) — 5s after start
 setTimeout(() => {

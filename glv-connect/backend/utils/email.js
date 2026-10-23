@@ -57,4 +57,33 @@ async function sendDocumentEmail(doc, agent) {
   });
 }
 
-module.exports = { sendDocumentEmail };
+async function sendPasswordResetEmail(user, resetUrl) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return;
+
+  const transporter = createTransport();
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#1B2A4A;padding:20px;border-radius:8px 8px 0 0">
+        <h2 style="color:#fff;margin:0;font-size:18px">GLV-Connect — Recuperación de contraseña</h2>
+      </div>
+      <div style="background:#f9fafb;padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+        <p style="font-size:14px;color:#374151">Hola <strong>${user.name || user.username}</strong>,</p>
+        <p style="font-size:14px;color:#374151">Recibimos una solicitud para restablecer tu contraseña. El enlace es válido por <strong>1 hora</strong>.</p>
+        <div style="text-align:center;margin:24px 0">
+          <a href="${resetUrl}" style="background:#1B2A4A;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600">
+            Restablecer contraseña
+          </a>
+        </div>
+        <p style="font-size:12px;color:#9ca3af">Si no solicitaste esto, ignora este mensaje. Tu contraseña no cambiará.</p>
+      </div>
+    </div>
+  `;
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM || '"GLV-Connect" <notificaciones@glvservicesexp.com>',
+    to: user.email,
+    subject: "[GLV-Connect] Restablecimiento de contraseña",
+    html,
+  });
+}
+
+module.exports = { sendDocumentEmail, sendPasswordResetEmail };
