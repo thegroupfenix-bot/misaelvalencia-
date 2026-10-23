@@ -605,30 +605,76 @@ describe("Fallo de tarea Compliance — genera audit_log y client_timeline (no s
     assert.equal(failEntry, undefined, "COMPLIANCE_TASK_FAILED must not appear when task succeeded");
   });
 
-  test("COMPLIANCE_TASK_FAILED event is recorded when task creation is forced to fail", () => {
-    // Simulate task creation failure by temporarily removing the tasks table
-    // We do this by directly calling the fallback logic
-    const client = db.prepare("SELECT id FROM clients WHERE glv_code = ? LIMIT 1").get(glvTaskFail);
-    if (!client) return; // guard
+  test("COMPLIANCE_TASK_FAILED is recorded via the real catch path (monkey-patch de db.prepare)", async () => {
+    // Monkey-patch db.prepare so that any call whose SQL targets "INSERT INTO tasks"
+    // throws instead of executing — this exercises the actual catch block in the route,
+    // not a direct DB insert.  All other SQL (audit_log, client_timeline, clients, …)
+    // passes through unchanged.  The patch is restored in `finally` regardless of outcome.
+    const glvFail = `GLV-MP-FAIL-${Date.now()}`;
+    const kycData = {
+      glv_code:        glvFail,
+      empresa:         "MP Fail Corp SA",
+      email:           "mpfail@test.invalid",
+      rep:             "Rep Monkey Patch",
+      tel:             "+573003334455",
+      nit:             "800222333-4",
+      submission_type: "CLIENT",
+      pais:            "CO",
+    };
 
-    // Directly insert the audit + timeline event (mimicking what the catch block does)
-    db.prepare(
-      "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
-    ).run("SYSTEM", "TASK_CREATION_FAILED", glvTaskFail, client.id, "127.0.0.1");
-    db.prepare(
-      "INSERT INTO client_timeline (client_id, event_type, event_description, severity) VALUES (?, ?, ?, ?)"
-    ).run(client.id, "COMPLIANCE_TASK_FAILED", "Fallo al crear tarea de Compliance tras KYC. Revisar manualmente.", "WARNING");
+    const originalPrepare = db.prepare.bind(db);
+    let failRes;
+    db.prepare = (sql) => {
+      if (typeof sql === "string" && /INSERT\s+INTO\s+tasks/i.test(sql)) {
+        throw new Error("simulated tasks INSERT failure [monkey-patch test]");
+      }
+      return originalPrepare(sql);
+    };
+    try {
+      failRes = await request(app).post("/clients/kyc").send(kycData);
+    } finally {
+      db.prepare = originalPrepare; // always restore, even if the request throws
+    }
 
+    // 1. KYC must still return 201 — the task failure is non-fatal
+    assert.equal(failRes.status, 201,
+      `POST /clients/kyc must return 201 even when task INSERT fails — got ${failRes.status}: ${JSON.stringify(failRes.body)}`);
+    assert.ok(failRes.body.ok, "response must include ok: true");
+    assert.ok(failRes.body.client_id, "response must include client_id");
+
+    // 2. Client must exist with encrypted kyc_data
+    const client = db.prepare("SELECT id, kyc_data FROM clients WHERE glv_code = ?").get(glvFail);
+    assert.ok(client, "client must be persisted in DB");
+    assert.ok(client.kyc_data, "kyc_data must be present (encrypted)");
+    assert.equal(client.kyc_data.split(".").length, 3,
+      "kyc_data must be AES-GCM ciphertext (iv.tag.ciphertext — 3 dot-separated parts)");
+
+    // 3. audit_log must have exactly TASK_CREATION_FAILED entry written by the catch block
     const auditEntry = db.prepare(
-      "SELECT action FROM audit_log WHERE doc_id = ? AND action = 'TASK_CREATION_FAILED' ORDER BY id DESC LIMIT 1"
-    ).get(glvTaskFail);
-    assert.ok(auditEntry, "audit_log must record TASK_CREATION_FAILED");
+      "SELECT action, doc_id, username FROM audit_log WHERE doc_id = ? AND action = 'TASK_CREATION_FAILED' ORDER BY id DESC LIMIT 1"
+    ).get(glvFail);
+    assert.ok(auditEntry, "audit_log must record TASK_CREATION_FAILED via the catch block");
+    assert.equal(auditEntry.username, "SYSTEM", "TASK_CREATION_FAILED must be attributed to SYSTEM");
 
+    // 4. client_timeline must have COMPLIANCE_TASK_FAILED with WARNING severity
     const timelineEntry = db.prepare(
-      "SELECT severity, event_type FROM client_timeline WHERE client_id = ? AND event_type = 'COMPLIANCE_TASK_FAILED' ORDER BY id DESC LIMIT 1"
+      "SELECT event_type, severity, event_description FROM client_timeline WHERE client_id = ? AND event_type = 'COMPLIANCE_TASK_FAILED' ORDER BY id DESC LIMIT 1"
     ).get(client.id);
-    assert.ok(timelineEntry, "client_timeline must have COMPLIANCE_TASK_FAILED entry");
+    assert.ok(timelineEntry, "client_timeline must have COMPLIANCE_TASK_FAILED entry written by the catch block");
     assert.equal(timelineEntry.severity, "WARNING", "timeline severity must be WARNING");
+
+    // 5. Recovery records (audit_log + client_timeline) must not contain any PII
+    const combined = JSON.stringify({ audit: auditEntry, timeline: timelineEntry }).toLowerCase();
+    assert.ok(!combined.includes(kycData.empresa.toLowerCase()),
+      "recovery records must NOT contain empresa");
+    assert.ok(!combined.includes(kycData.email.toLowerCase()),
+      "recovery records must NOT contain email");
+    assert.ok(!combined.includes((kycData.rep || "").toLowerCase()),
+      "recovery records must NOT contain rep");
+    assert.ok(!combined.includes(kycData.tel),
+      "recovery records must NOT contain tel");
+    assert.ok(!combined.includes(kycData.nit),
+      "recovery records must NOT contain NIT");
   });
 });
 
