@@ -797,6 +797,26 @@ db.exec(`
   }
 }
 
+// ─── Migration: clear PII from clients.name for WEB_KYC records ──────────────
+// clients.name previously stored comercial || empresa (company name = PII).
+// It must now store only the GLV code (technical identifier, not derived from KYC data).
+// Tracked separately from pii_cleared_at so records already migrated by the prior
+// migration are also handled.
+{
+  try { db.exec("ALTER TABLE clients ADD COLUMN name_pii_cleared_at TEXT"); } catch (_) {}
+  const nameUpdated = db.prepare(`
+    UPDATE clients
+    SET name               = COALESCE(glv_code, name),
+        name_pii_cleared_at = datetime('now')
+    WHERE registration_source = 'WEB_KYC'
+      AND kyc_data IS NOT NULL
+      AND name_pii_cleared_at IS NULL
+  `).run();
+  if (nameUpdated.changes > 0) {
+    console.log(`[DB] PII migration (name): replaced empresa in clients.name with glv_code for ${nameUpdated.changes} WEB_KYC record(s).`);
+  }
+}
+
 // ─── Seed default users ───────────────────────────────────────────────────────
 function seedPriceCenter() {
   const catCount = db.prepare("SELECT COUNT(*) AS c FROM pc_categories").get().c;

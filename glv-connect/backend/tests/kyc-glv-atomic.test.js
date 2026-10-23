@@ -507,6 +507,18 @@ describe("PII — clients tabla no retiene PII en texto plano tras WEB_KYC", () 
     assert.equal(c.tax_id, null, "tax_id must be NULL — PII only in encrypted kyc_data");
   });
 
+  test("clients.name does NOT contain empresa or any KYC PII after WEB_KYC submission", () => {
+    const c = db.prepare("SELECT name FROM clients WHERE glv_code = ?").get(glvCodePii);
+    assert.ok(c, "client must exist");
+    // name must be the technical identifier (GLV code), not the company name
+    assert.equal(c.name, glvCodePii,
+      `clients.name must be the GLV code, not empresa — got: "${c.name}"`);
+    assert.ok(!c.name.toLowerCase().includes(piiPayload.empresa.toLowerCase()),
+      `clients.name must NOT contain empresa — got: "${c.name}"`);
+    assert.ok(!c.name.toLowerCase().includes(piiPayload.email.toLowerCase()),
+      `clients.name must NOT contain email — got: "${c.name}"`);
+  });
+
   test("PII is recoverable from clients.kyc_data (encrypted)", () => {
     const c = db.prepare("SELECT kyc_data FROM clients WHERE glv_code = ?").get(glvCodePii);
     assert.ok(c.kyc_data, "kyc_data must not be null");
@@ -642,12 +654,25 @@ describe("Fallo de tarea Compliance — genera audit_log y client_timeline (no s
     assert.ok(failRes.body.ok, "response must include ok: true");
     assert.ok(failRes.body.client_id, "response must include client_id");
 
-    // 2. Client must exist with encrypted kyc_data
-    const client = db.prepare("SELECT id, kyc_data FROM clients WHERE glv_code = ?").get(glvFail);
+    // 2. Client must exist with encrypted kyc_data and no PII in name
+    const client = db.prepare(
+      "SELECT id, kyc_data, name, company, representative, email, phone, tax_id FROM clients WHERE glv_code = ?"
+    ).get(glvFail);
     assert.ok(client, "client must be persisted in DB");
     assert.ok(client.kyc_data, "kyc_data must be present (encrypted)");
     assert.equal(client.kyc_data.split(".").length, 3,
       "kyc_data must be AES-GCM ciphertext (iv.tag.ciphertext — 3 dot-separated parts)");
+    // name must be the GLV code, not the empresa field
+    assert.equal(client.name, glvFail,
+      `clients.name must be GLV code in monkey-patch test — got: "${client.name}"`);
+    assert.ok(!client.name.toLowerCase().includes(kycData.empresa.toLowerCase()),
+      `clients.name must NOT contain empresa — got: "${client.name}"`);
+    // PII columns must be NULL
+    assert.equal(client.company,        null, "company must be NULL");
+    assert.equal(client.representative, null, "representative must be NULL");
+    assert.equal(client.email,          null, "email must be NULL");
+    assert.equal(client.phone,          null, "phone must be NULL");
+    assert.equal(client.tax_id,         null, "tax_id must be NULL");
 
     // 3. audit_log must have exactly TASK_CREATION_FAILED entry written by the catch block
     const auditEntry = db.prepare(
@@ -700,5 +725,103 @@ describe("CORS — OPTIONS preflight from rejected origin", () => {
     const res = await request(app)
       .get("/health");
     assert.equal(res.status, 200, "health check must succeed without Origin header");
+  });
+});
+
+// ─── 10. Migration — clients.name clearance for WEB_KYC records ──────────────
+
+describe("Migration — name_pii_cleared_at: clients.name se limpia para registros WEB_KYC existentes", () => {
+  test("migration sets name to glv_code for pre-existing WEB_KYC record with empresa in name", () => {
+    // Simulate a record inserted before the name migration (with empresa in name)
+    const oldGlv = `GLV-MIGRATION-NAME-${Date.now()}`;
+    const fakeKycData = "iv.tag.cipher"; // simulate AES-GCM ciphertext format
+    db.prepare(`
+      INSERT INTO clients
+        (type, name, glv_code, registration_source, kyc_data, lead_status, kyc_status, active)
+      VALUES ('buyer', 'Empresa Pre-Migracion SA', ?, 'WEB_KYC', ?, 'UNASSIGNED', 'PRE_REGISTRATION', 1)
+    `).run(oldGlv, fakeKycData);
+
+    // Verify initial state — name contains empresa (old PII)
+    const before = db.prepare(
+      "SELECT name, name_pii_cleared_at FROM clients WHERE glv_code = ?"
+    ).get(oldGlv);
+    assert.equal(before.name, "Empresa Pre-Migracion SA",
+      "pre-migration: name must contain empresa (simulated old state)");
+    assert.equal(before.name_pii_cleared_at, null,
+      "pre-migration: name_pii_cleared_at must be NULL");
+
+    // Run the migration SQL (same logic as database.js startup)
+    db.prepare(`
+      UPDATE clients
+      SET name               = COALESCE(glv_code, name),
+          name_pii_cleared_at = datetime('now')
+      WHERE registration_source = 'WEB_KYC'
+        AND kyc_data IS NOT NULL
+        AND name_pii_cleared_at IS NULL
+    `).run();
+
+    // Verify post-migration state
+    const after = db.prepare(
+      "SELECT name, name_pii_cleared_at FROM clients WHERE glv_code = ?"
+    ).get(oldGlv);
+    assert.equal(after.name, oldGlv,
+      `post-migration: name must be the GLV code — got: "${after.name}"`);
+    assert.ok(after.name_pii_cleared_at,
+      "post-migration: name_pii_cleared_at must be set");
+    assert.ok(!after.name.toLowerCase().includes("empresa"),
+      "post-migration: name must not contain empresa");
+  });
+
+  test("migration is idempotent — re-running does not change already-migrated records", () => {
+    const idGlv = `GLV-MIGRATION-IDEM-${Date.now()}`;
+    const fakeKycData = "iv.tag.cipher2";
+
+    // Insert and run migration once
+    db.prepare(`
+      INSERT INTO clients
+        (type, name, glv_code, registration_source, kyc_data, lead_status, kyc_status, active)
+      VALUES ('buyer', 'Empresa Idempotente SA', ?, 'WEB_KYC', ?, 'UNASSIGNED', 'PRE_REGISTRATION', 1)
+    `).run(idGlv, fakeKycData);
+    db.prepare(`
+      UPDATE clients SET name = COALESCE(glv_code, name), name_pii_cleared_at = datetime('now')
+      WHERE registration_source = 'WEB_KYC' AND kyc_data IS NOT NULL AND name_pii_cleared_at IS NULL
+    `).run();
+
+    const after1 = db.prepare("SELECT name, name_pii_cleared_at FROM clients WHERE glv_code = ?").get(idGlv);
+    assert.equal(after1.name, idGlv, "first run: name must be glv_code");
+
+    // Manually mutate name to simulate a bad actor or bug
+    db.prepare("UPDATE clients SET name = 'Should Not Change' WHERE glv_code = ?").run(idGlv);
+
+    // Run migration again — must not update because name_pii_cleared_at IS NOT NULL
+    db.prepare(`
+      UPDATE clients SET name = COALESCE(glv_code, name), name_pii_cleared_at = datetime('now')
+      WHERE registration_source = 'WEB_KYC' AND kyc_data IS NOT NULL AND name_pii_cleared_at IS NULL
+    `).run();
+
+    const after2 = db.prepare("SELECT name FROM clients WHERE glv_code = ?").get(idGlv);
+    assert.equal(after2.name, "Should Not Change",
+      "second run: migration must not overwrite already-migrated record (idempotency guard)");
+  });
+
+  test("WEB_KYC records without kyc_data are not touched by migration", () => {
+    const noKycGlv = `GLV-MIGRATION-NOKYC-${Date.now()}`;
+    // Insert a WEB_KYC record with NO kyc_data (legacy without encryption)
+    db.prepare(`
+      INSERT INTO clients
+        (type, name, glv_code, registration_source, lead_status, kyc_status, active)
+      VALUES ('buyer', 'Legacy No KYC SA', ?, 'WEB_KYC', 'UNASSIGNED', 'PRE_REGISTRATION', 1)
+    `).run(noKycGlv);
+
+    // Run migration
+    db.prepare(`
+      UPDATE clients SET name = COALESCE(glv_code, name), name_pii_cleared_at = datetime('now')
+      WHERE registration_source = 'WEB_KYC' AND kyc_data IS NOT NULL AND name_pii_cleared_at IS NULL
+    `).run();
+
+    // Legacy record must be untouched
+    const after = db.prepare("SELECT name FROM clients WHERE glv_code = ?").get(noKycGlv);
+    assert.equal(after.name, "Legacy No KYC SA",
+      "legacy records without kyc_data must not be altered by migration (requires manual review)");
   });
 });

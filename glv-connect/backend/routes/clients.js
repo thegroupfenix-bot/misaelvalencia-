@@ -89,14 +89,14 @@ router.post("/kyc", kycLimiter, (req, res) => {
       `).run(submType, glv_code, encryptedJson, clientIp, ua);
       const submissionId = sub.lastInsertRowid;
 
-      // 2. Upsert de cliente — PII (company, representative, email, phone, tax_id) se almacena
-      //    únicamente en kyc_data (cifrado). Las columnas individuales quedan en NULL para evitar
-      //    texto plano en la tabla clients. El campo name se retiene como identificador de display.
+      // 2. Upsert de cliente — toda PII (company, representative, email, phone, tax_id, nombre empresa)
+      //    se almacena únicamente en kyc_data (cifrado AES-256-GCM). Las columnas individuales y
+      //    clients.name quedan libres de PII: name usa el glv_code como identificador técnico.
       const existing = db.prepare("SELECT id FROM clients WHERE glv_code = ?").get(glv_code);
       if (existing) {
         db.prepare(`
           UPDATE clients SET
-            name                = COALESCE(?, name),
+            name                = ?,
             country             = COALESCE(?, country),
             company             = NULL,
             representative      = NULL,
@@ -108,7 +108,7 @@ router.post("/kyc", kycLimiter, (req, res) => {
             kyc_status          = CASE WHEN kyc_status = 'REJECTED' THEN 'PRE_REGISTRATION' ELSE kyc_status END
           WHERE glv_code = ?
         `).run(
-          comercial || empresa, pais || null, encryptedJson, glv_code
+          glv_code, pais || null, encryptedJson, glv_code
         );
         clientId = existing.id;
       } else {
@@ -118,7 +118,7 @@ router.post("/kyc", kycLimiter, (req, res) => {
              registration_source, kyc_data, commercial_score, compliance_flag, active)
           VALUES ('buyer', ?, ?, ?, 'UNASSIGNED', 'PRE_REGISTRATION', 'WEB_KYC', ?, 0, 0, 1)
         `).run(
-          comercial || empresa, pais || null, glv_code, encryptedJson
+          glv_code, pais || null, glv_code, encryptedJson
         );
         clientId = ins.lastInsertRowid;
       }
