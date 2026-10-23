@@ -200,4 +200,20 @@ export const api = {
   addClientNote:     (id, data)      => request("POST",   `/clients/${id}/notes`, data),
   updateClientNote:  (id, nId, data) => request("PATCH",  `/clients/${id}/notes/${nId}`, data),
   deleteClientNote:  (id, nId)       => request("DELETE", `/clients/${id}/notes/${nId}`),
+
+  // ─── Commercial Workspace ─────────────────────────────────────────────────────
+  getCommercialMatrix:      (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/commercial/price-matrix${q?"?"+q:""}`); },
+  createCommercialMatrix:   (data)      => request("POST",  "/commercial/price-matrix", data),
+  updateCommercialMatrix:   (id, data)  => request("PATCH", `/commercial/price-matrix/${id}`, data),
+  getCommercialRules:       (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/commercial/rules${q?"?"+q:""}`); },
+  createCommercialRule:     (data)      => request("POST",  "/commercial/rules", data),
+  updateCommercialRule:     (id, data)  => request("PATCH", `/commercial/rules/${id}`, data),
+  getCommercialQuotes:      (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/commercial/quotes${q?"?"+q:""}`); },
+  getCommercialQuote:       (id)        => request("GET",   `/commercial/quotes/${id}`),
+  createCommercialQuote:    (data)      => request("POST",  "/commercial/quotes", data),
+  calculateCommercialQuote: (id)        => request("POST",  `/commercial/quotes/${id}/calculate`),
+  submitCommercialQuote:    (id)        => request("POST",  `/commercial/quotes/${id}/submit`),
+  approveCommercialQuote:   (id, data)  => request("POST",  `/commercial/quotes/${id}/approve`, data),
+  rejectCommercialQuote:    (id, data)  => request("POST",  `/commercial/quotes/${id}/reject`, data),
+  linkCommercialDocument:   (id, data)  => request("POST",  `/commercial/quotes/${id}/link-document`, data),
 };
