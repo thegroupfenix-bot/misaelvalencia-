@@ -1189,6 +1189,242 @@ db.exec("INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('QUOTE',
 // Add quote_id FK to documents (idempotent)
 safeAlter("ALTER TABLE documents ADD COLUMN quote_id INTEGER REFERENCES commercial_quotes(id)");
 
+// ─── Operations & Logistics Core ─────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_providers (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    type          TEXT    NOT NULL CHECK(type IN ('NAVIERA','FREIGHT_OPERATOR','PORT_AGENT','LOGISTICS_PROVIDER')),
+    country       TEXT,
+    contact_name  TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    scac_code     TEXT,
+    imo_registered INTEGER DEFAULT 0,
+    notes         TEXT,
+    status        TEXT    DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE')),
+    created_at    TEXT    DEFAULT (datetime('now')),
+    updated_at    TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS op_ports (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL,
+    country    TEXT    NOT NULL,
+    locode     TEXT    UNIQUE,
+    type       TEXT    DEFAULT 'SEA' CHECK(type IN ('SEA','AIR','LAND','RIVER')),
+    timezone   TEXT,
+    status     TEXT    DEFAULT 'ACTIVE',
+    created_at TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_ops (
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_number         TEXT    UNIQUE NOT NULL,
+    status                   TEXT    NOT NULL DEFAULT 'PREPARACION' CHECK(status IN (
+      'PREPARACION','DOCUMENTOS','BOOKING','CARGA',
+      'EN_TRANSITO','ARRIBO','NACIONALIZACION','ENTREGA',
+      'CERRADA','CANCELADA'
+    )),
+    quote_id                 INTEGER REFERENCES commercial_quotes(id),
+    doc_id                   TEXT    REFERENCES documents(id),
+    source_type              TEXT    CHECK(source_type IN ('QUOTE','SCO','FCO','SPA','MANUAL')),
+    client_id                INTEGER REFERENCES clients(id),
+    product_code             TEXT,
+    product_name             TEXT,
+    quantity                 REAL,
+    unit                     TEXT,
+    incoterm                 TEXT,
+    origin_country           TEXT,
+    destination_country      TEXT,
+    currency                 TEXT    DEFAULT 'USD',
+    responsible_username     TEXT,
+    estimated_start_date     TEXT,
+    actual_start_date        TEXT,
+    estimated_delivery_date  TEXT,
+    actual_delivery_date     TEXT,
+    closed_at                TEXT,
+    cancelled_at             TEXT,
+    cancellation_reason      TEXT,
+    created_by               TEXT,
+    created_at               TEXT    DEFAULT (datetime('now')),
+    updated_at               TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_lops_status ON logistics_ops(status);
+  CREATE INDEX IF NOT EXISTS idx_lops_client ON logistics_ops(client_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_voyages (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id            INTEGER NOT NULL REFERENCES logistics_ops(id),
+    naviera_id       INTEGER REFERENCES logistics_providers(id),
+    vessel_name      TEXT,
+    imo_number       TEXT,
+    voyage_number    TEXT,
+    booking_number   TEXT,
+    booking_date     TEXT,
+    pol_port_id      INTEGER REFERENCES op_ports(id),
+    pod_port_id      INTEGER REFERENCES op_ports(id),
+    etd              TEXT,
+    atd              TEXT,
+    eta              TEXT,
+    ata              TEXT,
+    bl_number        TEXT,
+    bl_type          TEXT CHECK(bl_type IN ('ORIGINAL','TELEX_RELEASE','SEA_WAYBILL')),
+    bl_date          TEXT,
+    freight_agent_id INTEGER REFERENCES logistics_providers(id),
+    port_agent_id    INTEGER REFERENCES logistics_providers(id),
+    notes            TEXT,
+    created_by       TEXT,
+    created_at       TEXT DEFAULT (datetime('now')),
+    updated_at       TEXT DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_containers (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id               INTEGER NOT NULL REFERENCES logistics_ops(id),
+    voyage_id           INTEGER REFERENCES logistics_voyages(id),
+    container_number    TEXT    NOT NULL,
+    container_type      TEXT,
+    seal_number         TEXT,
+    gross_weight_kg     REAL,
+    vgm_kg              REAL,
+    vgm_date            TEXT,
+    vgm_method          TEXT,
+    inspection_required INTEGER DEFAULT 0,
+    inspection_date     TEXT,
+    inspection_result   TEXT,
+    inspection_agency   TEXT,
+    notes               TEXT,
+    created_at          TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_milestones (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id                INTEGER NOT NULL REFERENCES logistics_ops(id),
+    milestone_key        TEXT    NOT NULL,
+    milestone_label      TEXT    NOT NULL,
+    planned_date         TEXT,
+    actual_date          TEXT,
+    responsible_username TEXT,
+    evidence_note        TEXT,
+    delay_days           INTEGER,
+    alert_triggered      INTEGER DEFAULT 0,
+    status               TEXT    DEFAULT 'PENDING' CHECK(status IN ('PENDING','COMPLETED','OVERDUE','SKIPPED')),
+    created_at           TEXT    DEFAULT (datetime('now')),
+    updated_at           TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_incidents (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id       INTEGER NOT NULL REFERENCES logistics_ops(id),
+    type        TEXT    NOT NULL,
+    severity    TEXT    DEFAULT 'MEDIUM' CHECK(severity IN ('LOW','MEDIUM','HIGH','CRITICAL')),
+    description TEXT    NOT NULL,
+    reported_by TEXT,
+    reported_at TEXT    DEFAULT (datetime('now')),
+    resolved_at TEXT,
+    resolution  TEXT,
+    status      TEXT    DEFAULT 'OPEN' CHECK(status IN ('OPEN','IN_PROGRESS','RESOLVED','CLOSED'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_audit (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id        INTEGER NOT NULL REFERENCES logistics_ops(id),
+    action       TEXT    NOT NULL,
+    actor        TEXT    NOT NULL,
+    role         TEXT,
+    before_state TEXT,
+    after_state  TEXT,
+    detail       TEXT,
+    created_at   TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_assignments (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id       INTEGER NOT NULL REFERENCES logistics_ops(id),
+    provider_id INTEGER NOT NULL REFERENCES logistics_providers(id),
+    role        TEXT    NOT NULL CHECK(role IN ('NAVIERA','FREIGHT_OPERATOR','PORT_AGENT','LOGISTICS_PROVIDER','INSPECTOR')),
+    assigned_by TEXT,
+    assigned_at TEXT    DEFAULT (datetime('now')),
+    notes       TEXT
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_task_templates (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    trigger_status    TEXT    NOT NULL,
+    title             TEXT    NOT NULL,
+    description       TEXT,
+    area              TEXT,
+    default_due_days  INTEGER DEFAULT 3,
+    requires_evidence INTEGER DEFAULT 0,
+    active            INTEGER DEFAULT 1
+  );
+
+  INSERT OR IGNORE INTO logistics_task_templates (trigger_status, title, description, area, default_due_days, requires_evidence) VALUES
+  ('BOOKING','Confirmar booking con naviera','Obtener número de booking y fechas ETD/ETA confirmadas','LOGISTICA',2,0),
+  ('BOOKING','Emitir instrucciones de embarque','Enviar shipping instructions a la naviera/agente','DOCUMENTACION',3,0),
+  ('CARGA','Coordinar retiro de contenedores vacíos','Programar retiro en depósito/patio','LOGISTICA',2,0),
+  ('CARGA','Verificar VGM','Confirmar peso verificado VGM según SOLAS','LOGISTICA',1,1),
+  ('CARGA','Documentos de exportación','Coordinar DUA, factura, packing list, certificados','DOCUMENTACION',3,1),
+  ('EN_TRANSITO','Solicitar BL Draft','Revisar y aprobar borrador de BL','DOCUMENTACION',2,0),
+  ('EN_TRANSITO','Coordinar seguro de carga','Emitir o verificar póliza de seguro activa','FINANZAS',2,1),
+  ('ARRIBO','Notificar arribo al cliente','Enviar aviso de arribo con ETA actualizado','COMERCIAL',1,0),
+  ('ARRIBO','Coordinar agente portuario','Instruir agente para recepción y almacenaje','LOGISTICA',2,0),
+  ('NACIONALIZACION','Presentar documentos de importación','DUA importación, BL, factura, certificados','ADUANA',2,1),
+  ('ENTREGA','Coordinar transporte de última milla','Programar transporte desde depósito a destino final','LOGISTICA',1,0),
+  ('ENTREGA','Confirmar entrega con cliente','Obtener conformidad firmada de recepción','COMERCIAL',1,1),
+  ('CERRADA','Cierre financiero de operación','Liquidar gastos, confirmar facturación final','FINANZAS',5,0),
+  ('CERRADA','Archivo de documentos originales','Digitalizar y archivar expediente completo','DOCUMENTACION',7,1);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_op_tasks (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id       INTEGER NOT NULL REFERENCES logistics_ops(id),
+    task_id     INTEGER NOT NULL REFERENCES tasks(id),
+    template_id INTEGER REFERENCES logistics_task_templates(id),
+    created_at  TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+// Default ports seed
+db.exec(`
+  INSERT OR IGNORE INTO op_ports (name, country, locode, type) VALUES
+  ('Puerto de Buenos Aires','AR','ARBUE','SEA'),
+  ('Puerto de Rosario','AR','ARROS','SEA'),
+  ('Puerto de Shanghai','CN','CNSGH','SEA'),
+  ('Puerto de Rotterdam','NL','NLRTM','SEA'),
+  ('Puerto de Santos','BR','BRSST','SEA'),
+  ('Puerto de Callao','PE','PECLL','SEA'),
+  ('Puerto de Valparaíso','CL','CLVAP','SEA'),
+  ('Puerto de Cartagena','CO','COCTG','SEA'),
+  ('Puerto de Hamburgo','DE','DEHAM','SEA'),
+  ('Puerto de Algeciras','ES','ESALG','SEA'),
+  ('Jebel Ali Port','AE','AEJEA','SEA'),
+  ('King Abdulaziz Port','SA','SAJED','SEA');
+`);
+
+// Add logistics_op_id to tasks (idempotent)
+safeAlter("ALTER TABLE tasks ADD COLUMN logistics_op_id INTEGER REFERENCES logistics_ops(id)");
+
 // ─── getMigrationStatus ───────────────────────────────────────────────────────
 function getMigrationStatus() {
   const checkTable = (table) => {
@@ -1217,6 +1453,13 @@ function getMigrationStatus() {
     commercial_quotes_doc_id:   checkColumn("commercial_quotes", "doc_id"),
     documents_quote_id:         checkColumn("documents", "quote_id"),
     doc_id_sequences_quote:     checkSeq("QUOTE"),
+    logistics_providers:        checkTable("logistics_providers"),
+    logistics_ops:               checkTable("logistics_ops"),
+    logistics_voyages:           checkTable("logistics_voyages"),
+    logistics_containers:        checkTable("logistics_containers"),
+    logistics_milestones:        checkTable("logistics_milestones"),
+    logistics_incidents:         checkTable("logistics_incidents"),
+    logistics_audit:             checkTable("logistics_audit"),
   };
 }
 db.getMigrationStatus = getMigrationStatus;
