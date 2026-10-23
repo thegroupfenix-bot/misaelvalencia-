@@ -374,31 +374,45 @@ router.post("/quotes/:id/calculate", requireLevel(40), (req, res) => {
       return res.status(409).json({ error: "Solo cotizaciones en DRAFT o REJECTED pueden recalcularse." });
     }
 
-    // Find active matrix entry — product_id match preferred, fall back to route-only
-    let matrix = db.prepare(`
-      SELECT * FROM commercial_price_matrix
-      WHERE status = 'ACTIVE'
-        AND origin_country = ?
-        AND destination_country = ?
-        AND incoterm = ?
-        AND product_id = ?
-        AND valid_from <= date('now')
-        AND (valid_until IS NULL OR valid_until >= date('now'))
-      ORDER BY id DESC LIMIT 1
-    `).get(quote.origin_country, quote.destination_country, quote.incoterm, quote.product_id || -1);
+    // Find active matrix entry — most specific first, then fall back to route-only
+    let matrix = null;
+    const routeParams = [quote.origin_country, quote.destination_country, quote.incoterm];
+
+    if (quote.product_id) {
+      matrix = db.prepare(`
+        SELECT * FROM commercial_price_matrix
+        WHERE status = 'ACTIVE'
+          AND origin_country = ? AND destination_country = ? AND incoterm = ?
+          AND product_id = ?
+          AND valid_from <= date('now')
+          AND (valid_until IS NULL OR valid_until >= date('now'))
+        ORDER BY id DESC LIMIT 1
+      `).get(...routeParams, quote.product_id);
+    }
 
     if (!matrix && quote.product_code) {
       matrix = db.prepare(`
         SELECT * FROM commercial_price_matrix
         WHERE status = 'ACTIVE'
-          AND origin_country = ?
-          AND destination_country = ?
-          AND incoterm = ?
-          AND product_id IS NULL AND product_code = ?
+          AND origin_country = ? AND destination_country = ? AND incoterm = ?
+          AND product_code = ?
           AND valid_from <= date('now')
           AND (valid_until IS NULL OR valid_until >= date('now'))
         ORDER BY id DESC LIMIT 1
-      `).get(quote.origin_country, quote.destination_country, quote.incoterm, quote.product_code);
+      `).get(...routeParams, quote.product_code);
+    }
+
+    // Route-level fallback (no product restriction)
+    if (!matrix) {
+      matrix = db.prepare(`
+        SELECT * FROM commercial_price_matrix
+        WHERE status = 'ACTIVE'
+          AND origin_country = ? AND destination_country = ? AND incoterm = ?
+          AND product_id IS NULL AND product_code IS NULL
+          AND valid_from <= date('now')
+          AND (valid_until IS NULL OR valid_until >= date('now'))
+        ORDER BY id DESC LIMIT 1
+      `).get(...routeParams);
     }
 
     if (!matrix) {
