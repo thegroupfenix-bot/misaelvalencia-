@@ -436,12 +436,31 @@ router.post("/quotes/:id/calculate", requireLevel(40), (req, res) => {
         AND valid_from <= date('now')
         AND (valid_until IS NULL OR valid_until >= date('now'))
         AND (min_volume IS NULL OR min_volume <= ?)
-      ORDER BY product_id DESC, id DESC LIMIT 1
+      ORDER BY
+        CASE WHEN product_id IS NOT NULL THEN 1 ELSE 0 END DESC,
+        CASE WHEN origin_country IS NOT NULL THEN 1 ELSE 0 END DESC,
+        CASE WHEN destination_country IS NOT NULL THEN 1 ELSE 0 END DESC,
+        CASE WHEN incoterm IS NOT NULL THEN 1 ELSE 0 END DESC,
+        id DESC
+      LIMIT 1
     `).get(
       quote.product_id || null,
       quote.origin_country, quote.destination_country, quote.incoterm,
       quote.quantity
     );
+
+    // A commercial rule is mandatory for every calculation.
+    // No active, valid, volume-matching rule → reject the request before any price is computed.
+    if (!rule) {
+      quoteAudit(quote.id, "CALCULATION_FAILED", req.user.username, req.user.role,
+        { status: quote.status }, null, "BLOCKED",
+        "No applicable commercial rule found — no active, valid, volume-matching rule for this product/route/incoterm");
+      return res.status(422).json({
+        error: "No existe regla comercial vigente, activa y aplicable para este producto, ruta, Incoterm y cantidad.",
+        code: "COMMERCIAL_RULE_NOT_APPLICABLE",
+        blocked: true,
+      });
+    }
 
     // All price values come exclusively from the authorized matrix
     const base_cost          = matrix.base_cost;
@@ -454,8 +473,8 @@ router.post("/quotes/:id/calculate", requireLevel(40), (req, res) => {
     const min_authorized_price = matrix.min_authorized_price;
     const total_value        = parseFloat((price_per_unit * quote.quantity).toFixed(4));
 
-    // Check effective floor from rule
-    const ruleFloor    = rule ? (rule.min_price_floor || 0) : 0;
+    // Check effective floor from rule (rule is guaranteed non-null at this point)
+    const ruleFloor    = rule.min_price_floor || 0;
     const effectiveMin = Math.max(min_authorized_price, ruleFloor);
 
     if (price_per_unit < effectiveMin) {
@@ -493,7 +512,7 @@ router.post("/quotes/:id/calculate", requireLevel(40), (req, res) => {
       base_cost, freight_cost, insurance_cost, operational_cost,
       total_cost_per_unit, target_margin, price_per_unit,
       total_value, min_authorized_price,
-      matrix.id, rule ? rule.id : null,
+      matrix.id, rule.id,
       req.user.username, now,
       quote.id
     );
@@ -501,7 +520,7 @@ router.post("/quotes/:id/calculate", requireLevel(40), (req, res) => {
     const updated = db.prepare("SELECT * FROM commercial_quotes WHERE id = ?").get(quote.id);
     quoteAudit(quote.id, "CALCULATED", req.user.username, req.user.role,
       { price_per_unit: quote.price_per_unit, status: quote.status },
-      { price_per_unit, total_value, matrix_id: matrix.id, rule_id: rule ? rule.id : null },
+      { price_per_unit, total_value, matrix_id: matrix.id, rule_id: rule.id },
       "OK");
 
     return res.json(updated);

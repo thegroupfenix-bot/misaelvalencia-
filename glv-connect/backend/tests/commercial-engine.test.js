@@ -192,8 +192,6 @@ describe("Suite 3 — Commercial rules", () => {
         origin_country: "AR",
         destination_country: "SA",
         incoterm: "CIF",
-        min_volume: 5000,
-        min_volume_unit: "kg",
         min_price_floor: 3.80,
         max_discount_pct: 5,
         valid_from: "2026-01-01",
@@ -767,6 +765,222 @@ describe("Suite 13 — total_cost_per_unit excluded from CLIENT response; migrat
     assert.ok(status.commercial_quotes_doc_id,  "commercial_quotes.doc_id column must exist");
     assert.ok(status.documents_quote_id,        "documents.quote_id column must exist");
     assert.ok(status.doc_id_sequences_quote,    "QUOTE sequence in doc_id_sequences must exist");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Suite 14 — Semantic rule applicability: 422 when no rule applies; rule priority
+// Cases: a (expired), b (inactive), c (out-of-volume), d (general rule),
+//        e (specific > general), f (wrong route), g (CLIENT fields exclusion)
+// ══════════════════════════════════════════════════════════════════════════════
+describe("Suite 14 — Semantic rule applicability and priority", () => {
+  const s14Base = {
+    base_cost: 2.00, freight_cost: 0.30, insurance_cost: 0.05,
+    operational_cost: 0.15, target_margin: 0.20, valid_from: "2026-01-01",
+  };
+
+  before(async () => {
+    // Isolated matrices for each test route (no pre-existing rules for any of these)
+    for (const origin of ["DE", "IT", "FR", "MX", "CO", "ZZ"]) {
+      await auth(directorToken)(request(app)
+        .post("/commercial/price-matrix")
+        .send({ ...s14Base, origin_country: origin, destination_country: "SA", incoterm: "CIF" }));
+    }
+  });
+
+  // 3f — different origin/destination with no applicable rule → 422
+  test("3f — ZZ→SA CIF: no rule at all → 422 COMMERCIAL_RULE_NOT_APPLICABLE", async () => {
+    const cr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "ZZ", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 500, unit: "kg" }));
+    assert.strictEqual(cr.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${cr.body.id}/calculate`));
+    assert.strictEqual(calcR.status, 422,
+      `Expected 422 COMMERCIAL_RULE_NOT_APPLICABLE, got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.strictEqual(calcR.body.code, "COMMERCIAL_RULE_NOT_APPLICABLE");
+    assert.strictEqual(calcR.body.blocked, true);
+  });
+
+  // 3a — expired rule, no alternative applicable → 422
+  test("3a — DE→SA CIF: expired rule only → 422 COMMERCIAL_RULE_NOT_APPLICABLE", async () => {
+    await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "DE", destination_country: "SA", incoterm: "CIF",
+        min_price_floor: 9999.00, max_discount_pct: 0,
+        valid_from: "2020-01-01", valid_until: "2020-12-31",
+      }));
+
+    const cr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "DE", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 500, unit: "kg" }));
+    assert.strictEqual(cr.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${cr.body.id}/calculate`));
+    assert.strictEqual(calcR.status, 422,
+      `Expected 422, got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.strictEqual(calcR.body.code, "COMMERCIAL_RULE_NOT_APPLICABLE",
+      "Expired rule with no active alternative must return COMMERCIAL_RULE_NOT_APPLICABLE");
+  });
+
+  // 3b — inactive rule, no alternative applicable → 422
+  test("3b — IT→SA CIF: inactive rule only → 422 COMMERCIAL_RULE_NOT_APPLICABLE", async () => {
+    const ruleR = await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "IT", destination_country: "SA", incoterm: "CIF",
+        min_price_floor: 9999.00, max_discount_pct: 0,
+        valid_from: "2026-01-01",
+      }));
+    assert.strictEqual(ruleR.status, 201);
+    await auth(directorToken)(request(app)
+      .patch(`/commercial/rules/${ruleR.body.id}`)
+      .send({ status: "INACTIVE" }));
+
+    const cr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "IT", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 500, unit: "kg" }));
+    assert.strictEqual(cr.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${cr.body.id}/calculate`));
+    assert.strictEqual(calcR.status, 422,
+      `Expected 422, got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.strictEqual(calcR.body.code, "COMMERCIAL_RULE_NOT_APPLICABLE",
+      "Inactive rule with no active alternative must return COMMERCIAL_RULE_NOT_APPLICABLE");
+  });
+
+  // 3c — quantity below min_volume, no alternative applicable → 422
+  test("3c — FR→SA CIF: out-of-volume rule, quantity=100 < min_volume=50000 → 422 COMMERCIAL_RULE_NOT_APPLICABLE", async () => {
+    await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "FR", destination_country: "SA", incoterm: "CIF",
+        min_volume: 50000, min_volume_unit: "kg",
+        min_price_floor: 1.00, max_discount_pct: 5,
+        valid_from: "2026-01-01",
+      }));
+
+    const cr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "FR", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 100, unit: "kg" }));
+    assert.strictEqual(cr.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${cr.body.id}/calculate`));
+    assert.strictEqual(calcR.status, 422,
+      `Expected 422, got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.strictEqual(calcR.body.code, "COMMERCIAL_RULE_NOT_APPLICABLE",
+      "Volume below min_volume with no alternative must return COMMERCIAL_RULE_NOT_APPLICABLE");
+  });
+
+  // 3d — general rule (no product restriction) valid when no specific rule exists
+  test("3d — MX→SA CIF: route-level rule (no product) satisfies requirement → 200", async () => {
+    await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "MX", destination_country: "SA", incoterm: "CIF",
+        min_price_floor: 0.50, max_discount_pct: 5,
+        valid_from: "2026-01-01",
+      }));
+
+    const cr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "MX", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 1000, unit: "kg" }));
+    assert.strictEqual(cr.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${cr.body.id}/calculate`));
+    // matrix sale_price ≈ (2.00+0.30+0.05+0.15)/(1-0.20) = 2.50/0.80 = 3.125; floor=0.50 → OK
+    assert.strictEqual(calcR.status, 200,
+      `Route-level rule must satisfy requirement when no product-specific rule exists — got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.ok(calcR.body.price_per_unit > 0, "price_per_unit must be set");
+  });
+
+  // 3e — specific rule has priority over general rule
+  test("3e — CO→SA CIF: route-specific rule (min_price_floor=9999) overrides global rule (min_price_floor=0.01) → 422", async () => {
+    // Global rule (all-NULL route fields): would allow any route at price > 0.01
+    await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({ min_price_floor: 0.01, max_discount_pct: 0, valid_from: "2026-01-01" }));
+
+    // Route-specific rule for CO→SA CIF: blocks with impossibly high floor
+    await auth(directorToken)(request(app)
+      .post("/commercial/rules")
+      .send({
+        origin_country: "CO", destination_country: "SA", incoterm: "CIF",
+        min_price_floor: 9999.00, max_discount_pct: 0,
+        valid_from: "2026-01-01",
+      }));
+
+    const cr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({ origin_country: "CO", destination_country: "SA", incoterm: "CIF", currency: "USD", quantity: 1000, unit: "kg" }));
+    assert.strictEqual(cr.status, 201);
+
+    const calcR = await auth(agenteToken)(request(app)
+      .post(`/commercial/quotes/${cr.body.id}/calculate`));
+    // Route-specific rule (score=3) must be chosen over global rule (score=0)
+    // Result: PRICE_BELOW_MINIMUM since 3.125 < 9999 → 422 (not 200 as global rule would allow)
+    assert.strictEqual(calcR.status, 422,
+      `Route-specific rule must override global rule — got ${calcR.status}: ${JSON.stringify(calcR.body)}`);
+    assert.ok(calcR.body.blocked === true, "Response must indicate the quote was blocked");
+    assert.ok(
+      !calcR.body.code || calcR.body.code !== "COMMERCIAL_RULE_NOT_APPLICABLE",
+      "Rule WAS found (route-specific), so code must not be COMMERCIAL_RULE_NOT_APPLICABLE"
+    );
+  });
+
+  // 3g — CLIENT response excludes all internal cost/margin/price-floor fields
+  test("3g — CLIENT response excludes base_cost, freight_cost, insurance_cost, operational_cost, total_cost_per_unit, target_margin, min_authorized_price, matrix_id, rule_id; no audit trail", async () => {
+    const linkedClientId = db.prepare(
+      "SELECT linked_client_id FROM users WHERE username = 'test_client_ext'"
+    ).get().linked_client_id;
+
+    const cr = await auth(agenteToken)(request(app)
+      .post("/commercial/quotes")
+      .send({
+        origin_country: "AR", destination_country: "SA", incoterm: "CIF",
+        currency: "USD", quantity: 7000, unit: "kg",
+        client_id: linkedClientId,
+      }));
+    assert.strictEqual(cr.status, 201, JSON.stringify(cr.body));
+    const gqId = cr.body.id;
+
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${gqId}/calculate`));
+    await auth(agenteToken)(request(app).post(`/commercial/quotes/${gqId}/submit`));
+    await auth(directorToken)(request(app).post(`/commercial/quotes/${gqId}/approve`));
+
+    const r = await auth(clientToken)(request(app).get(`/commercial/quotes/${gqId}`));
+    assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+
+    const FORBIDDEN = [
+      "base_cost", "freight_cost", "insurance_cost", "operational_cost",
+      "total_cost_per_unit", "target_margin", "min_authorized_price",
+      "matrix_id", "rule_id", "internal_notes",
+    ];
+    for (const field of FORBIDDEN) {
+      assert.ok(!(field in r.body),
+        `CLIENT response must NOT include internal field '${field}' — got: ${JSON.stringify(Object.keys(r.body))}`);
+    }
+
+    // Public fields must remain
+    assert.ok("price_per_unit" in r.body, "CLIENT may see price_per_unit");
+    assert.ok("total_value"    in r.body, "CLIENT may see total_value");
+    assert.ok("status"         in r.body, "CLIENT may see status");
+    assert.ok("quote_number"   in r.body, "CLIENT may see quote_number");
+
+    // Audit trail must not be exposed to CLIENT
+    assert.ok(!("audit" in r.body), "CLIENT must NOT see the audit trail");
+
+    // doc_id (if present) must be a primitive ID, not an embedded object leaking document internals
+    if ("doc_id" in r.body && r.body.doc_id !== null) {
+      assert.strictEqual(typeof r.body.doc_id, "string",
+        "doc_id must be a plain string ID — no embedded document object with internal fields");
+    }
   });
 });
 
