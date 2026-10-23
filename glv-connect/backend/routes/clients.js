@@ -76,83 +76,88 @@ router.post("/kyc", kycLimiter, (req, res) => {
     const clientIp = (req.headers["x-forwarded-for"] || req.ip || "").toString().split(",")[0].trim();
     const ua       = (req.headers["user-agent"] || "").slice(0, 512);
 
-    // 1. Guardar en kyc_submissions (staging) — always store encrypted data
-    const sub = db.prepare(`
-      INSERT INTO kyc_submissions (submission_type, glv_code, raw_data, ip_address, user_agent, status)
-      VALUES (?, ?, ?, ?, ?, 'PENDING')
-    `).run(submType, glv_code, encryptedJson, clientIp, ua);
-    const submissionId = sub.lastInsertRowid;
-
-    // 2. Verificar si ya existe cliente con ese glv_code
-    let clientId;
-    const existing = db.prepare("SELECT id FROM clients WHERE glv_code = ?").get(glv_code);
-
     const { rep, pais, tel, nit, comercial } = body;
 
-    if (existing) {
+    // Pasos 1–4 en una sola transacción: si cualquier escritura falla,
+    // ninguna queda persistida — el registro nunca queda parcialmente creado.
+    let clientId;
+    db.transaction(() => {
+      // 1. Guardar en kyc_submissions (staging) con datos cifrados
+      const sub = db.prepare(`
+        INSERT INTO kyc_submissions (submission_type, glv_code, raw_data, ip_address, user_agent, status)
+        VALUES (?, ?, ?, ?, ?, 'PENDING')
+      `).run(submType, glv_code, encryptedJson, clientIp, ua);
+      const submissionId = sub.lastInsertRowid;
+
+      // 2. Upsert de cliente
+      const existing = db.prepare("SELECT id FROM clients WHERE glv_code = ?").get(glv_code);
+      if (existing) {
+        db.prepare(`
+          UPDATE clients SET
+            name                = COALESCE(?, name),
+            company             = ?,
+            country             = COALESCE(?, country),
+            representative      = COALESCE(?, representative),
+            email               = ?,
+            phone               = COALESCE(?, phone),
+            tax_id              = COALESCE(?, tax_id),
+            kyc_data            = ?,
+            registration_source = 'WEB_KYC',
+            kyc_status          = CASE WHEN kyc_status = 'REJECTED' THEN 'PRE_REGISTRATION' ELSE kyc_status END
+          WHERE glv_code = ?
+        `).run(
+          comercial || empresa, empresa, pais || null, rep || null,
+          email, tel || null, nit || null, encryptedJson, glv_code
+        );
+        clientId = existing.id;
+      } else {
+        const ins = db.prepare(`
+          INSERT INTO clients
+            (type, name, company, country, representative, email, phone, tax_id,
+             glv_code, lead_status, kyc_status, registration_source, kyc_data,
+             commercial_score, compliance_flag, active)
+          VALUES ('buyer', ?, ?, ?, ?, ?, ?, ?, ?, 'UNASSIGNED', 'PRE_REGISTRATION', 'WEB_KYC', ?, 0, 0, 1)
+        `).run(
+          comercial || empresa, empresa, pais || null, rep || null,
+          email, tel || null, nit || null, glv_code, encryptedJson
+        );
+        clientId = ins.lastInsertRowid;
+      }
+
+      // 3. Marcar submission como procesada — raw_data reemplazado por marcador;
+      //    los datos cifrados completos permanecen en clients.kyc_data
       db.prepare(`
-        UPDATE clients SET
-          name                = COALESCE(?, name),
-          company             = ?,
-          country             = COALESCE(?, country),
-          representative      = COALESCE(?, representative),
-          email               = ?,
-          phone               = COALESCE(?, phone),
-          tax_id              = COALESCE(?, tax_id),
-          kyc_data            = ?,
-          registration_source = 'WEB_KYC',
-          kyc_status          = CASE WHEN kyc_status = 'REJECTED' THEN 'PRE_REGISTRATION' ELSE kyc_status END
-        WHERE glv_code = ?
+        UPDATE kyc_submissions
+        SET status = 'PROCESSED', processed_at = datetime('now'), mapped_to_id = ?,
+            raw_data = '[CLEARED]'
+        WHERE id = ?
+      `).run(clientId, submissionId);
+
+      // 4. Audit log
+      db.prepare(`
+        INSERT INTO audit_log (username, action, doc_id, client_id, ip)
+        VALUES ('WEB_PORTAL', 'KYC_SUBMITTED', ?, ?, ?)
+      `).run(glv_code, clientId, clientIp);
+    })();
+
+    // 5. Tarea de Compliance — post-commit, no revierte el KYC si falla.
+    //    La descripción no incluye PII: los datos están en /clients/:id/kyc-data (Compliance 65+).
+    try {
+      const complianceUser = db.prepare(
+        "SELECT id FROM users WHERE role = 'COMPLIANCE' AND active = 1 ORDER BY id LIMIT 1"
+      ).get();
+      db.prepare(`
+        INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
+        VALUES (?, ?, 'high', ?, ?, 'pending')
       `).run(
-        comercial || empresa, empresa, pais || null, rep || null,
-        email, tel || null, nit || null, encryptedJson, glv_code
+        `KYC REVIEW REQUIRED — ${glv_code}`,
+        `Nueva pre-inscripción web recibida. GLV Code: ${glv_code}. Consulte el expediente KYC autorizado.`,
+        complianceUser ? complianceUser.id : null,
+        complianceUser ? complianceUser.id : null
       );
-      clientId = existing.id;
-    } else {
-      const ins = db.prepare(`
-        INSERT INTO clients
-          (type, name, company, country, representative, email, phone, tax_id,
-           glv_code, lead_status, kyc_status, registration_source, kyc_data,
-           commercial_score, compliance_flag, active)
-        VALUES ('buyer', ?, ?, ?, ?, ?, ?, ?, ?, 'UNASSIGNED', 'PRE_REGISTRATION', 'WEB_KYC', ?, 0, 0, 1)
-      `).run(
-        comercial || empresa, empresa, pais || null, rep || null,
-        email, tel || null, nit || null, glv_code, encryptedJson
-      );
-      clientId = ins.lastInsertRowid;
+    } catch (taskErr) {
+      console.error("[POST /clients/kyc] compliance task creation failed (non-fatal):", taskErr.message);
     }
-
-    // 3. Marcar submission como procesada y eliminar raw_data sensible.
-    // Los datos KYC ya están cifrados en clients.kyc_data.
-    // El marcador "[CLEARED]" confirma que los datos fueron eliminados intencionalmente;
-    // la columna tiene restricción NOT NULL (no modificable en SQLite sin migración).
-    db.prepare(`
-      UPDATE kyc_submissions
-      SET status = 'PROCESSED', processed_at = datetime('now'), mapped_to_id = ?,
-          raw_data = '[CLEARED]'
-      WHERE id = ?
-    `).run(clientId, submissionId);
-
-    // 4. Audit log — KYC_SUBMITTED
-    db.prepare(`
-      INSERT INTO audit_log (username, action, doc_id, client_id, ip)
-      VALUES ('WEB_PORTAL', 'KYC_SUBMITTED', ?, ?, ?)
-    `).run(glv_code, clientId, clientIp);
-
-    // 5. Crear tarea automática para COMPLIANCE
-    const complianceUser = db.prepare(
-      "SELECT id FROM users WHERE role = 'COMPLIANCE' AND active = 1 ORDER BY id LIMIT 1"
-    ).get();
-
-    db.prepare(`
-      INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
-      VALUES (?, ?, 'high', ?, ?, 'pending')
-    `).run(
-      `KYC REVIEW REQUIRED — ${glv_code}`,
-      `Nueva pre-inscripción web recibida.\nEmpresa: ${empresa}\nEmail: ${email}\nGLV Code: ${glv_code}\nFuente: WEB_KYC`,
-      complianceUser ? complianceUser.id : null,
-      complianceUser ? complianceUser.id : null
-    );
 
     return res.status(201).json({
       ok: true,
@@ -164,7 +169,7 @@ router.post("/kyc", kycLimiter, (req, res) => {
     });
   } catch (e) {
     console.error("[POST /clients/kyc]", e.message);
-    return res.status(500).json({ error: "Error procesando KYC. Los datos han sido guardados localmente." });
+    return res.status(500).json({ error: "Error procesando el registro KYC. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 

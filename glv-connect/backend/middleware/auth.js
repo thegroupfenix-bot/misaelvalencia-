@@ -4,12 +4,10 @@ const db  = require("../db/database");
 const COOKIE_NAME = "glv_token";
 
 function authenticate(req, res, next) {
-  // httpOnly cookie first, then Authorization Bearer fallback
-  let token = req.cookies?.[COOKIE_NAME];
-  if (!token) {
-    const hdr = req.headers.authorization || "";
-    if (hdr.startsWith("Bearer ")) token = hdr.slice(7);
-  }
+  // Cookie-only authentication — Bearer/Authorization header is intentionally NOT accepted.
+  // The portal migrated to httpOnly session cookies; accepting Bearer tokens from JS
+  // would re-open the XSS attack surface that cookie auth was meant to close.
+  const token = req.cookies?.[COOKIE_NAME];
   if (!token) return res.status(401).json({ error: "No autenticado" });
 
   let payload;
