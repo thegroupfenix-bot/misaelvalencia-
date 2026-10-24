@@ -52,7 +52,8 @@ const priceCenterRouter = require("./routes/price-center");
 const mediaRouter       = require("./routes/media");
 const backupRouter      = require("./routes/backup");
 const commercialRouter  = require("./routes/commercial");
-const opsLogisticsRouter = require("./routes/operations-logistics");
+const opsLogisticsRouter   = require("./routes/operations-logistics");
+const vesselCharterRouter  = require("./routes/vessel-charter");
 
 const app = express();
 
@@ -139,6 +140,7 @@ app.use("/media",        mediaRouter);
 app.use("/backup",       backupRouter);
 app.use("/commercial",            commercialRouter);
 app.use("/operations-logistics",  opsLogisticsRouter);
+app.use("/vessel-charter",        vesselCharterRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
