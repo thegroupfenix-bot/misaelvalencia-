@@ -1425,6 +1425,268 @@ db.exec(`
 // Add logistics_op_id to tasks (idempotent)
 safeAlter("ALTER TABLE tasks ADD COLUMN logistics_op_id INTEGER REFERENCES logistics_ops(id)");
 
+// ─── Vessel Charter & Chartering Core ────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vessels (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    imo_number              TEXT    UNIQUE NOT NULL,
+    vessel_name             TEXT    NOT NULL,
+    vessel_type             TEXT    NOT NULL CHECK(vessel_type IN ('BULK_CARRIER','CONTAINER','TANKER','GENERAL_CARGO','REEFER','RORO','LPG','LNG','OFFSHORE','OTHER')),
+    flag                    TEXT,
+    year_built              INTEGER,
+    dwt                     REAL,
+    grt                     REAL,
+    nrt                     REAL,
+    loa                     REAL,
+    beam                    REAL,
+    draft_max               REAL,
+    holds_count             INTEGER,
+    hatches_count           INTEGER,
+    grain_capacity          REAL,
+    bale_capacity           REAL,
+    teu_capacity            INTEGER,
+    classification_society  TEXT,
+    class_expiry            TEXT,
+    p_and_i_club            TEXT,
+    p_and_i_expiry          TEXT,
+    status                  TEXT    DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE','SCRAPPED','LAID_UP')),
+    notes                   TEXT,
+    created_by              TEXT,
+    created_at              TEXT    DEFAULT (datetime('now')),
+    updated_at              TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_vessels_imo ON vessels(imo_number);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vessel_documents (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    vessel_id         INTEGER NOT NULL REFERENCES vessels(id),
+    doc_type          TEXT    NOT NULL,
+    doc_number        TEXT,
+    issued_date       TEXT,
+    expiry_date       TEXT,
+    issuing_authority TEXT,
+    file_ref          TEXT,
+    status            TEXT    DEFAULT 'VALID' CHECK(status IN ('VALID','EXPIRED','PENDING_RENEWAL')),
+    created_at        TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_parties (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    type          TEXT    NOT NULL CHECK(type IN ('SHIPOWNER','OPERATOR','BROKER','P_AND_I','INSPECTOR','OTHER')),
+    country       TEXT,
+    contact_name  TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    address       TEXT,
+    status        TEXT    DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE')),
+    created_at    TEXT    DEFAULT (datetime('now')),
+    updated_at    TEXT    DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO charter_parties (name, type, country) VALUES
+  ('Maersk Line','SHIPOWNER','DK'),
+  ('MSC Mediterranean Shipping','SHIPOWNER','CH'),
+  ('Cargill Ocean Transportation','OPERATOR','US'),
+  ('Clarksons Platou','BROKER','GB'),
+  ('Simpson Spence Young','BROKER','GB'),
+  ('The Standard Club','P_AND_I','GB'),
+  ('London P&I Club','P_AND_I','GB');
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_fixtures (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_number          TEXT    UNIQUE NOT NULL,
+    operation_id            INTEGER REFERENCES logistics_ops(id),
+    vessel_id               INTEGER REFERENCES vessels(id),
+    shipowner_id            INTEGER REFERENCES charter_parties(id),
+    operator_id             INTEGER REFERENCES charter_parties(id),
+    broker_id               INTEGER REFERENCES charter_parties(id),
+    cargo_description       TEXT,
+    cargo_quantity          REAL,
+    cargo_unit              TEXT,
+    cargo_tolerance_pct     REAL,
+    freight_type            TEXT    CHECK(freight_type IN ('RATE_PER_MT','FLAT_RATE','LUMPSUM','RATE_PER_DAY','WORLDSCALE','COA')),
+    freight_rate            REAL,
+    freight_currency        TEXT    DEFAULT 'USD',
+    lumpsum_amount          REAL,
+    commission_pct          REAL,
+    address_commission_pct  REAL,
+    laycan_start            TEXT,
+    laycan_end              TEXT,
+    cancelling_date         TEXT,
+    loading_port            TEXT,
+    discharge_port          TEXT,
+    loading_rate_mt_day     REAL,
+    discharging_rate_mt_day REAL,
+    laytime_type            TEXT    CHECK(laytime_type IN ('SHINC','SHEX','SHEX_UU','SHEX_EIU','WWD','FHEX','FHINC','PWWD','WIBON','WIPON','WCCON')),
+    demurrage_rate_usd_day  REAL,
+    despatch_rate_usd_day   REAL,
+    despatch_on             TEXT    CHECK(despatch_on IN ('ALL_TIME_SAVED','WORKING_TIME_SAVED')),
+    recap_text              TEXT,
+    cp_version              INTEGER DEFAULT 1,
+    cp_signed_date          TEXT,
+    cp_form                 TEXT,
+    voyage_cost_usd         REAL,
+    expected_margin_usd     REAL,
+    actual_margin_usd       REAL,
+    status                  TEXT    DEFAULT 'INQUIRY' CHECK(status IN ('INQUIRY','PRE_FIXTURE','PREFIXTURE','FIXED','SIGNED','CANCELLED','COMPLETED')),
+    created_by              TEXT,
+    created_at              TEXT    DEFAULT (datetime('now')),
+    updated_at              TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cf_status ON charter_fixtures(status);
+  CREATE INDEX IF NOT EXISTS idx_cf_vessel ON charter_fixtures(vessel_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_fixture_versions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id  INTEGER NOT NULL REFERENCES charter_fixtures(id),
+    version     INTEGER NOT NULL,
+    recap_text  TEXT,
+    changed_by  TEXT,
+    changed_at  TEXT    DEFAULT (datetime('now')),
+    change_note TEXT
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vessel_voyages (
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id                  INTEGER NOT NULL REFERENCES charter_fixtures(id),
+    operation_id                INTEGER REFERENCES logistics_ops(id),
+    vessel_id                   INTEGER NOT NULL REFERENCES vessels(id),
+    pol_port                    TEXT,
+    pol_etd                     TEXT,
+    pol_atd                     TEXT,
+    pod_port                    TEXT,
+    pod_eta                     TEXT,
+    pod_ata                     TEXT,
+    nor_tendered_at             TEXT,
+    nor_accepted_at             TEXT,
+    berthed_at                  TEXT,
+    commenced_loading_at        TEXT,
+    completed_loading_at        TEXT,
+    sailed_at                   TEXT,
+    nor_discharge_tendered_at   TEXT,
+    berthed_discharge_at        TEXT,
+    commenced_discharge_at      TEXT,
+    completed_discharge_at      TEXT,
+    draft_survey_loading        REAL,
+    draft_survey_discharge      REAL,
+    bl_date                     TEXT,
+    bl_quantity                 REAL,
+    master_name                 TEXT,
+    status                      TEXT    DEFAULT 'PENDING' CHECK(status IN ('PENDING','AT_LOAD_PORT','LOADING','LADEN','AT_DISCHARGE_PORT','DISCHARGING','COMPLETED','CANCELLED')),
+    created_at                  TEXT    DEFAULT (datetime('now')),
+    updated_at                  TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_vv_fixture ON vessel_voyages(fixture_id);
+  CREATE INDEX IF NOT EXISTS idx_vv_status  ON vessel_voyages(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS laytime_events (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    voyage_id        INTEGER NOT NULL REFERENCES vessel_voyages(id),
+    port_type        TEXT    NOT NULL CHECK(port_type IN ('LOADING','DISCHARGE')),
+    event_type       TEXT    NOT NULL,
+    event_time       TEXT    NOT NULL,
+    duration_hours   REAL,
+    is_excluded      INTEGER DEFAULT 0,
+    exclusion_reason TEXT,
+    notes            TEXT,
+    created_by       TEXT,
+    created_at       TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS laytime_calculations (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    voyage_id         INTEGER NOT NULL REFERENCES vessel_voyages(id),
+    port_type         TEXT    NOT NULL CHECK(port_type IN ('LOADING','DISCHARGE')),
+    allowed_hours     REAL,
+    used_hours        REAL,
+    excluded_hours    REAL    DEFAULT 0,
+    net_hours         REAL,
+    balance_hours     REAL,
+    demurrage_amount  REAL    DEFAULT 0,
+    despatch_amount   REAL    DEFAULT 0,
+    calculation_date  TEXT    DEFAULT (datetime('now')),
+    notes             TEXT
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS statements_of_facts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    voyage_id   INTEGER NOT NULL REFERENCES vessel_voyages(id),
+    port_type   TEXT    NOT NULL CHECK(port_type IN ('LOADING','DISCHARGE')),
+    sof_text    TEXT,
+    agent_name  TEXT,
+    signed_by   TEXT,
+    signed_date TEXT,
+    created_by  TEXT,
+    created_at  TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS voyage_financials (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id       INTEGER NOT NULL REFERENCES charter_fixtures(id),
+    voyage_id        INTEGER REFERENCES vessel_voyages(id),
+    item_type        TEXT    NOT NULL,
+    description      TEXT,
+    amount           REAL,
+    currency         TEXT    DEFAULT 'USD',
+    direction        TEXT    CHECK(direction IN ('INCOME','EXPENSE')),
+    due_date         TEXT,
+    paid_date        TEXT,
+    status           TEXT    DEFAULT 'PENDING' CHECK(status IN ('PENDING','INVOICED','PAID','DISPUTED')),
+    counterparty_id  INTEGER REFERENCES charter_parties(id),
+    created_by       TEXT,
+    created_at       TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_alerts (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id        INTEGER REFERENCES charter_fixtures(id),
+    voyage_id         INTEGER REFERENCES vessel_voyages(id),
+    vessel_id         INTEGER REFERENCES vessels(id),
+    alert_type        TEXT    NOT NULL,
+    severity          TEXT    DEFAULT 'MEDIUM' CHECK(severity IN ('LOW','MEDIUM','HIGH','CRITICAL')),
+    message           TEXT    NOT NULL,
+    acknowledged      INTEGER DEFAULT 0,
+    acknowledged_by   TEXT,
+    acknowledged_at   TEXT,
+    created_at        TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_audit (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id   INTEGER REFERENCES charter_fixtures(id),
+    voyage_id    INTEGER REFERENCES vessel_voyages(id),
+    action       TEXT    NOT NULL,
+    actor        TEXT    NOT NULL,
+    role         TEXT,
+    before_state TEXT,
+    after_state  TEXT,
+    detail       TEXT,
+    created_at   TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
 // ─── getMigrationStatus ───────────────────────────────────────────────────────
 function getMigrationStatus() {
   const checkTable = (table) => {
@@ -1460,6 +1722,11 @@ function getMigrationStatus() {
     logistics_milestones:        checkTable("logistics_milestones"),
     logistics_incidents:         checkTable("logistics_incidents"),
     logistics_audit:             checkTable("logistics_audit"),
+    vessels:                     checkTable("vessels"),
+    charter_fixtures:            checkTable("charter_fixtures"),
+    vessel_voyages:              checkTable("vessel_voyages"),
+    laytime_calculations:        checkTable("laytime_calculations"),
+    charter_alerts:              checkTable("charter_alerts"),
   };
 }
 db.getMigrationStatus = getMigrationStatus;

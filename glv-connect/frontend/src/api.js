@@ -236,4 +236,38 @@ export const api = {
   updateLogisticsIncident:  (id,iid,d)  => request("PATCH", `/operations-logistics/${id}/incidents/${iid}`, d),
   assignLogisticsProvider:  (id, data)  => request("POST",  `/operations-logistics/${id}/assignments`, data),
   getLogisticsDashboard:    ()          => request("GET",   "/operations-logistics/dashboard/summary"),
+
+  // ─── Vessel Charter & Chartering Core ─────────────────────────────────────
+  getVessels:              (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/vessels${q?"?"+q:""}`); },
+  getVessel:               (id)        => request("GET",   `/vessel-charter/vessels/${id}`),
+  createVessel:            (data)      => request("POST",  "/vessel-charter/vessels", data),
+  updateVessel:            (id, data)  => request("PATCH", `/vessel-charter/vessels/${id}`, data),
+  getVesselDocuments:      (id)        => request("GET",   `/vessel-charter/vessels/${id}/documents`),
+  addVesselDocument:       (id, data)  => request("POST",  `/vessel-charter/vessels/${id}/documents`, data),
+
+  getCharterParties:       (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/charter-parties${q?"?"+q:""}`); },
+  createCharterParty:      (data)      => request("POST",  "/vessel-charter/charter-parties", data),
+  updateCharterParty:      (id, data)  => request("PATCH", `/vessel-charter/charter-parties/${id}`, data),
+
+  getFixtures:             (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/fixtures${q?"?"+q:""}`); },
+  getFixture:              (id)        => request("GET",   `/vessel-charter/fixtures/${id}`),
+  createFixture:           (data)      => request("POST",  "/vessel-charter/fixtures", data),
+  updateFixture:           (id, data)  => request("PATCH", `/vessel-charter/fixtures/${id}`, data),
+  saveFixtureVersion:      (id, data)  => request("POST",  `/vessel-charter/fixtures/${id}/versions`, data),
+  getFixtureFinancials:    (id)        => request("GET",   `/vessel-charter/fixtures/${id}/financials`),
+  addFixtureFinancial:     (id, data)  => request("POST",  `/vessel-charter/fixtures/${id}/financials`, data),
+
+  getVesselVoyages:        (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/voyages${q?"?"+q:""}`); },
+  getVesselVoyage:         (id)        => request("GET",   `/vessel-charter/voyages/${id}`),
+  createVesselVoyage:      (data)      => request("POST",  "/vessel-charter/voyages", data),
+  updateVesselVoyage:      (id, data)  => request("PATCH", `/vessel-charter/voyages/${id}`, data),
+  addSof:                  (id, data)  => request("POST",  `/vessel-charter/voyages/${id}/sof`, data),
+  getSof:                  (id)        => request("GET",   `/vessel-charter/voyages/${id}/sof`),
+  addLaytimeEvent:         (id, data)  => request("POST",  `/vessel-charter/voyages/${id}/laytime-events`, data),
+  getLaytimeEvents:        (id)        => request("GET",   `/vessel-charter/voyages/${id}/laytime-events`),
+  calculateLaytime:        (id)        => request("POST",  `/vessel-charter/voyages/${id}/calculate-laytime`),
+
+  getCharterAlerts:        (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/alerts${q?"?"+q:""}`); },
+  acknowledgeAlert:        (id)        => request("PATCH", `/vessel-charter/alerts/${id}/acknowledge`),
+  getCharterDashboard:     ()          => request("GET",   "/vessel-charter/dashboard/summary"),
 };
