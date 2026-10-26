@@ -53,6 +53,7 @@ const mediaRouter       = require("./routes/media");
 const backupRouter      = require("./routes/backup");
 const commercialRouter  = require("./routes/commercial");
 const opsLogisticsRouter = require("./routes/operations-logistics");
+const cargoRouter        = require("./routes/cargo-intelligence");
 
 const app = express();
 
@@ -139,6 +140,7 @@ app.use("/media",        mediaRouter);
 app.use("/backup",       backupRouter);
 app.use("/commercial",            commercialRouter);
 app.use("/operations-logistics",  opsLogisticsRouter);
+app.use("/cargo-intelligence",    cargoRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");

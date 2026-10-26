@@ -1425,6 +1425,152 @@ db.exec(`
 // Add logistics_op_id to tasks (idempotent)
 safeAlter("ALTER TABLE tasks ADD COLUMN logistics_op_id INTEGER REFERENCES logistics_ops(id)");
 
+// ─── Cargo Intelligence ───────────────────────────────────────────────────────
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_equipment_profiles (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
+    type        TEXT NOT NULL CHECK(type IN ('container','truck','bulk')),
+    int_length_m  REAL NOT NULL,
+    int_width_m   REAL NOT NULL,
+    int_height_m  REAL NOT NULL,
+    max_weight_kg REAL NOT NULL,
+    tare_kg       REAL NOT NULL DEFAULT 0,
+    is_reefer     INTEGER NOT NULL DEFAULT 0,
+    notes       TEXT,
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_types (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
+    category    TEXT NOT NULL CHECK(category IN ('packaged','bulk')),
+    notes       TEXT,
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_calculations (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    reference           TEXT NOT NULL,
+    logistics_op_id     INTEGER REFERENCES logistics_ops(id),
+    charter_fixture_id  INTEGER,
+    mode                TEXT NOT NULL CHECK(mode IN ('container','bulk')),
+    status              TEXT NOT NULL DEFAULT 'DRAFT' CHECK(status IN ('DRAFT','CONFIRMED','SUPERSEDED')),
+    version             INTEGER NOT NULL DEFAULT 1,
+    parent_id           INTEGER REFERENCES cargo_calculations(id),
+    total_cbm           REAL,
+    total_weight_kg     REAL,
+    equipment_count     INTEGER,
+    stowage_factor      REAL,
+    notes               TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id),
+    client_id           INTEGER REFERENCES clients(id),
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    confirmed_at        TEXT,
+    confirmed_by        INTEGER REFERENCES users(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_lines (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    calculation_id        INTEGER NOT NULL REFERENCES cargo_calculations(id) ON DELETE CASCADE,
+    cargo_type_id         INTEGER NOT NULL REFERENCES cargo_types(id),
+    description           TEXT,
+    quantity              INTEGER NOT NULL DEFAULT 1,
+    length_m              REAL NOT NULL,
+    width_m               REAL NOT NULL,
+    height_m              REAL NOT NULL,
+    weight_kg             REAL NOT NULL,
+    stackable             INTEGER NOT NULL DEFAULT 0,
+    sort_order            INTEGER NOT NULL DEFAULT 0,
+    created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_placements (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    calculation_id        INTEGER NOT NULL REFERENCES cargo_calculations(id) ON DELETE CASCADE,
+    equipment_profile_id  INTEGER NOT NULL REFERENCES cargo_equipment_profiles(id),
+    equipment_index       INTEGER NOT NULL DEFAULT 1,
+    cargo_line_id         INTEGER NOT NULL REFERENCES cargo_lines(id),
+    piece_index           INTEGER NOT NULL DEFAULT 1,
+    x_m                   REAL NOT NULL,
+    y_m                   REAL NOT NULL,
+    z_m                   REAL NOT NULL,
+    rotated               INTEGER NOT NULL DEFAULT 0,
+    created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_audit (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    calculation_id  INTEGER NOT NULL REFERENCES cargo_calculations(id),
+    action          TEXT NOT NULL,
+    actor_id        INTEGER NOT NULL REFERENCES users(id),
+    delta_json      TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+// Seed equipment profiles (idempotent)
+(function seedEquipmentProfiles() {
+  const count = db.prepare("SELECT COUNT(*) AS c FROM cargo_equipment_profiles").get();
+  if (count.c > 0) return;
+  const profiles = [
+    { code:"20GP",      name:"20' General Purpose",   type:"container", l:5.90, w:2.35, h:2.39, max:28000, tare:2200 },
+    { code:"40GP",      name:"40' General Purpose",   type:"container", l:12.03,w:2.35, h:2.39, max:26500, tare:3720 },
+    { code:"40HC",      name:"40' High Cube",          type:"container", l:12.03,w:2.35, h:2.69, max:26460, tare:3940 },
+    { code:"REEFER_20", name:"20' Reefer",             type:"container", l:5.44, w:2.27, h:2.27, max:27400, tare:2800, reefer:1 },
+    { code:"REEFER_40", name:"40' Reefer HC",          type:"container", l:11.56,w:2.27, h:2.50, max:27700, tare:4800, reefer:1 },
+    { code:"OT_20",     name:"20' Open Top",           type:"container", l:5.89, w:2.35, h:2.35, max:28180, tare:2200 },
+    { code:"OT_40",     name:"40' Open Top",           type:"container", l:12.03,w:2.35, h:2.35, max:26730, tare:3900 },
+    { code:"FR_20",     name:"20' Flat Rack",          type:"container", l:5.64, w:2.23, h:2.14, max:30480, tare:2360 },
+    { code:"FR_40",     name:"40' Flat Rack",          type:"container", l:12.10,w:2.13, h:1.98, max:40000, tare:5000 },
+    { code:"TRUCK_STD", name:"Truck Standard",         type:"truck",     l:13.60,w:2.48, h:2.70, max:24000, tare:8000 },
+    { code:"BULK_HOLD", name:"Vessel Bulk Hold",       type:"bulk",      l:30.0, w:20.0, h:15.0, max:60000, tare:0 },
+  ];
+  const ins = db.prepare(
+    "INSERT INTO cargo_equipment_profiles (code,name,type,int_length_m,int_width_m,int_height_m,max_weight_kg,tare_kg,is_reefer) VALUES (?,?,?,?,?,?,?,?,?)"
+  );
+  profiles.forEach(p => ins.run(p.code, p.name, p.type, p.l, p.w, p.h, p.max, p.tare, p.reefer||0));
+})();
+
+// Seed cargo types (idempotent)
+(function seedCargoTypes() {
+  const count = db.prepare("SELECT COUNT(*) AS c FROM cargo_types").get();
+  if (count.c > 0) return;
+  const types = [
+    { code:"BOX",          name:"Box/Carton",       cat:"packaged" },
+    { code:"PALLET",       name:"Pallet",           cat:"packaged" },
+    { code:"BIGBAG",       name:"Big Bag / FIBC",   cat:"packaged" },
+    { code:"DRUM",         name:"Drum / Barrel",    cat:"packaged" },
+    { code:"CYLINDER",     name:"Gas Cylinder",     cat:"packaged" },
+    { code:"ROLL",         name:"Roll / Reel",      cat:"packaged" },
+    { code:"TUBE",         name:"Tube / Pipe",      cat:"packaged" },
+    { code:"EQUIPMENT",    name:"Heavy Equipment",  cat:"packaged" },
+    { code:"IRREGULAR",    name:"Irregular Shape",  cat:"packaged" },
+    { code:"BULK_GRAIN",   name:"Bulk Grain",       cat:"bulk"     },
+    { code:"BULK_LIQUID",  name:"Bulk Liquid",      cat:"bulk"     },
+    { code:"BULK_MINERAL", name:"Bulk Mineral",     cat:"bulk"     },
+  ];
+  const ins = db.prepare(
+    "INSERT INTO cargo_types (code,name,category) VALUES (?,?,?)"
+  );
+  types.forEach(t => ins.run(t.code, t.name, t.cat));
+})();
+
 // ─── getMigrationStatus ───────────────────────────────────────────────────────
 function getMigrationStatus() {
   const checkTable = (table) => {

@@ -236,4 +236,16 @@ export const api = {
   updateLogisticsIncident:  (id,iid,d)  => request("PATCH", `/operations-logistics/${id}/incidents/${iid}`, d),
   assignLogisticsProvider:  (id, data)  => request("POST",  `/operations-logistics/${id}/assignments`, data),
   getLogisticsDashboard:    ()          => request("GET",   "/operations-logistics/dashboard/summary"),
+
+  // ─── Cargo Intelligence ───────────────────────────────────────────────────────
+  getCargoEquipmentProfiles: ()               => request("GET",  "/cargo-intelligence/equipment-profiles"),
+  getCargoTypes:             ()               => request("GET",  "/cargo-intelligence/cargo-types"),
+  getCargoCalculations:      (p={})           => { const q=new URLSearchParams(p).toString(); return request("GET",`/cargo-intelligence/calculations${q?"?"+q:""}`); },
+  getCargoCalculation:       (id)             => request("GET",  `/cargo-intelligence/calculations/${id}`),
+  createCargoCalculation:    (data)           => request("POST", "/cargo-intelligence/calculations", data),
+  updateCargoCalculation:    (id, data)       => request("PUT",  `/cargo-intelligence/calculations/${id}`, data),
+  computeCargoCalculation:   (id)             => request("POST", `/cargo-intelligence/calculations/${id}/compute`),
+  confirmCargoCalculation:   (id)             => request("POST", `/cargo-intelligence/calculations/${id}/confirm`),
+  newCargoVersion:           (id)             => request("POST", `/cargo-intelligence/calculations/${id}/new-version`),
+  getCargoCalculationPlacements: (id)         => request("GET",  `/cargo-intelligence/calculations/${id}/placements`),
 };
