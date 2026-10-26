@@ -1464,6 +1464,141 @@ function getMigrationStatus() {
 }
 db.getMigrationStatus = getMigrationStatus;
 
+// ─── Visual Evidence & Intelligent Counting ───────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS observation_zones (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    description   TEXT,
+    location      TEXT,
+    operation_id  TEXT    REFERENCES logistics_ops(operation_number),
+    zone_type     TEXT    NOT NULL DEFAULT 'GENERAL' CHECK(zone_type IN ('LOADING','UNLOADING','STORAGE','INSPECTION','QUARANTINE','GENERAL')),
+    status        TEXT    NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE')),
+    created_by    TEXT    NOT NULL,
+    created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_oz_operation ON observation_zones(operation_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS visual_evidence (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    evidence_number  TEXT    NOT NULL UNIQUE,
+    zone_id          INTEGER REFERENCES observation_zones(id),
+    operation_id     TEXT    REFERENCES logistics_ops(operation_number),
+    client_id        INTEGER REFERENCES clients(id),
+    source           TEXT    NOT NULL DEFAULT 'MANUAL' CHECK(source IN ('MANUAL','CAMERA','AI_DETECTOR')),
+    visibility       TEXT    NOT NULL DEFAULT 'INTERNAL' CHECK(visibility IN ('INTERNAL','CLIENT_VISIBLE')),
+    status           TEXT    NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','REVIEWED','APPROVED','REJECTED','ARCHIVED')),
+    description      TEXT,
+    file_url         TEXT,
+    file_type        TEXT,
+    metadata_json    TEXT    DEFAULT '{}',
+    submitted_by     TEXT    NOT NULL,
+    reviewed_by      TEXT,
+    reviewed_at      TEXT,
+    review_notes     TEXT,
+    created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_ve_operation  ON visual_evidence(operation_id);
+  CREATE INDEX IF NOT EXISTS idx_ve_client     ON visual_evidence(client_id);
+  CREATE INDEX IF NOT EXISTS idx_ve_status     ON visual_evidence(status);
+  CREATE INDEX IF NOT EXISTS idx_ve_visibility ON visual_evidence(visibility);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS count_events (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_number         TEXT    NOT NULL UNIQUE,
+    zone_id              INTEGER REFERENCES observation_zones(id),
+    operation_id         TEXT    REFERENCES logistics_ops(operation_number),
+    client_id            INTEGER REFERENCES clients(id),
+    status               TEXT    NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','REVIEWED','CLOSED','DISPUTED')),
+    count_type           TEXT    NOT NULL DEFAULT 'MANUAL' CHECK(count_type IN ('MANUAL','CAMERA_ASSISTED','AI_ASSISTED')),
+    expected_count       INTEGER,
+    actual_count         INTEGER,
+    difference           INTEGER GENERATED ALWAYS AS (actual_count - expected_count) VIRTUAL,
+    requires_review      INTEGER NOT NULL DEFAULT 0,
+    responsible_username TEXT,
+    notes                TEXT,
+    reviewed_by          TEXT,
+    reviewed_at          TEXT,
+    review_notes         TEXT,
+    approved             INTEGER NOT NULL DEFAULT 0,
+    approved_by          TEXT,
+    approved_at          TEXT,
+    created_by           TEXT    NOT NULL,
+    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_ce_operation ON count_events(operation_id);
+  CREATE INDEX IF NOT EXISTS idx_ce_status    ON count_events(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS count_evidence_links (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_event_id INTEGER NOT NULL REFERENCES count_events(id) ON DELETE CASCADE,
+    evidence_id    INTEGER NOT NULL REFERENCES visual_evidence(id) ON DELETE CASCADE,
+    linked_by      TEXT    NOT NULL,
+    linked_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(count_event_id, evidence_id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS count_discrepancies (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_event_id INTEGER NOT NULL REFERENCES count_events(id),
+    operation_id   TEXT    REFERENCES logistics_ops(operation_number),
+    difference     INTEGER NOT NULL,
+    severity       TEXT    NOT NULL DEFAULT 'LOW' CHECK(severity IN ('LOW','MEDIUM','HIGH')),
+    status         TEXT    NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','EXPLAINED','RESOLVED')),
+    resolution     TEXT,
+    resolved_by    TEXT,
+    resolved_at    TEXT,
+    created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cd_count_event ON count_discrepancies(count_event_id);
+  CREATE INDEX IF NOT EXISTS idx_cd_status      ON count_discrepancies(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ve_ai_providers (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    provider    TEXT    NOT NULL,
+    model       TEXT,
+    endpoint    TEXT,
+    enabled     INTEGER NOT NULL DEFAULT 0,
+    use_case    TEXT    NOT NULL DEFAULT 'COUNT' CHECK(use_case IN ('COUNT','DETECTION','CLASSIFICATION','ALL')),
+    notes       TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO ve_ai_providers (name, provider, model, enabled, use_case, notes)
+    VALUES ('GLV-Vision-Count', 'INTERNAL', 'disabled', 0, 'COUNT', 'Placeholder. AI layer disabled by default. Requires manual activation and compliance review.');
+  INSERT OR IGNORE INTO ve_ai_providers (name, provider, model, enabled, use_case, notes)
+    VALUES ('GLV-Vision-Detect', 'INTERNAL', 'disabled', 0, 'DETECTION', 'Placeholder. AI layer disabled by default.');
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ve_audit (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    evidence_id    INTEGER REFERENCES visual_evidence(id),
+    count_event_id INTEGER REFERENCES count_events(id),
+    action         TEXT    NOT NULL,
+    actor          TEXT    NOT NULL,
+    role           TEXT,
+    detail         TEXT,
+    ts             TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_vea_evidence    ON ve_audit(evidence_id);
+  CREATE INDEX IF NOT EXISTS idx_vea_count_event ON ve_audit(count_event_id);
+`);
+
 module.exports = db;
 
 function seedGos06Catalogs() {

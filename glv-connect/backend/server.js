@@ -51,8 +51,9 @@ const tasksRouter       = require("./routes/tasks");
 const priceCenterRouter = require("./routes/price-center");
 const mediaRouter       = require("./routes/media");
 const backupRouter      = require("./routes/backup");
-const commercialRouter  = require("./routes/commercial");
-const opsLogisticsRouter = require("./routes/operations-logistics");
+const commercialRouter      = require("./routes/commercial");
+const opsLogisticsRouter    = require("./routes/operations-logistics");
+const visualEvidenceRouter  = require("./routes/visual-evidence");
 
 const app = express();
 
@@ -139,6 +140,7 @@ app.use("/media",        mediaRouter);
 app.use("/backup",       backupRouter);
 app.use("/commercial",            commercialRouter);
 app.use("/operations-logistics",  opsLogisticsRouter);
+app.use("/visual-evidence",       visualEvidenceRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
