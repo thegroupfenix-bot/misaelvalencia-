@@ -236,4 +236,22 @@ export const api = {
   updateLogisticsIncident:  (id,iid,d)  => request("PATCH", `/operations-logistics/${id}/incidents/${iid}`, d),
   assignLogisticsProvider:  (id, data)  => request("POST",  `/operations-logistics/${id}/assignments`, data),
   getLogisticsDashboard:    ()          => request("GET",   "/operations-logistics/dashboard/summary"),
+
+  // ─── Visual Evidence ────────────────────────────────────────────────────────
+  getObservationZones:      (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence/zones${q?"?"+q:""}`); },
+  createObservationZone:    (data)      => request("POST",  "/visual-evidence/zones", data),
+  updateObservationZone:    (id, data)  => request("PATCH", `/visual-evidence/zones/${id}`, data),
+  getEvidenceList:          (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence${q?"?"+q:""}`); },
+  getEvidence:              (id)        => request("GET",   `/visual-evidence/${id}`),
+  createEvidence:           (data)      => request("POST",  "/visual-evidence", data),
+  reviewEvidence:           (id, data)  => request("PATCH", `/visual-evidence/${id}/review`, data),
+  getCountEvents:           (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence/count-events${q?"?"+q:""}`); },
+  getCountEvent:            (id)        => request("GET",   `/visual-evidence/count-events/${id}`),
+  createCountEvent:         (data)      => request("POST",  "/visual-evidence/count-events", data),
+  reviewCountEvent:         (id, data)  => request("POST",  `/visual-evidence/count-events/${id}/review`, data),
+  linkEvidenceToCount:      (id, data)  => request("POST",  `/visual-evidence/count-events/${id}/link-evidence`, data),
+  getDiscrepancies:         (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence/discrepancies${q?"?"+q:""}`); },
+  resolveDiscrepancy:       (id, data)  => request("PATCH", `/visual-evidence/discrepancies/${id}/resolve`, data),
+  getVeAiProviders:         ()          => request("GET",   "/visual-evidence/ai-providers"),
+  getEvidenceDashboard:     ()          => request("GET",   "/visual-evidence/dashboard/summary"),
 };
