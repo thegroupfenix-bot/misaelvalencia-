@@ -53,6 +53,9 @@ const mediaRouter       = require("./routes/media");
 const backupRouter      = require("./routes/backup");
 const commercialRouter  = require("./routes/commercial");
 const opsLogisticsRouter = require("./routes/operations-logistics");
+const vesselCharterRouter = require("./routes/vessel-charter");
+const cargoIntelRouter    = require("./routes/cargo-intelligence");
+const visualEvidRouter    = require("./routes/visual-evidence");
 
 const app = express();
 
@@ -139,6 +142,9 @@ app.use("/media",        mediaRouter);
 app.use("/backup",       backupRouter);
 app.use("/commercial",            commercialRouter);
 app.use("/operations-logistics",  opsLogisticsRouter);
+app.use("/vessel-charter",        vesselCharterRouter);
+app.use("/cargo-intelligence",    cargoIntelRouter);
+app.use("/visual-evidence",       visualEvidRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
