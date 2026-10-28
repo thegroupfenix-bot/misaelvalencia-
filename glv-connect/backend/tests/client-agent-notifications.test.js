@@ -13,7 +13,7 @@ const { createAndSend, retryNotification } = require("../services/notificationSe
 
 describe("Client Agent Notifications", () => {
   let sesAdmin, sesDirector, sesCompliance, sesAgent1, sesAgent2, sesClient;
-  let agent1Id, agent2Id, client1Id, client2Id;
+  let agent1Id, agent2Id, client1Id, client2Id, client3Id, client4Id, client5Id;
 
   before(async () => {
     const hash = (p) => bcrypt.hashSync(p, 4);
@@ -48,11 +48,26 @@ describe("Client Agent Notifications", () => {
     const c2 = db.prepare(
       `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,active) VALUES (?,?,?,?,?,?)`
     ).run("buyer","Empresa Test CAN B","GLV-CAN-002","LEAD","PRE_REGISTRATION",0);
+    // client3: for CAN-4 reassignment test
+    const c3 = db.prepare(
+      `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,active) VALUES (?,?,?,?,?,?)`
+    ).run("buyer","Empresa Test CAN C","GLV-CAN-003","LEAD","PRE_REGISTRATION",0);
+    // client4: for CAN-10 same-agent test
+    const c4 = db.prepare(
+      `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,active) VALUES (?,?,?,?,?,?)`
+    ).run("buyer","Empresa Test CAN D","GLV-CAN-004","LEAD","PRE_REGISTRATION",0);
+    // client5: for CAN-12 task assignment test
+    const c5 = db.prepare(
+      `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,active) VALUES (?,?,?,?,?,?)`
+    ).run("buyer","Empresa Test CAN E","GLV-CAN-005","LEAD","PRE_REGISTRATION",0);
 
     client1Id = c1.lastInsertRowid;
     client2Id = c2.lastInsertRowid;
+    client3Id = c3.lastInsertRowid;
+    client4Id = c4.lastInsertRowid;
+    client5Id = c5.lastInsertRowid;
 
-    // Insert glv_code_sequences if not present (needed for ACTIVE_CLIENT activation)
+    // Ensure GLV-CO sequence exists for ACTIVE_CLIENT activation
     try {
       db.prepare(`INSERT OR IGNORE INTO glv_code_sequences (entity_code, last_seq) VALUES ('GLV-CO', 0)`).run();
     } catch (_) {}
@@ -66,17 +81,16 @@ describe("Client Agent Notifications", () => {
     assert.equal(notifs.length, 0, "No notification should exist for unactivated LEAD client");
   });
 
-  // CAN-2: Activating client with assigned_agent → notification record created
-  test("CAN-2: Activating client with assigned_agent triggers notification", async () => {
+  // CAN-2: Activating client with assigned_agent → AGENT_ASSIGNED_ON_ACTIVATION
+  test("CAN-2: Activating client with assigned_agent triggers AGENT_ASSIGNED_ON_ACTIVATION", async () => {
     const r = await request(app)
       .patch(`/clients/${client1Id}/kyc-status`)
       .set("Cookie", sesCompliance)
       .send({ kyc_status: "ACTIVE_CLIENT", assigned_agent: agent1Id });
 
     assert.ok(r.status === 200 || r.status === 201,
-      `Expected 200/201 activating client, got ${r.status}: ${JSON.stringify(r.body)}`);
+      `Expected 200/201, got ${r.status}: ${JSON.stringify(r.body)}`);
 
-    // Wait for setImmediate + async DB write
     await new Promise(res => setTimeout(res, 200));
 
     const notifs = db.prepare(
@@ -85,62 +99,88 @@ describe("Client Agent Notifications", () => {
 
     assert.ok(notifs.length >= 1, "Notification must be created on activation with agent");
     assert.equal(notifs[0].agent_email, "agent1@glv.test");
-    assert.ok(
-      notifs[0].event_type === "AGENT_ASSIGNED_ON_ACTIVATION" ||
-      notifs[0].event_type === "AGENT_ASSIGNED_TO_ACTIVE_CLIENT",
-      `Unexpected event_type: ${notifs[0].event_type}`
-    );
+    assert.equal(notifs[0].event_type, "AGENT_ASSIGNED_ON_ACTIVATION",
+      `Expected AGENT_ASSIGNED_ON_ACTIVATION, got: ${notifs[0].event_type}`);
   });
 
-  // CAN-3: Assigning agent to already-active client → notification
-  test("CAN-3: Assigning agent to already-active client creates notification", async () => {
-    // Manually set client2 to ACTIVE_CLIENT without agent
-    db.prepare(
-      `UPDATE clients SET kyc_status='ACTIVE_CLIENT', active=1 WHERE id=?`
-    ).run(client2Id);
+  // CAN-3: Assigning agent to already-active client → AGENT_ASSIGNED_TO_ACTIVE_CLIENT (via HTTP)
+  test("CAN-3: Assigning agent to already-active client via endpoint creates AGENT_ASSIGNED_TO_ACTIVE_CLIENT", async () => {
+    // Activate client2 directly (no agent) — we're testing the agent-assignment path, not activation
+    db.prepare(`UPDATE clients SET kyc_status='ACTIVE_CLIENT', active=1 WHERE id=?`).run(client2Id);
 
-    // Now call the service directly (assigning agent to active client)
-    createAndSend(client2Id, agent1Id, "AGENT_ASSIGNED_TO_ACTIVE_CLIENT", {
-      name: "Empresa Test CAN B",
-      glv_code: "GLV-CAN-002",
-      status: "ACTIVE_CLIENT",
-      kyc_status: "ACTIVE_CLIENT",
-    });
+    // Now assign agent1 to the already-active client via the API
+    const r = await request(app)
+      .patch(`/clients/${client2Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ assigned_agent: agent1Id });
+
+    assert.ok(r.status === 200 || r.status === 201,
+      `Expected 200/201, got ${r.status}: ${JSON.stringify(r.body)}`);
 
     await new Promise(res => setTimeout(res, 200));
 
     const notifs = db.prepare(
-      `SELECT * FROM client_agent_notifications WHERE client_id=?`
-    ).all(client2Id);
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=?`
+    ).all(client2Id, "can_agent1");
+
     assert.ok(notifs.length >= 1, "Notification must be created when agent assigned to active client");
+    assert.equal(notifs[0].event_type, "AGENT_ASSIGNED_TO_ACTIVE_CLIENT",
+      `Expected AGENT_ASSIGNED_TO_ACTIVE_CLIENT, got: ${notifs[0].event_type}`);
   });
 
-  // CAN-4: Reassignment → notifies new agent exactly once
-  test("CAN-4: Reassignment notifies new agent exactly once (no duplicate)", async () => {
-    createAndSend(client1Id, agent2Id, "AGENT_REASSIGNED", {
-      name: "Empresa Test CAN A", glv_code: "GLV-CAN-001", status: "ACTIVE_CLIENT",
-    });
-    await new Promise(res => setTimeout(res, 150));
+  // CAN-4: Reassignment via HTTP → notifies new agent, not previous
+  test("CAN-4: Reassignment via endpoint notifies new agent exactly once; old agent not re-notified", async () => {
+    // Step 1: activate client3 with agent1
+    const r1 = await request(app)
+      .patch(`/clients/${client3Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ kyc_status: "ACTIVE_CLIENT", assigned_agent: agent1Id });
+    assert.ok(r1.status === 200 || r1.status === 201,
+      `Activation failed: ${r1.status}: ${JSON.stringify(r1.body)}`);
+    await new Promise(res => setTimeout(res, 200));
 
-    const first = db.prepare(
-      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? AND event_type='AGENT_REASSIGNED'`
-    ).all(client1Id, "can_agent2");
-    assert.ok(first.length >= 1, "New agent must receive a notification");
+    const agent1NotifsBeforeReassign = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent1'`
+    ).all(client3Id);
+    assert.ok(agent1NotifsBeforeReassign.length >= 1, "Agent1 must have activation notification");
 
-    // Call again with same args (page reload / API retry simulation)
-    createAndSend(client1Id, agent2Id, "AGENT_REASSIGNED", {
-      name: "Empresa Test CAN A", glv_code: "GLV-CAN-001", status: "ACTIVE_CLIENT",
-    });
-    await new Promise(res => setTimeout(res, 150));
+    // Step 2: reassign to agent2 via endpoint
+    const r2 = await request(app)
+      .patch(`/clients/${client3Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ assigned_agent: agent2Id });
+    assert.ok(r2.status === 200 || r2.status === 201,
+      `Reassignment failed: ${r2.status}: ${JSON.stringify(r2.body)}`);
+    await new Promise(res => setTimeout(res, 200));
 
-    // Must still have exactly one record (dedup blocks the second insert)
-    const deduped = db.prepare(
-      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? AND event_type='AGENT_REASSIGNED'`
-    ).all(client1Id, "can_agent2");
-    assert.equal(deduped.length, 1, "Must not create duplicate notification on repeated call");
+    // Agent2 must have a AGENT_REASSIGNED notification
+    const agent2Notifs = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent2' AND event_type='AGENT_REASSIGNED'`
+    ).all(client3Id);
+    assert.ok(agent2Notifs.length >= 1, "New agent2 must receive AGENT_REASSIGNED notification");
+
+    // Agent1 must NOT have any new notification after reassignment
+    const agent1NotifsAfterReassign = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent1'`
+    ).all(client3Id);
+    assert.equal(agent1NotifsAfterReassign.length, agent1NotifsBeforeReassign.length,
+      "Old agent1 must NOT receive any new notification on reassignment");
+
+    // Calling the same reassignment again must not duplicate the notification for agent2
+    await request(app)
+      .patch(`/clients/${client3Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ assigned_agent: agent2Id });
+    await new Promise(res => setTimeout(res, 200));
+
+    // In test env, SMTP is off so records become FAILED — check total count regardless of status
+    const agent2NotifsAfterDup = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent2' AND event_type='AGENT_REASSIGNED'`
+    ).all(client3Id);
+    assert.equal(agent2NotifsAfterDup.length, 1, "Dedup must prevent duplicate AGENT_REASSIGNED for agent2");
   });
 
-  // CAN-5: Email failure → error saved, retry available
+  // CAN-5: Email failure → error saved, retry resets state
   test("CAN-5: Failed notification saves error and retry resets it", async () => {
     const r = db.prepare(
       `INSERT INTO client_agent_notifications
@@ -155,11 +195,9 @@ describe("Client Agent Notifications", () => {
 
     retryNotification(notifId);
 
-    // Check immediately after retryNotification (before setImmediate fires)
     const afterReset = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId);
     assert.equal(afterReset.attempts, 0, "Attempts must be 0 immediately after reset");
 
-    // Wait for async send attempt
     await new Promise(res => setTimeout(res, 200));
 
     const retried = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId);
@@ -170,7 +208,7 @@ describe("Client Agent Notifications", () => {
     assert.ok(retried.attempts >= 1, "Attempts must be >= 1 after retry attempt");
   });
 
-  // CAN-6: Repeated activation call → no duplicate notification (idempotency)
+  // CAN-6: Repeated createAndSend for same client+agent+event is idempotent
   test("CAN-6: Repeated createAndSend call for same client+agent+event is idempotent", async () => {
     // client1 already has AGENT_ASSIGNED_ON_ACTIVATION for agent1 from CAN-2
     // Calling again must produce no new PENDING/SENT record
@@ -207,13 +245,11 @@ describe("Client Agent Notifications", () => {
 
     if (r.status === 200) {
       assert.ok(Array.isArray(r.body), "Response must be array");
-      // All returned records must belong to agent1
       for (const n of r.body) {
         assert.equal(n.agent_username, "can_agent1",
           `Agent should only see their own notifications, found: ${n.agent_username}`);
       }
     } else {
-      // 403 is acceptable if the route only allows 65+
       assert.ok(r.status === 403 || r.status === 200,
         `Unexpected status for agent: ${r.status}`);
     }
@@ -227,5 +263,88 @@ describe("Client Agent Notifications", () => {
     assert.equal(r.status, 200, `Expected 200 for COMPLIANCE, got ${r.status}: ${JSON.stringify(r.body)}`);
     assert.ok(Array.isArray(r.body), "Response must be array");
     assert.ok(r.body.length >= 1, "COMPLIANCE must see at least one notification");
+  });
+
+  // CAN-10: Active client with same agent → no new notification
+  test("CAN-10: Updating active client while keeping same agent does not create new notification", async () => {
+    // Activate client4 with agent1
+    const r1 = await request(app)
+      .patch(`/clients/${client4Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ kyc_status: "ACTIVE_CLIENT", assigned_agent: agent1Id });
+    assert.ok(r1.status === 200 || r1.status === 201,
+      `Activation failed: ${r1.status}: ${JSON.stringify(r1.body)}`);
+    await new Promise(res => setTimeout(res, 200));
+
+    const notifsAfterActivation = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent1' AND status IN ('PENDING','SENT','FAILED')`
+    ).all(client4Id);
+    assert.ok(notifsAfterActivation.length >= 1, "Must have activation notification");
+
+    // PATCH same client with same agent1 (just adding onboarding_notes — agent unchanged)
+    const r2 = await request(app)
+      .patch(`/clients/${client4Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ assigned_agent: agent1Id, onboarding_notes: "Notas de seguimiento" });
+    assert.ok(r2.status === 200 || r2.status === 201,
+      `Update failed: ${r2.status}: ${JSON.stringify(r2.body)}`);
+    await new Promise(res => setTimeout(res, 200));
+
+    const notifsAfterUpdate = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent1' AND status IN ('PENDING','SENT','FAILED')`
+    ).all(client4Id);
+    assert.equal(notifsAfterUpdate.length, notifsAfterActivation.length,
+      "Same agent retained — no new notification must be created");
+  });
+
+  // CAN-11: Real reassignment via endpoint — correct agents notified
+  test("CAN-11: Reassignment via endpoint: agent2 gets AGENT_REASSIGNED, agent1 gets no new notification", async () => {
+    // Use client3 (already active with agent2 from CAN-4)
+    // Current state of client3: ACTIVE_CLIENT, assigned_agent=agent2
+    const before2 = db.prepare(
+      `SELECT COUNT(*) as cnt FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent2'`
+    ).get(client3Id).cnt;
+
+    // Reassign client3 back to agent1 (simulating another reassignment)
+    const r = await request(app)
+      .patch(`/clients/${client3Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ assigned_agent: agent1Id });
+    assert.ok(r.status === 200 || r.status === 201,
+      `Reassignment failed: ${r.status}: ${JSON.stringify(r.body)}`);
+    await new Promise(res => setTimeout(res, 200));
+
+    // agent1 should have a new AGENT_REASSIGNED notification
+    const agent1NewNotifs = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent1' AND event_type='AGENT_REASSIGNED'`
+    ).all(client3Id);
+    assert.ok(agent1NewNotifs.length >= 1, "Agent1 must receive AGENT_REASSIGNED notification");
+
+    // agent2 must NOT get any new notification
+    const after2 = db.prepare(
+      `SELECT COUNT(*) as cnt FROM client_agent_notifications WHERE client_id=? AND agent_username='can_agent2'`
+    ).get(client3Id).cnt;
+    assert.equal(after2, before2, "Old agent2 must NOT receive any new notification");
+  });
+
+  // CAN-12: Task assigned to agent when agent exists at activation
+  test("CAN-12: On activation with agent, task is assigned to the agent (not the activating user)", async () => {
+    // Activate client5 with agent1
+    const r = await request(app)
+      .patch(`/clients/${client5Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ kyc_status: "ACTIVE_CLIENT", assigned_agent: agent1Id });
+    assert.ok(r.status === 200 || r.status === 201,
+      `Activation failed: ${r.status}: ${JSON.stringify(r.body)}`);
+
+    // Check that a task was created and assigned to agent1
+    const tasks = db.prepare(
+      `SELECT * FROM tasks WHERE assigned_to=? ORDER BY id DESC LIMIT 5`
+    ).all(agent1Id);
+    assert.ok(tasks.length >= 1, "A task must be assigned to agent1 on activation");
+    assert.ok(
+      tasks.some(t => t.title && (t.title.includes("CLIENT ACTIVATED") || t.title.includes("CLIENTE ACTIVO"))),
+      `Task title should reference activation. Found: ${tasks.map(t=>t.title).join(", ")}`
+    );
   });
 });

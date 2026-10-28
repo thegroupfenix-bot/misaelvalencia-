@@ -7,7 +7,7 @@ const { authenticate }         = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 const r2      = require("../storage/r2");
 const { generateGlvCode }      = require("../utils/glvCode");
-const { createAndSend, retryNotification } = require("../services/notificationService");
+const { insertNotificationRecord, sendNotification: sendNotif, createAndSend, retryNotification } = require("../services/notificationService");
 
 function isClientUser(user) {
   return user.role === "CLIENT" || user.role === "SUPPLIER";
@@ -305,8 +305,14 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       });
     }
 
-    const client = db.prepare("SELECT id, glv_code, glv_code_permanent, kyc_status, assigned_agent, name, company, country, registration_source FROM clients WHERE id = ?").get(req.params.id);
+    const client = db.prepare(
+      "SELECT id, glv_code, glv_code_permanent, kyc_status, assigned_agent, name, company, country, registration_source FROM clients WHERE id = ?"
+    ).get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+
+    // Snapshot state before update for event-type decision
+    const prevKycStatus = client.kyc_status;
+    const prevAssigned  = client.assigned_agent; // user id (int) or null
 
     const updates = [];
     const vals    = [];
@@ -333,14 +339,46 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       return res.status(400).json({ error: "Sin campos para actualizar." });
     }
 
-    // Toda la activación (UPDATE cliente + GLV code + audit_log + tarea) en una sola transacción.
-    // Si cualquier paso falla, el cliente conserva su estado anterior.
-    // El outer db.transaction() garantiza atomicidad completa — cualquier error revierte todo.
+    // Determine what the new assigned_agent will be after this PATCH
+    let pendingAssigned;
+    if (assigned_agent !== undefined) {
+      pendingAssigned = assigned_agent || null;
+    } else {
+      pendingAssigned = prevAssigned;
+    }
+    const pendingKycStatus = kyc_status || prevKycStatus;
+
+    // Determine notification event type using the exact business rules
+    const isNowActive = pendingKycStatus === "ACTIVE_CLIENT";
+    const wasActive   = prevKycStatus === "ACTIVE_CLIENT";
+    let notifEventType = null;
+
+    if (isNowActive && pendingAssigned) {
+      if (!wasActive) {
+        // Transitioning TO ACTIVE_CLIENT with an agent → activation event
+        notifEventType = "AGENT_ASSIGNED_ON_ACTIVATION";
+      } else if (wasActive && prevAssigned === null) {
+        // Already ACTIVE_CLIENT, no agent before, now gets one
+        notifEventType = "AGENT_ASSIGNED_TO_ACTIVE_CLIENT";
+      } else if (wasActive && prevAssigned !== null && pendingAssigned !== prevAssigned) {
+        // Already ACTIVE_CLIENT, agent changes
+        notifEventType = "AGENT_REASSIGNED";
+      }
+      // wasActive && prevAssigned === pendingAssigned → no event (same agent retained)
+    }
+    // isNowActive && !pendingAssigned → no event (agent removed or none)
+
+    // Look up agent info before transaction (needed inside transaction for notification INSERT)
+    let agentInfo = null;
+    if (notifEventType && pendingAssigned) {
+      agentInfo = db.prepare(`SELECT id, username, email FROM users WHERE id=?`).get(pendingAssigned);
+      if (!agentInfo || !agentInfo.email) notifEventType = null;
+    }
+
+    // Atomically update client + audit_log + task + notification record
+    let notifId = null;
     db.transaction(() => {
       if (kyc_status === "ACTIVE_CLIENT" && !client.glv_code_permanent) {
-        // Generación atómica del código GLV dentro de la transacción:
-        // si hay colisión UNIQUE en glv_code_permanent, el outer transaction revierte
-        // tanto el incremento de secuencia como el UPDATE del cliente.
         const nowStr = new Date().toISOString().slice(0, 19).replace("T", " ");
         const year   = new Date().getFullYear();
         const seqRow = db.prepare(
@@ -366,15 +404,35 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
         "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
       ).run(req.user.username, action, client.glv_code, client.id, req.ip);
 
-      // Auto-task on activation — dentro de la misma transacción
+      // Auto-task on activation: assign to the agent if present, else to the activating user
       if (kyc_status === "ACTIVE_CLIENT") {
-        db.prepare(`
-          INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
-          VALUES (?, ?, 'medium', ?, ?, 'pending')
-        `).run(
-          `CLIENT ACTIVATED — ${client.glv_code}`,
-          `Cliente activado y listo para operaciones. GLV Code: ${client.glv_code}. Activado por: ${req.user.username}`,
-          req.user.id, req.user.id
+        const taskAssignee = pendingAssigned || req.user.id;
+        db.prepare(
+          `INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
+           VALUES (?, ?, 'medium', ?, ?, 'pending')`
+        ).run(
+          `CLIENT ACTIVATED — ${client.glv_code} | [CLIENTE ACTIVO] ${client.company || client.name || ""}`,
+          `Cliente activado${agentInfo ? ` y asignado a ${agentInfo.username}` : ""}. Confirmar contacto inicial y completar ficha de bienvenida. GLV Code: ${client.glv_code}. Activado por: ${req.user.username}`,
+          taskAssignee, req.user.id
+        );
+      }
+
+      // Insert notification record inside the same transaction — prevents data loss on crash
+      if (notifEventType && agentInfo) {
+        const updatedForNotif = db.prepare("SELECT * FROM clients WHERE id=?").get(req.params.id);
+        notifId = insertNotificationRecord(
+          client.id,
+          agentInfo.username,
+          agentInfo.email,
+          notifEventType,
+          {
+            company_name: updatedForNotif.company || updatedForNotif.name,
+            glv_code: updatedForNotif.glv_code_permanent || updatedForNotif.glv_code,
+            status: "ACTIVE_CLIENT",
+            kyc_status: "ACTIVE_CLIENT",
+            registration_source: updatedForNotif.registration_source,
+            country: updatedForNotif.country,
+          }
         );
       }
     })();
@@ -382,39 +440,9 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
     const updatedClient = db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id);
     res.json(updatedClient);
 
-    // Async notification — runs after response is sent
-    const prevKycStatus  = client.kyc_status;
-    const prevAssigned   = client.assigned_agent;
-    const newAssigned    = updatedClient.assigned_agent;
-    const newKycStatus   = updatedClient.kyc_status;
+    // Fire async SMTP worker after transaction committed — non-blocking
+    if (notifId) setImmediate(() => sendNotif(notifId));
 
-    if (newKycStatus === "ACTIVE_CLIENT" && newAssigned) {
-      const eventType = prevKycStatus === "ACTIVE_CLIENT"
-        ? "AGENT_REASSIGNED"
-        : "AGENT_ASSIGNED_ON_ACTIVATION";
-      createAndSend(updatedClient.id, newAssigned, eventType, {
-        name: updatedClient.name || updatedClient.company,
-        company_name: updatedClient.company || updatedClient.name,
-        glv_code: updatedClient.glv_code_permanent || updatedClient.glv_code,
-        status: "ACTIVE_CLIENT",
-        kyc_status: "ACTIVE_CLIENT",
-        registration_source: updatedClient.registration_source,
-        country: updatedClient.country,
-      });
-    } else if (
-      newKycStatus === "ACTIVE_CLIENT" &&
-      newAssigned && newAssigned !== prevAssigned
-    ) {
-      createAndSend(updatedClient.id, newAssigned, "AGENT_REASSIGNED", {
-        name: updatedClient.name || updatedClient.company,
-        company_name: updatedClient.company || updatedClient.name,
-        glv_code: updatedClient.glv_code_permanent || updatedClient.glv_code,
-        status: "ACTIVE_CLIENT",
-        kyc_status: "ACTIVE_CLIENT",
-        registration_source: updatedClient.registration_source,
-        country: updatedClient.country,
-      });
-    }
   } catch (e) {
     console.error("[PATCH /clients/:id/kyc-status]", e.message);
     res.status(500).json({ error: "Error actualizando el estado KYC. Inténtelo de nuevo o contacte a soporte." });
