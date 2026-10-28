@@ -300,4 +300,8 @@ export const api = {
   resolveDiscrepancy:       (id, data)  => request("PATCH", `/visual-evidence/discrepancies/${id}/resolve`, data),
   getVeAiProviders:         ()          => request("GET",   "/visual-evidence/ai-providers"),
   getEvidenceDashboard:     ()          => request("GET",   "/visual-evidence/dashboard/summary"),
+
+  // ─── Client Agent Notifications ─────────────────────────────────────────────
+  getClientNotifications:        (clientId) => request("GET",  `/clients/${clientId}/notifications`),
+  retryClientNotification:       (id)       => request("POST", `/clients/notifications/${id}/retry`),
 };

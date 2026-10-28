@@ -7,6 +7,7 @@ const { authenticate }         = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 const r2      = require("../storage/r2");
 const { generateGlvCode }      = require("../utils/glvCode");
+const { createAndSend, retryNotification } = require("../services/notificationService");
 
 function isClientUser(user) {
   return user.role === "CLIENT" || user.role === "SUPPLIER";
@@ -304,7 +305,7 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       });
     }
 
-    const client = db.prepare("SELECT id, glv_code, glv_code_permanent, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    const client = db.prepare("SELECT id, glv_code, glv_code_permanent, kyc_status, assigned_agent, name, company, country, registration_source FROM clients WHERE id = ?").get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
 
     const updates = [];
@@ -378,7 +379,42 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       }
     })();
 
-    res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
+    const updatedClient = db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id);
+    res.json(updatedClient);
+
+    // Async notification — runs after response is sent
+    const prevKycStatus  = client.kyc_status;
+    const prevAssigned   = client.assigned_agent;
+    const newAssigned    = updatedClient.assigned_agent;
+    const newKycStatus   = updatedClient.kyc_status;
+
+    if (newKycStatus === "ACTIVE_CLIENT" && newAssigned) {
+      const eventType = prevKycStatus === "ACTIVE_CLIENT"
+        ? "AGENT_REASSIGNED"
+        : "AGENT_ASSIGNED_ON_ACTIVATION";
+      createAndSend(updatedClient.id, newAssigned, eventType, {
+        name: updatedClient.name || updatedClient.company,
+        company_name: updatedClient.company || updatedClient.name,
+        glv_code: updatedClient.glv_code_permanent || updatedClient.glv_code,
+        status: "ACTIVE_CLIENT",
+        kyc_status: "ACTIVE_CLIENT",
+        registration_source: updatedClient.registration_source,
+        country: updatedClient.country,
+      });
+    } else if (
+      newKycStatus === "ACTIVE_CLIENT" &&
+      newAssigned && newAssigned !== prevAssigned
+    ) {
+      createAndSend(updatedClient.id, newAssigned, "AGENT_REASSIGNED", {
+        name: updatedClient.name || updatedClient.company,
+        company_name: updatedClient.company || updatedClient.name,
+        glv_code: updatedClient.glv_code_permanent || updatedClient.glv_code,
+        status: "ACTIVE_CLIENT",
+        kyc_status: "ACTIVE_CLIENT",
+        registration_source: updatedClient.registration_source,
+        country: updatedClient.country,
+      });
+    }
   } catch (e) {
     console.error("[PATCH /clients/:id/kyc-status]", e.message);
     res.status(500).json({ error: "Error actualizando el estado KYC. Inténtelo de nuevo o contacte a soporte." });
@@ -1022,6 +1058,49 @@ router.delete("/:id/notes/:noteId", requireLevel(65), (req, res) => {
   if (row.created_by !== req.user.id && userLevel < 90) return res.status(403).json({ error: "Solo el autor o un administrador puede eliminar esta nota" });
   db.prepare("DELETE FROM client_notes WHERE id=?").run(req.params.noteId);
   res.json({ ok: true });
+});
+
+// ─── GET /clients/:id/notifications (COMPLIANCE 65+ or own agent) ────────────
+router.get("/:id/notifications", authenticate, (req, res) => {
+  try {
+    const { ROLE_LEVEL: RL } = require("../middleware/rbac");
+    const userLevel = RL[req.user.role] || 0;
+    const clientId  = parseInt(req.params.id, 10);
+    if (!clientId) return res.status(400).json({ error: "ID inválido" });
+
+    // CLIENT / SUPPLIER blocked
+    if (userLevel < 40) return res.status(403).json({ error: "Sin acceso a notificaciones" });
+
+    let rows;
+    if (userLevel >= 65) {
+      // COMPLIANCE, DIRECTOR, ADMIN — see all
+      rows = db.prepare(
+        `SELECT * FROM client_agent_notifications WHERE client_id=? ORDER BY created_at DESC`
+      ).all(clientId);
+    } else {
+      // Agent — only their own
+      rows = db.prepare(
+        `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? ORDER BY created_at DESC`
+      ).all(clientId, req.user.username);
+    }
+
+    res.json(rows);
+  } catch (e) {
+    console.error("[GET /clients/:id/notifications]", e.message);
+    res.status(500).json({ error: "Error al obtener notificaciones" });
+  }
+});
+
+// ─── POST /clients/notifications/:id/retry (DIRECTOR 75+) ────────────────────
+router.post("/notifications/:notifId/retry", requireLevel(75), (req, res) => {
+  try {
+    const notifId = parseInt(req.params.notifId, 10);
+    if (!notifId) return res.status(400).json({ error: "ID inválido" });
+    const result = retryNotification(notifId);
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 module.exports = router;

@@ -1,0 +1,176 @@
+"use strict";
+const nodemailer = require("nodemailer");
+const db = require("../db/database");
+
+const MAIL_FROM = process.env.MAIL_FROM || '"GLV-Connect" <notificaciones@glvservicesexp.com>';
+const APP_BASE_URL = process.env.APP_URL || process.env.FRONTEND_URL || "https://misaelvalencia-production.up.railway.app";
+
+function getTransporter() {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) return null;
+  try {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || "587", 10),
+      secure: false,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+  } catch (_) { return null; }
+}
+
+function isDuplicate(clientId, agentUsername, eventType) {
+  try {
+    // Block if any non-SKIPPED record exists — FAILED records must be retried, not recreated
+    return !!db.prepare(
+      `SELECT id FROM client_agent_notifications
+       WHERE client_id=? AND agent_username=? AND event_type=?
+       AND status != 'SKIPPED'`
+    ).get(clientId, agentUsername, eventType);
+  } catch (_) { return false; }
+}
+
+function createAndSend(clientId, agentUserId, eventType, clientData) {
+  if (!agentUserId) return;
+
+  const agent = db.prepare(`SELECT id, username, email FROM users WHERE id=?`).get(agentUserId);
+  if (!agent || !agent.email) return;
+
+  if (isDuplicate(clientId, agent.username, eventType)) return;
+
+  let notifId;
+  try {
+    const r = db.prepare(
+      `INSERT INTO client_agent_notifications
+       (client_id, agent_username, agent_email, event_type, client_name, glv_code,
+        status_at_event, kyc_status_at_event, registration_source, country, representative_name)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(
+      clientId, agent.username, agent.email, eventType,
+      clientData.company_name || clientData.client_name || clientData.name || null,
+      clientData.glv_code || null,
+      clientData.status || null,
+      clientData.kyc_status || null,
+      clientData.registration_source || null,
+      clientData.country || null,
+      clientData.representative_name || clientData.contact_name || null
+    );
+    notifId = r.lastInsertRowid;
+  } catch (e) {
+    if (e.message && e.message.includes("UNIQUE")) return;
+    console.error("[notificationService] insert error:", e.message);
+    return;
+  }
+
+  setImmediate(() => sendNotification(notifId));
+}
+
+function buildEmailHtml(notif) {
+  const eventLabels = {
+    AGENT_ASSIGNED_ON_ACTIVATION:     "Cliente activado y asignado a usted",
+    AGENT_ASSIGNED_TO_ACTIVE_CLIENT:  "Nuevo cliente activo asignado a usted",
+    AGENT_REASSIGNED:                 "Reasignación: cliente activo asignado a usted",
+  };
+  const expedienteUrl = `${APP_BASE_URL}/clients/${notif.client_id}`;
+  const eventLabel = eventLabels[notif.event_type] || notif.event_type;
+  let fecha;
+  try { fecha = new Date(notif.created_at).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" }); }
+  catch (_) { fecha = notif.created_at || ""; }
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><style>
+  body{font-family:Arial,sans-serif;color:#1B2A4A;background:#f4f6f8;margin:0;padding:20px}
+  .card{background:#fff;border-radius:8px;padding:32px;max-width:520px;margin:0 auto;border-top:4px solid #2563eb}
+  .lbl{color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin:0}
+  .val{color:#1B2A4A;font-size:14px;margin:2px 0 12px}
+  .badge{display:inline-block;background:#059669;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px}
+  .btn{display:inline-block;background:#2563eb;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:bold;margin-top:16px}
+  .foot{color:#9ca3af;font-size:11px;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:12px}
+</style></head>
+<body><div class="card">
+  <p style="color:#2563eb;font-size:11px;font-weight:bold;letter-spacing:.1em;margin-bottom:4px">GLV CONNECT — GOS</p>
+  <h2 style="margin:0 0 4px;font-size:18px">${eventLabel}</h2>
+  <p style="color:#6b7280;margin-bottom:20px;font-size:13px">${fecha}</p>
+  ${notif.glv_code ? `<p class="lbl">Código GLV</p><p class="val"><strong>${notif.glv_code}</strong></p>` : ""}
+  ${notif.client_name ? `<p class="lbl">Empresa / Cliente</p><p class="val">${notif.client_name}</p>` : ""}
+  ${notif.representative_name ? `<p class="lbl">Representante</p><p class="val">${notif.representative_name}</p>` : ""}
+  ${notif.country ? `<p class="lbl">País</p><p class="val">${notif.country}</p>` : ""}
+  ${notif.status_at_event ? `<p class="lbl">Estado</p><p class="val"><span class="badge">${notif.status_at_event}</span></p>` : ""}
+  ${notif.kyc_status_at_event ? `<p class="lbl">Estado KYC</p><p class="val">${notif.kyc_status_at_event}</p>` : ""}
+  ${notif.registration_source ? `<p class="lbl">Fuente de registro</p><p class="val">${notif.registration_source}</p>` : ""}
+  <p class="lbl">Fecha de registro en GOS</p><p class="val">${fecha}</p>
+  <a href="${expedienteUrl}" class="btn">Ver expediente completo →</a>
+  <div class="foot">
+    Notificación corporativa automática del sistema GOS de GLV.<br>
+    No responder a este correo. Este mensaje no contiene datos KYC, bancarios ni documentos del cliente.
+  </div>
+</div></body></html>`;
+}
+
+async function sendNotification(notifId) {
+  let notif;
+  try { notif = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId); }
+  catch (_) { return; }
+  if (!notif || notif.status === "SENT") return;
+  if (notif.attempts >= 3) {
+    try { db.prepare(`UPDATE client_agent_notifications SET status='FAILED', updated_at=datetime('now') WHERE id=?`).run(notifId); } catch (_) {}
+    return;
+  }
+
+  try { db.prepare(`UPDATE client_agent_notifications SET attempts=attempts+1, last_attempt_at=datetime('now') WHERE id=?`).run(notifId); }
+  catch (_) {}
+
+  const t = getTransporter();
+  if (!t) {
+    try { db.prepare(`UPDATE client_agent_notifications SET status='FAILED', last_error='No SMTP configured', updated_at=datetime('now') WHERE id=?`).run(notifId); } catch (_) {}
+    return;
+  }
+
+  const subjectMap = {
+    AGENT_ASSIGNED_ON_ACTIVATION:    "Cliente activado asignado a usted",
+    AGENT_ASSIGNED_TO_ACTIVE_CLIENT: "Nuevo cliente activo asignado a usted",
+    AGENT_REASSIGNED:                "Reasignación: cliente activo asignado a usted",
+  };
+  const clientLabel = notif.client_name || notif.glv_code || `Cliente #${notif.client_id}`;
+
+  try {
+    const freshNotif = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId);
+    const info = await t.sendMail({
+      from: MAIL_FROM,
+      to: notif.agent_email,
+      subject: `GOS — ${subjectMap[notif.event_type] || notif.event_type}: ${clientLabel}`,
+      html: buildEmailHtml(freshNotif || notif),
+    });
+    try {
+      db.prepare(
+        `UPDATE client_agent_notifications SET status='SENT', delivered_at=datetime('now'), provider_message_id=?, updated_at=datetime('now') WHERE id=?`
+      ).run(info.messageId || null, notifId);
+    } catch (_) {}
+  } catch (err) {
+    const errMsg = String(err.message || err).slice(0, 500);
+    try {
+      db.prepare(
+        `UPDATE client_agent_notifications SET status='FAILED', last_error=?, updated_at=datetime('now') WHERE id=?`
+      ).run(errMsg, notifId);
+    } catch (_) {}
+
+    let fresh;
+    try { fresh = db.prepare(`SELECT attempts FROM client_agent_notifications WHERE id=?`).get(notifId); } catch (_) {}
+    if (fresh && fresh.attempts < 3) {
+      const delay = Math.pow(2, fresh.attempts) * 30000;
+      setTimeout(() => sendNotification(notifId), delay);
+    }
+  }
+}
+
+function retryNotification(notifId) {
+  const notif = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId);
+  if (!notif) throw new Error("Notificación no encontrada");
+  if (notif.status === "SENT") throw new Error("Ya enviada");
+  db.prepare(
+    `UPDATE client_agent_notifications SET status='PENDING', attempts=0, last_error=NULL, updated_at=datetime('now') WHERE id=?`
+  ).run(notifId);
+  setImmediate(() => sendNotification(notifId));
+  return { ok: true };
+}
+
+module.exports = { createAndSend, retryNotification, sendNotification };

@@ -1,0 +1,231 @@
+"use strict";
+process.env.DB_PATH   = ":memory:";
+process.env.NODE_ENV  = "test";
+process.env.SMTP_HOST = ""; // prevent real mail sends
+
+const { test, describe, before } = require("node:test");
+const assert  = require("node:assert/strict");
+const request = require("supertest");
+const bcrypt  = require("bcryptjs");
+const app     = require("../server");
+const db      = require("../db/database");
+const { createAndSend, retryNotification } = require("../services/notificationService");
+
+describe("Client Agent Notifications", () => {
+  let sesAdmin, sesDirector, sesCompliance, sesAgent1, sesAgent2, sesClient;
+  let agent1Id, agent2Id, client1Id, client2Id;
+
+  before(async () => {
+    const hash = (p) => bcrypt.hashSync(p, 4);
+
+    const ins = db.prepare(
+      `INSERT INTO users (username, password, role, name, email, first_login, active) VALUES (?,?,?,?,?,0,1)`
+    );
+    ins.run("can_admin",  hash("Pass1!"), "SUPER_ADMIN",     "CAN Admin",  "can_admin@glv.test");
+    ins.run("can_dir",    hash("Pass1!"), "DIRECTOR",        "CAN Dir",    "can_dir@glv.test");
+    ins.run("can_comp",   hash("Pass1!"), "COMPLIANCE",      "CAN Comp",   "can_comp@glv.test");
+    ins.run("can_agent1", hash("Pass1!"), "COMMERCIAL_AGENT","CAN Agent1", "agent1@glv.test");
+    ins.run("can_agent2", hash("Pass1!"), "COMMERCIAL_AGENT","CAN Agent2", "agent2@glv.test");
+    ins.run("can_client", hash("Pass1!"), "CLIENT",          "CAN Client", "ext_client@example.com");
+
+    agent1Id = db.prepare(`SELECT id FROM users WHERE username='can_agent1'`).get().id;
+    agent2Id = db.prepare(`SELECT id FROM users WHERE username='can_agent2'`).get().id;
+
+    const login = async (u, p) =>
+      (await request(app).post("/auth/login").send({ username: u, password: p })).headers["set-cookie"];
+
+    sesAdmin     = await login("can_admin",  "Pass1!");
+    sesDirector  = await login("can_dir",    "Pass1!");
+    sesCompliance= await login("can_comp",   "Pass1!");
+    sesAgent1    = await login("can_agent1", "Pass1!");
+    sesAgent2    = await login("can_agent2", "Pass1!");
+    sesClient    = await login("can_client", "Pass1!");
+
+    // Insert clients in LEAD/PRE_REGISTRATION state with no assigned agent
+    const c1 = db.prepare(
+      `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,active) VALUES (?,?,?,?,?,?)`
+    ).run("buyer","Empresa Test CAN A","GLV-CAN-001","LEAD","PRE_REGISTRATION",0);
+    const c2 = db.prepare(
+      `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,active) VALUES (?,?,?,?,?,?)`
+    ).run("buyer","Empresa Test CAN B","GLV-CAN-002","LEAD","PRE_REGISTRATION",0);
+
+    client1Id = c1.lastInsertRowid;
+    client2Id = c2.lastInsertRowid;
+
+    // Insert glv_code_sequences if not present (needed for ACTIVE_CLIENT activation)
+    try {
+      db.prepare(`INSERT OR IGNORE INTO glv_code_sequences (entity_code, last_seq) VALUES ('GLV-CO', 0)`).run();
+    } catch (_) {}
+  });
+
+  // CAN-1: LEAD status without activation → no notification
+  test("CAN-1: LEAD client without assigned agent — no notification created", () => {
+    const notifs = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=?`
+    ).all(client1Id);
+    assert.equal(notifs.length, 0, "No notification should exist for unactivated LEAD client");
+  });
+
+  // CAN-2: Activating client with assigned_agent → notification record created
+  test("CAN-2: Activating client with assigned_agent triggers notification", async () => {
+    const r = await request(app)
+      .patch(`/clients/${client1Id}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ kyc_status: "ACTIVE_CLIENT", assigned_agent: agent1Id });
+
+    assert.ok(r.status === 200 || r.status === 201,
+      `Expected 200/201 activating client, got ${r.status}: ${JSON.stringify(r.body)}`);
+
+    // Wait for setImmediate + async DB write
+    await new Promise(res => setTimeout(res, 200));
+
+    const notifs = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=?`
+    ).all(client1Id, "can_agent1");
+
+    assert.ok(notifs.length >= 1, "Notification must be created on activation with agent");
+    assert.equal(notifs[0].agent_email, "agent1@glv.test");
+    assert.ok(
+      notifs[0].event_type === "AGENT_ASSIGNED_ON_ACTIVATION" ||
+      notifs[0].event_type === "AGENT_ASSIGNED_TO_ACTIVE_CLIENT",
+      `Unexpected event_type: ${notifs[0].event_type}`
+    );
+  });
+
+  // CAN-3: Assigning agent to already-active client → notification
+  test("CAN-3: Assigning agent to already-active client creates notification", async () => {
+    // Manually set client2 to ACTIVE_CLIENT without agent
+    db.prepare(
+      `UPDATE clients SET kyc_status='ACTIVE_CLIENT', active=1 WHERE id=?`
+    ).run(client2Id);
+
+    // Now call the service directly (assigning agent to active client)
+    createAndSend(client2Id, agent1Id, "AGENT_ASSIGNED_TO_ACTIVE_CLIENT", {
+      name: "Empresa Test CAN B",
+      glv_code: "GLV-CAN-002",
+      status: "ACTIVE_CLIENT",
+      kyc_status: "ACTIVE_CLIENT",
+    });
+
+    await new Promise(res => setTimeout(res, 200));
+
+    const notifs = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=?`
+    ).all(client2Id);
+    assert.ok(notifs.length >= 1, "Notification must be created when agent assigned to active client");
+  });
+
+  // CAN-4: Reassignment → notifies new agent exactly once
+  test("CAN-4: Reassignment notifies new agent exactly once (no duplicate)", async () => {
+    createAndSend(client1Id, agent2Id, "AGENT_REASSIGNED", {
+      name: "Empresa Test CAN A", glv_code: "GLV-CAN-001", status: "ACTIVE_CLIENT",
+    });
+    await new Promise(res => setTimeout(res, 150));
+
+    const first = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? AND event_type='AGENT_REASSIGNED'`
+    ).all(client1Id, "can_agent2");
+    assert.ok(first.length >= 1, "New agent must receive a notification");
+
+    // Call again with same args (page reload / API retry simulation)
+    createAndSend(client1Id, agent2Id, "AGENT_REASSIGNED", {
+      name: "Empresa Test CAN A", glv_code: "GLV-CAN-001", status: "ACTIVE_CLIENT",
+    });
+    await new Promise(res => setTimeout(res, 150));
+
+    // Must still have exactly one record (dedup blocks the second insert)
+    const deduped = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? AND event_type='AGENT_REASSIGNED'`
+    ).all(client1Id, "can_agent2");
+    assert.equal(deduped.length, 1, "Must not create duplicate notification on repeated call");
+  });
+
+  // CAN-5: Email failure → error saved, retry available
+  test("CAN-5: Failed notification saves error and retry resets it", async () => {
+    const r = db.prepare(
+      `INSERT INTO client_agent_notifications
+       (client_id, agent_username, agent_email, event_type, client_name, status, attempts, last_error)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).run(client1Id, "can_agent1", "agent1@glv.test", "AGENT_REASSIGNED", "Test Client CAN", "FAILED", 3, "ECONNREFUSED: connection refused");
+
+    const notifId = r.lastInsertRowid;
+    const saved = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId);
+    assert.equal(saved.status, "FAILED");
+    assert.ok(saved.last_error && saved.last_error.length > 0, "Error message must be saved");
+
+    retryNotification(notifId);
+
+    // Check immediately after retryNotification (before setImmediate fires)
+    const afterReset = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId);
+    assert.equal(afterReset.attempts, 0, "Attempts must be 0 immediately after reset");
+
+    // Wait for async send attempt
+    await new Promise(res => setTimeout(res, 200));
+
+    const retried = db.prepare(`SELECT * FROM client_agent_notifications WHERE id=?`).get(notifId);
+    assert.ok(
+      retried.status === "PENDING" || retried.status === "FAILED",
+      `After retry, status should be PENDING or FAILED (no SMTP in test), got: ${retried.status}`
+    );
+    assert.ok(retried.attempts >= 1, "Attempts must be >= 1 after retry attempt");
+  });
+
+  // CAN-6: Repeated activation call → no duplicate notification (idempotency)
+  test("CAN-6: Repeated createAndSend call for same client+agent+event is idempotent", async () => {
+    // client1 already has AGENT_ASSIGNED_ON_ACTIVATION for agent1 from CAN-2
+    // Calling again must produce no new PENDING/SENT record
+    createAndSend(client1Id, agent1Id, "AGENT_ASSIGNED_ON_ACTIVATION", {
+      name: "Empresa Test CAN A", glv_code: "GLV-CAN-001",
+    });
+    await new Promise(res => setTimeout(res, 100));
+
+    createAndSend(client1Id, agent1Id, "AGENT_ASSIGNED_ON_ACTIVATION", {
+      name: "Empresa Test CAN A", glv_code: "GLV-CAN-001",
+    });
+    await new Promise(res => setTimeout(res, 100));
+
+    const notifs = db.prepare(
+      `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? AND event_type='AGENT_ASSIGNED_ON_ACTIVATION'`
+    ).all(client1Id, "can_agent1");
+    assert.equal(notifs.length, 1, "Exactly one notification record for this event (idempotent — no duplicate)");
+  });
+
+  // CAN-7: CLIENT cannot access notification history
+  test("CAN-7: CLIENT role cannot access notification history — 403", async () => {
+    const r = await request(app)
+      .get(`/clients/${client1Id}/notifications`)
+      .set("Cookie", sesClient);
+    assert.ok(r.status === 403 || r.status === 401,
+      `Expected 403/401 for CLIENT, got ${r.status}`);
+  });
+
+  // CAN-8: Agent sees only their own notifications
+  test("CAN-8: Agent sees only their own notifications via GET /clients/:id/notifications", async () => {
+    const r = await request(app)
+      .get(`/clients/${client1Id}/notifications`)
+      .set("Cookie", sesAgent1);
+
+    if (r.status === 200) {
+      assert.ok(Array.isArray(r.body), "Response must be array");
+      // All returned records must belong to agent1
+      for (const n of r.body) {
+        assert.equal(n.agent_username, "can_agent1",
+          `Agent should only see their own notifications, found: ${n.agent_username}`);
+      }
+    } else {
+      // 403 is acceptable if the route only allows 65+
+      assert.ok(r.status === 403 || r.status === 200,
+        `Unexpected status for agent: ${r.status}`);
+    }
+  });
+
+  // CAN-9: COMPLIANCE sees all notifications for a client
+  test("CAN-9: COMPLIANCE sees all notifications for a client", async () => {
+    const r = await request(app)
+      .get(`/clients/${client1Id}/notifications`)
+      .set("Cookie", sesCompliance);
+    assert.equal(r.status, 200, `Expected 200 for COMPLIANCE, got ${r.status}: ${JSON.stringify(r.body)}`);
+    assert.ok(Array.isArray(r.body), "Response must be array");
+    assert.ok(r.body.length >= 1, "COMPLIANCE must see at least one notification");
+  });
+});
