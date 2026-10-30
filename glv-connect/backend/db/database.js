@@ -1969,6 +1969,39 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_vea_count_event ON ve_audit(count_event_id);
 `);
 
+// ─── GOS-14: Client-Agent Corporate Notifications ────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_agent_notifications (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id            INTEGER NOT NULL,
+    agent_username       TEXT    NOT NULL,
+    agent_email          TEXT    NOT NULL,
+    event_type           TEXT    NOT NULL CHECK(event_type IN (
+      'AGENT_ASSIGNED_ON_ACTIVATION',
+      'AGENT_ASSIGNED_TO_ACTIVE_CLIENT',
+      'AGENT_REASSIGNED'
+    )),
+    client_name          TEXT,
+    glv_code             TEXT,
+    status_at_event      TEXT,
+    kyc_status_at_event  TEXT,
+    registration_source  TEXT,
+    country              TEXT,
+    representative_name  TEXT,
+    status               TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','SENT','FAILED','SKIPPED')),
+    attempts             INTEGER NOT NULL DEFAULT 0,
+    last_attempt_at      TEXT,
+    last_error           TEXT,
+    delivered_at         TEXT,
+    provider_message_id  TEXT,
+    created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at           TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_can_dedup
+    ON client_agent_notifications(client_id, agent_username, event_type)
+    WHERE status IN ('PENDING','SENT');
+`);
+
 // ─── getMigrationStatus ───────────────────────────────────────────────────────
 function getMigrationStatus() {
   const checkTable = (table) => {

@@ -7,6 +7,7 @@ const { authenticate }         = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 const r2      = require("../storage/r2");
 const { generateGlvCode }      = require("../utils/glvCode");
+const { insertNotificationRecord, sendNotification: sendNotif, createAndSend, retryNotification } = require("../services/notificationService");
 
 function isClientUser(user) {
   return user.role === "CLIENT" || user.role === "SUPPLIER";
@@ -304,8 +305,14 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       });
     }
 
-    const client = db.prepare("SELECT id, glv_code, glv_code_permanent, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    const client = db.prepare(
+      "SELECT id, glv_code, glv_code_permanent, kyc_status, assigned_agent, name, company, country, registration_source FROM clients WHERE id = ?"
+    ).get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
+
+    // Snapshot state before update for event-type decision
+    const prevKycStatus = client.kyc_status;
+    const prevAssigned  = client.assigned_agent; // user id (int) or null
 
     const updates = [];
     const vals    = [];
@@ -332,14 +339,46 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       return res.status(400).json({ error: "Sin campos para actualizar." });
     }
 
-    // Toda la activación (UPDATE cliente + GLV code + audit_log + tarea) en una sola transacción.
-    // Si cualquier paso falla, el cliente conserva su estado anterior.
-    // El outer db.transaction() garantiza atomicidad completa — cualquier error revierte todo.
+    // Determine what the new assigned_agent will be after this PATCH
+    let pendingAssigned;
+    if (assigned_agent !== undefined) {
+      pendingAssigned = assigned_agent || null;
+    } else {
+      pendingAssigned = prevAssigned;
+    }
+    const pendingKycStatus = kyc_status || prevKycStatus;
+
+    // Determine notification event type using the exact business rules
+    const isNowActive = pendingKycStatus === "ACTIVE_CLIENT";
+    const wasActive   = prevKycStatus === "ACTIVE_CLIENT";
+    let notifEventType = null;
+
+    if (isNowActive && pendingAssigned) {
+      if (!wasActive) {
+        // Transitioning TO ACTIVE_CLIENT with an agent → activation event
+        notifEventType = "AGENT_ASSIGNED_ON_ACTIVATION";
+      } else if (wasActive && prevAssigned === null) {
+        // Already ACTIVE_CLIENT, no agent before, now gets one
+        notifEventType = "AGENT_ASSIGNED_TO_ACTIVE_CLIENT";
+      } else if (wasActive && prevAssigned !== null && pendingAssigned !== prevAssigned) {
+        // Already ACTIVE_CLIENT, agent changes
+        notifEventType = "AGENT_REASSIGNED";
+      }
+      // wasActive && prevAssigned === pendingAssigned → no event (same agent retained)
+    }
+    // isNowActive && !pendingAssigned → no event (agent removed or none)
+
+    // Look up agent info before transaction (needed inside transaction for notification INSERT)
+    let agentInfo = null;
+    if (notifEventType && pendingAssigned) {
+      agentInfo = db.prepare(`SELECT id, username, email FROM users WHERE id=?`).get(pendingAssigned);
+      if (!agentInfo || !agentInfo.email) notifEventType = null;
+    }
+
+    // Atomically update client + audit_log + task + notification record
+    let notifId = null;
     db.transaction(() => {
       if (kyc_status === "ACTIVE_CLIENT" && !client.glv_code_permanent) {
-        // Generación atómica del código GLV dentro de la transacción:
-        // si hay colisión UNIQUE en glv_code_permanent, el outer transaction revierte
-        // tanto el incremento de secuencia como el UPDATE del cliente.
         const nowStr = new Date().toISOString().slice(0, 19).replace("T", " ");
         const year   = new Date().getFullYear();
         const seqRow = db.prepare(
@@ -365,20 +404,63 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
         "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
       ).run(req.user.username, action, client.glv_code, client.id, req.ip);
 
-      // Auto-task on activation — dentro de la misma transacción
+      // Auto-task on activation: assign to the agent if present, else to the activating user
       if (kyc_status === "ACTIVE_CLIENT") {
-        db.prepare(`
-          INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
-          VALUES (?, ?, 'medium', ?, ?, 'pending')
-        `).run(
-          `CLIENT ACTIVATED — ${client.glv_code}`,
-          `Cliente activado y listo para operaciones. GLV Code: ${client.glv_code}. Activado por: ${req.user.username}`,
-          req.user.id, req.user.id
+        const taskAssignee = pendingAssigned || req.user.id;
+        db.prepare(
+          `INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
+           VALUES (?, ?, 'medium', ?, ?, 'pending')`
+        ).run(
+          `CLIENT ACTIVATED — ${client.glv_code} | [CLIENTE ACTIVO] ${client.company || client.name || ""}`,
+          `Cliente activado${agentInfo ? ` y asignado a ${agentInfo.username}` : ""}. Confirmar contacto inicial y completar ficha de bienvenida. GLV Code: ${client.glv_code}. Activado por: ${req.user.username}`,
+          taskAssignee, req.user.id
+        );
+      }
+
+      // Insert notification record inside the same transaction — prevents data loss on crash
+      if (notifEventType && agentInfo) {
+        const updatedForNotif = db.prepare("SELECT * FROM clients WHERE id=?").get(req.params.id);
+
+        // Resolve representative name: WEB_KYC → decrypt kyc_data, extract rep only;
+        // MANUAL/other → use the plain representative column. Never expose phone/email/ID/bank.
+        let representativeName = null;
+        const regSrc = updatedForNotif.registration_source || "";
+        if (regSrc === "WEB_KYC" && updatedForNotif.kyc_data) {
+          try {
+            const raw = pii.isConfigured()
+              ? pii.decrypt(updatedForNotif.kyc_data)
+              : updatedForNotif.kyc_data;
+            const parsed = JSON.parse(raw);
+            representativeName = parsed.rep || parsed.representative_name || parsed.contact_name || null;
+          } catch (_) { representativeName = null; }
+        } else {
+          representativeName = updatedForNotif.representative || null;
+        }
+
+        notifId = insertNotificationRecord(
+          client.id,
+          agentInfo.username,
+          agentInfo.email,
+          notifEventType,
+          {
+            company_name: updatedForNotif.company || updatedForNotif.name,
+            glv_code: updatedForNotif.glv_code_permanent || updatedForNotif.glv_code,
+            status: "ACTIVE_CLIENT",
+            kyc_status: "ACTIVE_CLIENT",
+            registration_source: updatedForNotif.registration_source,
+            country: updatedForNotif.country,
+            representative_name: representativeName,
+          }
         );
       }
     })();
 
-    res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
+    const updatedClient = db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id);
+    res.json(updatedClient);
+
+    // Fire async SMTP worker after transaction committed — non-blocking
+    if (notifId) setImmediate(() => sendNotif(notifId));
+
   } catch (e) {
     console.error("[PATCH /clients/:id/kyc-status]", e.message);
     res.status(500).json({ error: "Error actualizando el estado KYC. Inténtelo de nuevo o contacte a soporte." });
@@ -1022,6 +1104,65 @@ router.delete("/:id/notes/:noteId", requireLevel(65), (req, res) => {
   if (row.created_by !== req.user.id && userLevel < 90) return res.status(403).json({ error: "Solo el autor o un administrador puede eliminar esta nota" });
   db.prepare("DELETE FROM client_notes WHERE id=?").run(req.params.noteId);
   res.json({ ok: true });
+});
+
+function maskEmail(email) {
+  if (!email) return null;
+  const atIdx = email.indexOf("@");
+  if (atIdx < 0) return "***";
+  const local   = email.slice(0, atIdx);
+  const domain  = email.slice(atIdx);
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}***${domain}`;
+}
+
+// ─── GET /clients/:id/notifications (COMPLIANCE 65+ or own agent) ────────────
+router.get("/:id/notifications", authenticate, (req, res) => {
+  try {
+    const { ROLE_LEVEL: RL } = require("../middleware/rbac");
+    const userLevel = RL[req.user.role] || 0;
+    const clientId  = parseInt(req.params.id, 10);
+    if (!clientId) return res.status(400).json({ error: "ID inválido" });
+
+    // CLIENT / SUPPLIER blocked
+    if (userLevel < 40) return res.status(403).json({ error: "Sin acceso a notificaciones" });
+
+    let rows;
+    if (userLevel >= 65) {
+      // COMPLIANCE, DIRECTOR, ADMIN — see all
+      rows = db.prepare(
+        `SELECT * FROM client_agent_notifications WHERE client_id=? ORDER BY created_at DESC`
+      ).all(clientId);
+    } else {
+      // Agent — only their own
+      rows = db.prepare(
+        `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? ORDER BY created_at DESC`
+      ).all(clientId, req.user.username);
+    }
+
+    // SUPER_ADMIN and COMPLIANCE see full email; everyone else sees masked version
+    const showFullEmail = req.user.role === "SUPER_ADMIN" || req.user.role === "COMPLIANCE";
+    if (!showFullEmail) {
+      rows = rows.map(r => ({ ...r, agent_email: maskEmail(r.agent_email) }));
+    }
+
+    res.json(rows);
+  } catch (e) {
+    console.error("[GET /clients/:id/notifications]", e.message);
+    res.status(500).json({ error: "Error al obtener notificaciones" });
+  }
+});
+
+// ─── POST /clients/notifications/:id/retry (DIRECTOR 75+) ────────────────────
+router.post("/notifications/:notifId/retry", requireLevel(75), (req, res) => {
+  try {
+    const notifId = parseInt(req.params.notifId, 10);
+    if (!notifId) return res.status(400).json({ error: "ID inválido" });
+    const result = retryNotification(notifId);
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 module.exports = router;
