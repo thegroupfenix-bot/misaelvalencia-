@@ -347,4 +347,126 @@ describe("Client Agent Notifications", () => {
       `Task title should reference activation. Found: ${tasks.map(t=>t.title).join(", ")}`
     );
   });
+
+  // CAN-13: representative_name populated from MANUAL client record
+  test("CAN-13: representative_name populated from contact_name for manual records", async () => {
+    const c = db.prepare(
+      `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,registration_source,representative,active)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).run("buyer","Empresa Manual Rep","GLV-MAN-CAN-001","LEAD","PRE_REGISTRATION","MANUAL","María González",0);
+    const cId = c.lastInsertRowid;
+
+    try { db.prepare(`INSERT OR IGNORE INTO glv_code_sequences (entity_code, last_seq) VALUES ('GLV-CO', 0)`).run(); } catch (_) {}
+
+    const r = await request(app)
+      .patch(`/clients/${cId}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ kyc_status: "ACTIVE_CLIENT", assigned_agent: agent1Id });
+    assert.ok(r.status === 200 || r.status === 201,
+      `Activation failed: ${r.status}: ${JSON.stringify(r.body)}`);
+
+    await new Promise(res => setTimeout(res, 150));
+
+    const notif = db.prepare(`SELECT * FROM client_agent_notifications WHERE client_id=? ORDER BY id DESC LIMIT 1`).get(cId);
+    assert.ok(notif, "Notification must exist");
+    assert.equal(notif.representative_name, "María González",
+      `Expected 'María González', got: ${notif.representative_name}`);
+  });
+
+  // CAN-14: representative_name for WEB_KYC (extracts only rep, not sensitive fields)
+  test("CAN-14: representative_name extracted gracefully for WEB_KYC client", async () => {
+    const hasKycData = db.prepare(`PRAGMA table_info(clients)`).all().some(col => col.name === "kyc_data");
+
+    if (!hasKycData) {
+      // Graceful: no kyc_data column, no crash
+      return;
+    }
+
+    // Create a WEB_KYC client with a JSON-encoded kyc_data (not encrypted in test env)
+    const kycPayload = JSON.stringify({
+      rep: "Carlos Ruiz",
+      empresa: "Empresa Secreta SA",
+      email: "secreto@empresa.com",
+      phone: "+54911234567",
+      nit: "12345678-9",
+      bank: "Banco Secreto",
+    });
+
+    const c = db.prepare(
+      `INSERT INTO clients (type,name,glv_code,lead_status,kyc_status,registration_source,kyc_data,active)
+       VALUES (?,?,?,?,?,?,?,?)`
+    ).run("buyer","GLV-WKC-CAN-001","GLV-WKC-CAN-001","LEAD","PRE_REGISTRATION","WEB_KYC",kycPayload,0);
+    const cId = c.lastInsertRowid;
+
+    try { db.prepare(`INSERT OR IGNORE INTO glv_code_sequences (entity_code, last_seq) VALUES ('GLV-CO', 0)`).run(); } catch (_) {}
+
+    const r = await request(app)
+      .patch(`/clients/${cId}/kyc-status`)
+      .set("Cookie", sesCompliance)
+      .send({ kyc_status: "ACTIVE_CLIENT", assigned_agent: agent1Id });
+    assert.ok(r.status === 200 || r.status === 201,
+      `Activation failed: ${r.status}: ${JSON.stringify(r.body)}`);
+
+    await new Promise(res => setTimeout(res, 150));
+
+    const notif = db.prepare(`SELECT * FROM client_agent_notifications WHERE client_id=? ORDER BY id DESC LIMIT 1`).get(cId);
+    assert.ok(notif, "Notification must exist");
+    // Only the representative name should be in the notification, not email/phone/bank/nit
+    assert.equal(notif.representative_name, "Carlos Ruiz",
+      `Expected 'Carlos Ruiz', got: ${notif.representative_name}`);
+    // Verify sensitive fields are not stored in notification
+    const notifJson = JSON.stringify(notif);
+    assert.ok(!notifJson.includes("secreto@empresa.com"), "Email must not appear in notification record");
+    assert.ok(!notifJson.includes("+54911234567"), "Phone must not appear in notification record");
+    assert.ok(!notifJson.includes("12345678-9"), "NIT/tax_id must not appear in notification record");
+    assert.ok(!notifJson.includes("Banco Secreto"), "Bank info must not appear in notification record");
+  });
+
+  // CAN-15: COMPLIANCE sees full email, agent sees masked
+  test("CAN-15: COMPLIANCE sees full agent_email; COMMERCIAL_AGENT sees masked version", async () => {
+    // Use client1 which already has notifications from CAN-2
+    const rComp = await request(app)
+      .get(`/clients/${client1Id}/notifications`)
+      .set("Cookie", sesCompliance);
+    assert.equal(rComp.status, 200, `COMPLIANCE expected 200, got ${rComp.status}`);
+    assert.ok(Array.isArray(rComp.body) && rComp.body.length >= 1, "COMPLIANCE must see at least one notification");
+    // COMPLIANCE sees full email (no masking — contains @ without ***)
+    const compNotif = rComp.body.find(n => n.agent_email);
+    if (compNotif) {
+      assert.ok(
+        !compNotif.agent_email.includes("***"),
+        `COMPLIANCE must see full email, got masked: ${compNotif.agent_email}`
+      );
+      assert.ok(compNotif.agent_email.includes("@"),
+        `COMPLIANCE email must include @, got: ${compNotif.agent_email}`);
+    }
+
+    // Agent (sesAgent1 = can_agent1) calls same endpoint — must receive masked email
+    const rAgent = await request(app)
+      .get(`/clients/${client1Id}/notifications`)
+      .set("Cookie", sesAgent1);
+    assert.ok(rAgent.status === 200 || rAgent.status === 403,
+      `Agent expected 200/403, got ${rAgent.status}`);
+    if (rAgent.status === 200 && rAgent.body.length > 0) {
+      for (const n of rAgent.body) {
+        if (n.agent_email) {
+          assert.ok(
+            n.agent_email.includes("***"),
+            `Agent must see masked email, got: ${n.agent_email}`
+          );
+        }
+      }
+    }
+  });
+
+  // CAN-16: CLIENT and SUPPLIER roles are blocked from notification history
+  test("CAN-16: CLIENT role cannot access notification history — 403/401", async () => {
+    const r = await request(app)
+      .get(`/clients/${client1Id}/notifications`)
+      .set("Cookie", sesClient);
+    assert.ok(
+      r.status === 403 || r.status === 401,
+      `Expected 403/401 for CLIENT, got ${r.status}: ${JSON.stringify(r.body)}`
+    );
+  });
 });

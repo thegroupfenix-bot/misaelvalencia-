@@ -420,6 +420,23 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       // Insert notification record inside the same transaction — prevents data loss on crash
       if (notifEventType && agentInfo) {
         const updatedForNotif = db.prepare("SELECT * FROM clients WHERE id=?").get(req.params.id);
+
+        // Resolve representative name: WEB_KYC → decrypt kyc_data, extract rep only;
+        // MANUAL/other → use the plain representative column. Never expose phone/email/ID/bank.
+        let representativeName = null;
+        const regSrc = updatedForNotif.registration_source || "";
+        if (regSrc === "WEB_KYC" && updatedForNotif.kyc_data) {
+          try {
+            const raw = pii.isConfigured()
+              ? pii.decrypt(updatedForNotif.kyc_data)
+              : updatedForNotif.kyc_data;
+            const parsed = JSON.parse(raw);
+            representativeName = parsed.rep || parsed.representative_name || parsed.contact_name || null;
+          } catch (_) { representativeName = null; }
+        } else {
+          representativeName = updatedForNotif.representative || null;
+        }
+
         notifId = insertNotificationRecord(
           client.id,
           agentInfo.username,
@@ -432,6 +449,7 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
             kyc_status: "ACTIVE_CLIENT",
             registration_source: updatedForNotif.registration_source,
             country: updatedForNotif.country,
+            representative_name: representativeName,
           }
         );
       }
@@ -1088,6 +1106,16 @@ router.delete("/:id/notes/:noteId", requireLevel(65), (req, res) => {
   res.json({ ok: true });
 });
 
+function maskEmail(email) {
+  if (!email) return null;
+  const atIdx = email.indexOf("@");
+  if (atIdx < 0) return "***";
+  const local   = email.slice(0, atIdx);
+  const domain  = email.slice(atIdx);
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}***${domain}`;
+}
+
 // ─── GET /clients/:id/notifications (COMPLIANCE 65+ or own agent) ────────────
 router.get("/:id/notifications", authenticate, (req, res) => {
   try {
@@ -1110,6 +1138,12 @@ router.get("/:id/notifications", authenticate, (req, res) => {
       rows = db.prepare(
         `SELECT * FROM client_agent_notifications WHERE client_id=? AND agent_username=? ORDER BY created_at DESC`
       ).all(clientId, req.user.username);
+    }
+
+    // SUPER_ADMIN and COMPLIANCE see full email; everyone else sees masked version
+    const showFullEmail = req.user.role === "SUPER_ADMIN" || req.user.role === "COMPLIANCE";
+    if (!showFullEmail) {
+      rows = rows.map(r => ({ ...r, agent_email: maskEmail(r.agent_email) }));
     }
 
     res.json(rows);

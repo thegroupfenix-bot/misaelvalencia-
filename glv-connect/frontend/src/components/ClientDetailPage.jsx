@@ -24,7 +24,117 @@ const LC_COLORS = {
   DUPLICATE: { bg: "#fee2e2", text: "#991b1b" },
 };
 
-const TABS = ["Resumen", "Empresa", "Comercial", "Compliance", "Documentos", "Operaciones", "Auditoría"];
+const TABS_BASE = ["Resumen", "Empresa", "Comercial", "Compliance", "Documentos", "Operaciones", "Auditoría"];
+
+const NOTIF_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "CFO", "DIRECTOR", "DIRECTIVO", "COMMERCIAL_MANAGER", "COMMERCIAL_DIRECTOR", "COMPLIANCE", "COMMERCIAL_AGENT", "AGENTE"]);
+
+const EVENT_LABELS = {
+  AGENT_ASSIGNED_ON_ACTIVATION:    "Activación con agente",
+  AGENT_ASSIGNED_TO_ACTIVE_CLIENT: "Asignación a cliente activo",
+  AGENT_REASSIGNED:                "Reasignación de agente",
+};
+
+const STATUS_COLORS = {
+  SENT:    { bg: "#dcfce7", text: "#166534" },
+  PENDING: { bg: "#fef3c7", text: "#92400e" },
+  FAILED:  { bg: "#fee2e2", text: "#991b1b" },
+  SKIPPED: { bg: "#f3f4f6", text: "#6b7280" },
+};
+
+function TabNotificaciones({ clientId, user, showNotif }) {
+  const [rows, setRows]   = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const canRetry = user?.role === "SUPER_ADMIN" || user?.role === "DIRECTOR" || user?.role === "CORPORATE_ADMIN" || user?.role === "CFO";
+
+  const load = () => {
+    setLoading(true);
+    api.getClientNotifications(clientId)
+      .then(setRows)
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, [clientId]);
+
+  const retry = async (id) => {
+    try {
+      await api.retryClientNotification(id);
+      showNotif("Reintento programado", "success");
+      load();
+    } catch (e) {
+      showNotif(e.message, "error");
+    }
+  };
+
+  if (loading) return <div style={{ padding: 24, color: "var(--color-text-secondary)", fontFamily: "var(--font-sans)" }}>Cargando…</div>;
+
+  return (
+    <div>
+      <div style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+        <i className="ti ti-bell" style={{ color: "#2563eb", fontSize: 18 }} />
+        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)", fontFamily: "var(--font-sans)" }}>Notificaciones al agente</span>
+      </div>
+
+      {!rows || rows.length === 0 ? (
+        <div style={{ color: "var(--color-text-secondary)", fontSize: 13, padding: "16px 0" }}>Sin notificaciones registradas.</div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: "var(--font-sans)" }}>
+            <thead>
+              <tr style={{ background: "var(--color-background-secondary)" }}>
+                {["Fecha", "Agente", "Evento", "Correo destino", "Estado", "Intentos", "Error técnico", "Acción"].map(h => (
+                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--color-text-secondary)", fontWeight: 500, whiteSpace: "nowrap", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(n => {
+                const sc = STATUS_COLORS[n.status] || STATUS_COLORS.SKIPPED;
+                return (
+                  <tr key={n.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                    <td style={{ padding: "8px 10px", whiteSpace: "nowrap", color: "var(--color-text-secondary)" }}>
+                      {n.created_at ? new Date(n.created_at).toLocaleString("es") : "—"}
+                    </td>
+                    <td style={{ padding: "8px 10px", color: "var(--color-text-primary)" }}>{n.agent_username || "—"}</td>
+                    <td style={{ padding: "8px 10px", color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>
+                      {EVENT_LABELS[n.event_type] || n.event_type}
+                    </td>
+                    <td style={{ padding: "8px 10px", color: "var(--color-text-secondary)", fontFamily: "monospace", fontSize: 11 }}>
+                      {n.agent_email || "—"}
+                    </td>
+                    <td style={{ padding: "8px 10px" }}>
+                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: sc.bg, color: sc.text, fontWeight: 600 }}>
+                        {n.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 10px", textAlign: "center", color: "var(--color-text-secondary)" }}>{n.attempts ?? 0}</td>
+                    <td style={{ padding: "8px 10px", maxWidth: 220 }}>
+                      {n.status === "FAILED" && n.last_error ? (
+                        <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace" }}>
+                          {String(n.last_error).slice(0, 80)}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td style={{ padding: "8px 10px" }}>
+                      {n.status === "FAILED" && canRetry ? (
+                        <button
+                          onClick={() => retry(n.id)}
+                          style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid #dc2626", color: "#dc2626", background: "transparent", cursor: "pointer", whiteSpace: "nowrap" }}
+                        >
+                          <i className="ti ti-refresh" style={{ marginRight: 4 }} />Reintentar
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const DOC_TYPE_LABELS = {
   COMMERCIAL_REGISTRATION: "Registro Comercial",
@@ -382,6 +492,9 @@ export default function ClientDetailPage({ clientId, setView, user, showNotif })
   const [tab, setTab] = useState("Resumen");
   const [deleting, setDeleting] = useState(false);
 
+  const showNotifTab = user && NOTIF_ROLES.has(user.role);
+  const TABS = showNotifTab ? [...TABS_BASE, "Notificaciones"] : TABS_BASE;
+
   const load = () => {
     setLoading(true);
     api.getClient(clientId).then(setClient).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
@@ -456,8 +569,9 @@ export default function ClientDetailPage({ clientId, setView, user, showNotif })
         {tab === "Comercial"   && <TabComercial client={client} onSave={load} showNotif={showNotif} />}
         {tab === "Compliance"  && <TabCompliance client={client} />}
         {tab === "Documentos"  && <TabDocumentos clientId={client.id} showNotif={showNotif} />}
-        {tab === "Operaciones" && <TabOperaciones clientId={client.id} setView={setView} showNotif={showNotif} />}
-        {tab === "Auditoría"   && <TabAuditoria clientId={client.id} showNotif={showNotif} />}
+        {tab === "Operaciones"    && <TabOperaciones clientId={client.id} setView={setView} showNotif={showNotif} />}
+        {tab === "Auditoría"      && <TabAuditoria clientId={client.id} showNotif={showNotif} />}
+        {tab === "Notificaciones" && <TabNotificaciones clientId={client.id} user={user} showNotif={showNotif} />}
       </div>
     </div>
   );
