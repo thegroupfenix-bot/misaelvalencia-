@@ -2193,3 +2193,155 @@ function seedGos06Catalogs() {
     ["CA","Canada","Canadá","Americas","North America",56.13,-106.35],
   ].forEach(r => insCC.run(...r)))();
 }
+
+// ─── Lead Intake (GOS — inbound lead flow) ────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS business_hours_config (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    timezone      TEXT NOT NULL DEFAULT 'America/Bogota',
+    workday_start INTEGER NOT NULL DEFAULT 8,
+    workday_end   INTEGER NOT NULL DEFAULT 18,
+    work_days     TEXT NOT NULL DEFAULT '1,2,3,4,5',
+    holiday_dates TEXT DEFAULT NULL,
+    updated_by    TEXT,
+    updated_at    TEXT DEFAULT (datetime('now'))
+  );
+`);
+db.prepare("INSERT OR IGNORE INTO business_hours_config (id) VALUES (1)").run();
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS lead_assignment_rules (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    country_code   TEXT,
+    zone           TEXT,
+    product_type   TEXT,
+    origin_channel TEXT,
+    language       TEXT,
+    agent_username TEXT NOT NULL,
+    priority       INTEGER NOT NULL DEFAULT 50,
+    valid_from     TEXT DEFAULT (date('now')),
+    valid_until    TEXT,
+    is_active      INTEGER NOT NULL DEFAULT 1,
+    version        INTEGER NOT NULL DEFAULT 1,
+    created_by     TEXT,
+    created_at     TEXT DEFAULT (datetime('now')),
+    updated_at     TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS leads (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    glv_code               TEXT UNIQUE NOT NULL,
+    origin_channel         TEXT NOT NULL DEFAULT 'OTHER' CHECK(origin_channel IN ('WEB','SOCIAL','WHATSAPP','REFERRAL','CAMPAIGN','OTHER')),
+    campaign               TEXT,
+    country_code           TEXT,
+    zone                   TEXT,
+    city                   TEXT,
+    language               TEXT DEFAULT 'ES',
+    company_name           TEXT,
+    contact_name           TEXT NOT NULL,
+    phone_raw              TEXT,
+    phone_norm             TEXT,
+    email                  TEXT,
+    product_type           TEXT,
+    quantity               REAL,
+    quantity_unit          TEXT,
+    destination            TEXT,
+    port                   TEXT,
+    notes                  TEXT,
+    status                 TEXT NOT NULL DEFAULT 'PENDING_ASSIGNMENT' CHECK(status IN (
+      'PENDING_ASSIGNMENT','ASSIGNED','FIRST_CONTACT_PENDING','FIRST_CONTACT_DONE',
+      'AWAITING_RESPONSE','CLIENT_RESPONDED','SECOND_CONTACT_REQUIRED',
+      'FOLLOW_UP_SCHEDULED','ESCALATED','CLOSED'
+    )),
+    assigned_agent         TEXT,
+    assignment_rule_id     INTEGER,
+    assigned_at            TEXT,
+    first_contact_deadline TEXT,
+    client_id              INTEGER,
+    is_duplicate_of        INTEGER,
+    created_by             TEXT,
+    created_at             TEXT DEFAULT (datetime('now')),
+    updated_at             TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS lead_assignment_history (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id     INTEGER NOT NULL,
+    prev_agent  TEXT,
+    new_agent   TEXT,
+    prev_status TEXT,
+    new_status  TEXT,
+    rule_id     INTEGER,
+    changed_by  TEXT NOT NULL,
+    reason      TEXT,
+    created_at  TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS lead_timeline (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id     INTEGER NOT NULL,
+    event_type  TEXT NOT NULL,
+    actor       TEXT,
+    description TEXT,
+    metadata    TEXT,
+    created_at  TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS lead_agent_notifications (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id             INTEGER NOT NULL,
+    agent_username      TEXT NOT NULL,
+    agent_email         TEXT NOT NULL,
+    event_type          TEXT NOT NULL CHECK(event_type IN ('LEAD_ASSIGNED','LEAD_REASSIGNED')),
+    status              TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING','SENT','FAILED','SKIPPED')),
+    attempts            INTEGER DEFAULT 0,
+    last_attempt_at     TEXT,
+    last_error          TEXT,
+    delivered_at        TEXT,
+    provider_message_id TEXT,
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_lan_dedup ON lead_agent_notifications(lead_id, agent_username, event_type)
+    WHERE status IN ('PENDING','SENT');
+
+  CREATE TABLE IF NOT EXISTS lead_first_contacts (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id          INTEGER NOT NULL,
+    contact_channel  TEXT NOT NULL CHECK(contact_channel IN ('WHATSAPP','EMAIL','CALL','MEETING','OTHER')),
+    contact_at       TEXT NOT NULL,
+    contacted_person TEXT,
+    result           TEXT NOT NULL CHECK(result IN ('CONTACTED','REPLIED','NO_REPLY','MEETING_SCHEDULED','NOT_INTERESTED','INFO_PENDING','OTHER')),
+    summary          TEXT,
+    confirmed_product TEXT,
+    next_action      TEXT,
+    next_action_at   TEXT,
+    evidence_url     TEXT,
+    recorded_by      TEXT NOT NULL,
+    created_at       TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS lead_followups (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id      INTEGER NOT NULL,
+    task_id      INTEGER,
+    deadline     TEXT NOT NULL,
+    status       TEXT DEFAULT 'AWAITING_RESPONSE' CHECK(status IN (
+      'AWAITING_RESPONSE','CLIENT_RESPONDED','SECOND_CONTACT_REQUIRED',
+      'FOLLOW_UP_SCHEDULED','ESCALATED','CLOSED'
+    )),
+    escalated_at TEXT,
+    escalated_to TEXT,
+    closed_at    TEXT,
+    closed_by    TEXT,
+    created_at   TEXT DEFAULT (datetime('now')),
+    updated_at   TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_leads_status   ON leads(status);
+  CREATE INDEX IF NOT EXISTS idx_leads_agent    ON leads(assigned_agent);
+  CREATE INDEX IF NOT EXISTS idx_leads_phone    ON leads(phone_norm);
+  CREATE INDEX IF NOT EXISTS idx_lt_lead        ON lead_timeline(lead_id);
+  CREATE INDEX IF NOT EXISTS idx_lah_lead       ON lead_assignment_history(lead_id);
+`);

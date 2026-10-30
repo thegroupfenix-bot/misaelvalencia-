@@ -71,7 +71,7 @@ export const api = {
   updateClient: (id, data) => request("PUT", `/clients/${id}`, data),
 
   // GOS Leads (KYC pipeline — Sprint 1.5)
-  getLeads:            (params = {}) => { const q = new URLSearchParams(params).toString(); return request("GET", `/clients/leads${q ? `?${q}` : ""}`); },
+  getKycLeads:         (params = {}) => { const q = new URLSearchParams(params).toString(); return request("GET", `/clients/leads${q ? `?${q}` : ""}`); },
   getClientKycData:    (id)          => request("GET",   `/clients/${id}/kyc-data`),
   updateKycStatus:     (id, data)    => request("PATCH", `/clients/${id}/kyc-status`, data),
   archiveClient:       (id)          => request("PATCH", `/clients/${id}/archive`),
@@ -300,4 +300,19 @@ export const api = {
   resolveDiscrepancy:       (id, data)  => request("PATCH", `/visual-evidence/discrepancies/${id}/resolve`, data),
   getVeAiProviders:         ()          => request("GET",   "/visual-evidence/ai-providers"),
   getEvidenceDashboard:     ()          => request("GET",   "/visual-evidence/dashboard/summary"),
+
+  // ─── Lead Intake (GOS — inbound lead flow) ───────────────────────────────────
+  createLead:            (data)        => request("POST",  "/leads", data),
+  getLeads:              (params={})   => { const q=new URLSearchParams(params).toString(); return request("GET", `/leads${q?"?"+q:""}`); },
+  getLead:               (id)          => request("GET",   `/leads/${id}`),
+  assignLead:            (id, data)    => request("PATCH", `/leads/${id}/assign`, data),
+  getLeadTimeline:       (id)          => request("GET",   `/leads/${id}/timeline`),
+  recordFirstContact:    (id, data)    => request("POST",  `/leads/${id}/first-contact`, data),
+  updateLeadFollowup:    (id, fid, d)  => request("PATCH", `/leads/${id}/followup/${fid}`, d),
+  getLeadRules:          ()            => request("GET",   "/leads/rules/list"),
+  createLeadRule:        (data)        => request("POST",  "/leads/rules/create", data),
+  updateLeadRule:        (id, data)    => request("PATCH", `/leads/rules/${id}`, data),
+  deleteLeadRule:        (id)          => request("DELETE",`/leads/rules/${id}`),
+  getLeadBusinessHours:  ()            => request("GET",   "/leads/config/business-hours"),
+  updateLeadBusinessHours:(data)       => request("PATCH", "/leads/config/business-hours", data),
 };
