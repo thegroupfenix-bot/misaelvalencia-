@@ -2346,3 +2346,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_lah_lead       ON lead_assignment_history(lead_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_lfc_lead ON lead_first_contacts(lead_id);
 `);
+
+// Add lead_id and task_type to tasks (idempotent)
+safeAlter("ALTER TABLE tasks ADD COLUMN lead_id INTEGER");
+safeAlter("ALTER TABLE tasks ADD COLUMN task_type TEXT");

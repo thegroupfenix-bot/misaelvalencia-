@@ -1,20 +1,36 @@
 "use strict";
 const db = require("../db/database");
 
-function getSupervisorUsername() {
+const TASK_TYPE = {
+  ESCALATION_FIRST_CONTACT: "ESCALATION_FIRST_CONTACT",
+  ESCALATION_FOLLOWUP:      "ESCALATION_FOLLOWUP",
+  REMINDER_FIRST_CONTACT:   "REMINDER_FIRST_CONTACT",
+  REMINDER_FOLLOWUP:        "REMINDER_FOLLOWUP",
+};
+
+function getSupervisorId() {
   const cols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
   const hasStatus = cols.includes("status");
-  const query = hasStatus
-    ? `SELECT username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') AND status='active' ORDER BY id LIMIT 1`
-    : `SELECT username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') ORDER BY id LIMIT 1`;
-  const row = db.prepare(query).get();
-  return row ? row.username : null;
+  const q = hasStatus
+    ? `SELECT id,username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') AND status='active' ORDER BY id LIMIT 1`
+    : `SELECT id,username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') ORDER BY id LIMIT 1`;
+  return db.prepare(q).get();
 }
 
 function hasTimeline(leadId, eventType) {
+  return !!db.prepare(`SELECT id FROM lead_timeline WHERE lead_id=? AND event_type=?`).get(leadId, eventType);
+}
+
+function hasTask(leadId, taskType) {
   return !!db.prepare(
-    `SELECT id FROM lead_timeline WHERE lead_id=? AND event_type=?`
-  ).get(leadId, eventType);
+    `SELECT id FROM tasks WHERE lead_id=? AND task_type=? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
+  ).get(leadId, taskType);
+}
+
+function getAgentId(username) {
+  if (!username) return null;
+  const u = db.prepare("SELECT id FROM users WHERE username=?").get(username);
+  return u ? u.id : null;
 }
 
 /**
@@ -22,8 +38,8 @@ function hasTimeline(leadId, eventType) {
  * Runs every 5 minutes in production.
  */
 function runEscalationCheck() {
-  const now             = new Date().toISOString();
-  const oneHourFromNow  = new Date(Date.now() + 3600000).toISOString();
+  const now            = new Date().toISOString();
+  const oneHourFromNow = new Date(Date.now() + 3600000).toISOString();
 
   // ── First contact escalation ────────────────────────────────────────────────
   const overdueFC = db.prepare(`
@@ -36,32 +52,22 @@ function runEscalationCheck() {
   for (const lead of overdueFC) {
     if (hasTimeline(lead.id, "ESCALATED_FIRST_CONTACT")) continue;
 
-    db.prepare(`
-      INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at)
-      VALUES (?,?,?,?,datetime('now'))
-    `).run(lead.id, "ESCALATED_FIRST_CONTACT", "system",
-      `Vencimiento de primer contacto sin respuesta. Lead escalado a supervisor.`);
+    db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at) VALUES (?,?,?,?,datetime('now'))`)
+      .run(lead.id, "ESCALATED_FIRST_CONTACT", "system",
+        `Vencimiento de primer contacto sin respuesta. Lead escalado a supervisor.`);
 
     db.prepare(`UPDATE leads SET status='ESCALATED', updated_at=datetime('now') WHERE id=?`).run(lead.id);
 
-    // Create supervisor task (idempotent check)
-    const existing = db.prepare(
-      `SELECT id FROM tasks WHERE title LIKE ? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
-    ).get(`%ESCALADO%${lead.glv_code}%`);
-    if (!existing) {
-      const sup = getSupervisorUsername();
+    // Supervisor task (idempotent by lead_id + task_type)
+    if (!hasTask(lead.id, TASK_TYPE.ESCALATION_FIRST_CONTACT)) {
+      const sup = getSupervisorId();
       if (sup) {
-        const supUser = db.prepare(`SELECT id FROM users WHERE username=?`).get(sup);
-        db.prepare(`
-          INSERT INTO tasks (title, description, status, priority, assigned_to, created_by)
-          VALUES (?,?,?,?,?,?)
-        `).run(
-          `[ESCALADO] Primer contacto vencido: ${lead.glv_code}`,
-          `El agente ${lead.assigned_agent || "—"} no completó el primer contacto. Requiere decisión humana.`,
-          "PENDIENTE", "ALTA",
-          supUser ? supUser.id : null,
-          null
-        );
+        db.prepare(`INSERT INTO tasks (title, description, status, priority, assigned_to, created_by, lead_id, task_type) VALUES (?,?,?,?,?,?,?,?)`)
+          .run(
+            `[ESCALADO] Primer contacto vencido: ${lead.glv_code}`,
+            `El agente ${lead.assigned_agent || "—"} no completó el primer contacto. Requiere decisión humana. No reasignar automáticamente.`,
+            "PENDIENTE", "ALTA", sup.id, null, lead.id, TASK_TYPE.ESCALATION_FIRST_CONTACT
+          );
       }
     }
   }
@@ -77,11 +83,23 @@ function runEscalationCheck() {
 
   for (const lead of dueSoonFC) {
     if (hasTimeline(lead.id, "REMINDER_FIRST_CONTACT")) continue;
-    db.prepare(`
-      INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at)
-      VALUES (?,?,?,?,datetime('now'))
-    `).run(lead.id, "REMINDER_FIRST_CONTACT", "system",
-      `Recordatorio: primer contacto vence en menos de 1 hora.`);
+
+    db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at) VALUES (?,?,?,?,datetime('now'))`)
+      .run(lead.id, "REMINDER_FIRST_CONTACT", "system",
+        `Recordatorio: primer contacto vence en menos de 1 hora.`);
+
+    // Agent reminder task (idempotent by lead_id + task_type)
+    if (lead.assigned_agent && !hasTask(lead.id, TASK_TYPE.REMINDER_FIRST_CONTACT)) {
+      const agentId = getAgentId(lead.assigned_agent);
+      if (agentId) {
+        db.prepare(`INSERT INTO tasks (title, description, status, priority, assigned_to, created_by, lead_id, task_type) VALUES (?,?,?,?,?,?,?,?)`)
+          .run(
+            `[RECORDATORIO] Primer contacto próximo a vencer: ${lead.glv_code}`,
+            `El plazo para el primer contacto con ${lead.glv_code} vence en menos de 1 hora. Realice el contacto ahora.`,
+            "PENDIENTE", "ALTA", agentId, null, lead.id, TASK_TYPE.REMINDER_FIRST_CONTACT
+          );
+      }
+    }
   }
 
   // ── Follow-up escalation ────────────────────────────────────────────────────
@@ -95,19 +113,31 @@ function runEscalationCheck() {
   for (const fu of overdueFollowup) {
     if (hasTimeline(fu.lead_id, "ESCALATED_FOLLOWUP")) continue;
 
-    db.prepare(`
-      INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at)
-      VALUES (?,?,?,?,datetime('now'))
-    `).run(fu.lead_id, "ESCALATED_FOLLOWUP", "system",
-      `Seguimiento sin actualización por 48 horas hábiles. Lead escalado a supervisor.`);
+    db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at) VALUES (?,?,?,?,datetime('now'))`)
+      .run(fu.lead_id, "ESCALATED_FOLLOWUP", "system",
+        `Seguimiento sin actualización por 48 horas hábiles. Lead escalado a supervisor.`);
 
     db.prepare(`UPDATE lead_followups SET status='ESCALATED', escalated_at=datetime('now'), updated_at=datetime('now') WHERE id=?`).run(fu.id);
     db.prepare(`UPDATE leads SET status='ESCALATED', updated_at=datetime('now') WHERE id=?`).run(fu.lead_id);
+
+    // Supervisor task for follow-up escalation (idempotent by lead_id + task_type)
+    if (!hasTask(fu.lead_id, TASK_TYPE.ESCALATION_FOLLOWUP)) {
+      const sup = getSupervisorId();
+      if (sup) {
+        db.prepare(`INSERT INTO tasks (title, description, status, priority, assigned_to, created_by, lead_id, task_type) VALUES (?,?,?,?,?,?,?,?)`)
+          .run(
+            `[ESCALADO] Seguimiento sin respuesta: ${fu.glv_code}`,
+            `El agente ${fu.assigned_agent || "—"} no registró respuesta en 48 horas hábiles para el lead ${fu.glv_code}. Requiere revisión del supervisor. No reasignar automáticamente.`,
+            "PENDIENTE", "ALTA", sup.id, null, fu.lead_id, TASK_TYPE.ESCALATION_FOLLOWUP
+          );
+      }
+    }
   }
 
   // ── Follow-up reminder ──────────────────────────────────────────────────────
   const dueSoonFU = db.prepare(`
-    SELECT lf.* FROM lead_followups lf
+    SELECT lf.*, l.glv_code, l.assigned_agent FROM lead_followups lf
+    JOIN leads l ON l.id = lf.lead_id
     WHERE lf.status NOT IN ('CLOSED','ESCALATED')
       AND lf.deadline > ?
       AND lf.deadline <= ?
@@ -115,11 +145,23 @@ function runEscalationCheck() {
 
   for (const fu of dueSoonFU) {
     if (hasTimeline(fu.lead_id, "REMINDER_FOLLOWUP")) continue;
-    db.prepare(`
-      INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at)
-      VALUES (?,?,?,?,datetime('now'))
-    `).run(fu.lead_id, "REMINDER_FOLLOWUP", "system",
-      `Recordatorio: vencimiento de seguimiento en menos de 1 hora.`);
+
+    db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description, created_at) VALUES (?,?,?,?,datetime('now'))`)
+      .run(fu.lead_id, "REMINDER_FOLLOWUP", "system",
+        `Recordatorio: vencimiento de seguimiento en menos de 1 hora.`);
+
+    // Agent reminder task (idempotent by lead_id + task_type)
+    if (fu.assigned_agent && !hasTask(fu.lead_id, TASK_TYPE.REMINDER_FOLLOWUP)) {
+      const agentId = getAgentId(fu.assigned_agent);
+      if (agentId) {
+        db.prepare(`INSERT INTO tasks (title, description, status, priority, assigned_to, created_by, lead_id, task_type) VALUES (?,?,?,?,?,?,?,?)`)
+          .run(
+            `[RECORDATORIO] Seguimiento próximo a vencer: ${fu.glv_code}`,
+            `El plazo de seguimiento del cliente ${fu.glv_code} vence en menos de 1 hora.`,
+            "PENDIENTE", "ALTA", agentId, null, fu.lead_id, TASK_TYPE.REMINDER_FOLLOWUP
+          );
+      }
+    }
   }
 }
 

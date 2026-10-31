@@ -19,6 +19,27 @@ const COMMERCIAL_ROLES = new Set([
   "COMMERCIAL_AGENT","COMMERCIAL_MANAGER","COMMERCIAL_DIRECTOR","AGENTE","DIRECTOR","SUPER_ADMIN","CORPORATE_ADMIN",
 ]);
 
+const TASK_TYPE = {
+  FIRST_CONTACT:            "FIRST_CONTACT",
+  CLIENT_RESPONSE_FOLLOWUP: "CLIENT_RESPONSE_FOLLOWUP",
+  ESCALATION_FIRST_CONTACT: "ESCALATION_FIRST_CONTACT",
+  ESCALATION_FOLLOWUP:      "ESCALATION_FOLLOWUP",
+  REMINDER_FIRST_CONTACT:   "REMINDER_FIRST_CONTACT",
+  REMINDER_FOLLOWUP:        "REMINDER_FOLLOWUP",
+};
+
+function validateAgent(agentUsername) {
+  const user = db.prepare("SELECT * FROM users WHERE username=?").get(agentUsername);
+  if (!user) return { ok: false, reason: `Agente ${agentUsername} no existe` };
+  if (!COMMERCIAL_ROLES.has(user.role)) {
+    return { ok: false, reason: `${agentUsername} no tiene rol comercial autorizado` };
+  }
+  if (!user.email || !user.email.includes("@")) {
+    return { ok: false, reason: `${agentUsername} no tiene correo corporativo válido` };
+  }
+  return { ok: true, user };
+}
+
 function addTimeline(leadId, eventType, actor, description, metadata) {
   db.prepare(
     `INSERT INTO lead_timeline (lead_id, event_type, actor, description, metadata) VALUES (?,?,?,?,?)`
@@ -30,13 +51,13 @@ function getUserId(username) {
   return u ? u.id : null;
 }
 
-function cancelActiveTask(glvCode, agentUsername) {
+function cancelActiveTask(leadId, agentUsername) {
   const agentUser = db.prepare("SELECT id FROM users WHERE username=?").get(agentUsername);
   if (!agentUser) return;
   db.prepare(
     `UPDATE tasks SET status='CANCELADA', updated_at=datetime('now')
-     WHERE title LIKE ? AND assigned_to=? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
-  ).run(`%${glvCode}%`, agentUser.id);
+     WHERE lead_id=? AND task_type=? AND assigned_to=? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
+  ).run(leadId, TASK_TYPE.FIRST_CONTACT, agentUser.id);
 }
 
 function createContactTask(glvCode, agentUsername, deadlineISO, createdByUsername, description) {
@@ -82,7 +103,18 @@ router.post("/", requireLevel(AGENT_LEVEL), (req, res) => {
       return findRule(leadData);
     })();
 
-    const deadline = rule ? addBusinessHours(new Date(), 4) : null;
+    // Validate rule agent before committing (Finding 6)
+    let validatedRule = rule;
+    let agentValidationFailure = null;
+    if (rule) {
+      const v = validateAgent(rule.agent_username);
+      if (!v.ok) {
+        validatedRule = null;
+        agentValidationFailure = { ruleId: rule.id, agentUsername: rule.agent_username, reason: v.reason };
+      }
+    }
+
+    const deadline = validatedRule ? addBusinessHours(new Date(), 4) : null;
 
     // Transactional creation: lead + assignment + timeline + task + notification
     const createTx = db.transaction(() => {
@@ -97,10 +129,10 @@ router.post("/", requireLevel(AGENT_LEVEL), (req, res) => {
         language, company_name || null, contact_name, phone_raw || null, phone_norm,
         email || null, product_type || null, quantity || null, quantity_unit || null,
         destination || null, port || null, notes || null,
-        rule ? "ASSIGNED" : "PENDING_ASSIGNMENT",
-        rule ? rule.agent_username : null,
-        rule ? rule.id : null,
-        rule ? new Date().toISOString() : null,
+        validatedRule ? "ASSIGNED" : "PENDING_ASSIGNMENT",
+        validatedRule ? validatedRule.agent_username : null,
+        validatedRule ? validatedRule.id : null,
+        validatedRule ? new Date().toISOString() : null,
         deadline,
         req.user.username
       );
@@ -110,29 +142,45 @@ router.post("/", requireLevel(AGENT_LEVEL), (req, res) => {
       db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description) VALUES (?,?,?,?)`)
         .run(leadId, "CREATED", req.user.username, `Lead creado — canal: ${origin_channel}`);
 
-      if (rule) {
+      // If agent validation failed, log audit event + supervisor task
+      if (agentValidationFailure) {
+        db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description) VALUES (?,?,?,?)`)
+          .run(leadId, "ASSIGNMENT_FAILED", "SYSTEM",
+            `Regla #${agentValidationFailure.ruleId} intentó asignar a ${agentValidationFailure.agentUsername}: ${agentValidationFailure.reason}. Lead enviado a cola.`);
+        const sup = db.prepare(`SELECT id,username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') ORDER BY id LIMIT 1`).get();
+        if (sup) {
+          db.prepare(`INSERT INTO tasks (title,description,status,priority,assigned_to,created_by,lead_id,task_type) VALUES (?,?,?,?,?,?,?,?)`)
+            .run(`[PENDIENTE] Lead sin agente válido: ${glv_code}`,
+              `Regla automática falló: ${agentValidationFailure.reason}`,
+              "PENDIENTE","ALTA", sup.id, null, leadId, TASK_TYPE.ESCALATION_FIRST_CONTACT);
+        }
+      }
+
+      if (validatedRule) {
         // Timeline: ASSIGNED
         db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description) VALUES (?,?,?,?)`)
-          .run(leadId, "ASSIGNED", "SYSTEM", `Auto-asignado a ${rule.agent_username} por regla #${rule.id}`);
+          .run(leadId, "ASSIGNED", "SYSTEM", `Auto-asignado a ${validatedRule.agent_username} por regla #${validatedRule.id}`);
 
         // Assignment history
         db.prepare(`
           INSERT INTO lead_assignment_history (lead_id,prev_agent,new_agent,prev_status,new_status,rule_id,changed_by,reason)
           VALUES (?,?,?,?,?,?,?,?)
-        `).run(leadId, null, rule.agent_username, "PENDING_ASSIGNMENT", "ASSIGNED", rule.id, "SYSTEM", "Auto-asignación por regla");
+        `).run(leadId, null, validatedRule.agent_username, "PENDING_ASSIGNMENT", "ASSIGNED", validatedRule.id, "SYSTEM", "Auto-asignación por regla");
 
-        // Task for agent
-        const agentUser = db.prepare("SELECT id FROM users WHERE username=?").get(rule.agent_username);
+        // Task for agent (linked by lead_id + task_type)
+        const agentUser = db.prepare("SELECT id FROM users WHERE username=?").get(validatedRule.agent_username);
         db.prepare(`
-          INSERT INTO tasks (title, description, priority, assigned_to, created_by, deadline)
-          VALUES (?,?,?,?,?,?)
+          INSERT INTO tasks (title, description, priority, assigned_to, created_by, deadline, lead_id, task_type)
+          VALUES (?,?,?,?,?,?,?,?)
         `).run(
           `Realizar primer contacto con ${glv_code}`,
           `Lead ${glv_code} asignado. Canal: ${origin_channel}. Empresa: ${company_name || "—"}. Límite: ${deadline || "—"}.`,
           "high",
           agentUser ? agentUser.id : null,
           getUserId(req.user.username),
-          deadline || null
+          deadline || null,
+          leadId,
+          TASK_TYPE.FIRST_CONTACT
         );
 
         // Notification inserted outside transaction to allow async send to update status
@@ -144,9 +192,9 @@ router.post("/", requireLevel(AGENT_LEVEL), (req, res) => {
     const leadId = createTx();
 
     // Async email send (after commit)
-    if (rule) {
+    if (validatedRule) {
       setImmediate(() => {
-        try { createAndSendLeadNotification(leadId, rule.agent_username, "LEAD_ASSIGNED"); } catch (_) {}
+        try { createAndSendLeadNotification(leadId, validatedRule.agent_username, "LEAD_ASSIGNED"); } catch (_) {}
       });
     }
 
@@ -244,9 +292,9 @@ router.patch("/:id(\\d+)/assign", requireLevel(MANAGER_LEVEL), (req, res) => {
     const newDeadline = addBusinessHours(new Date(), 4);
 
     const reassignTx = db.transaction(() => {
-      // Cancel old agent's task
+      // Cancel old agent's task (by lead_id + task_type)
       if (prevAgent && prevAgent !== agent_username) {
-        cancelActiveTask(lead.glv_code, prevAgent);
+        cancelActiveTask(lead.id, prevAgent);
       }
 
       // Update lead
@@ -266,33 +314,27 @@ router.patch("/:id(\\d+)/assign", requireLevel(MANAGER_LEVEL), (req, res) => {
       db.prepare(`INSERT INTO lead_timeline (lead_id, event_type, actor, description) VALUES (?,?,?,?)`)
         .run(lead.id, "REASSIGNED", req.user.username, `Reasignado a ${agent_username}. Motivo: ${reason}`);
 
-      // New task for new agent
+      // New task for new agent (linked by lead_id + task_type)
       const agentUser = db.prepare("SELECT id FROM users WHERE username=?").get(agent_username);
       db.prepare(`
-        INSERT INTO tasks (title, description, priority, assigned_to, created_by, deadline)
-        VALUES (?,?,?,?,?,?)
+        INSERT INTO tasks (title, description, priority, assigned_to, created_by, deadline, lead_id, task_type)
+        VALUES (?,?,?,?,?,?,?,?)
       `).run(
         `Realizar primer contacto con ${lead.glv_code}`,
         `Lead reasignado a usted. GLV: ${lead.glv_code}. Límite: ${newDeadline}.`,
         "high",
         agentUser ? agentUser.id : null,
         getUserId(req.user.username),
-        newDeadline
+        newDeadline,
+        lead.id,
+        TASK_TYPE.FIRST_CONTACT
       );
 
-      // Notification (dedup)
-      try {
-        db.prepare(`
-          INSERT INTO lead_agent_notifications (lead_id, agent_username, agent_email, event_type)
-          VALUES (?,?,?,?)
-        `).run(lead.id, agent_username, newAgentUser.email, "LEAD_REASSIGNED");
-      } catch (e) {
-        if (!e.message?.includes("UNIQUE")) throw e;
-      }
     });
 
     reassignTx();
 
+    // Async email (no pre-insert — createAndSendLeadNotification owns insert+send)
     setImmediate(() => {
       try { createAndSendLeadNotification(lead.id, agent_username, "LEAD_REASSIGNED"); } catch (_) {}
     });
@@ -358,28 +400,27 @@ router.post("/:id(\\d+)/first-contact", requireLevel(AGENT_LEVEL), (req, res) =>
         next_action_at || null, evidence_url || null, req.user.username
       );
 
-      // Close first-contact task by agent+title
-      const agentForTask = lead.assigned_agent || req.user.username;
-      const agentUser = db.prepare("SELECT id FROM users WHERE username=?").get(agentForTask);
-      if (agentUser) {
-        db.prepare(
-          `UPDATE tasks SET status='COMPLETADA', updated_at=datetime('now')
-           WHERE assigned_to=? AND title LIKE ? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
-        ).run(agentUser.id, `%${lead.glv_code}%`);
-      }
+      // Close FIRST_CONTACT task by lead_id + task_type (not title LIKE)
+      db.prepare(
+        `UPDATE tasks SET status='COMPLETADA', updated_at=datetime('now')
+         WHERE lead_id=? AND task_type=? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
+      ).run(lead.id, TASK_TYPE.FIRST_CONTACT);
 
-      // Create follow-up task
+      // Create follow-up task (linked by lead_id + task_type)
+      const agentForTask = lead.assigned_agent || req.user.username;
       const agentUser2 = db.prepare("SELECT id FROM users WHERE username=?").get(agentForTask);
       const tIns = db.prepare(`
-        INSERT INTO tasks (title, description, priority, assigned_to, created_by, deadline)
-        VALUES (?,?,?,?,?,?)
+        INSERT INTO tasks (title, description, priority, assigned_to, created_by, deadline, lead_id, task_type)
+        VALUES (?,?,?,?,?,?,?,?)
       `).run(
         `Registrar respuesta de ${lead.glv_code}`,
         `Seguimiento a lead ${lead.glv_code}. Confirmar respuesta en 48 horas hábiles.`,
         "medium",
         agentUser2 ? agentUser2.id : null,
         getUserId(req.user.username),
-        fuDeadline
+        fuDeadline,
+        lead.id,
+        TASK_TYPE.CLIENT_RESPONSE_FOLLOWUP
       );
 
       // Follow-up record
