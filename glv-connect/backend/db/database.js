@@ -2344,4 +2344,5 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_leads_phone    ON leads(phone_norm);
   CREATE INDEX IF NOT EXISTS idx_lt_lead        ON lead_timeline(lead_id);
   CREATE INDEX IF NOT EXISTS idx_lah_lead       ON lead_assignment_history(lead_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_lfc_lead ON lead_first_contacts(lead_id);
 `);

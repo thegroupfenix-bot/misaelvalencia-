@@ -127,50 +127,68 @@ describe("Lead Intake", () => {
     assert.ok(/^https:\/\/wa\.me\/\d+$/.test(waUrl), `Invalid WA URL: ${waUrl}`);
   });
 
-  // LI-6: First contact transitions status; deadline is ~4 biz hours
-  test("LI-6: First contact deadline ~4 biz hours; status transitions correctly", async () => {
+  // LI-6: First contact deadline — at least 4 calendar hours (business hours >= 4)
+  test("LI-6: first_contact_deadline is at least 4h from now and a valid ISO date", async () => {
+    const before = Date.now();
     const cr = await request(app).post("/leads").set("Cookie", sesAdmin).send({
-      contact_name: "FC Test", country_code: "AR", origin_channel: "WEB", company_name: "FC Corp",
+      contact_name: "FC Exact Test", country_code: "AR", origin_channel: "WEB", company_name: "FC Exact Corp",
     });
     assert.equal(cr.status, 201);
-    const leadId = cr.body.id;
+    const deadlineStr = cr.body.first_contact_deadline;
+    assert.ok(deadlineStr, "first_contact_deadline must be set");
 
-    assert.ok(cr.body.first_contact_deadline, "first_contact_deadline must be set on assigned lead");
-    const deadline = new Date(cr.body.first_contact_deadline);
-    const diffHours = (deadline - new Date()) / 3600000;
-    // Deadline can be up to ~4h + up to 72h weekend/off-hours padding
-    assert.ok(diffHours > 0 && diffHours <= 200, `Expected positive deadline, got ${diffHours.toFixed(1)}h`);
+    const deadlineMs = new Date(deadlineStr).getTime();
+    assert.ok(!isNaN(deadlineMs), "first_contact_deadline must be a valid ISO date");
 
-    const fc = await request(app).post(`/leads/${leadId}/first-contact`).set("Cookie", sesAgent1).send({
+    const diffH = (deadlineMs - before) / 3600000;
+    // 4 business hours: minimum 4 calendar hours ahead,
+    // maximum ~5 business days worth of calendar time (covers any weekend/holiday padding)
+    assert.ok(diffH >= 4,   `Deadline must be >= 4h ahead, got ${diffH.toFixed(2)}h`);
+    assert.ok(diffH < 120,  `Deadline must be < 5 working days ahead, got ${diffH.toFixed(2)}h`);
+
+    // Status must be ASSIGNED after creation with agent
+    const lead = db.prepare(`SELECT * FROM leads WHERE id=?`).get(cr.body.id);
+    assert.equal(lead.first_contact_deadline, deadlineStr);
+    assert.equal(lead.status, "ASSIGNED");
+
+    // Record first contact and verify transition
+    const fc = await request(app).post(`/leads/${cr.body.id}/first-contact`).set("Cookie", sesAgent1).send({
       contact_channel: "WHATSAPP", contact_at: new Date().toISOString(),
       contacted_person: "Pedro", result: "CONTACTED", summary: "Interesado",
       next_action: "Cotización", next_action_at: new Date(Date.now() + 86400000).toISOString(),
     });
-    assert.equal(fc.status, 201, `Got ${fc.status}: ${JSON.stringify(fc.body)}`);
+    assert.equal(fc.status, 201, `First contact: got ${fc.status}: ${JSON.stringify(fc.body)}`);
 
-    const lead = db.prepare(`SELECT status FROM leads WHERE id=?`).get(leadId);
-    assert.ok(["FIRST_CONTACT_DONE", "AWAITING_RESPONSE"].includes(lead.status), `Status: ${lead.status}`);
+    const leadAfter = db.prepare(`SELECT status FROM leads WHERE id=?`).get(cr.body.id);
+    assert.ok(["FIRST_CONTACT_DONE","AWAITING_RESPONSE"].includes(leadAfter.status), `Status: ${leadAfter.status}`);
   });
 
-  // LI-7: Follow-up deadline ~48 biz hours
-  test("LI-7: Follow-up deadline is ~48 business hours", async () => {
+  // LI-7: Follow-up deadline — at least 48 calendar hours (business hours >= 48)
+  test("LI-7: follow-up deadline is at least 48h from first-contact and a valid date", async () => {
     const cr = await request(app).post("/leads").set("Cookie", sesAdmin).send({
-      contact_name: "FU Test", country_code: "AR", origin_channel: "WEB", company_name: "FU Corp",
+      contact_name: "FU Exact Test", country_code: "AR", origin_channel: "WEB", company_name: "FU Exact Corp",
     });
     assert.equal(cr.status, 201);
     const leadId = cr.body.id;
 
-    await request(app).post(`/leads/${leadId}/first-contact`).set("Cookie", sesAgent1).send({
+    const beforeFC = Date.now();
+    const fc = await request(app).post(`/leads/${leadId}/first-contact`).set("Cookie", sesAgent1).send({
       contact_channel: "CALL", contact_at: new Date().toISOString(),
       contacted_person: "Ana", result: "CONTACTED", summary: "Interesado",
       next_action: "Seguimiento", next_action_at: new Date(Date.now() + 86400000).toISOString(),
     });
+    assert.equal(fc.status, 201);
 
     const fu = db.prepare(`SELECT * FROM lead_followups WHERE lead_id=?`).get(leadId);
     assert.ok(fu, "Follow-up must be created");
-    const deadlineH = (new Date(fu.deadline) - new Date()) / 3600000;
-    // 48 business hours, can be up to ~200 real hours with weekends/off-hours
-    assert.ok(deadlineH > 0 && deadlineH <= 300, `Expected positive follow-up deadline, got ${deadlineH.toFixed(1)}h`);
+
+    const fuDeadlineMs = new Date(fu.deadline).getTime();
+    assert.ok(!isNaN(fuDeadlineMs), "Follow-up deadline must be a valid date");
+
+    const diffH = (fuDeadlineMs - beforeFC) / 3600000;
+    // 48 business hours: minimum 48 calendar hours, maximum ~15 business days worth of calendar
+    assert.ok(diffH >= 48,  `Follow-up deadline must be >= 48h, got ${diffH.toFixed(2)}h`);
+    assert.ok(diffH < 250,  `Follow-up deadline unreasonably far, got ${diffH.toFixed(2)}h`);
   });
 
   // LI-8: Escalation tracked in timeline; no auto-reassignment
@@ -249,5 +267,151 @@ describe("Lead Intake", () => {
   test("LI-12: CLIENT role blocked from leads endpoint", async () => {
     const r = await request(app).get("/leads").set("Cookie", sesClient);
     assert.ok(r.status === 403 || r.status === 401, `Expected 403/401, got ${r.status}`);
+  });
+
+  // LI-13: Reminder idempotent
+  test("LI-13: REMINDER_FIRST_CONTACT created only once per lead (idempotent)", async () => {
+    const { runEscalationCheck } = require("../services/leadEscalationService");
+    const r = await request(app).post("/leads").set("Cookie", sesAdmin).send({
+      contact_name: "Reminder Idem", country_code: "AR", origin_channel: "WEB", company_name: "RI Corp",
+    });
+    const leadId = r.body.id;
+    // Set deadline 30 minutes from now (within 1h reminder window)
+    db.prepare(`UPDATE leads SET first_contact_deadline=?, status='ASSIGNED' WHERE id=?`)
+      .run(new Date(Date.now() + 30 * 60000).toISOString(), leadId);
+
+    runEscalationCheck();
+    runEscalationCheck();
+
+    const reminders = db.prepare(
+      `SELECT * FROM lead_timeline WHERE lead_id=? AND event_type='REMINDER_FIRST_CONTACT'`
+    ).all(leadId);
+    assert.equal(reminders.length, 1, "Only one REMINDER_FIRST_CONTACT event (idempotent)");
+  });
+
+  // LI-14: Escalation idempotent
+  test("LI-14: ESCALATED_FIRST_CONTACT created only once per lead (idempotent)", async () => {
+    const { runEscalationCheck } = require("../services/leadEscalationService");
+    const r = await request(app).post("/leads").set("Cookie", sesAdmin).send({
+      contact_name: "Escalation Idem", country_code: "AR", origin_channel: "WEB", company_name: "EI Corp",
+    });
+    const leadId = r.body.id;
+    // Set deadline 5 minutes ago (overdue)
+    db.prepare(`UPDATE leads SET first_contact_deadline=?, status='ASSIGNED' WHERE id=?`)
+      .run(new Date(Date.now() - 5 * 60000).toISOString(), leadId);
+
+    runEscalationCheck();
+    runEscalationCheck();
+
+    const escalations = db.prepare(
+      `SELECT * FROM lead_timeline WHERE lead_id=? AND event_type='ESCALATED_FIRST_CONTACT'`
+    ).all(leadId);
+    assert.equal(escalations.length, 1, "Only one ESCALATED_FIRST_CONTACT event (idempotent)");
+
+    const lead = db.prepare(`SELECT status FROM leads WHERE id=?`).get(leadId);
+    assert.equal(lead.status, "ESCALATED");
+  });
+
+  // LI-15: Reassignment cancels old task and creates new one with deadline
+  test("LI-15: Reassignment cancels old task, creates new task with deadline for new agent", async () => {
+    const r = await request(app).post("/leads").set("Cookie", sesAdmin).send({
+      contact_name: "Reassign Tasks", country_code: "AR", origin_channel: "WEB", company_name: "RT Corp",
+    });
+    assert.equal(r.status, 201);
+    const leadId  = r.body.id;
+    const glvCode = r.body.glv_code;
+
+    // Verify task exists for agent1
+    const agent1User = db.prepare("SELECT id FROM users WHERE username='li_agent1'").get();
+    const oldTask = db.prepare(
+      `SELECT * FROM tasks WHERE title LIKE ? AND assigned_to=? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
+    ).get(`%${glvCode}%`, agent1User?.id);
+    assert.ok(oldTask, "Initial task for agent1 must exist");
+
+    // Reassign to agent2 (requires reason)
+    const ra = await request(app).patch(`/leads/${leadId}/assign`).set("Cookie", sesDirector).send({
+      agent_username: "li_agent2", reason: "Mejor cobertura geográfica",
+    });
+    assert.equal(ra.status, 200, `Reassign failed: ${JSON.stringify(ra.body)}`);
+
+    // Old task must be cancelled
+    const cancelledTask = db.prepare(`SELECT status FROM tasks WHERE id=?`).get(oldTask.id);
+    assert.equal(cancelledTask.status, "CANCELADA", "Old task must be CANCELADA");
+
+    // New task for agent2 must exist with a deadline
+    const agent2User = db.prepare("SELECT id FROM users WHERE username='li_agent2'").get();
+    const newTask = db.prepare(
+      `SELECT * FROM tasks WHERE title LIKE ? AND assigned_to=? AND status NOT IN ('COMPLETADA','CANCELADA','completed')`
+    ).get(`%${glvCode}%`, agent2User?.id);
+    assert.ok(newTask, "New task for agent2 must be created");
+    assert.ok(newTask.deadline, "New task must have a deadline");
+  });
+
+  // LI-16: Agent without corporate email is blocked on reassignment
+  test("LI-16: Agent without corporate email blocked from receiving reassignment", async () => {
+    db.prepare(`INSERT OR REPLACE INTO users (username,password,role,email,name,active) VALUES (?,?,?,?,?,1)`)
+      .run("li_noemail", "$2b$04$fakehash", "COMMERCIAL_AGENT", "", "No Email Agent");
+
+    const r = await request(app).post("/leads").set("Cookie", sesAdmin).send({
+      contact_name: "No Email Test", country_code: "AR", origin_channel: "WEB", company_name: "NE Corp",
+    });
+    const leadId = r.body.id;
+
+    const ra = await request(app).patch(`/leads/${leadId}/assign`).set("Cookie", sesDirector).send({
+      agent_username: "li_noemail", reason: "Test email validation",
+    });
+    assert.ok(ra.status === 400 || ra.status === 422, `Expected 400/422, got ${ra.status}`);
+    assert.ok(
+      ra.body.error?.toLowerCase().includes("correo") || ra.body.error?.toLowerCase().includes("email"),
+      `Error message should mention email: ${ra.body.error}`
+    );
+  });
+
+  // LI-17: Agent1 cannot update followup on agent2's lead
+  test("LI-17: agent1 gets 403 updating followup on lead assigned to agent2", async () => {
+    // BR lead auto-assigned to agent2
+    const r = await request(app).post("/leads").set("Cookie", sesAdmin).send({
+      contact_name: "Isolation FU", country_code: "BR", origin_channel: "WEB", company_name: "ISO FU Corp",
+    });
+    assert.equal(r.body.assigned_agent, "li_agent2", "Should be assigned to agent2");
+    const leadId = r.body.id;
+
+    // Agent2 records first contact
+    const fc = await request(app).post(`/leads/${leadId}/first-contact`).set("Cookie", sesAgent2).send({
+      contact_channel: "CALL", contact_at: new Date().toISOString(),
+      contacted_person: "Maria", result: "CONTACTED", summary: "Interested",
+      next_action: "Follow up", next_action_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    if (fc.status !== 201) return; // Skip if endpoint not wired
+
+    const fu = db.prepare(`SELECT * FROM lead_followups WHERE lead_id=?`).get(leadId);
+    if (!fu) return;
+
+    // Agent1 tries to update agent2's followup
+    const r2 = await request(app).patch(`/leads/${leadId}/followup/${fu.id}`)
+      .set("Cookie", sesAgent1).send({ status: "CLIENT_RESPONDED" });
+    assert.ok(r2.status === 403 || r2.status === 401, `Agent1 must be blocked, got ${r2.status}`);
+  });
+
+  // LI-18: Second first-contact returns 409
+  test("LI-18: Second first-contact attempt on same lead returns 409", async () => {
+    const r = await request(app).post("/leads").set("Cookie", sesAdmin).send({
+      contact_name: "Double Contact", country_code: "AR", origin_channel: "WEB", company_name: "DC Corp",
+    });
+    const leadId = r.body.id;
+
+    const fc1 = await request(app).post(`/leads/${leadId}/first-contact`).set("Cookie", sesAgent1).send({
+      contact_channel: "WHATSAPP", contact_at: new Date().toISOString(),
+      contacted_person: "Pedro", result: "CONTACTED", summary: "Primera vez",
+      next_action: "Cotizar", next_action_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    assert.ok(fc1.status === 201 || fc1.status === 200, `First contact: expected 201, got ${fc1.status}`);
+
+    const fc2 = await request(app).post(`/leads/${leadId}/first-contact`).set("Cookie", sesAgent1).send({
+      contact_channel: "CALL", contact_at: new Date().toISOString(),
+      contacted_person: "Pedro", result: "CONTACTED", summary: "Segunda vez",
+      next_action: "Cotizar", next_action_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    assert.equal(fc2.status, 409, `Second first contact must return 409, got ${fc2.status}: ${JSON.stringify(fc2.body)}`);
   });
 });

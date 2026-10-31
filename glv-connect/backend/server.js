@@ -191,6 +191,16 @@ if (require.main === module) {
 
 module.exports = app;
 
+// Lead escalation scheduler — every 5 minutes (skip in test env)
+if (process.env.NODE_ENV !== "test") {
+  setInterval(() => {
+    try {
+      const { runEscalationCheck } = require("./services/leadEscalationService");
+      runEscalationCheck();
+    } catch (e) { /* non-fatal */ }
+  }, 5 * 60 * 1000);
+}
+
 // Start backup scheduler (only if R2 configured) — 5s after start
 setTimeout(() => {
   const backup = require("./services/backup");
