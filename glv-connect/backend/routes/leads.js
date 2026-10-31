@@ -9,6 +9,7 @@ router.use(authenticate);
 const { normalisePhone, generateLeadCode, autoAssign, findDuplicates } = require("../services/leadAssignmentService");
 const { addBusinessHours } = require("../services/businessHoursService");
 const { createAndSendLeadNotification } = require("../services/leadNotificationService");
+const { isCorporateEmail } = require("../utils/emailValidator");
 
 const AGENT_LEVEL    = 42;
 const MANAGER_LEVEL  = 72;
@@ -31,11 +32,18 @@ const TASK_TYPE = {
 function validateAgent(agentUsername) {
   const user = db.prepare("SELECT * FROM users WHERE username=?").get(agentUsername);
   if (!user) return { ok: false, reason: `Agente ${agentUsername} no existe` };
+  if ('active' in user && user.active === 0) {
+    return { ok: false, reason: `${agentUsername} no tiene cuenta activa` };
+  }
   if (!COMMERCIAL_ROLES.has(user.role)) {
     return { ok: false, reason: `${agentUsername} no tiene rol comercial autorizado` };
   }
-  if (!user.email || !user.email.includes("@")) {
-    return { ok: false, reason: `${agentUsername} no tiene correo corporativo válido` };
+  try {
+    if (!isCorporateEmail(user.email)) {
+      return { ok: false, reason: `${agentUsername} no tiene correo corporativo válido` };
+    }
+  } catch (e) {
+    return { ok: false, reason: e.message };
   }
   return { ok: true, user };
 }
@@ -280,14 +288,11 @@ router.patch("/:id(\\d+)/assign", requireLevel(MANAGER_LEVEL), (req, res) => {
     if (!reason || !reason.trim()) return res.status(400).json({ error: "Motivo de reasignación requerido" });
 
     // Validate new agent
-    const newAgentUser = db.prepare("SELECT * FROM users WHERE username=?").get(agent_username);
-    if (!newAgentUser) return res.status(400).json({ error: "Agente no encontrado" });
-    if (!COMMERCIAL_ROLES.has(newAgentUser.role)) {
-      return res.status(400).json({ error: "El usuario no tiene rol comercial autorizado" });
+    const vResult = validateAgent(agent_username);
+    if (!vResult.ok) {
+      return res.status(400).json({ error: vResult.reason });
     }
-    if (!newAgentUser.email || !newAgentUser.email.includes("@")) {
-      return res.status(400).json({ error: "El agente no tiene correo corporativo válido" });
-    }
+    const newAgentUser = vResult.user;
 
     const newDeadline = addBusinessHours(new Date(), 4);
 

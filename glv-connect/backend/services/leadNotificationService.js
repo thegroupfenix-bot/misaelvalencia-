@@ -2,7 +2,7 @@
 const nodemailer = require("nodemailer");
 const db = require("../db/database");
 
-const APP_BASE_URL = process.env.APP_URL || process.env.FRONTEND_URL || "https://glv-connect.up.railway.app";
+const APP_BASE_URL = process.env.APP_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:3000' : null);
 
 function esc(s) {
   if (!s) return "";

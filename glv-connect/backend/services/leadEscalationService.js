@@ -1,5 +1,6 @@
 "use strict";
 const db = require("../db/database");
+const { isCorporateEmail } = require("../utils/emailValidator");
 
 const TASK_TYPE = {
   ESCALATION_FIRST_CONTACT: "ESCALATION_FIRST_CONTACT",
@@ -9,12 +10,18 @@ const TASK_TYPE = {
 };
 
 function getSupervisorId() {
-  const cols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
-  const hasStatus = cols.includes("status");
-  const q = hasStatus
-    ? `SELECT id,username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') AND status='active' ORDER BY id LIMIT 1`
-    : `SELECT id,username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') ORDER BY id LIMIT 1`;
-  return db.prepare(q).get();
+  const candidates = db.prepare(
+    `SELECT id, username, email FROM users
+     WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN')
+       AND active=1
+     ORDER BY id`
+  ).all();
+  for (const c of candidates) {
+    try {
+      if (isCorporateEmail(c.email)) return { id: c.id, username: c.username };
+    } catch (_) { /* skip if email check throws in production */ }
+  }
+  return null;
 }
 
 function hasTimeline(leadId, eventType) {

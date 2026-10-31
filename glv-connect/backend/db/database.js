@@ -2350,3 +2350,8 @@ db.exec(`
 // Add lead_id and task_type to tasks (idempotent)
 safeAlter("ALTER TABLE tasks ADD COLUMN lead_id INTEGER");
 safeAlter("ALTER TABLE tasks ADD COLUMN task_type TEXT");
+safeAlter("ALTER TABLE leads ADD COLUMN external_source TEXT");
+safeAlter("ALTER TABLE leads ADD COLUMN external_submission_id TEXT");
+try {
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_ext ON leads(external_source, external_submission_id) WHERE external_source IS NOT NULL AND external_submission_id IS NOT NULL");
+} catch (_) {}
