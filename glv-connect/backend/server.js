@@ -31,6 +31,9 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === "") {
 
 require("./db/database"); // run migrations + seed on startup
 
+const { checkPreProductionEnv } = require("./utils/preProductionCheck");
+checkPreProductionEnv();
+
 const express      = require("express");
 const cors         = require("cors");
 const cookieParser = require("cookie-parser");
@@ -56,6 +59,8 @@ const opsLogisticsRouter = require("./routes/operations-logistics");
 const vesselCharterRouter = require("./routes/vessel-charter");
 const cargoIntelRouter    = require("./routes/cargo-intelligence");
 const visualEvidRouter    = require("./routes/visual-evidence");
+const leadsRouter         = require("./routes/leads");
+const leadIngestionRouter = require("./routes/lead-ingestion");
 
 const app = express();
 
@@ -107,6 +112,16 @@ app.use(cors({
   },
   credentials: true,
 }));
+// Raw body capture for HMAC verification on external lead ingestion (must come before express.json)
+app.use('/api/leads/external', express.raw({ type: '*/*', limit: '1mb' }), (req, _res, next) => {
+  if (Buffer.isBuffer(req.body)) {
+    req.rawBody = req.body.toString('utf8');
+    try { req.body = JSON.parse(req.rawBody); } catch (_) { req.body = {}; }
+  } else {
+    req.rawBody = '';
+  }
+  next();
+});
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
@@ -145,6 +160,8 @@ app.use("/operations-logistics",  opsLogisticsRouter);
 app.use("/vessel-charter",        vesselCharterRouter);
 app.use("/cargo-intelligence",    cargoIntelRouter);
 app.use("/visual-evidence",       visualEvidRouter);
+app.use("/leads",                 leadsRouter);
+app.use("/api/leads/external",    leadIngestionRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
@@ -188,6 +205,16 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
+// Lead escalation scheduler — every 5 minutes (skip in test env)
+if (process.env.NODE_ENV !== "test") {
+  setInterval(() => {
+    try {
+      const { runEscalationCheck } = require("./services/leadEscalationService");
+      runEscalationCheck();
+    } catch (e) { /* non-fatal */ }
+  }, 5 * 60 * 1000);
+}
 
 // Start backup scheduler (only if R2 configured) — 5s after start
 setTimeout(() => {
