@@ -563,3 +563,4 @@ router.patch("/config/business-hours", requireLevel(ADMIN_LEVEL), (req, res) => 
 });
 
 module.exports = router;
+module.exports.validateAgent = validateAgent;

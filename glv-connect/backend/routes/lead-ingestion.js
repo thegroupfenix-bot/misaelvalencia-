@@ -6,6 +6,8 @@ const db      = require('../db/database');
 const { addBusinessHours }             = require('../services/businessHoursService');
 const { createAndSendLeadNotification } = require('../services/leadNotificationService');
 const { isCorporateEmail }             = require('../utils/emailValidator');
+const { findRule }                     = require('../services/leadAssignmentService');
+const { validateAgent }                = require('./leads');
 
 // In-memory rate limiter: 20 req/min per IP
 const rateLimitMap = new Map();
@@ -22,13 +24,17 @@ function rateLimit(req, res, next) {
   next();
 }
 
-// Origin check
+// Origin check — exact match only (prevents prefix attacks like evil.com/trusted.com)
+function normalizeOrigin(raw) {
+  return (raw || '').trim().toLowerCase().replace(/\/$/, '');
+}
+
 function originCheck(req, res, next) {
   const allowed = process.env.ALLOWED_ORIGINS;
   if (!allowed) return next(); // dev: allow all
-  const origin = req.headers.origin || req.headers.referer || '';
-  const origins = allowed.split(',').map(o => o.trim()).filter(Boolean);
-  if (origins.length === 0 || origins.some(o => origin.startsWith(o))) return next();
+  const origin = normalizeOrigin(req.headers.origin || req.headers.referer || '');
+  const allowedList = allowed.split(',').map(normalizeOrigin).filter(Boolean);
+  if (allowedList.length === 0 || allowedList.includes(origin)) return next();
   return res.status(403).json({ error: 'Origin not allowed' });
 }
 
@@ -83,27 +89,24 @@ function findPossibleDuplicates(phone, email) {
   return dups;
 }
 
-function getAutoAssignAgent() {
-  const rule = db.prepare(`
-    SELECT r.agent_username as username
-    FROM lead_assignment_rules r
-    JOIN users u ON u.username = r.agent_username
-    WHERE r.is_active = 1 AND u.active = 1
-      AND (r.origin_channel = 'EXTERNAL' OR r.origin_channel IS NULL)
-    ORDER BY r.priority ASC LIMIT 1
-  `).get();
-  if (!rule) return null;
-  const user = db.prepare("SELECT * FROM users WHERE username = ? AND active = 1").get(rule.username);
-  if (!user) return null;
-  try {
-    if (!isCorporateEmail(user.email)) return null;
-  } catch (_) { return null; }
-  return user;
+function getActiveSupervisor() {
+  const candidates = db.prepare(
+    `SELECT id, username, email FROM users
+     WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN')
+       AND active=1
+     ORDER BY id`
+  ).all();
+  for (const c of candidates) {
+    try {
+      if (isCorporateEmail(c.email)) return { id: c.id, username: c.username };
+    } catch (_) { /* skip */ }
+  }
+  return null;
 }
 
 router.post('/', rateLimit, originCheck, verifyHmac, (req, res) => {
   const { source, external_submission_id, contact_name, phone, email,
-          message, product_interest, country, preferred_lang } = req.body || {};
+          message, product_interest, country, preferred_lang, zone, product_type } = req.body || {};
 
   if (!source || !external_submission_id || !contact_name) {
     return res.status(400).json({ error: 'source, external_submission_id, and contact_name are required' });
@@ -123,10 +126,29 @@ router.post('/', rateLimit, originCheck, verifyHmac, (req, res) => {
 
   const possible_duplicates = findPossibleDuplicates(phone, email);
   const phone_norm          = phone ? phone.replace(/\D/g, '') : null;
-  const autoAgent           = getAutoAssignAgent();
-  const status              = autoAgent ? 'ASSIGNED' : 'PENDING_ASSIGNMENT';
   const glv_code            = generateLeadCode();
-  const firstContactDeadline = addBusinessHours(new Date(), 4);
+
+  // Territory-aware assignment — same priority engine as internal flow
+  const leadData = {
+    country_code: country || null, zone: zone || null,
+    product_type: product_type || product_interest || null,
+    origin_channel: 'OTHER', language: preferred_lang || 'ES',
+  };
+  const rule = findRule(leadData);
+  let autoAgent = null;
+  let agentValidationFailure = null;
+  if (rule) {
+    const v = validateAgent(rule.agent_username);
+    if (v.ok) {
+      autoAgent = v.user;
+    } else {
+      agentValidationFailure = v.reason;
+    }
+  }
+
+  const status = autoAgent ? 'ASSIGNED' : 'PENDING_ASSIGNMENT';
+  // first_contact_deadline only when a valid agent is confirmed
+  const firstContactDeadline = autoAgent ? addBusinessHours(new Date(), 4) : null;
 
   const insertLead = db.transaction(() => {
     const result = db.prepare(`
@@ -136,7 +158,7 @@ router.post('/', rateLimit, originCheck, verifyHmac, (req, res) => {
       VALUES (?,?,?,?,?,?,?,?,?,'OTHER',?,?,?,?,?,datetime('now'),datetime('now'))
     `).run(
       glv_code, contact_name, phone || null, phone_norm || null, email || null,
-      message || null, product_interest || null, country || null, preferred_lang || 'ES',
+      message || null, product_type || product_interest || null, country || null, preferred_lang || 'ES',
       status, autoAgent ? autoAgent.username : null, firstContactDeadline,
       source, external_submission_id
     );
@@ -147,7 +169,7 @@ router.post('/', rateLimit, originCheck, verifyHmac, (req, res) => {
     );
 
     if (autoAgent) {
-      const agentId = db.prepare("SELECT id FROM users WHERE username=?").get(autoAgent.username);
+      const agentRow = db.prepare("SELECT id FROM users WHERE username=?").get(autoAgent.username);
       db.prepare("INSERT INTO lead_assignment_history (lead_id, new_agent, prev_status, new_status, changed_by, reason) VALUES (?,?,?,?,?,?)").run(
         leadId, autoAgent.username, 'NEW', 'ASSIGNED', 'SYSTEM', 'Auto-assign from external ingestion'
       );
@@ -158,12 +180,32 @@ router.post('/', rateLimit, originCheck, verifyHmac, (req, res) => {
         `INSERT INTO tasks (title, priority, assigned_to, deadline, lead_id, task_type) VALUES (?,?,?,?,?,?)`
       ).run(
         `Primera toma de contacto – ${glv_code}`, 'high',
-        agentId ? agentId.id : null, firstContactDeadline, leadId, 'FIRST_CONTACT'
+        agentRow ? agentRow.id : null, firstContactDeadline, leadId, 'FIRST_CONTACT'
       );
     } else {
+      // No valid agent — escalate to active supervisor
+      const reason = rule ? (agentValidationFailure || 'Agent validation failed') : 'No matching assignment rule';
       db.prepare("INSERT INTO lead_timeline (lead_id, event_type, actor, metadata) VALUES (?,?,?,?)").run(
-        leadId, 'ASSIGNMENT_FAILED', 'SYSTEM', JSON.stringify({ reason: 'No valid auto-assign rule for EXTERNAL source' })
+        leadId, 'ASSIGNMENT_FAILED', 'SYSTEM', JSON.stringify({ reason })
       );
+      const sup = getActiveSupervisor();
+      if (sup) {
+        const supDeadline = addBusinessHours(new Date(), 4);
+        db.prepare(
+          `INSERT INTO tasks (title, description, status, priority, assigned_to, lead_id, task_type, deadline) VALUES (?,?,?,?,?,?,?,?)`
+        ).run(
+          `[INGESTION] Asignar agente a ${glv_code}`,
+          `Lead externo sin agente válido. Motivo: ${reason}. Asigne manualmente.`,
+          'PENDIENTE', 'ALTA', sup.id, leadId, 'ESCALATION_FIRST_CONTACT', supDeadline
+        );
+        db.prepare("INSERT INTO lead_timeline (lead_id, event_type, actor, metadata) VALUES (?,?,?,?)").run(
+          leadId, 'ESCALATION_FIRST_CONTACT', 'SYSTEM', JSON.stringify({ supervisor: sup.username, deadline: supDeadline })
+        );
+      } else {
+        db.prepare("INSERT INTO lead_timeline (lead_id, event_type, actor, metadata) VALUES (?,?,?,?)").run(
+          leadId, 'NO_SUPERVISOR_AVAILABLE', 'SYSTEM', JSON.stringify({ reason: 'No active supervisor with corporate email found' })
+        );
+      }
     }
 
     return leadId;

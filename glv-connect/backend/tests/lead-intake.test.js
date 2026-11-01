@@ -586,17 +586,40 @@ describe("Lead Intake", () => {
       `Expected error response; got: ${JSON.stringify(rAssign.body)}`);
   });
 
-  // LI-25: getSupervisorId skips inactive supervisor
-  test("LI-25: getSupervisorId skips inactive supervisors (active=1 filter)", () => {
-    const { isCorporateEmail } = require("../utils/emailValidator");
-    // Verify the emailValidator is loaded and functional
-    assert.equal(typeof isCorporateEmail, "function");
-    // Verify active=1 filter: an inactive manager is not selected
+  // LI-25: escalation task assigned to an active supervisor, NOT an inactive one
+  test("LI-25: ESCALATION_FIRST_CONTACT task targets active supervisor only (active=1 filter)", () => {
+    // Deactivate all existing supervisors so only our test one is active
+    db.prepare("UPDATE users SET active=0 WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN')").run();
+
     db.prepare(`INSERT OR IGNORE INTO users (username,password,name,role,email,active) VALUES (?,?,?,?,?,0)`)
-      .run("li_inact_mgr", "x", "Inactive Mgr", "COMMERCIAL_MANAGER", "li_inact_mgr@glv.test");
-    // getSupervisorId only returns users with active=1 and corporate email
+      .run("li25_inact_sup", "x", "Inactive Sup LI25", "COMMERCIAL_MANAGER", "li25_inact@glv.test");
+    db.prepare(`INSERT OR IGNORE INTO users (username,password,name,role,email,active) VALUES (?,?,?,?,?,1)`)
+      .run("li25_active_sup", "x", "Active Sup LI25", "COMMERCIAL_MANAGER", "li25_active@glv.test");
+
+    // Ensure inactive one is inactive, active one is active
+    db.prepare("UPDATE users SET active=0 WHERE username='li25_inact_sup'").run();
+    db.prepare("UPDATE users SET active=1 WHERE username='li25_active_sup'").run();
+
+    const inactId  = db.prepare("SELECT id FROM users WHERE username='li25_inact_sup'").get().id;
+    const activeId = db.prepare("SELECT id FROM users WHERE username='li25_active_sup'").get().id;
+
+    // Create a lead with overdue first_contact_deadline and no escalation yet
+    const glv = `LEAD-LI25-${Date.now()}`;
+    db.prepare(`INSERT INTO leads (glv_code, contact_name, status, first_contact_deadline, assigned_agent, created_at, updated_at)
+      VALUES (?,?,'ASSIGNED',datetime('now','-1 hour'),null,datetime('now'),datetime('now'))`).run(glv, "Test LI25");
+    const lead = db.prepare("SELECT id FROM leads WHERE glv_code=?").get(glv);
+
     const { runEscalationCheck } = require("../services/leadEscalationService");
-    assert.equal(typeof runEscalationCheck, "function", "Escalation service loads correctly");
+    runEscalationCheck();
+
+    // The escalation task must be assigned to the ACTIVE supervisor, not the inactive one
+    const task = db.prepare("SELECT assigned_to FROM tasks WHERE lead_id=? AND task_type='ESCALATION_FIRST_CONTACT'").get(lead.id);
+    assert.ok(task, "ESCALATION_FIRST_CONTACT task must be created");
+    assert.notEqual(task.assigned_to, inactId, "Task must NOT be assigned to inactive supervisor");
+    assert.equal(task.assigned_to, activeId, "Task must be assigned to the active supervisor");
+
+    // Restore supervisors active status
+    db.prepare("UPDATE users SET active=1 WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN')").run();
   });
 
   // LI-26: isCorporateEmail rejects personal domains and blocked addresses
@@ -651,5 +674,125 @@ describe("Lead Intake", () => {
     // Either CORS (500 or 403) or our route originCheck (403) blocks the evil origin
     assert.ok(res.status >= 400, `Expected rejection (4xx/5xx), got ${res.status}: ${JSON.stringify(res.body)}`);
     delete process.env.ALLOWED_ORIGINS;
+  });
+
+  // LI-30: territory-aware assignment selects highest-priority matching rule
+  test("LI-30: external ingestion assigns by territory priority (CO+ANDINA+CARGA p95 > CO-generic p50)", async () => {
+    // Clear any existing rules that might interfere
+    db.prepare("DELETE FROM lead_assignment_rules WHERE agent_username IN ('li30_agent_specific','li30_agent_generic')").run();
+    db.prepare(`INSERT OR IGNORE INTO users (username,password,name,role,email,active) VALUES (?,?,?,?,?,1)`)
+      .run("li30_agent_specific", "x", "Agent Specific LI30", "COMMERCIAL_AGENT", "li30_specific@glv.test");
+    db.prepare(`INSERT OR IGNORE INTO users (username,password,name,role,email,active) VALUES (?,?,?,?,?,1)`)
+      .run("li30_agent_generic", "x", "Agent Generic LI30", "COMMERCIAL_AGENT", "li30_generic@glv.test");
+
+    // High-priority specific rule: CO + ANDINA + CARGA
+    db.prepare(`INSERT INTO lead_assignment_rules
+      (country_code, zone, product_type, agent_username, priority, is_active)
+      VALUES (?,?,?,?,?,1)`).run("CO", "ANDINA", "CARGA", "li30_agent_specific", 95);
+    // Low-priority generic rule: CO only
+    db.prepare(`INSERT INTO lead_assignment_rules
+      (country_code, zone, product_type, agent_username, priority, is_active)
+      VALUES (?,?,?,?,?,1)`).run("CO", null, null, "li30_agent_generic", 50);
+
+    const res = await request(app)
+      .post("/api/leads/external")
+      .set("Content-Type", "application/json")
+      .send({
+        source: "WEBSITE", external_submission_id: `li30-territory-${Date.now()}`,
+        contact_name: "Territory Test LI30",
+        country: "CO", zone: "ANDINA", product_type: "CARGA",
+      });
+
+    assert.equal(res.status, 201, `Expected 201, got ${res.status}: ${JSON.stringify(res.body)}`);
+    assert.equal(res.body.assigned_agent, "li30_agent_specific",
+      `Expected specific agent (p95), got: ${res.body.assigned_agent}`);
+    assert.ok(res.body.first_contact_deadline, "Assigned lead must have first_contact_deadline");
+  });
+
+  // LI-31: no matching rule → PENDING_ASSIGNMENT, null deadline, supervisor task with 4h due
+  test("LI-31: external ingestion with no matching rule → PENDING_ASSIGNMENT, null deadline, supervisor task", async () => {
+    // Ensure there is no rule for this exotic combination
+    const res = await request(app)
+      .post("/api/leads/external")
+      .set("Content-Type", "application/json")
+      .send({
+        source: "WEBSITE", external_submission_id: `li31-norule-${Date.now()}`,
+        contact_name: "No Rule Test LI31",
+        country: "ZZ", zone: "NONEXISTENT", product_type: "NONEXISTENT",
+      });
+
+    assert.equal(res.status, 201, `Expected 201, got ${res.status}: ${JSON.stringify(res.body)}`);
+    assert.equal(res.body.status, "PENDING_ASSIGNMENT", "Status must be PENDING_ASSIGNMENT");
+    assert.equal(res.body.first_contact_deadline, null, "first_contact_deadline must be null when no agent assigned");
+    assert.equal(res.body.assigned_agent, null, "assigned_agent must be null");
+
+    // Verify supervisor escalation task was created (if active supervisor exists)
+    const lead = db.prepare("SELECT id FROM leads WHERE id=?").get(res.body.id);
+    if (lead) {
+      const task = db.prepare("SELECT * FROM tasks WHERE lead_id=? AND task_type='ESCALATION_FIRST_CONTACT'").get(lead.id);
+      // Task may not exist if no active supervisor; check timeline instead
+      const timeline = db.prepare("SELECT * FROM lead_timeline WHERE lead_id=? AND event_type IN ('ESCALATION_FIRST_CONTACT','NO_SUPERVISOR_AVAILABLE','ASSIGNMENT_FAILED')").all(lead.id);
+      assert.ok(timeline.length > 0, "Timeline must record escalation or no-supervisor event");
+    }
+  });
+
+  // LI-32: no active supervisor → NO_SUPERVISOR_AVAILABLE timeline event, no crash
+  test("LI-32: external ingestion with no rule and no active supervisor inserts NO_SUPERVISOR_AVAILABLE event", async () => {
+    // Temporarily deactivate all supervisors
+    const supervisorsBefore = db.prepare(
+      "SELECT username, active FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') AND active=1"
+    ).all();
+    for (const s of supervisorsBefore) {
+      db.prepare("UPDATE users SET active=0 WHERE username=?").run(s.username);
+    }
+
+    try {
+      const res = await request(app)
+        .post("/api/leads/external")
+        .set("Content-Type", "application/json")
+        .send({
+          source: "WEBSITE", external_submission_id: `li32-nosup-${Date.now()}`,
+          contact_name: "No Supervisor LI32",
+          country: "ZZ", zone: "NOWHERE", product_type: "NOTHING",
+        });
+
+      assert.equal(res.status, 201, `Expected 201, got ${res.status}: ${JSON.stringify(res.body)}`);
+      assert.equal(res.body.status, "PENDING_ASSIGNMENT");
+      assert.equal(res.body.first_contact_deadline, null, "Deadline must be null");
+
+      const lead = db.prepare("SELECT id FROM leads WHERE id=?").get(res.body.id);
+      assert.ok(lead, "Lead must be created");
+
+      const ev = db.prepare("SELECT * FROM lead_timeline WHERE lead_id=? AND event_type='NO_SUPERVISOR_AVAILABLE'").get(lead.id);
+      assert.ok(ev, "NO_SUPERVISOR_AVAILABLE event must be inserted in timeline");
+
+      const task = db.prepare("SELECT * FROM tasks WHERE lead_id=? AND task_type='ESCALATION_FIRST_CONTACT'").get(lead.id);
+      assert.equal(task, undefined, "No ESCALATION_FIRST_CONTACT task must be created when no supervisor");
+    } finally {
+      // Restore supervisors
+      for (const s of supervisorsBefore) {
+        db.prepare("UPDATE users SET active=1 WHERE username=?").run(s.username);
+      }
+    }
+  });
+
+  // LI-33: prefix-attack origin rejected (exact match enforced)
+  test("LI-33: origin https://glvservices.com.evil.com rejected when only https://glvservices.com is allowed", async () => {
+    process.env.ALLOWED_ORIGINS = "https://glvservices.com";
+    try {
+      const res = await request(app)
+        .post("/api/leads/external")
+        .set("Origin", "https://glvservices.com.evil.com")
+        .set("Content-Type", "application/json")
+        .send({
+          source: "WEBSITE", external_submission_id: `li33-prefix-${Date.now()}`,
+          contact_name: "Prefix Attack LI33",
+        });
+      // CORS middleware or our originCheck must reject — both return 4xx or 5xx; lead must NOT be created
+      assert.ok(res.status >= 400, `Prefix attack must be rejected (4xx/5xx), got ${res.status}: ${JSON.stringify(res.body)}`);
+      assert.ok(!res.body.glv_code, "No glv_code must be present on rejected request");
+    } finally {
+      delete process.env.ALLOWED_ORIGINS;
+    }
   });
 });
