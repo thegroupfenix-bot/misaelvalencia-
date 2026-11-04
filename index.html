@@ -1391,6 +1391,197 @@ nav {
   .lang-drop-btn { font-size: 0.78rem; padding: 0.5rem 0.6rem; }
 }
 /* ── End Language Dropdown ── */
+
+/* ─── PWA INSTALL — NAVBAR + MOBILE MENU (no position:fixed on button) ─── */
+.nav-pwa-btn {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  min-height: 36px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.nav-pwa-btn:hover { background: var(--gold); color: var(--dark); }
+@media (max-width: 768px) { .nav-pwa-btn { display: none !important; } }
+
+.nav-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  padding: 0.4rem;
+  line-height: 1;
+  min-width: 40px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 768px) { .nav-hamburger { display: flex; } }
+
+/* Mobile menu overlay */
+.mob-menu-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1100;
+}
+.mob-menu-overlay.open { display: block; }
+.mob-menu-panel {
+  position: absolute;
+  top: 0; right: 0;
+  width: min(320px, 90vw);
+  height: 100%;
+  background: rgba(8,26,38,0.98);
+  backdrop-filter: blur(16px);
+  border-left: 1px solid rgba(137,168,185,0.15);
+  overflow-y: auto;
+  padding: 1.2rem 0 2rem;
+  display: flex;
+  flex-direction: column;
+}
+.mob-menu-close {
+  align-self: flex-end;
+  margin: 0 1.2rem 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.3rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mob-menu-close:hover { color: var(--gold); }
+.mob-menu-links { list-style: none; }
+.mob-menu-links a {
+  display: block;
+  padding: 0.9rem 1.5rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(137,168,185,0.07);
+  transition: color 0.2s;
+}
+.mob-menu-links a:hover { color: var(--gold); }
+.mob-menu-sep {
+  height: 1px;
+  background: rgba(137,168,185,0.15);
+  margin: 0.8rem 1.5rem;
+}
+.mob-pwa-install-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: calc(100% - 3rem);
+  margin: 0.4rem 1.5rem;
+  min-height: 48px;
+  padding: 0.9rem 1.2rem;
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mob-pwa-install-btn:hover { background: rgba(191,166,108,0.12); }
+.mob-pwa-installed-msg {
+  padding: 0.9rem 1.5rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* iOS Guide Modal (centered dialog) */
+.ios-guide-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1200;
+  align-items: center;
+  justify-content: center;
+}
+.ios-guide-backdrop.open { display: flex; }
+.ios-guide-dialog {
+  background: var(--dark2);
+  border: 1px solid rgba(137,168,185,0.25);
+  padding: 1.5rem;
+  width: min(360px, 90vw);
+}
+.ios-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+.ios-guide-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--white);
+}
+.ios-guide-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.3rem;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ios-guide-close:hover { color: var(--gold); }
+.ios-guide-steps { list-style: none; }
+.ios-guide-steps li {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(137,168,185,0.08);
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.ios-guide-steps li:last-child { border-bottom: none; }
+.ios-step-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: var(--gold);
+  color: var(--dark);
+  font-weight: 700;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-top: 0.1rem;
+}
+/* ─── END PWA INSTALL CSS ─── */
 </style>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -1480,6 +1671,10 @@ nav {
   </ul>
   <div class="nav-right">
     <a href="/pollo" class="glv-poultry-mobile" data-glv-poultry-mobile="true"><span lang-es>Pollo</span><span lang-en>Poultry</span><span lang-pt-br>Avícola</span><span lang-ar>الدواجن</span><span lang-zh>禽类</span></a>
+    <button id="pwa-install-nav-btn" class="nav-pwa-btn" aria-label="Instalar aplicación GLV" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span lang-es>Instalar GLV</span><span lang-en>Install GLV</span><span lang-pt-br>Instalar GLV</span><span lang-ar>تثبيت GLV</span><span lang-zh>安装 GLV</span>
+    </button>
         <div class="lang-drop" id="langDrop">
       <button class="lang-drop-btn" onclick="toggleLangDrop(event)" aria-haspopup="listbox" aria-expanded="false">
         🌐 <span id="langLabel">ES</span> <span class="lang-drop-arrow">▾</span>
@@ -1498,9 +1693,57 @@ nav {
     <a href="/cotizacion" class="nav-cta">
       <span lang-es>Cotizar</span><span lang-en>Get Quote</span><span lang-pt-br>Solicitar Cotação</span><span lang-ar>اطلب عرضاً</span><span lang-zh>获取报价</span>
     </a>
+    <button class="nav-hamburger" id="navHamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobMenuOverlay">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
   </div>
 <details class="agri-menu home-agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/pollo-colombiano?v=20260915"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></a><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
 </nav>
+
+<!-- ─── MOBILE MENU ─── -->
+<div class="mob-menu-overlay" id="mobMenuOverlay" role="dialog" aria-label="Menú de navegación" aria-modal="true">
+  <div class="mob-menu-panel" id="mobMenuPanel">
+    <button class="mob-menu-close" id="mobMenuClose" aria-label="Cerrar menú">✕</button>
+    <ul class="mob-menu-links">
+      <li><a href="/" onclick="closeMobMenu()"><span lang-es>Inicio</span><span lang-en>Home</span><span lang-pt-br>Início</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a></li>
+      <li><a href="/animales-vivos" onclick="closeMobMenu()"><span lang-es>Animales Vivos</span><span lang-en>Live Animals</span><span lang-pt-br>Animais Vivos</span><span lang-ar>الحيوانات الحية</span><span lang-zh>活体动物</span></a></li>
+      <li><a href="/aceites-derivados" onclick="closeMobMenu()"><span lang-es>Aceites</span><span lang-en>Oils</span><span lang-pt-br>Óleos</span><span lang-ar>زيوت</span><span lang-zh>油脂</span></a></li>
+      <li><a href="/granos-legumbres" onclick="closeMobMenu()"><span lang-es>Granos</span><span lang-en>Grains</span><span lang-pt-br>Grãos</span><span lang-ar>حبوب</span><span lang-zh>谷物</span></a></li>
+      <li><a href="/proteinas-huevo" onclick="closeMobMenu()"><span lang-es>Proteínas</span><span lang-en>Proteins</span><span lang-pt-br>Proteínas</span><span lang-ar>بروتين</span><span lang-zh>蛋白</span></a></li>
+      <li><a href="/cotizacion" onclick="closeMobMenu()"><span lang-es>Cotizar</span><span lang-en>Get Quote</span><span lang-pt-br>Solicitar Cotação</span><span lang-ar>اطلب عرضاً</span><span lang-zh>获取报价</span></a></li>
+    </ul>
+    <div class="mob-menu-sep"></div>
+    <!-- PWA install option injected by JS -->
+    <div id="mob-pwa-slot"></div>
+    <div class="mob-menu-sep"></div>
+  </div>
+</div>
+
+<!-- iOS Guide Modal (centered, not fixed to corner) -->
+<div class="ios-guide-backdrop" id="iosGuideBackdrop" role="dialog" aria-modal="true" aria-labelledby="iosGuideTitle">
+  <div class="ios-guide-dialog">
+    <div class="ios-guide-header">
+      <span class="ios-guide-title" id="iosGuideTitle">
+        <span lang-es>Añadir a pantalla de inicio</span><span lang-en>Add to Home Screen</span><span lang-pt-br>Adicionar à tela inicial</span><span lang-ar>إضافة إلى الشاشة الرئيسية</span><span lang-zh>添加到主屏幕</span>
+      </span>
+      <button class="ios-guide-close" id="iosGuideClose" aria-label="Cerrar">✕</button>
+    </div>
+    <ol class="ios-guide-steps">
+      <li>
+        <span class="ios-step-num">1</span>
+        <span><span lang-es>Abre esta página en <strong>Safari</strong>.</span><span lang-en>Open this page in <strong>Safari</strong>.</span><span lang-pt-br>Abra esta página no <strong>Safari</strong>.</span><span lang-ar>افتح هذه الصفحة في <strong>Safari</strong>.</span><span lang-zh>在 <strong>Safari</strong> 中打开此页面。</span></span>
+      </li>
+      <li>
+        <span class="ios-step-num">2</span>
+        <span><span lang-es>Toca el botón <strong>Compartir</strong> (□↑).</span><span lang-en>Tap the <strong>Share</strong> button (□↑).</span><span lang-pt-br>Toque em <strong>Compartilhar</strong> (□↑).</span><span lang-ar>انقر على زر <strong>مشاركة</strong> (□↑).</span><span lang-zh>点击<strong>分享</strong>按钮 (□↑)。</span></span>
+      </li>
+      <li>
+        <span class="ios-step-num">3</span>
+        <span><span lang-es>Selecciona <strong>"Agregar a pantalla de inicio"</strong>.</span><span lang-en>Select <strong>"Add to Home Screen"</strong>.</span><span lang-pt-br>Selecione <strong>"Adicionar à Tela de Início"</strong>.</span><span lang-ar>اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>.</span><span lang-zh>选择<strong>"添加到主屏幕"</strong>。</span></span>
+      </li>
+    </ol>
+  </div>
+</div>
 
 <!-- ─── HERO WITH CORPORATE VIDEO + CURVED REVEAL ─── -->
 <section class="hero home-production"><div class="hero-video-container">
@@ -3325,72 +3568,114 @@ window.addEventListener('scroll', () => {
 <p class="media-reference-note" style="margin:0;padding:0.8rem 1.5rem;text-align:center;font-size:0.75rem;color:#94a3b8;background:#0d1724;">Portada para redes sociales: <a href="/assets/og/og-glv-corporate.png" style="color:inherit;text-decoration:underline;">Imagen de referencia</a>.</p>
 <script src="/assets/js/glv-forms-config.js"></script>
 <script src="/assets/js/glv-forms.js?v=email-verification-20261001"></script>
-  <!-- PWA Install Button -->
-  <div id="pwa-install-banner" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;">
-    <button id="pwa-install-btn"
-      aria-label="Instalar GLV Services en tu dispositivo"
-      style="background:#1B2A4A;color:#fff;border:none;border-radius:0.75rem;padding:0.75rem 1.25rem;font-size:0.95rem;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;gap:0.5rem;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Instalar GLV
-    </button>
-    <p id="pwa-ios-hint" style="display:none;margin-top:0.5rem;font-size:0.8rem;color:#fff;background:rgba(0,0,0,0.7);padding:0.5rem 0.75rem;border-radius:0.5rem;max-width:220px;">
-      En iPhone: toca <strong>Compartir</strong> → <strong>Agregar a pantalla de inicio</strong>
-    </p>
-  </div>
   <script>
-    // PWA Install — requires explicit user action, no automatic install
+    // GLV PWA Install — navbar button + mobile menu (no position:fixed on install button)
     (function() {
       var deferredPrompt = null;
-      var banner = document.getElementById('pwa-install-banner');
-      var btn = document.getElementById('pwa-install-btn');
-      var iosHint = document.getElementById('pwa-ios-hint');
+      var navBtn = document.getElementById('pwa-install-nav-btn');
+      var mobSlot = document.getElementById('mob-pwa-slot');
+      var iosBackdrop = document.getElementById('iosGuideBackdrop');
+      var iosClose = document.getElementById('iosGuideClose');
+      var hamburger = document.getElementById('navHamburger');
+      var overlay = document.getElementById('mobMenuOverlay');
+      var mobClose = document.getElementById('mobMenuClose');
 
-      // Register Service Worker
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+
+      // Service Worker
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .catch(function() {});
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
       }
 
-      // Android/Chrome/Desktop: capture install prompt
+      // Hamburger menu
+      function openMobMenu() {
+        if (overlay) overlay.classList.add('open');
+        if (hamburger) hamburger.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+      }
+      function closeMobMenu() {
+        if (overlay) overlay.classList.remove('open');
+        if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
+      window.closeMobMenu = closeMobMenu;
+      if (hamburger) hamburger.addEventListener('click', openMobMenu);
+      if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) closeMobMenu(); });
+      if (mobClose) mobClose.addEventListener('click', closeMobMenu);
+
+      // iOS Guide modal
+      function openIOSGuide() { if (iosBackdrop) iosBackdrop.classList.add('open'); }
+      function closeIOSGuide() { if (iosBackdrop) iosBackdrop.classList.remove('open'); }
+      if (iosClose) iosClose.addEventListener('click', closeIOSGuide);
+      if (iosBackdrop) iosBackdrop.addEventListener('click', function(e) { if (e.target === iosBackdrop) closeIOSGuide(); });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { closeMobMenu(); closeIOSGuide(); }
+      });
+
+      // Render mobile menu PWA slot
+      var DL_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+      function renderMobPWA(state) {
+        if (!mobSlot) return;
+        if (state === 'installed') {
+          mobSlot.innerHTML = '<div class="mob-pwa-installed-msg" role="status">✓ GLV ya está instalado</div>';
+        } else if (state === 'ios') {
+          mobSlot.innerHTML = '<button class="mob-pwa-install-btn" id="mobIOSBtn" aria-label="Añadir GLV a pantalla de inicio">'
+            + DL_ICON + '<span lang-es>Añadir a pantalla de inicio</span><span lang-en>Add to Home Screen</span><span lang-pt-br>Adicionar à tela inicial</span><span lang-ar>إضافة إلى الشاشة الرئيسية</span><span lang-zh>添加到主屏幕</span></button>';
+          var iosBtn = document.getElementById('mobIOSBtn');
+          if (iosBtn) iosBtn.addEventListener('click', function() { closeMobMenu(); openIOSGuide(); });
+        } else if (state === 'prompt') {
+          mobSlot.innerHTML = '<button class="mob-pwa-install-btn" id="mobInstallBtn" aria-label="Instalar GLV">'
+            + DL_ICON + '<span lang-es>Instalar GLV</span><span lang-en>Install GLV</span><span lang-pt-br>Instalar GLV</span><span lang-ar>تثبيت GLV</span><span lang-zh>安装 GLV</span></button>';
+          var installBtn = document.getElementById('mobInstallBtn');
+          if (installBtn) installBtn.addEventListener('click', function() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function(result) {
+              deferredPrompt = null;
+              if (result.outcome === 'accepted') { renderMobPWA('installed'); if (navBtn) navBtn.style.display = 'none'; }
+              closeMobMenu();
+            });
+          });
+        }
+      }
+
+      // Already installed — standalone mode
+      if (isStandalone) {
+        renderMobPWA('installed');
+        if (navBtn) navBtn.style.display = 'none';
+        return;
+      }
+
+      // iOS Safari (no beforeinstallprompt)
+      if (isIOS) {
+        renderMobPWA('ios');
+        return;
+      }
+
+      // Android / Chrome / Edge / Desktop — requires explicit user action
       window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
         deferredPrompt = e;
-        if (banner) banner.style.display = 'block';
+        if (navBtn) {
+          navBtn.style.display = 'inline-flex';
+          navBtn.addEventListener('click', function() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function(result) {
+              deferredPrompt = null;
+              if (result.outcome === 'accepted') { navBtn.style.display = 'none'; renderMobPWA('installed'); }
+            });
+          }, { once: true });
+        }
+        renderMobPWA('prompt');
       });
 
-      // iOS Safari: show hint (no beforeinstallprompt on iOS)
-      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      var isStandalone = window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true;
-      if (isIOS && !isStandalone) {
-        if (banner) banner.style.display = 'block';
-        if (btn) btn.style.display = 'none';
-        if (iosHint) iosHint.style.display = 'block';
-      }
-
-      // Hide if already installed
-      if (isStandalone) {
-        if (banner) banner.style.display = 'none';
-      }
-
-      // Install button click — requires user action
-      if (btn) {
-        btn.addEventListener('click', function() {
-          if (!deferredPrompt) return;
-          deferredPrompt.prompt();
-          deferredPrompt.userChoice.then(function(result) {
-            deferredPrompt = null;
-            if (result.outcome === 'accepted') {
-              if (banner) banner.style.display = 'none';
-            }
-          });
-        });
-      }
-
-      // Hide after install
       window.addEventListener('appinstalled', function() {
-        if (banner) banner.style.display = 'none';
         deferredPrompt = null;
+        if (navBtn) navBtn.style.display = 'none';
+        renderMobPWA('installed');
       });
     })();
   </script>

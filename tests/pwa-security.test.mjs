@@ -175,8 +175,11 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.ok(indexSource.includes('e.preventDefault()'), 'Must defer install prompt');
   assert.ok(indexSource.includes('beforeinstallprompt'), 'Must use beforeinstallprompt');
   assert.ok(
-    indexSource.includes("btn.addEventListener('click'") || indexSource.includes('btn.addEventListener("click"'),
-    'Install must require explicit click'
+    indexSource.includes("navBtn.addEventListener('click'") ||
+    indexSource.includes("installBtn.addEventListener('click'") ||
+    indexSource.includes("btn.addEventListener('click'") ||
+    indexSource.includes('btn.addEventListener("click"'),
+    'Install must require explicit click on a button'
   );
   console.log('  PASS E1 install requires explicit user action');
 
@@ -185,6 +188,41 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
     assert.ok(!indexSource.includes(api), `Must not request device API: ${api}`);
   }
   console.log('  PASS E2 no device permissions requested');
+
+  // E3: install button must NOT use position:fixed (fixed banner removed)
+  assert.ok(
+    !indexSource.includes('id="pwa-install-banner"'),
+    'Old fixed install banner must be removed'
+  );
+  assert.ok(
+    !indexSource.match(/pwa-install-banner[^>]*position\s*:\s*fixed/),
+    'Install button must not have position:fixed inline style'
+  );
+  console.log('  PASS E3 no position:fixed install banner');
+
+  // E4: desktop navbar install button present
+  assert.ok(indexSource.includes('id="pwa-install-nav-btn"'), 'Desktop navbar install button must exist');
+  assert.ok(indexSource.includes('class="nav-pwa-btn"'), 'Desktop navbar install button must have nav-pwa-btn class');
+  console.log('  PASS E4 desktop navbar install button present');
+
+  // E5: mobile menu slot present
+  assert.ok(indexSource.includes('id="mob-pwa-slot"'), 'Mobile menu PWA slot must exist');
+  assert.ok(indexSource.includes('id="navHamburger"'), 'Hamburger button must exist');
+  assert.ok(indexSource.includes('class="mob-menu-overlay"'), 'Mobile menu overlay must exist');
+  console.log('  PASS E5 mobile menu structure present');
+
+  // E6: iOS guide modal present with 3-step guide
+  assert.ok(indexSource.includes('id="iosGuideBackdrop"'), 'iOS guide modal must exist');
+  assert.ok(indexSource.includes('ios-guide-steps'), 'iOS guide steps list must exist');
+  assert.ok(indexSource.includes('ios-step-num'), 'iOS step numbers must exist');
+  assert.ok(indexSource.includes('Compartir'), 'iOS guide must mention Compartir (Share)');
+  assert.ok(indexSource.includes('Agregar a pantalla de inicio') || indexSource.includes('Add to Home Screen'), 'iOS guide must mention Add to Home Screen');
+  console.log('  PASS E6 iOS guide modal with 3-step instructions present');
+
+  // E7: standalone detection present
+  assert.ok(indexSource.includes('display-mode: standalone'), 'Must detect standalone/installed mode');
+  assert.ok(indexSource.includes('navigator.standalone'), 'Must detect iOS standalone');
+  console.log('  PASS E7 standalone/installed detection present');
 }
 
 // ─── F. No credentials ──────────────────────────────────────────────────────
