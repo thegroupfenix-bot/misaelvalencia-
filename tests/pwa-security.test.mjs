@@ -211,6 +211,19 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.ok(indexSource.includes('class="mob-menu-overlay"'), 'Mobile menu overlay must exist');
   console.log('  PASS E5 mobile menu structure present');
 
+  // E8: Contacto link in mobile menu, immediately before mob-pwa-slot
+  assert.ok(
+    indexSource.includes('id="mob-contacto-item"'),
+    'Mobile menu must contain Contacto link (id="mob-contacto-item")'
+  );
+  const contactoPos = indexSource.indexOf('id="mob-contacto-item"');
+  const pwaSlotPos  = indexSource.indexOf('id="mob-pwa-slot"');
+  assert.ok(
+    contactoPos > -1 && pwaSlotPos > -1 && contactoPos < pwaSlotPos,
+    `Contacto (pos ${contactoPos}) must appear before mob-pwa-slot (pos ${pwaSlotPos}) in the HTML`
+  );
+  console.log('  PASS E8 Contacto precedes mob-pwa-slot in mobile menu');
+
   // E6: iOS guide modal present with 3-step guide
   assert.ok(indexSource.includes('id="iosGuideBackdrop"'), 'iOS guide modal must exist');
   assert.ok(indexSource.includes('ios-guide-steps'), 'iOS guide steps list must exist');
