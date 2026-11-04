@@ -1,0 +1,39 @@
+{
+  "name": "GLV Services SAS",
+  "short_name": "GLV Services",
+  "description": "Exportación de alimentos · Where Trust Moves Markets",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#1B2A4A",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["business", "food"],
+  "shortcuts": [
+    {
+      "name": "Cotización",
+      "short_name": "Cotizar",
+      "url": "/cotizacion",
+      "description": "Solicitar cotización de exportación"
+    }
+  ]
+}
