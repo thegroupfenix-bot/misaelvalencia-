@@ -709,9 +709,23 @@ describe("Lead Intake", () => {
     assert.ok(res.body.first_contact_deadline, "Assigned lead must have first_contact_deadline");
   });
 
-  // LI-31: no matching rule → PENDING_ASSIGNMENT, null deadline, supervisor task with 4h due
-  test("LI-31: external ingestion with no matching rule → PENDING_ASSIGNMENT, null deadline, supervisor task", async () => {
-    // Ensure there is no rule for this exotic combination
+  // LI-31: no matching rule → PENDING_ASSIGNMENT, null deadline, supervisor task mandatory
+  test("LI-31: external ingestion with no matching rule → PENDING_ASSIGNMENT, null deadline, mandatory supervisor task", async () => {
+    // Deactivate all current supervisors so only our test supervisor is active
+    const prevSups = db.prepare(
+      "SELECT username FROM users WHERE role IN ('COMMERCIAL_MANAGER','DIRECTOR','SUPER_ADMIN') AND active=1"
+    ).all();
+    for (const s of prevSups) {
+      db.prepare("UPDATE users SET active=0 WHERE username=?").run(s.username);
+    }
+
+    // Insert the controlled active supervisor
+    db.prepare(`INSERT OR IGNORE INTO users (username,password,name,role,email,active) VALUES (?,?,?,?,?,1)`)
+      .run("li31_active_sup", "x", "Active Sup LI31", "DIRECTOR", "li31sup@glvcorp.test");
+    db.prepare("UPDATE users SET active=1 WHERE username='li31_active_sup'").run();
+    const li31SupRow = db.prepare("SELECT id FROM users WHERE username='li31_active_sup'").get();
+
+    try {
     const res = await request(app)
       .post("/api/leads/external")
       .set("Content-Type", "application/json")
@@ -726,13 +740,28 @@ describe("Lead Intake", () => {
     assert.equal(res.body.first_contact_deadline, null, "first_contact_deadline must be null when no agent assigned");
     assert.equal(res.body.assigned_agent, null, "assigned_agent must be null");
 
-    // Verify supervisor escalation task was created (if active supervisor exists)
-    const lead = db.prepare("SELECT id FROM leads WHERE id=?").get(res.body.id);
-    if (lead) {
-      const task = db.prepare("SELECT * FROM tasks WHERE lead_id=? AND task_type='ESCALATION_FIRST_CONTACT'").get(lead.id);
-      // Task may not exist if no active supervisor; check timeline instead
-      const timeline = db.prepare("SELECT * FROM lead_timeline WHERE lead_id=? AND event_type IN ('ESCALATION_FIRST_CONTACT','NO_SUPERVISOR_AVAILABLE','ASSIGNMENT_FAILED')").all(lead.id);
-      assert.ok(timeline.length > 0, "Timeline must record escalation or no-supervisor event");
+    const leadId = res.body.id;
+    assert.ok(leadId, "Lead ID must be present");
+
+    // Task MUST exist — supervisor was guaranteed active
+    const task = db.prepare(
+      "SELECT * FROM tasks WHERE lead_id=? AND task_type='ESCALATION_FIRST_CONTACT'"
+    ).get(leadId);
+    assert.ok(task, "ESCALATION_FIRST_CONTACT task MUST be created when active supervisor exists");
+    assert.equal(task.assigned_to, li31SupRow.id, "Task must be assigned to the active supervisor");
+    assert.ok(task.lead_id === leadId, "Task must reference the correct lead_id");
+    assert.ok(task.deadline, "Task must have a deadline (4h business hours)");
+
+    // Timeline must record the escalation event
+    const escEv = db.prepare(
+      "SELECT * FROM lead_timeline WHERE lead_id=? AND event_type='ESCALATION_FIRST_CONTACT'"
+    ).get(leadId);
+    assert.ok(escEv, "ESCALATION_FIRST_CONTACT timeline event must be recorded");
+    } finally {
+      // Restore previously active supervisors
+      for (const s of prevSups) {
+        db.prepare("UPDATE users SET active=1 WHERE username=?").run(s.username);
+      }
     }
   });
 
@@ -793,6 +822,81 @@ describe("Lead Intake", () => {
       assert.ok(!res.body.glv_code, "No glv_code must be present on rejected request");
     } finally {
       delete process.env.ALLOWED_ORIGINS;
+    }
+  });
+
+  // LI-34: ALLOWED_ORIGINS set but empty after normalization → 403 from endpoint + startup fail
+  test("LI-34: ALLOWED_ORIGINS set but empty after normalization → 403 from endpoint and startup error", async () => {
+    const { checkPreProductionEnv } = require("../utils/preProductionCheck");
+
+    // 1. Route must return 403 for empty-after-normalization ALLOWED_ORIGINS
+    process.env.ALLOWED_ORIGINS = " , , ";
+    try {
+      const res = await request(app)
+        .post("/api/leads/external")
+        .set("Content-Type", "application/json")
+        .send({
+          source: "WEBSITE", external_submission_id: `li34-emptyorigins-${Date.now()}`,
+          contact_name: "Empty Origins LI34",
+        });
+      assert.equal(res.status, 403,
+        `Empty ALLOWED_ORIGINS must return 403, got ${res.status}: ${JSON.stringify(res.body)}`);
+      assert.ok(!res.body.glv_code, "No lead must be created when origins are empty");
+    } finally {
+      delete process.env.ALLOWED_ORIGINS;
+    }
+
+    // 2. preProductionCheck must throw when ALLOWED_ORIGINS is set but normalizes to empty
+    process.env.ALLOWED_ORIGINS = " , , ";
+    try {
+      assert.throws(
+        () => checkPreProductionEnv(),
+        (err) => {
+          assert.ok(err.message.includes('ALLOWED_ORIGINS'), `Error must mention ALLOWED_ORIGINS: ${err.message}`);
+          return true;
+        },
+        "checkPreProductionEnv must throw when ALLOWED_ORIGINS normalizes to empty"
+      );
+    } finally {
+      delete process.env.ALLOWED_ORIGINS;
+    }
+  });
+
+  // LI-35: concurrent duplicate submissions → one lead created, 201+200, no 500
+  test("LI-35: concurrent duplicate external submissions → one lead, 201+200 (no 500)", async () => {
+    const body = {
+      source: "WEBSITE",
+      external_submission_id: `li35-concurrent-${Date.now()}`,
+      contact_name: "Concurrent Duplicate LI35",
+    };
+
+    // Fire two requests simultaneously
+    const [res1, res2] = await Promise.all([
+      request(app).post("/api/leads/external").set("Content-Type", "application/json").send(body),
+      request(app).post("/api/leads/external").set("Content-Type", "application/json").send(body),
+    ]);
+
+    const statuses = [res1.status, res2.status].sort();
+    assert.ok(
+      !statuses.includes(500),
+      `No 500 allowed; got statuses: ${statuses} bodies: ${JSON.stringify([res1.body, res2.body])}`
+    );
+    // One must be 201 (created) and the other 200 (idempotent), or both 200 if first resolved before second started
+    assert.ok(
+      statuses.every(s => s === 200 || s === 201),
+      `Both must be 2xx; got ${statuses}`
+    );
+
+    // Exactly one lead must exist for this external_submission_id
+    const leads = db.prepare(
+      "SELECT * FROM leads WHERE external_source=? AND external_submission_id=?"
+    ).all(body.source, body.external_submission_id);
+    assert.equal(leads.length, 1, `Exactly one lead must exist; found ${leads.length}`);
+
+    // The 200 response (if any) must be idempotent:true
+    const r200 = [res1, res2].find(r => r.status === 200);
+    if (r200) {
+      assert.equal(r200.body.idempotent, true, "200 response must have idempotent:true");
     }
   });
 });

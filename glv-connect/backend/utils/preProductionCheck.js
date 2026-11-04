@@ -29,6 +29,16 @@ function checkPreProductionEnv() {
     }
   }
 
+  if (process.env.ALLOWED_ORIGINS !== undefined) {
+    const rawOrigins = process.env.ALLOWED_ORIGINS || '';
+    const normalizedOrigins = rawOrigins.split(',').map(s => s.trim().toLowerCase().replace(/\/$/, '')).filter(Boolean);
+    if (normalizedOrigins.length === 0) {
+      throw new Error(
+        '[PRE-PRODUCTION] ALLOWED_ORIGINS is set but its normalized list is empty — set at least one valid origin'
+      );
+    }
+  }
+
   if (process.env.NODE_ENV === 'production' && missing.length > 0) {
     throw new Error(
       `[PRE-PRODUCTION] Cannot start in production with missing env vars: ${missing.join(', ')}`

@@ -31,10 +31,13 @@ function normalizeOrigin(raw) {
 
 function originCheck(req, res, next) {
   const allowed = process.env.ALLOWED_ORIGINS;
-  if (!allowed) return next(); // dev: allow all
-  const origin = normalizeOrigin(req.headers.origin || req.headers.referer || '');
+  if (allowed === undefined || allowed === null) return next(); // dev: allow all
   const allowedList = allowed.split(',').map(normalizeOrigin).filter(Boolean);
-  if (allowedList.length === 0 || allowedList.includes(origin)) return next();
+  if (allowedList.length === 0) {
+    return res.status(403).json({ error: 'Origin not allowed: ALLOWED_ORIGINS configured but empty after normalization' });
+  }
+  const origin = normalizeOrigin(req.headers.origin || req.headers.referer || '');
+  if (allowedList.includes(origin)) return next();
   return res.status(403).json({ error: 'Origin not allowed' });
 }
 
@@ -215,6 +218,20 @@ router.post('/', rateLimit, originCheck, verifyHmac, (req, res) => {
   try {
     leadId = insertLead();
   } catch (err) {
+    if (err.code === 'SQLITE_CONSTRAINT' &&
+        typeof err.message === 'string' &&
+        err.message.includes('idx_leads_ext')) {
+      const existingLead = db.prepare(
+        "SELECT id, glv_code, status, assigned_agent FROM leads WHERE external_source = ? AND external_submission_id = ?"
+      ).get(source, external_submission_id);
+      if (existingLead) {
+        return res.status(200).json({
+          id: existingLead.id, glv_code: existingLead.glv_code,
+          status: existingLead.status, assigned_agent: existingLead.assigned_agent,
+          idempotent: true
+        });
+      }
+    }
     console.error('[lead-ingestion] Insert error:', err);
     return res.status(500).json({ error: 'Failed to create lead' });
   }
