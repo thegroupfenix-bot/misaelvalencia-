@@ -8,6 +8,25 @@ Options -Indexes
 Options +FollowSymLinks
 Options +SymLinksIfOwnerMatch
 
+# ═══ Security Headers ═══════════════════════════════════════
+<IfModule mod_headers.c>
+  Header always set X-Frame-Options "DENY"
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self';"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), notifications=()"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+</IfModule>
+
+# ═══ PWA Cache Control ═══════════════════════════════════════
+<FilesMatch "sw\.js$">
+  Header set Cache-Control "no-store, no-cache, must-revalidate"
+</FilesMatch>
+<FilesMatch "manifest\.webmanifest$">
+  Header set Cache-Control "public, max-age=86400"
+  Header set Content-Type "application/manifest+json"
+</FilesMatch>
+
 RewriteEngine On
 
 # ── Rutas avícolas canónicas ─────────────────────────────────

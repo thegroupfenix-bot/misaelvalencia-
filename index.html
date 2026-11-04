@@ -1416,6 +1416,14 @@ nav {
 <script defer src="/assets/js/agri-navigation.js?v=20260919-mobile"></script>
 <link rel="stylesheet" href="/assets/css/home-commercial.css?v=20260915">
 <link rel="stylesheet" href="/assets/css/contact-layout.css?v=1">
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#1B2A4A" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GLV Services" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </head>
 <body class="lang-es">
   <!-- Meta Pixel fallback: only active when JavaScript is disabled. -->
@@ -3317,5 +3325,74 @@ window.addEventListener('scroll', () => {
 <p class="media-reference-note" style="margin:0;padding:0.8rem 1.5rem;text-align:center;font-size:0.75rem;color:#94a3b8;background:#0d1724;">Portada para redes sociales: <a href="/assets/og/og-glv-corporate.png" style="color:inherit;text-decoration:underline;">Imagen de referencia</a>.</p>
 <script src="/assets/js/glv-forms-config.js"></script>
 <script src="/assets/js/glv-forms.js?v=email-verification-20261001"></script>
+  <!-- PWA Install Button -->
+  <div id="pwa-install-banner" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;">
+    <button id="pwa-install-btn"
+      aria-label="Instalar GLV Services en tu dispositivo"
+      style="background:#1B2A4A;color:#fff;border:none;border-radius:0.75rem;padding:0.75rem 1.25rem;font-size:0.95rem;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;gap:0.5rem;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Instalar GLV
+    </button>
+    <p id="pwa-ios-hint" style="display:none;margin-top:0.5rem;font-size:0.8rem;color:#fff;background:rgba(0,0,0,0.7);padding:0.5rem 0.75rem;border-radius:0.5rem;max-width:220px;">
+      En iPhone: toca <strong>Compartir</strong> → <strong>Agregar a pantalla de inicio</strong>
+    </p>
+  </div>
+  <script>
+    // PWA Install — requires explicit user action, no automatic install
+    (function() {
+      var deferredPrompt = null;
+      var banner = document.getElementById('pwa-install-banner');
+      var btn = document.getElementById('pwa-install-btn');
+      var iosHint = document.getElementById('pwa-ios-hint');
+
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .catch(function() {});
+      }
+
+      // Android/Chrome/Desktop: capture install prompt
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (banner) banner.style.display = 'block';
+      });
+
+      // iOS Safari: show hint (no beforeinstallprompt on iOS)
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+      if (isIOS && !isStandalone) {
+        if (banner) banner.style.display = 'block';
+        if (btn) btn.style.display = 'none';
+        if (iosHint) iosHint.style.display = 'block';
+      }
+
+      // Hide if already installed
+      if (isStandalone) {
+        if (banner) banner.style.display = 'none';
+      }
+
+      // Install button click — requires user action
+      if (btn) {
+        btn.addEventListener('click', function() {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(result) {
+            deferredPrompt = null;
+            if (result.outcome === 'accepted') {
+              if (banner) banner.style.display = 'none';
+            }
+          });
+        });
+      }
+
+      // Hide after install
+      window.addEventListener('appinstalled', function() {
+        if (banner) banner.style.display = 'none';
+        deferredPrompt = null;
+      });
+    })();
+  </script>
 </body>
 </html>
