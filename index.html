@@ -3655,22 +3655,24 @@ window.addEventListener('scroll', () => {
         return;
       }
 
-      // Android / Chrome / Edge / Desktop — requires explicit user action
+      // Desktop / Chrome / Edge / Android — show button immediately; capture prompt later for install
+      if (navBtn) {
+        navBtn.style.display = 'inline-flex';
+        navBtn.addEventListener('click', function() {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(result) {
+            deferredPrompt = null;
+            if (result.outcome === 'accepted') { navBtn.style.display = 'none'; renderMobPWA('installed'); }
+          });
+        });
+      }
+      renderMobPWA('prompt');
+
       window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
         deferredPrompt = e;
-        if (navBtn) {
-          navBtn.style.display = 'inline-flex';
-          navBtn.addEventListener('click', function() {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then(function(result) {
-              deferredPrompt = null;
-              if (result.outcome === 'accepted') { navBtn.style.display = 'none'; renderMobPWA('installed'); }
-            });
-          }, { once: true });
-        }
-        renderMobPWA('prompt');
+        // navBtn already visible; click handler already attached
       });
 
       window.addEventListener('appinstalled', function() {
