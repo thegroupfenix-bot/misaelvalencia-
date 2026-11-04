@@ -94,7 +94,7 @@ export function GosLeadsPanel({ user, showNotif }) {
     const params = {};
     if (kycFilter)   params.kyc_status = kycFilter;
     if (agentFilter) params.assigned_agent = agentFilter;
-    api.getLeads(params)
+    api.getKycLeads(params)
       .then(setLeads)
       .catch(e => showNotif(e.message, "error"))
       .finally(() => setLoading(false));

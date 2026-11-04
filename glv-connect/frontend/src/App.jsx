@@ -21,6 +21,7 @@ import VesselCharter from "./components/VesselCharter.jsx";
 import CargoIntelligence from "./components/CargoIntelligence.jsx";
 import VisualEvidence from "./components/VisualEvidence.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
+import LeadIntake from "./components/LeadIntake.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
 import { LANGUAGES, t } from "./i18n.js";
@@ -254,6 +255,7 @@ function Portal() {
         {view === "vessel-charter"      && <VesselCharter user={user} setView={safeSetView} showNotif={showNotif} />}
         {view === "cargo-intelligence"  && <CargoIntelligence user={user} setView={safeSetView} showNotif={showNotif} />}
         {view === "visual-evidence"     && <VisualEvidence user={user} setView={safeSetView} showNotif={showNotif} />}
+        {(view === "leads" || view?.startsWith?.("leads-")) && <LeadIntake user={user} setView={safeSetView} showNotif={showNotif} />}
         {view?.startsWith?.("commercial-quote:") && <CommercialWorkspace user={user} setView={safeSetView} showNotif={showNotif} initialQuoteId={view.split(":")[1]} />}
         {view === "audit"        && hasAuditAccess && <AuditLog />}
         {view === "usuarios"     && isDirector && <UsersPanel />}
@@ -394,6 +396,7 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
     ...(!isMediaOnly ? [{ id: "vessel-charter",      icon: "ti-anchor",     label: "Buques" }] : []),
     ...(!isMediaOnly ? [{ id: "cargo-intelligence",  icon: "ti-package",    label: "Carga" }] : []),
     ...(!isMediaOnly ? [{ id: "visual-evidence",     icon: "ti-eye",        label: "Evidencia" }] : []),
+    ...(!isMediaOnly && !["CLIENT","SUPPLIER"].includes(user?.role) ? [{ id: "leads", icon: "ti-user-plus", label: "Leads GOS" }] : []),
     ...(isDirector ? [
       { id: "spa",      icon: "ti-file-certificate", label: "SPA / Contratos" },
       { id: "usuarios", icon: "ti-users",            label: "Usuarios" },
