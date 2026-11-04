@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node glv-connect/backend/server.js",
-    "install-backend": "cd glv-connect/backend && npm install"
+    "install-backend": "cd glv-connect/backend && npm install",
+    "test:pwa": "node --test tests/pwa-security.test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
