@@ -224,13 +224,14 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   );
   console.log('  PASS E8 Contacto precedes mob-pwa-slot in mobile menu');
 
-  // E6: iOS guide modal present with 3-step guide
-  assert.ok(indexSource.includes('id="iosGuideBackdrop"'), 'iOS guide modal must exist');
-  assert.ok(indexSource.includes('ios-guide-steps'), 'iOS guide steps list must exist');
-  assert.ok(indexSource.includes('ios-step-num'), 'iOS step numbers must exist');
-  assert.ok(indexSource.includes('Compartir'), 'iOS guide must mention Compartir (Share)');
-  assert.ok(indexSource.includes('Agregar a pantalla de inicio') || indexSource.includes('Add to Home Screen'), 'iOS guide must mention Add to Home Screen');
-  console.log('  PASS E6 iOS guide modal with 3-step instructions present');
+  // E6: NO fullscreen iOS modal (safe small hint replaces it)
+  assert.ok(!indexSource.includes('id="iosGuideBackdrop"'), 'Fullscreen iOS guide modal must be absent (safe hint used instead)');
+  assert.ok(!indexSource.includes('ios-guide-steps'), 'Blocking iOS guide steps list must be absent');
+  assert.ok(indexSource.includes('showIOSHint'), 'showIOSHint function must exist (safe iOS tooltip)');
+  assert.ok(indexSource.includes('Compartir'), 'iOS hint must mention Compartir (Share)');
+  assert.ok(indexSource.includes('Agregar a pantalla de inicio') || indexSource.includes('Add to Home Screen'), 'iOS hint must mention Add to Home Screen');
+  assert.ok(!indexSource.includes('.ios-guide-backdrop'), 'iOS guide backdrop CSS must be absent (no fullscreen overlay)');
+  console.log('  PASS E6 no fullscreen iOS modal; safe showIOSHint present');
 
   // E7: standalone detection present
   assert.ok(indexSource.includes('display-mode: standalone'), 'Must detect standalone/installed mode');
