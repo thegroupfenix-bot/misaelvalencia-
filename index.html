@@ -3658,7 +3658,7 @@ window.addEventListener('scroll', () => {
       // Show a dismissable hint when the install prompt is not yet available
       function showInstallHint(anchor) {
         var existing = document.getElementById('pwa-install-hint');
-        if (existing) { clearTimeout(existing._t); existing.remove(); }
+        if (existing) { clearTimeout(existing._t); document.removeEventListener('click', existing._onDoc, { capture: true }); existing.remove(); }
         var hint = document.createElement('div');
         hint.id = 'pwa-install-hint';
         hint.setAttribute('role', 'alert');
@@ -3668,12 +3668,12 @@ window.addEventListener('scroll', () => {
         hint.style.top = (rect.bottom + 8) + 'px';
         hint.style.right = (window.innerWidth - rect.right) + 'px';
         document.body.appendChild(hint);
-        var dismiss = function() { clearTimeout(hint._t); if (hint.parentNode) hint.remove(); };
+        function onDoc(e) { if (!hint.contains(e.target) && e.target !== anchor) dismiss(); }
+        function dismiss() { clearTimeout(hint._t); document.removeEventListener('click', onDoc, { capture: true }); if (hint.parentNode) hint.remove(); }
         hint._t = setTimeout(dismiss, 5000);
+        hint._onDoc = onDoc;
         hint.addEventListener('click', dismiss);
-        document.addEventListener('click', function onDoc(e) {
-          if (e.target !== anchor && e.target !== hint) { dismiss(); document.removeEventListener('click', onDoc); }
-        }, { capture: true, once: false });
+        document.addEventListener('click', onDoc, { capture: true });
       }
 
       // Desktop / Chrome / Edge / Android — show button immediately; capture prompt later for install

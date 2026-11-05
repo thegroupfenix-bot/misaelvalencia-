@@ -236,6 +236,29 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.ok(indexSource.includes('display-mode: standalone'), 'Must detect standalone/installed mode');
   assert.ok(indexSource.includes('navigator.standalone'), 'Must detect iOS standalone');
   console.log('  PASS E7 standalone/installed detection present');
+
+  // E9: install hint shown when deferredPrompt is null
+  assert.ok(
+    indexSource.includes('showInstallHint'),
+    'showInstallHint function must exist'
+  );
+  assert.ok(
+    indexSource.includes("setAttribute('role', 'alert')") || indexSource.includes('setAttribute("role", "alert")'),
+    'install hint element must have role=alert'
+  );
+  assert.ok(
+    indexSource.includes('La instalación aún no está disponible'),
+    'install hint must contain the unavailability message in Spanish'
+  );
+  assert.ok(
+    indexSource.includes('!deferredPrompt') && indexSource.includes('showInstallHint'),
+    'install click handler must call showInstallHint when deferredPrompt is null'
+  );
+  assert.ok(
+    indexSource.includes('document.removeEventListener') && indexSource.includes('onDoc'),
+    'showInstallHint must remove the document click listener on dismiss'
+  );
+  console.log('  PASS E9 install hint shown when deferredPrompt is null, listener cleaned up');
 }
 
 // ─── F. No credentials ──────────────────────────────────────────────────────
