@@ -3631,7 +3631,7 @@ window.addEventListener('scroll', () => {
             + DL_ICON + '<span lang-es>Instalar GLV</span><span lang-en>Install GLV</span><span lang-pt-br>Instalar GLV</span><span lang-ar>تثبيت GLV</span><span lang-zh>安装 GLV</span></button>';
           var installBtn = document.getElementById('mobInstallBtn');
           if (installBtn) installBtn.addEventListener('click', function() {
-            if (!deferredPrompt) return;
+            if (!deferredPrompt) { showInstallHint(installBtn); return; }
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then(function(result) {
               deferredPrompt = null;
@@ -3655,11 +3655,32 @@ window.addEventListener('scroll', () => {
         return;
       }
 
+      // Show a dismissable hint when the install prompt is not yet available
+      function showInstallHint(anchor) {
+        var existing = document.getElementById('pwa-install-hint');
+        if (existing) { clearTimeout(existing._t); existing.remove(); }
+        var hint = document.createElement('div');
+        hint.id = 'pwa-install-hint';
+        hint.setAttribute('role', 'alert');
+        hint.style.cssText = 'position:fixed;background:#1B2A4A;color:#fff;font-size:0.82rem;line-height:1.5;padding:10px 14px;border-radius:6px;max-width:280px;z-index:10001;box-shadow:0 4px 20px rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.4);cursor:pointer;';
+        hint.innerHTML = 'La instalación aún no está disponible.<br>Usa el menú de Chrome &rarr; <strong>Instalar página</strong> o <strong>Añadir al escritorio</strong>.';
+        var rect = anchor.getBoundingClientRect();
+        hint.style.top = (rect.bottom + 8) + 'px';
+        hint.style.right = (window.innerWidth - rect.right) + 'px';
+        document.body.appendChild(hint);
+        var dismiss = function() { clearTimeout(hint._t); if (hint.parentNode) hint.remove(); };
+        hint._t = setTimeout(dismiss, 5000);
+        hint.addEventListener('click', dismiss);
+        document.addEventListener('click', function onDoc(e) {
+          if (e.target !== anchor && e.target !== hint) { dismiss(); document.removeEventListener('click', onDoc); }
+        }, { capture: true, once: false });
+      }
+
       // Desktop / Chrome / Edge / Android — show button immediately; capture prompt later for install
       if (navBtn) {
         navBtn.style.display = 'inline-flex';
         navBtn.addEventListener('click', function() {
-          if (!deferredPrompt) return;
+          if (!deferredPrompt) { showInstallHint(navBtn); return; }
           deferredPrompt.prompt();
           deferredPrompt.userChoice.then(function(result) {
             deferredPrompt = null;
