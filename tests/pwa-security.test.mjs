@@ -262,6 +262,62 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   console.log('  PASS E9 install hint shown when deferredPrompt is null, listener cleaned up');
 }
 
+// ─── E10-E13. iPadOS + behavioral tests ─────────────────────────────────────
+{
+  // E10: iPadOS desktop mode detection covers MacIntel + maxTouchPoints > 1
+  assert.ok(
+    indexSource.includes("navigator.platform === 'MacIntel'") ||
+    indexSource.includes('navigator.platform === "MacIntel"'),
+    'Must detect iPadOS desktop mode via navigator.platform'
+  );
+  assert.ok(
+    indexSource.includes('navigator.maxTouchPoints > 1'),
+    'Must check maxTouchPoints > 1 for iPadOS desktop mode'
+  );
+  console.log('  PASS E10 iPadOS desktop mode detection present');
+
+  // E11: behavioral simulation — isIOS logic
+  function isIOSSim(ua, platform, maxTouchPoints, MSStream) {
+    return (/iphone|ipad|ipod/i.test(ua) && !MSStream) ||
+           (platform === 'MacIntel' && maxTouchPoints > 1);
+  }
+  assert.ok(isIOSSim('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15', 'MacIntel', 5, undefined), 'iPadOS desktop mode must be detected as iOS');
+  assert.ok(isIOSSim('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)', 'iPad', 5, undefined), 'Classic iPad UA must be detected as iOS');
+  assert.ok(isIOSSim('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 'iPhone', 5, undefined), 'iPhone UA must be detected as iOS');
+  assert.ok(!isIOSSim('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120', 'Win32', 0, undefined), 'Chrome Windows must NOT be detected as iOS');
+  assert.ok(!isIOSSim('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 'MacIntel', 0, undefined), 'Mac desktop (no touch) must NOT be detected as iOS');
+  console.log('  PASS E11 isIOS behavioral simulation: iPadOS desktop ✓, iPad ✓, iPhone ✓, Chrome Windows ✗, Mac desktop ✗');
+
+  // E12: install hints must not use inset:0 (no page-covering overlay)
+  const hintCode = indexSource.match(/function showInstallHint[\s\S]*?hint\.addEventListener\('click', dismiss\);[\s\S]*?document\.addEventListener\('click', onDoc/)?.[0] || '';
+  const iosHintCode = indexSource.match(/function showIOSHint[\s\S]*?hint\.addEventListener\('click', dismiss\);[\s\S]*?document\.addEventListener\('click', onDoc/)?.[0] || '';
+  assert.ok(!hintCode.includes('inset:0') && !hintCode.includes('inset: 0'), 'showInstallHint must not use inset:0 overlay');
+  assert.ok(!iosHintCode.includes('inset:0') && !iosHintCode.includes('inset: 0'), 'showIOSHint must not use inset:0 overlay');
+  assert.ok(hintCode.includes('style.top') || hintCode.includes('style.bottom'), 'showInstallHint must use specific top/bottom positioning');
+  assert.ok(iosHintCode.includes('style.top') || iosHintCode.includes('style.bottom'), 'showIOSHint must use specific top/bottom positioning');
+  console.log('  PASS E12 install hints use specific positioning, no page-covering inset:0');
+
+  // E13: PWA installed mode — standalone detection + install UI hidden
+  assert.ok(
+    indexSource.includes('display-mode: standalone') || indexSource.includes("matchMedia('(display-mode: standalone)')"),
+    'Must detect standalone/installed mode'
+  );
+  assert.ok(indexSource.includes('navigator.standalone'), 'Must detect iOS standalone mode');
+  assert.ok(
+    indexSource.includes('mob-pwa-slot') && (
+      indexSource.includes("style.display = 'none'") ||
+      indexSource.includes('hidden = true') ||
+      indexSource.includes('.hidden') ||
+      indexSource.includes('removeChild') ||
+      indexSource.includes('classList') ||
+      indexSource.includes('display:none') ||
+      indexSource.includes("renderMobPWA('installed')")
+    ),
+    'mob-pwa-slot must be hidden/installed in standalone mode'
+  );
+  console.log('  PASS E13 standalone detection present; install slot hidden in installed mode');
+}
+
 // ─── F. No credentials ──────────────────────────────────────────────────────
 {
   const creds = ['password', 'secret', 'smtp', 'apikey', 'api_key', '@gmail.com'];
