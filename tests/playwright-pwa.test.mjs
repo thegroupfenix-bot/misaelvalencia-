@@ -1,14 +1,17 @@
 /**
  * Playwright PWA install-button tests — GLV Services SAS
  *
- * Test 1: Desktop Chrome Windows 1280px — navBtn visible, Chrome hint, cierre ×3,
- *         cleanup listener, links accesibles por CSS y elementFromPoint
- * Test 2: Mobile iPhone 390px — navBtn oculto, hamburguesa clic real, mob-pwa-slot
- *         1 btn iOS, iOS hint, cierre por toque en guía
- * Test 3: iPadOS desktop 1024px (MacIntel+touch) — navBtn visible, iOS hint, links OK
- * Test 4: Chrome Windows (confirmación doble) — Chrome hint, sin iOS hint
+ * Test 6 (static): manifest, sw.js, serviceWorker.register
+ * Test 1: Desktop Chrome Windows 1280px — navBtn, Chrome hint, cierre ×3, cleanup,
+ *         overlay computed, WhatsApp+Portal elementFromPoint+intercepción con guía Chrome
+ * Test 2: Mobile iPhone 390px — navBtn oculto, hamburguesa clic real, mob-pwa-slot,
+ *         iOS hint, cierre guía, noFullWindowFixedOverlay
+ * Test 3: iPadOS desktop 1024px — navBtn, iOS hint, cierre ×3, cleanup, overlay,
+ *         WhatsApp+Portal elementFromPoint+intercepción con guía iOS
+ * Test 4: Chrome Windows (confirmación) — Chrome hint, sin iOS
  * Test 5: PWA standalone — navBtn oculto, sin hints
- * Test 6: Manifest + SW linked (static check)
+ * Test 7 (new): beforeinstallprompt simulado — prompt() llamado exactamente 1 vez,
+ *               sin guía Chrome cuando prompt nativo existe
  */
 
 import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
@@ -83,7 +86,39 @@ async function noFixedInset0Inline(page) {
   );
 }
 
-/** Verify key desktop nav links are not blocked (CSS check + elementFromPoint for hints) */
+/**
+ * Fail if any visible element covers ≥85% of the viewport with position:fixed.
+ * Returns array of offending elements (empty = pass).
+ * allowedIds: element IDs to skip (loaders, known overlays unrelated to PWA).
+ */
+async function noFullWindowFixedOverlay(page, allowedIds = []) {
+  return page.evaluate((allowedIds) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const threshold = 0.85;
+    const bad = [];
+    for (const el of document.querySelectorAll('*')) {
+      if (allowedIds.includes(el.id)) continue;
+      const cs = window.getComputedStyle(el);
+      if (cs.position !== 'fixed') continue;
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      const op = parseFloat(cs.opacity);
+      if (!isNaN(op) && op < 0.05) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width >= vw * threshold && r.height >= vh * threshold) {
+        bad.push({
+          id: el.id || '(no id)',
+          cls: (el.className || '').toString().slice(0, 60),
+          w: Math.round(r.width),
+          h: Math.round(r.height),
+        });
+      }
+    }
+    return bad;
+  }, allowedIds);
+}
+
+/** Verify key desktop nav links are not blocked (CSS check + elementFromPoint for Cotizar) */
 async function desktopLinksAccessible(page) {
   return page.evaluate(() => {
     const selectors = ['a.nav-cta[href="/cotizacion"]'];
@@ -92,15 +127,32 @@ async function desktopLinksAccessible(page) {
       if (!el) return true;
       const s = window.getComputedStyle(el);
       if (s.pointerEvents === 'none' || s.visibility === 'hidden') return false;
-      // Verify no opaque element is blocking it at the center point
       const box = el.getBoundingClientRect();
-      if (box.width === 0 || box.height === 0) return true; // not in viewport
+      if (box.width === 0 || box.height === 0) return true;
       const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
       if (!top) return true;
-      // The topmost element should be the link or a child of it
       return el.contains(top) || top.contains(el) || top === el;
     });
   });
+}
+
+/** Check elementFromPoint for a selector; returns {ok, detail} */
+async function checkElementFromPoint(page, selector) {
+  return page.evaluate((selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return { ok: true, reason: 'selector not found' };
+    const box = el.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) return { ok: true, reason: 'zero size, not in viewport' };
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) {
+      return { ok: true, reason: 'center outside viewport' };
+    }
+    const top = document.elementFromPoint(cx, cy);
+    if (!top) return { ok: false, reason: 'no element at point' };
+    const ok = el === top || el.contains(top) || top.closest(selector) !== null;
+    return { ok, topTag: top.tagName, topId: top.id, topHref: top.getAttribute?.('href') };
+  }, selector);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -109,15 +161,14 @@ let server, browser;
 
 try {
   server = await serve(PORT);
-  browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+  browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'] });
   const BASE = `http://localhost:${PORT}`;
 
   // ══════════════════════════════════════════════════════════════════════════
-  // TEST 1 — Desktop Chrome Windows 1280px: navBtn, Chrome hint, cierre ×3,
-  //          cleanup listener, links accesibles
+  // TEST 1 — Desktop Chrome Windows 1280px
   // ══════════════════════════════════════════════════════════════════════════
   {
-    console.log('\nTEST 1: Desktop Chrome Windows 1280px — hint, cierre ×3, cleanup, links');
+    console.log('\nTEST 1: Desktop Chrome Windows 1280px — hint, cierre ×3, cleanup, overlay, WhatsApp+Portal');
     const winUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     const ctx = await browser.newContext({ userAgent: winUA, viewport: { width: 1280, height: 800 } });
     const page = await ctx.newPage();
@@ -167,7 +218,7 @@ try {
     assert.ok(await page.$('#pwa-install-hint') === null, 'Hint must close when tapped');
     console.log('  PASS 1g hint closes on tap/click inside the guide');
 
-    // 1h — cierre por timeout simulado (cancelar _t → 50ms → click automático en hint)
+    // 1h — cierre por timeout simulado
     await page.click('#pwa-install-nav-btn');
     await page.waitForTimeout(200);
     await page.evaluate(() => {
@@ -191,28 +242,71 @@ try {
     await page.waitForTimeout(200);
     console.log('  PASS 1i listener cleanup — exactly 1 hint on reopen');
 
-    // 1j — links Cotizar y WhatsApp accesibles por CSS + elementFromPoint
+    // 1j — links Cotizar accesibles por CSS + elementFromPoint
     assert.ok(await desktopLinksAccessible(page), 'Desktop nav links must not be blocked');
     console.log('  PASS 1j Cotizar link accessible (CSS + elementFromPoint)');
 
-    // WhatsApp floating button accessible
+    // 1k — WhatsApp accesible por CSS
     const waOk = await page.evaluate(() => {
       const wa = document.querySelector('a.wa-btn[href*="wa.me"], a[href*="wa.me"]');
       if (!wa) return true;
       const s = window.getComputedStyle(wa);
       return s.pointerEvents !== 'none' && s.visibility !== 'hidden';
     });
-    assert.ok(waOk, 'WhatsApp link must not be blocked');
+    assert.ok(waOk, 'WhatsApp link must not be blocked by CSS');
     console.log('  PASS 1k WhatsApp link accessible by CSS');
+
+    // 1l — noFullWindowFixedOverlay con guía Chrome activa
+    await page.click('#pwa-install-nav-btn');
+    await page.waitForTimeout(200);
+    assert.ok(await page.$('#pwa-install-hint') !== null, 'Chrome hint must be active for overlay test');
+    const badOverlay1l = await noFullWindowFixedOverlay(page, []);
+    assert.equal(badOverlay1l.length, 0,
+      `No full-window fixed overlay allowed with Chrome guide; found: ${JSON.stringify(badOverlay1l)}`);
+    console.log('  PASS 1l noFullWindowFixedOverlay — no pantalla completa con guía Chrome activa');
+
+    // 1m — WhatsApp elementFromPoint (no bloqueado)
+    const waEfp = await checkElementFromPoint(page, 'a.wa-btn[href*="wa.me"], a[href*="wa.me"]');
+    assert.ok(waEfp.ok, `WhatsApp must be topmost via elementFromPoint; got ${JSON.stringify(waEfp)}`);
+    console.log('  PASS 1m WhatsApp elementFromPoint — no bloqueado');
+
+    // 1n — WhatsApp clic real → nueva pestaña (guía Chrome activa)
+    const [waPage1n] = await Promise.all([
+      ctx.waitForEvent('page'),
+      page.click('a.wa-btn[href*="wa.me"], a[href*="wa.me"]'),
+    ]);
+    await waPage1n.close();
+    console.log('  PASS 1n WhatsApp clic real → nueva pestaña con guía Chrome activa');
+
+    // Cerrar hint si quedó abierto
+    await page.evaluate(() => { const h = document.getElementById('pwa-install-hint'); if (h) h.click(); });
+    await page.waitForTimeout(100);
+
+    // 1o — Portal elementFromPoint (no bloqueado)
+    const portalEfp = await checkElementFromPoint(page, 'a.nav-cta[target="_blank"]:not([href="/cotizacion"])');
+    assert.ok(portalEfp.ok, `Portal Clientes must be topmost via elementFromPoint; got ${JSON.stringify(portalEfp)}`);
+    console.log('  PASS 1o Portal Clientes elementFromPoint — no bloqueado');
+
+    // 1p — Portal clic real → nueva pestaña (reabrir guía Chrome primero)
+    await page.click('#pwa-install-nav-btn');
+    await page.waitForTimeout(200);
+    assert.ok(await page.$('#pwa-install-hint') !== null, 'Chrome hint must be active for Portal tab test');
+    const [portalPage1p] = await Promise.all([
+      ctx.waitForEvent('page'),
+      page.click('a.nav-cta[target="_blank"]:not([href="/cotizacion"])'),
+    ]);
+    await portalPage1p.close();
+    console.log('  PASS 1p Portal Clientes clic real → nueva pestaña con guía Chrome activa');
 
     await ctx.close();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // TEST 2 — Mobile iPhone 390px: navBtn oculto, hamburguesa clic real, iOS hint
+  // TEST 2 — Mobile iPhone 390px: navBtn oculto, hamburguesa clic real, iOS hint,
+  //          overlay check con whitelist mobMenuOverlay
   // ══════════════════════════════════════════════════════════════════════════
   {
-    console.log('\nTEST 2: Mobile iPhone 390px — hamburguesa clic real, iOS hint, cierre guía');
+    console.log('\nTEST 2: Mobile iPhone 390px — hamburguesa clic real, iOS hint, overlay check');
     const iphoneUA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
     const ctx = await browser.newContext({ userAgent: iphoneUA, viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
@@ -259,14 +353,21 @@ try {
     assert.ok(await noFixedInset0Inline(page), 'No inline position:fixed+inset:0 on mobile');
     console.log('  PASS 2f no inline position:fixed+inset:0');
 
+    // 2g — noFullWindowFixedOverlay (whitelist mobMenuOverlay porque está abierto)
+    const badOverlay2g = await noFullWindowFixedOverlay(page, ['mobMenuOverlay']);
+    assert.equal(badOverlay2g.length, 0,
+      `No full-window fixed overlay allowed on mobile (excluding mobMenuOverlay); found: ${JSON.stringify(badOverlay2g)}`);
+    console.log('  PASS 2g noFullWindowFixedOverlay — solo mobMenuOverlay permitido en móvil');
+
     await ctx.close();
   }
 
   // ══════════════════════════════════════════════════════════════════════════
   // TEST 3 — iPadOS desktop mode (MacIntel, maxTouchPoints=5, 1024px)
+  //          + overlay check + WhatsApp/Portal con guía iOS activa
   // ══════════════════════════════════════════════════════════════════════════
   {
-    console.log('\nTEST 3: iPadOS desktop mode (MacIntel, maxTouchPoints=5, 1024px)');
+    console.log('\nTEST 3: iPadOS desktop mode (MacIntel, maxTouchPoints=5, 1024px) — overlay, WhatsApp+Portal');
     const iPadOSUA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15';
     const ctx = await browser.newContext({ userAgent: iPadOSUA, viewport: { width: 1024, height: 768 } });
     const page = await ctx.newPage();
@@ -345,6 +446,48 @@ try {
     await page.waitForTimeout(200);
     console.log('  PASS 3j listener cleanup — exactly 1 iOS hint on reopen');
 
+    // 3k — noFullWindowFixedOverlay con guía iOS activa
+    await page.click('#pwa-install-nav-btn');
+    await page.waitForTimeout(200);
+    assert.ok(await page.$('#pwa-ios-hint') !== null, 'iOS hint must be active for overlay test');
+    const badOverlay3k = await noFullWindowFixedOverlay(page, []);
+    assert.equal(badOverlay3k.length, 0,
+      `No full-window fixed overlay allowed with iOS guide active; found: ${JSON.stringify(badOverlay3k)}`);
+    console.log('  PASS 3k noFullWindowFixedOverlay — no pantalla completa con guía iOS activa');
+
+    // 3l — WhatsApp elementFromPoint (no bloqueado, con guía iOS activa)
+    const waEfp3l = await checkElementFromPoint(page, 'a.wa-btn[href*="wa.me"], a[href*="wa.me"]');
+    assert.ok(waEfp3l.ok, `WhatsApp must be topmost via elementFromPoint; got ${JSON.stringify(waEfp3l)}`);
+    console.log('  PASS 3l WhatsApp elementFromPoint — no bloqueado con guía iOS activa');
+
+    // 3m — WhatsApp clic real → nueva pestaña (guía iOS activa)
+    const [waPage3m] = await Promise.all([
+      ctx.waitForEvent('page'),
+      page.click('a.wa-btn[href*="wa.me"], a[href*="wa.me"]'),
+    ]);
+    await waPage3m.close();
+    console.log('  PASS 3m WhatsApp clic real → nueva pestaña con guía iOS activa');
+
+    // Cerrar hint si quedó abierto
+    await page.evaluate(() => { const h = document.getElementById('pwa-ios-hint'); if (h) h.click(); });
+    await page.waitForTimeout(100);
+
+    // 3n — Portal elementFromPoint (no bloqueado)
+    const portalEfp3n = await checkElementFromPoint(page, 'a.nav-cta[target="_blank"]:not([href="/cotizacion"])');
+    assert.ok(portalEfp3n.ok, `Portal Clientes must be topmost via elementFromPoint; got ${JSON.stringify(portalEfp3n)}`);
+    console.log('  PASS 3n Portal Clientes elementFromPoint — no bloqueado con guía iOS');
+
+    // 3o — Portal clic real → nueva pestaña (reabrir guía iOS primero)
+    await page.click('#pwa-install-nav-btn');
+    await page.waitForTimeout(200);
+    assert.ok(await page.$('#pwa-ios-hint') !== null, 'iOS hint must be active for Portal tab test');
+    const [portalPage3o] = await Promise.all([
+      ctx.waitForEvent('page'),
+      page.click('a.nav-cta[target="_blank"]:not([href="/cotizacion"])'),
+    ]);
+    await portalPage3o.close();
+    console.log('  PASS 3o Portal Clientes clic real → nueva pestaña con guía iOS activa');
+
     await ctx.close();
   }
 
@@ -419,13 +562,61 @@ try {
     await ctx.close();
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // TEST 7 — beforeinstallprompt simulado:
+  //   deferredPrompt.prompt() debe llamarse exactamente 1 vez,
+  //   no debe mostrarse guía Chrome cuando existe prompt nativo
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    console.log('\nTEST 7: beforeinstallprompt simulado — prompt() exactamente 1 vez, sin guía Chrome');
+    const winUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    const ctx = await browser.newContext({ userAgent: winUA, viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    await spoofPlatform(page, 'Win32', 0);
+    await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    await page.waitForTimeout(400);
+
+    // Inyectar evento beforeinstallprompt simulado con contador de prompt()
+    await page.evaluate(() => {
+      window._pwaPromptCallCount = 0;
+      const ev = new Event('beforeinstallprompt');
+      ev.preventDefault = () => {};
+      ev.prompt = () => {
+        window._pwaPromptCallCount++;
+        return Promise.resolve({ outcome: 'accepted' });
+      };
+      ev.userChoice = Promise.resolve({ outcome: 'accepted' });
+      window.dispatchEvent(ev);
+    });
+    await page.waitForTimeout(200);
+
+    // Clic en el botón de instalación — debe llamar prompt() nativo
+    await page.click('#pwa-install-nav-btn');
+    await page.waitForTimeout(400);
+
+    // 7a — deferredPrompt.prompt() llamado exactamente 1 vez
+    const callCount = await page.evaluate(() => window._pwaPromptCallCount || 0);
+    assert.equal(callCount, 1,
+      `deferredPrompt.prompt() must be called exactly once; called ${callCount} times`);
+    console.log(`  PASS 7a deferredPrompt.prompt() called exactly once (count=${callCount})`);
+
+    // 7b — sin guía Chrome cuando prompt nativo existe (no showInstallHint)
+    const chromeHintAfter = await page.$('#pwa-install-hint');
+    assert.ok(chromeHintAfter === null,
+      '#pwa-install-hint must NOT appear when native beforeinstallprompt was available');
+    console.log('  PASS 7b no Chrome guide shown when native prompt exists');
+
+    await ctx.close();
+  }
+
   console.log('\n✅ All Playwright PWA tests passed — GLV Services SAS');
-  console.log('   Test 1: Desktop 1280px — navBtn ✓, Chrome hint ✓, cierre ×3 ✓, cleanup ✓, links ✓');
-  console.log('   Test 2: Mobile iPhone 390px — navBtn oculto ✓, hamburguesa clic real ✓, iOS hint ✓, cierre guía ✓');
-  console.log('   Test 3: iPadOS 1024px — navBtn ✓, iOS hint ✓, cierre ×3 ✓, cleanup ✓');
+  console.log('   Test 1: Desktop 1280px — navBtn ✓, Chrome hint ✓, cierre ×3 ✓, cleanup ✓, overlay ✓, WhatsApp+Portal elementFromPoint+nueva pestaña ✓');
+  console.log('   Test 2: Mobile iPhone 390px — navBtn oculto ✓, hamburguesa clic real ✓, iOS hint ✓, cierre guía ✓, overlay whitelist ✓');
+  console.log('   Test 3: iPadOS 1024px — navBtn ✓, iOS hint ✓, cierre ×3 ✓, cleanup ✓, overlay ✓, WhatsApp+Portal elementFromPoint+nueva pestaña ✓');
   console.log('   Test 4: Chrome Windows — Chrome hint ✓, no iOS ✓, no inset:0 ✓');
   console.log('   Test 5: Standalone — navBtn hidden ✓, no hints ✓');
   console.log('   Test 6: Manifest + SW — all files linked ✓');
+  console.log('   Test 7: beforeinstallprompt — prompt() ×1 ✓, no Chrome guide con prompt nativo ✓');
 
 } finally {
   if (browser) await browser.close();
