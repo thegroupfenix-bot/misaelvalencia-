@@ -3551,9 +3551,13 @@ window.addEventListener('scroll', () => {
         return;
       }
 
-      // iOS Safari (no beforeinstallprompt)
+      // iOS Safari / iPadOS — mobile slot + desktop nav button → showIOSHint (never Chrome message)
       if (isIOS) {
         renderMobPWA('ios');
+        if (navBtn) {
+          navBtn.style.display = 'inline-flex';
+          navBtn.addEventListener('click', function() { showIOSHint(navBtn); });
+        }
         return;
       }
 
