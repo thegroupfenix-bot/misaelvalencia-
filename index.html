@@ -3594,8 +3594,13 @@ window.addEventListener('scroll', () => {
         hint.innerHTML = '<strong style="color:#C9A84C;display:block;margin-bottom:6px;">Añadir a pantalla de inicio</strong>1. Abre en <strong>Safari</strong><br>2. Toca <strong>Compartir</strong> (□↑)<br>3. Selecciona <strong>"Agregar a pantalla de inicio"</strong>';
         if (anchor) {
           var r = anchor.getBoundingClientRect();
-          hint.style.top = (r.bottom + 8) + 'px';
-          hint.style.right = Math.max(8, document.documentElement.clientWidth - r.right) + 'px';
+          if (r.width > 0 && r.height > 0) {
+            hint.style.top = (r.bottom + 8) + 'px';
+            hint.style.right = Math.max(8, document.documentElement.clientWidth - r.right) + 'px';
+          } else {
+            hint.style.bottom = '80px';
+            hint.style.left = '16px';
+          }
         } else { hint.style.bottom = '80px'; hint.style.right = '16px'; }
         document.body.appendChild(hint);
         function onDoc(e) { if (!hint.contains(e.target) && e.target !== anchor) dismiss(); }

@@ -343,8 +343,32 @@ try {
     assert.ok(iosHint !== null, '#pwa-ios-hint must appear on iPhone mobile menu click');
     console.log('  PASS 2d iOS hint appears on mobile menu click');
 
-    // 2e — cierre por toque en la guía (hint puede estar fuera del viewport en móvil → click programático)
-    await page.evaluate(() => { const h = document.getElementById('pwa-ios-hint'); if (h) h.click(); });
+    // 2d-vp — hint tiene dimensiones > 0 y está dentro del viewport
+    const hintInViewport = await page.evaluate(() => {
+      const h = document.getElementById('pwa-ios-hint');
+      if (!h) return { ok: false, reason: 'no hint' };
+      const r = h.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      if (r.width <= 0 || r.height <= 0) return { ok: false, reason: 'zero size', w: r.width, h: r.height };
+      const inViewport = r.top >= -1 && r.left >= -1 && r.bottom <= vh + 1 && r.right <= vw + 1;
+      return { ok: inViewport, w: Math.round(r.width), h: Math.round(r.height),
+               top: Math.round(r.top), left: Math.round(r.left),
+               bottom: Math.round(r.bottom), right: Math.round(r.right), vw, vh };
+    });
+    assert.ok(hintInViewport.ok,
+      `iOS hint debe ser visible dentro del viewport; got ${JSON.stringify(hintInViewport)}`);
+    assert.ok(hintInViewport.w > 0, `iOS hint debe tener ancho > 0; got ${hintInViewport.w}`);
+    assert.ok(hintInViewport.h > 0, `iOS hint debe tener alto > 0; got ${hintInViewport.h}`);
+    console.log(`  PASS 2d-vp iOS hint en viewport: w=${hintInViewport.w} h=${hintInViewport.h} top=${hintInViewport.top} left=${hintInViewport.left}`);
+
+    // 2e — cierre por toque en la guía (clic real si accesible, programático como fallback)
+    const hintVisible = hintInViewport.ok && hintInViewport.w > 0 && hintInViewport.h > 0;
+    if (hintVisible) {
+      await page.click('#pwa-ios-hint');
+    } else {
+      await page.evaluate(() => { const h = document.getElementById('pwa-ios-hint'); if (h) h.click(); });
+    }
     await page.waitForTimeout(300);
     assert.ok(await page.$('#pwa-ios-hint') === null, 'iOS hint must close when tapped');
     console.log('  PASS 2e iOS hint closes on tap inside the guide');
@@ -358,6 +382,41 @@ try {
     assert.equal(badOverlay2g.length, 0,
       `No full-window fixed overlay allowed on mobile (excluding mobMenuOverlay); found: ${JSON.stringify(badOverlay2g)}`);
     console.log('  PASS 2g noFullWindowFixedOverlay — solo mobMenuOverlay permitido en móvil');
+
+    // 2h — WhatsApp accesible después de cerrar guía iOS (elementFromPoint, con check fuera de viewport)
+    const waEfp2h = await checkElementFromPoint(page, 'a.wa-btn');
+    assert.ok(waEfp2h.ok, `WhatsApp debe ser accesible después de guía iOS; ${JSON.stringify(waEfp2h)}`);
+    console.log('  PASS 2h WhatsApp accesible (elementFromPoint) después de cerrar guía iOS');
+
+    // 2i — Contacto y Cotizar clicables en menú hamburguesa (re-abrir con clic real)
+    await page.click('#navHamburger');
+    await page.waitForTimeout(300);
+    const mobLinksOk = await page.evaluate(() => {
+      const checks = [
+        { label: 'Cotizar', sel: '#mobMenuOverlay a[href="/cotizacion"]:not([aria-label="Contacto"])' },
+        { label: 'Contacto', sel: '#mob-contacto-item a' },
+      ];
+      return checks.map(({ label, sel }) => {
+        const el = document.querySelector(sel);
+        if (!el) return { label, ok: false, reason: 'not found' };
+        const cs = window.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return { label, ok: false, reason: 'hidden' };
+        const box = el.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) return { label, ok: true, reason: 'zero size (in container)' };
+        const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        const isTopmost = top && (el === top || el.contains(top) || top.closest(sel) !== null);
+        return { label, ok: isTopmost, topTag: top?.tagName };
+      });
+    });
+    for (const r of mobLinksOk) {
+      assert.ok(r.ok, `${r.label} debe ser clicable en menú hamburguesa: ${JSON.stringify(r)}`);
+    }
+    console.log('  PASS 2i Contacto y Cotizar clicables en menú hamburguesa (después de guía iOS)');
+
+    // 2j — Portal Clientes existe en DOM
+    const portalExists = await page.evaluate(() => !!document.querySelector('a.nav-cta[target="_blank"]'));
+    assert.ok(portalExists, 'Portal Clientes (a.nav-cta[target="_blank"]) debe existir en DOM');
+    console.log('  PASS 2j Portal Clientes existe en DOM');
 
     await ctx.close();
   }
@@ -611,7 +670,7 @@ try {
 
   console.log('\n✅ All Playwright PWA tests passed — GLV Services SAS');
   console.log('   Test 1: Desktop 1280px — navBtn ✓, Chrome hint ✓, cierre ×3 ✓, cleanup ✓, overlay ✓, WhatsApp+Portal elementFromPoint+nueva pestaña ✓');
-  console.log('   Test 2: Mobile iPhone 390px — navBtn oculto ✓, hamburguesa clic real ✓, iOS hint ✓, cierre guía ✓, overlay whitelist ✓');
+  console.log('   Test 2: Mobile iPhone 390px — navBtn oculto ✓, hamburguesa clic real ✓, iOS hint en viewport ✓, cierre guía ✓, overlay whitelist ✓, WhatsApp/Contacto/Cotizar/Portal ✓');
   console.log('   Test 3: iPadOS 1024px — navBtn ✓, iOS hint ✓, cierre ×3 ✓, cleanup ✓, overlay ✓, WhatsApp+Portal elementFromPoint+nueva pestaña ✓');
   console.log('   Test 4: Chrome Windows — Chrome hint ✓, no iOS ✓, no inset:0 ✓');
   console.log('   Test 5: Standalone — navBtn hidden ✓, no hints ✓');
