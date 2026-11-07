@@ -224,18 +224,98 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   );
   console.log('  PASS E8 Contacto precedes mob-pwa-slot in mobile menu');
 
-  // E6: iOS guide modal present with 3-step guide
-  assert.ok(indexSource.includes('id="iosGuideBackdrop"'), 'iOS guide modal must exist');
-  assert.ok(indexSource.includes('ios-guide-steps'), 'iOS guide steps list must exist');
-  assert.ok(indexSource.includes('ios-step-num'), 'iOS step numbers must exist');
-  assert.ok(indexSource.includes('Compartir'), 'iOS guide must mention Compartir (Share)');
-  assert.ok(indexSource.includes('Agregar a pantalla de inicio') || indexSource.includes('Add to Home Screen'), 'iOS guide must mention Add to Home Screen');
-  console.log('  PASS E6 iOS guide modal with 3-step instructions present');
+  // E6: NO fullscreen iOS modal (safe small hint replaces it)
+  assert.ok(!indexSource.includes('id="iosGuideBackdrop"'), 'Fullscreen iOS guide modal must be absent (safe hint used instead)');
+  assert.ok(!indexSource.includes('ios-guide-steps'), 'Blocking iOS guide steps list must be absent');
+  assert.ok(indexSource.includes('showIOSHint'), 'showIOSHint function must exist (safe iOS tooltip)');
+  assert.ok(indexSource.includes('Compartir'), 'iOS hint must mention Compartir (Share)');
+  assert.ok(indexSource.includes('Agregar a pantalla de inicio') || indexSource.includes('Add to Home Screen'), 'iOS hint must mention Add to Home Screen');
+  assert.ok(!indexSource.includes('.ios-guide-backdrop'), 'iOS guide backdrop CSS must be absent (no fullscreen overlay)');
+  console.log('  PASS E6 no fullscreen iOS modal; safe showIOSHint present');
 
   // E7: standalone detection present
   assert.ok(indexSource.includes('display-mode: standalone'), 'Must detect standalone/installed mode');
   assert.ok(indexSource.includes('navigator.standalone'), 'Must detect iOS standalone');
   console.log('  PASS E7 standalone/installed detection present');
+
+  // E9: install hint shown when deferredPrompt is null
+  assert.ok(
+    indexSource.includes('showInstallHint'),
+    'showInstallHint function must exist'
+  );
+  assert.ok(
+    indexSource.includes("setAttribute('role', 'alert')") || indexSource.includes('setAttribute("role", "alert")'),
+    'install hint element must have role=alert'
+  );
+  assert.ok(
+    indexSource.includes('La instalación aún no está disponible'),
+    'install hint must contain the unavailability message in Spanish'
+  );
+  assert.ok(
+    indexSource.includes('!deferredPrompt') && indexSource.includes('showInstallHint'),
+    'install click handler must call showInstallHint when deferredPrompt is null'
+  );
+  assert.ok(
+    indexSource.includes('document.removeEventListener') && indexSource.includes('onDoc'),
+    'showInstallHint must remove the document click listener on dismiss'
+  );
+  console.log('  PASS E9 install hint shown when deferredPrompt is null, listener cleaned up');
+}
+
+// ─── E10-E13. iPadOS + behavioral tests ─────────────────────────────────────
+{
+  // E10: iPadOS desktop mode detection covers MacIntel + maxTouchPoints > 1
+  assert.ok(
+    indexSource.includes("navigator.platform === 'MacIntel'") ||
+    indexSource.includes('navigator.platform === "MacIntel"'),
+    'Must detect iPadOS desktop mode via navigator.platform'
+  );
+  assert.ok(
+    indexSource.includes('navigator.maxTouchPoints > 1'),
+    'Must check maxTouchPoints > 1 for iPadOS desktop mode'
+  );
+  console.log('  PASS E10 iPadOS desktop mode detection present');
+
+  // E11: behavioral simulation — isIOS logic
+  function isIOSSim(ua, platform, maxTouchPoints, MSStream) {
+    return (/iphone|ipad|ipod/i.test(ua) && !MSStream) ||
+           (platform === 'MacIntel' && maxTouchPoints > 1);
+  }
+  assert.ok(isIOSSim('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15', 'MacIntel', 5, undefined), 'iPadOS desktop mode must be detected as iOS');
+  assert.ok(isIOSSim('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)', 'iPad', 5, undefined), 'Classic iPad UA must be detected as iOS');
+  assert.ok(isIOSSim('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 'iPhone', 5, undefined), 'iPhone UA must be detected as iOS');
+  assert.ok(!isIOSSim('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120', 'Win32', 0, undefined), 'Chrome Windows must NOT be detected as iOS');
+  assert.ok(!isIOSSim('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 'MacIntel', 0, undefined), 'Mac desktop (no touch) must NOT be detected as iOS');
+  console.log('  PASS E11 isIOS behavioral simulation: iPadOS desktop ✓, iPad ✓, iPhone ✓, Chrome Windows ✗, Mac desktop ✗');
+
+  // E12: install hints must not use inset:0 (no page-covering overlay)
+  const hintCode = indexSource.match(/function showInstallHint[\s\S]*?hint\.addEventListener\('click', dismiss\);[\s\S]*?document\.addEventListener\('click', onDoc/)?.[0] || '';
+  const iosHintCode = indexSource.match(/function showIOSHint[\s\S]*?hint\.addEventListener\('click', dismiss\);[\s\S]*?document\.addEventListener\('click', onDoc/)?.[0] || '';
+  assert.ok(!hintCode.includes('inset:0') && !hintCode.includes('inset: 0'), 'showInstallHint must not use inset:0 overlay');
+  assert.ok(!iosHintCode.includes('inset:0') && !iosHintCode.includes('inset: 0'), 'showIOSHint must not use inset:0 overlay');
+  assert.ok(hintCode.includes('style.top') || hintCode.includes('style.bottom'), 'showInstallHint must use specific top/bottom positioning');
+  assert.ok(iosHintCode.includes('style.top') || iosHintCode.includes('style.bottom'), 'showIOSHint must use specific top/bottom positioning');
+  console.log('  PASS E12 install hints use specific positioning, no page-covering inset:0');
+
+  // E13: PWA installed mode — standalone detection + install UI hidden
+  assert.ok(
+    indexSource.includes('display-mode: standalone') || indexSource.includes("matchMedia('(display-mode: standalone)')"),
+    'Must detect standalone/installed mode'
+  );
+  assert.ok(indexSource.includes('navigator.standalone'), 'Must detect iOS standalone mode');
+  assert.ok(
+    indexSource.includes('mob-pwa-slot') && (
+      indexSource.includes("style.display = 'none'") ||
+      indexSource.includes('hidden = true') ||
+      indexSource.includes('.hidden') ||
+      indexSource.includes('removeChild') ||
+      indexSource.includes('classList') ||
+      indexSource.includes('display:none') ||
+      indexSource.includes("renderMobPWA('installed')")
+    ),
+    'mob-pwa-slot must be hidden/installed in standalone mode'
+  );
+  console.log('  PASS E13 standalone detection present; install slot hidden in installed mode');
 }
 
 // ─── F. No credentials ──────────────────────────────────────────────────────
