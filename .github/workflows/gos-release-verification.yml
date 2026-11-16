@@ -27,7 +27,7 @@ jobs:
           cache: npm
           cache-dependency-path: glv-connect/backend/package-lock.json
       - run: npm ci
-      - run: node --test tests/*.test.js
+      - run: node --test --test-concurrency=1 tests/*.test.js
 
   frontend:
     name: Frontend build
