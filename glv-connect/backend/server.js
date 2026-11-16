@@ -112,17 +112,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 app.set("trust proxy", 1);
 
-// Health check first — before all other routes
+// Public health check deliberately exposes no operational or data information.
 app.get("/health", (_req, res) => {
-  let dbInfo = {};
-  try {
-    const db = require("./db/database");
-    const mediaCount = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
-    const userCount  = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
-    dbInfo = { media_assets: mediaCount, users: userCount };
-    try { dbInfo.migrations = db.getMigrationStatus(); } catch (_) {}
-  } catch (e) { dbInfo = { error: e.message }; }
-  res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS, db: dbInfo });
+  res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS });
 });
 
 // API routes
