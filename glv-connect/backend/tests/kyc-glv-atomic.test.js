@@ -45,6 +45,7 @@ const PROD_BASE_ENV = {
   DB_PATH:    ":memory:",
   NODE_ENV:   "production",
   JWT_SECRET: "probe-jwt-secret-at-least-32-chars-long-xyz",
+  SEED_ADMIN_PASSWORD: "probe-bootstrap-password",
 };
 
 // The probe script mixes server console.log output with the JSON result in stdout.
