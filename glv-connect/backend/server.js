@@ -73,6 +73,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_ORIGI
   .filter(Boolean);
 
 const { validateAndNormalizeOrigins, makeOriginChecker } = require("./utils/corsOrigin");
+const { apiLimiter, adminLimiter } = require("./middleware/rateLimiter");
 
 let VALIDATED_ORIGINS;
 try {
@@ -118,6 +119,15 @@ app.get("/health", (_req, res) => {
 });
 
 // API routes
+// Apply a shared ceiling before route-specific controls.
+app.use([
+  "/auth", "/documents", "/audit", "/users", "/profile", "/images", "/admin",
+  "/clients", "/operations", "/finance", "/tasks", "/price-center", "/media",
+  "/backup", "/commercial", "/operations-logistics", "/vessel-charter",
+  "/cargo-intelligence", "/visual-evidence"
+], apiLimiter);
+app.use(["/admin", "/users", "/backup"], adminLimiter);
+
 app.use("/auth",         authRouter);
 app.use("/documents",    documentsRouter);
 app.use("/audit",        auditRouter);
