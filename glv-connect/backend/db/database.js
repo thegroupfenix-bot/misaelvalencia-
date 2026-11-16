@@ -1001,16 +1001,14 @@ function seedUsers() {
   const count = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
   if (count > 0) return;
 
-  const bootstrapPassword = process.env.SEED_ADMIN_PASSWORD || generateBootstrapPassword();
-  const isGenerated = !process.env.SEED_ADMIN_PASSWORD;
+  const isProduction = process.env.NODE_ENV === "production";
+  if (isProduction && !process.env.SEED_ADMIN_PASSWORD) {
+    throw new Error("SEED_ADMIN_PASSWORD is required for an empty production database");
+  }
 
-  if (isGenerated) {
-    console.warn("╔══════════════════════════════════════════════════════════════╗");
-    console.warn("║  BOOTSTRAP: No SEED_ADMIN_PASSWORD env var found.           ║");
-    console.warn("║  Generated temporary admin password (change immediately):   ║");
-    console.warn(`║  User: mvalencia  Password: ${bootstrapPassword.padEnd(30)}║`);
-    console.warn("║  All other seed users get forced first-login password reset.║");
-    console.warn("╚══════════════════════════════════════════════════════════════╝");
+  const bootstrapPassword = process.env.SEED_ADMIN_PASSWORD || generateBootstrapPassword();
+  if (!process.env.SEED_ADMIN_PASSWORD) {
+    console.warn("[DB] Development bootstrap password generated. Set SEED_ADMIN_PASSWORD before production use.");
   }
 
   const seedPassword = generateBootstrapPassword();
