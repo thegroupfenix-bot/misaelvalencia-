@@ -1581,6 +1581,12 @@ nav {
   border-radius: 50%;
   margin-top: 0.1rem;
 }
+
+/* Safe PWA hints: compact, closable and never cover the page. */
+.pwa-install-hint { position: fixed; right: 1rem; bottom: 1rem; z-index: 1050; width: min(340px, calc(100vw - 2rem)); padding: .85rem 2.8rem .85rem 1rem; background: var(--dark2); color: var(--text); border: 1px solid rgba(191,166,108,.72); box-shadow: 0 12px 28px rgba(0,0,0,.32); font-size: .9rem; line-height: 1.45; }
+.pwa-install-hint button { position: absolute; top: .32rem; right: .38rem; min-width: 38px; min-height: 38px; border: 0; background: transparent; color: var(--text-dim); font-size: 1.3rem; cursor: pointer; }
+.pwa-install-hint button:hover { color: var(--gold); }
+
 /* ─── END PWA INSTALL CSS ─── */
 </style>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -3570,114 +3576,29 @@ window.addEventListener('scroll', () => {
 <script src="/assets/js/glv-forms-config.js"></script>
 <script src="/assets/js/glv-forms.js?v=email-verification-20261001"></script>
   <script>
-    // GLV PWA Install — navbar button + mobile menu (no position:fixed on install button)
+    // GLV PWA install controls. The entry is always visible where installation applies.
     (function() {
-      var deferredPrompt = null;
-      var navBtn = document.getElementById('pwa-install-nav-btn');
-      var mobSlot = document.getElementById('mob-pwa-slot');
-      var iosBackdrop = document.getElementById('iosGuideBackdrop');
-      var iosClose = document.getElementById('iosGuideClose');
-      var hamburger = document.getElementById('navHamburger');
-      var overlay = document.getElementById('mobMenuOverlay');
-      var mobClose = document.getElementById('mobMenuClose');
-
-      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-      var isStandalone = window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true;
-
-      // Service Worker
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
-      }
-
-      // Hamburger menu
-      function openMobMenu() {
-        if (overlay) overlay.classList.add('open');
-        if (hamburger) hamburger.setAttribute('aria-expanded', 'true');
-        document.body.style.overflow = 'hidden';
-      }
-      function closeMobMenu() {
-        if (overlay) overlay.classList.remove('open');
-        if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
-      }
+      var deferredPrompt = null, navBtn = document.getElementById('pwa-install-nav-btn'), mobSlot = document.getElementById('mob-pwa-slot'), hamburger = document.getElementById('navHamburger'), overlay = document.getElementById('mobMenuOverlay'), mobClose = document.getElementById('mobMenuClose'), activeHint = null, hintTimer = null;
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
+      function openMobMenu() { if (overlay) overlay.classList.add('open'); if (hamburger) hamburger.setAttribute('aria-expanded', 'true'); document.body.style.overflow = 'hidden'; }
+      function closeMobMenu() { if (overlay) overlay.classList.remove('open'); if (hamburger) hamburger.setAttribute('aria-expanded', 'false'); document.body.style.overflow = ''; }
       window.closeMobMenu = closeMobMenu;
       if (hamburger) hamburger.addEventListener('click', openMobMenu);
       if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) closeMobMenu(); });
       if (mobClose) mobClose.addEventListener('click', closeMobMenu);
-
-      // iOS Guide modal
-      function openIOSGuide() { if (iosBackdrop) iosBackdrop.classList.add('open'); }
-      function closeIOSGuide() { if (iosBackdrop) iosBackdrop.classList.remove('open'); }
-      if (iosClose) iosClose.addEventListener('click', closeIOSGuide);
-      if (iosBackdrop) iosBackdrop.addEventListener('click', function(e) { if (e.target === iosBackdrop) closeIOSGuide(); });
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') { closeMobMenu(); closeIOSGuide(); }
-      });
-
-      // Render mobile menu PWA slot
-      var DL_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
-      function renderMobPWA(state) {
-        if (!mobSlot) return;
-        if (state === 'installed') {
-          mobSlot.innerHTML = '<div class="mob-pwa-installed-msg" role="status">✓ GLV ya está instalado</div>';
-        } else if (state === 'ios') {
-          mobSlot.innerHTML = '<button class="mob-pwa-install-btn" id="mobIOSBtn" aria-label="Añadir GLV a pantalla de inicio">'
-            + DL_ICON + '<span lang-es>Añadir a pantalla de inicio</span><span lang-en>Add to Home Screen</span><span lang-pt-br>Adicionar à tela inicial</span><span lang-ar>إضافة إلى الشاشة الرئيسية</span><span lang-zh>添加到主屏幕</span></button>';
-          var iosBtn = document.getElementById('mobIOSBtn');
-          if (iosBtn) iosBtn.addEventListener('click', function() { closeMobMenu(); openIOSGuide(); });
-        } else if (state === 'prompt') {
-          mobSlot.innerHTML = '<button class="mob-pwa-install-btn" id="mobInstallBtn" aria-label="Instalar GLV">'
-            + DL_ICON + '<span lang-es>Instalar GLV</span><span lang-en>Install GLV</span><span lang-pt-br>Instalar GLV</span><span lang-ar>تثبيت GLV</span><span lang-zh>安装 GLV</span></button>';
-          var installBtn = document.getElementById('mobInstallBtn');
-          if (installBtn) installBtn.addEventListener('click', function() {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then(function(result) {
-              deferredPrompt = null;
-              if (result.outcome === 'accepted') { renderMobPWA('installed'); if (navBtn) navBtn.style.display = 'none'; }
-              closeMobMenu();
-            });
-          });
-        }
-      }
-
-      // Already installed — standalone mode
-      if (isStandalone) {
-        renderMobPWA('installed');
-        if (navBtn) navBtn.style.display = 'none';
-        return;
-      }
-
-      // iOS Safari (no beforeinstallprompt)
-      if (isIOS) {
-        renderMobPWA('ios');
-        return;
-      }
-
-      // Android / Chrome / Edge / Desktop — requires explicit user action
-      window.addEventListener('beforeinstallprompt', function(e) {
-        e.preventDefault();
-        deferredPrompt = e;
-        if (navBtn) {
-          navBtn.style.display = 'inline-flex';
-          navBtn.addEventListener('click', function() {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then(function(result) {
-              deferredPrompt = null;
-              if (result.outcome === 'accepted') { navBtn.style.display = 'none'; renderMobPWA('installed'); }
-            });
-          }, { once: true });
-        }
-        renderMobPWA('prompt');
-      });
-
-      window.addEventListener('appinstalled', function() {
-        deferredPrompt = null;
-        if (navBtn) navBtn.style.display = 'none';
-        renderMobPWA('installed');
-      });
+      function closeHint() { if (hintTimer) { window.clearTimeout(hintTimer); hintTimer = null; } if (activeHint && activeHint.parentNode) activeHint.parentNode.removeChild(activeHint); activeHint = null; }
+      function showHint(message) { closeHint(); var hint = document.createElement('aside'); hint.className = 'pwa-install-hint'; hint.setAttribute('role', 'status'); hint.innerHTML = '<span></span><button type="button" aria-label="Cerrar">×</button>'; hint.querySelector('span').textContent = message; hint.querySelector('button').addEventListener('click', closeHint); document.body.appendChild(hint); activeHint = hint; hintTimer = window.setTimeout(closeHint, 10000); }
+      function hideInstallControls() { closeHint(); if (navBtn) navBtn.style.display = 'none'; if (mobSlot) mobSlot.innerHTML = ''; }
+      function installOrGuide() { if (isStandalone) return; if (isIOS) { showHint('En Safari, toca Compartir y luego Agregar a pantalla de inicio.'); return; } if (!deferredPrompt) { showHint('La instalación aún no está disponible. Usa el menú del navegador y selecciona Instalar página o Añadir al escritorio.'); return; } deferredPrompt.prompt(); deferredPrompt.userChoice.then(function() { deferredPrompt = null; }); }
+      function renderMobileControl() { if (!mobSlot || isStandalone) return; mobSlot.innerHTML = '<button class="mob-pwa-install-btn" id="mobInstallBtn" type="button" aria-label="Instalar GLV"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span lang-es>Instalar GLV</span><span lang-en>Install GLV</span><span lang-pt-br>Instalar GLV</span><span lang-ar>تثبيت GLV</span><span lang-zh>安装 GLV</span></button>'; var mobBtn = document.getElementById('mobInstallBtn'); if (mobBtn) mobBtn.addEventListener('click', function() { closeMobMenu(); installOrGuide(); }); }
+      if (isStandalone) { hideInstallControls(); return; }
+      if (navBtn) { navBtn.style.display = 'inline-flex'; navBtn.addEventListener('click', installOrGuide); }
+      renderMobileControl();
+      window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); deferredPrompt = e; });
+      window.addEventListener('appinstalled', function() { deferredPrompt = null; hideInstallControls(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeMobMenu(); closeHint(); } });
     })();
   </script>
 </body>
