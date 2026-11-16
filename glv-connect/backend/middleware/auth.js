@@ -26,8 +26,9 @@ function authenticate(req, res, next) {
       return res.status(401).json({ error: "Usuario inactivo o no encontrado" });
     }
     req.user = { ...payload, role: user.role, name: user.name, email: user.email };
-  } catch (_) {
-    req.user = payload;
+  } catch (err) {
+    console.error("Authentication user validation failed:", err.message);
+    return res.status(503).json({ error: "Servicio de autenticación no disponible" });
   }
   next();
 }
