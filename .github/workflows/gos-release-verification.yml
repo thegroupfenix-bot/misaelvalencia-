@@ -1,0 +1,46 @@
+name: GOS release verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'glv-connect/**'
+      - 'Dockerfile'
+      - '.github/workflows/gos-release-verification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: glv-connect/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: glv-connect/backend/package-lock.json
+      - run: npm ci
+      - run: node --test --experimental-test-isolation=none tests/*.test.js
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: glv-connect/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: glv-connect/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
