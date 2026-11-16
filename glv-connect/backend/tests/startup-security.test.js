@@ -30,6 +30,7 @@ describe("JWT_SECRET — production startup guard", () => {
     PATH:     process.env.PATH || "/usr/bin:/bin",
     DB_PATH:  ":memory:",
     NODE_ENV: "production",
+    SEED_ADMIN_PASSWORD: "startup-security-test-password",
   };
 
   test("exits with code 1 when JWT_SECRET is unset in production", () => {
