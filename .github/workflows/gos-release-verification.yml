@@ -27,7 +27,9 @@ jobs:
           cache: npm
           cache-dependency-path: glv-connect/backend/package-lock.json
       - run: npm ci
-      - run: node --test --test-concurrency=1 tests/*.test.js
+      - run: for test in tests/*.test.js; do node --test "$test"; done
+        env:
+          SEED_ADMIN_PASSWORD: ci-bootstrap-password
 
   frontend:
     name: Frontend build
