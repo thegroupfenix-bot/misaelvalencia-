@@ -259,6 +259,11 @@ try {
 // agent_profiles extras
 safeAlter("ALTER TABLE agent_profiles ADD COLUMN whatsapp TEXT");
 
+// ─── Phase 0: user–client linkage + permanent GLV code ────────────────────────
+safeAlter("ALTER TABLE users ADD COLUMN linked_client_id INTEGER REFERENCES clients(id)");
+safeAlter("ALTER TABLE clients ADD COLUMN glv_code_permanent TEXT");
+try { db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_glv_code_perm ON clients(glv_code_permanent) WHERE glv_code_permanent IS NOT NULL"); } catch(_) {}
+
 // ─── clients GOS / KYC extension (Sprint 1) ──────────────────────────────────
 safeAlter("ALTER TABLE clients ADD COLUMN glv_code TEXT");
 safeAlter("ALTER TABLE clients ADD COLUMN lead_status TEXT DEFAULT 'UNASSIGNED'");
@@ -716,6 +721,102 @@ db.exec(`
   );
 `);
 
+// ─── Phase 0 / Fix: atomic document ID sequences ─────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS doc_id_sequences (
+    type     TEXT PRIMARY KEY,
+    last_seq INTEGER NOT NULL DEFAULT 0
+  );
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('SCO', 0);
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('FCO', 0);
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('SPA', 0);
+`);
+
+// documents: FK to clients for proper portal access control
+safeAlter("ALTER TABLE documents ADD COLUMN client_id INTEGER REFERENCES clients(id)");
+
+// ─── Phase 0: login rate-limiting + password reset + GLV code sequences ───────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS login_attempts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    identifier    TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    locked_until  TEXT,
+    last_attempt  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_login_attempts_identifier ON login_attempts(identifier);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash      TEXT NOT NULL UNIQUE,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at      TEXT NOT NULL,
+    used_at         TEXT,
+    created_from_ip TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_prt_token ON password_reset_tokens(token_hash);
+  CREATE INDEX IF NOT EXISTS idx_prt_user  ON password_reset_tokens(user_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS glv_code_sequences (
+    entity_code TEXT PRIMARY KEY,
+    last_seq    INTEGER NOT NULL DEFAULT 0,
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-CO', 0);
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-US', 0);
+  INSERT OR IGNORE INTO glv_code_sequences(entity_code, last_seq) VALUES ('GLV-BR', 0);
+`);
+
+// ─── Migration: clear plaintext PII from clients inserted via WEB_KYC ────────
+// PII fields (company, representative, email, phone, tax_id) must reside only in
+// clients.kyc_data (AES-256-GCM). Rows that already have kyc_data (encrypted backup)
+// are safe to clear; rows without kyc_data are legacy and remain untouched to avoid
+// data loss — they should be reviewed manually.
+{
+  // Add tracking column first (idempotent — ALTER TABLE is a no-op if column exists)
+  try { db.exec("ALTER TABLE clients ADD COLUMN pii_cleared_at TEXT"); } catch (_) {}
+  const updated = db.prepare(`
+    UPDATE clients
+    SET company        = NULL,
+        representative = NULL,
+        email          = NULL,
+        phone          = NULL,
+        tax_id         = NULL,
+        pii_cleared_at = datetime('now')
+    WHERE registration_source = 'WEB_KYC'
+      AND kyc_data IS NOT NULL
+      AND pii_cleared_at IS NULL
+  `).run();
+  if (updated.changes > 0) {
+    console.log(`[DB] PII migration: cleared plaintext PII from ${updated.changes} WEB_KYC client record(s).`);
+  }
+}
+
+// ─── Migration: clear PII from clients.name for WEB_KYC records ──────────────
+// clients.name previously stored comercial || empresa (company name = PII).
+// It must now store only the GLV code (technical identifier, not derived from KYC data).
+// Tracked separately from pii_cleared_at so records already migrated by the prior
+// migration are also handled.
+{
+  try { db.exec("ALTER TABLE clients ADD COLUMN name_pii_cleared_at TEXT"); } catch (_) {}
+  const nameUpdated = db.prepare(`
+    UPDATE clients
+    SET name               = COALESCE(glv_code, name),
+        name_pii_cleared_at = datetime('now')
+    WHERE registration_source = 'WEB_KYC'
+      AND kyc_data IS NOT NULL
+      AND name_pii_cleared_at IS NULL
+  `).run();
+  if (nameUpdated.changes > 0) {
+    console.log(`[DB] PII migration (name): replaced empresa in clients.name with glv_code for ${nameUpdated.changes} WEB_KYC record(s).`);
+  }
+}
+
 // ─── Seed default users ───────────────────────────────────────────────────────
 function seedPriceCenter() {
   const catCount = db.prepare("SELECT COUNT(*) AS c FROM pc_categories").get().c;
@@ -900,16 +1001,15 @@ function seedUsers() {
   const count = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
   if (count > 0) return;
 
-  const bootstrapPassword = process.env.SEED_ADMIN_PASSWORD || generateBootstrapPassword();
-  const isGenerated = !process.env.SEED_ADMIN_PASSWORD;
+  const isProduction = process.env.NODE_ENV === "production";
+  if (isProduction && !process.env.SEED_ADMIN_PASSWORD) {
+    throw new Error("SEED_ADMIN_PASSWORD is required for an empty production database");
+  }
 
+  const isGenerated = !process.env.SEED_ADMIN_PASSWORD;
+  const bootstrapPassword = process.env.SEED_ADMIN_PASSWORD || generateBootstrapPassword();
   if (isGenerated) {
-    console.warn("╔══════════════════════════════════════════════════════════════╗");
-    console.warn("║  BOOTSTRAP: No SEED_ADMIN_PASSWORD env var found.           ║");
-    console.warn("║  Generated temporary admin password (change immediately):   ║");
-    console.warn(`║  User: mvalencia  Password: ${bootstrapPassword.padEnd(30)}║`);
-    console.warn("║  All other seed users get forced first-login password reset.║");
-    console.warn("╚══════════════════════════════════════════════════════════════╝");
+    console.warn("[DB] Development bootstrap password generated. Set SEED_ADMIN_PASSWORD before production use.");
   }
 
   const seedPassword = generateBootstrapPassword();
@@ -964,6 +1064,948 @@ function seedUsers() {
 seedUsers();
 seedPriceCenter();
 seedGos06Catalogs();
+
+// ─── Commercial Engine tables ─────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_price_matrix (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id           INTEGER REFERENCES pc_products(id),
+    product_code         TEXT,
+    origin_country       TEXT    NOT NULL,
+    destination_country  TEXT    NOT NULL,
+    incoterm             TEXT    NOT NULL DEFAULT 'CIF',
+    currency             TEXT    NOT NULL DEFAULT 'USD',
+    unit                 TEXT    NOT NULL DEFAULT 'kg',
+    base_cost            REAL    NOT NULL,
+    freight_cost         REAL    NOT NULL DEFAULT 0,
+    insurance_cost       REAL    NOT NULL DEFAULT 0,
+    operational_cost     REAL    NOT NULL DEFAULT 0,
+    target_margin        REAL    NOT NULL DEFAULT 0.15,
+    min_authorized_price REAL    NOT NULL,
+    sale_price           REAL    NOT NULL,
+    valid_from           TEXT    NOT NULL,
+    valid_until          TEXT,
+    status               TEXT    NOT NULL DEFAULT 'ACTIVE',
+    created_by           TEXT,
+    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cpm_route ON commercial_price_matrix(origin_country, destination_country, incoterm);
+  CREATE INDEX IF NOT EXISTS idx_cpm_product ON commercial_price_matrix(product_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_rules (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id        INTEGER REFERENCES pc_products(id),
+    product_code      TEXT,
+    origin_country    TEXT,
+    destination_country TEXT,
+    incoterm          TEXT,
+    min_volume        REAL,
+    min_volume_unit   TEXT    NOT NULL DEFAULT 'kg',
+    currency          TEXT    NOT NULL DEFAULT 'USD',
+    min_price_floor   REAL,
+    max_discount_pct  REAL    NOT NULL DEFAULT 0,
+    valid_from        TEXT    NOT NULL,
+    valid_until       TEXT,
+    status            TEXT    NOT NULL DEFAULT 'ACTIVE',
+    notes             TEXT,
+    created_by        TEXT,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_quotes (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_number         TEXT    NOT NULL UNIQUE,
+    status               TEXT    NOT NULL DEFAULT 'DRAFT',
+    price_locked         INTEGER NOT NULL DEFAULT 0,
+    product_id           INTEGER REFERENCES pc_products(id),
+    product_code         TEXT,
+    product_name_es      TEXT,
+    quantity             REAL    NOT NULL,
+    unit                 TEXT    NOT NULL DEFAULT 'kg',
+    origin_country       TEXT    NOT NULL,
+    destination_country  TEXT    NOT NULL,
+    incoterm             TEXT    NOT NULL DEFAULT 'CIF',
+    currency             TEXT    NOT NULL DEFAULT 'USD',
+    client_id            INTEGER REFERENCES clients(id),
+    payment_conditions   TEXT,
+    validity_days        INTEGER NOT NULL DEFAULT 15,
+    valid_until          TEXT,
+    base_cost            REAL,
+    freight_cost         REAL,
+    insurance_cost       REAL,
+    operational_cost     REAL,
+    total_cost_per_unit  REAL,
+    target_margin        REAL,
+    price_per_unit       REAL,
+    total_value          REAL,
+    min_authorized_price REAL,
+    matrix_id            INTEGER REFERENCES commercial_price_matrix(id),
+    rule_id              INTEGER REFERENCES commercial_rules(id),
+    doc_id               TEXT    REFERENCES documents(id),
+    internal_notes       TEXT,
+    calculated_by        TEXT,
+    calculated_at        TEXT,
+    submitted_by         TEXT,
+    submitted_at         TEXT,
+    approved_by          TEXT,
+    approved_at          TEXT,
+    rejected_by          TEXT,
+    rejected_at          TEXT,
+    rejection_reason     TEXT,
+    created_by           TEXT,
+    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cq_client ON commercial_quotes(client_id);
+  CREATE INDEX IF NOT EXISTS idx_cq_status ON commercial_quotes(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS commercial_quote_audit (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_id    INTEGER NOT NULL REFERENCES commercial_quotes(id),
+    action      TEXT    NOT NULL,
+    actor       TEXT    NOT NULL,
+    actor_role  TEXT,
+    before_json TEXT,
+    after_json  TEXT,
+    result      TEXT    NOT NULL DEFAULT 'OK',
+    detail      TEXT,
+    ts          TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cqa_quote ON commercial_quote_audit(quote_id);
+`);
+
+// Add QUOTE sequence to doc_id_sequences (idempotent)
+db.exec("INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('QUOTE', 0)");
+
+// Add quote_id FK to documents (idempotent)
+safeAlter("ALTER TABLE documents ADD COLUMN quote_id INTEGER REFERENCES commercial_quotes(id)");
+
+// ─── Operations & Logistics Core ─────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_providers (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    type          TEXT    NOT NULL CHECK(type IN ('NAVIERA','FREIGHT_OPERATOR','PORT_AGENT','LOGISTICS_PROVIDER')),
+    country       TEXT,
+    contact_name  TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    scac_code     TEXT,
+    imo_registered INTEGER DEFAULT 0,
+    notes         TEXT,
+    status        TEXT    DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE')),
+    created_at    TEXT    DEFAULT (datetime('now')),
+    updated_at    TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS op_ports (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL,
+    country    TEXT    NOT NULL,
+    locode     TEXT    UNIQUE,
+    type       TEXT    DEFAULT 'SEA' CHECK(type IN ('SEA','AIR','LAND','RIVER')),
+    timezone   TEXT,
+    status     TEXT    DEFAULT 'ACTIVE',
+    created_at TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_ops (
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_number         TEXT    UNIQUE NOT NULL,
+    status                   TEXT    NOT NULL DEFAULT 'PREPARACION' CHECK(status IN (
+      'PREPARACION','DOCUMENTOS','BOOKING','CARGA',
+      'EN_TRANSITO','ARRIBO','NACIONALIZACION','ENTREGA',
+      'CERRADA','CANCELADA'
+    )),
+    quote_id                 INTEGER REFERENCES commercial_quotes(id),
+    doc_id                   TEXT    REFERENCES documents(id),
+    source_type              TEXT    CHECK(source_type IN ('QUOTE','SCO','FCO','SPA','MANUAL')),
+    client_id                INTEGER REFERENCES clients(id),
+    product_code             TEXT,
+    product_name             TEXT,
+    quantity                 REAL,
+    unit                     TEXT,
+    incoterm                 TEXT,
+    origin_country           TEXT,
+    destination_country      TEXT,
+    currency                 TEXT    DEFAULT 'USD',
+    responsible_username     TEXT,
+    estimated_start_date     TEXT,
+    actual_start_date        TEXT,
+    estimated_delivery_date  TEXT,
+    actual_delivery_date     TEXT,
+    closed_at                TEXT,
+    cancelled_at             TEXT,
+    cancellation_reason      TEXT,
+    created_by               TEXT,
+    created_at               TEXT    DEFAULT (datetime('now')),
+    updated_at               TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_lops_status ON logistics_ops(status);
+  CREATE INDEX IF NOT EXISTS idx_lops_client ON logistics_ops(client_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_voyages (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id            INTEGER NOT NULL REFERENCES logistics_ops(id),
+    naviera_id       INTEGER REFERENCES logistics_providers(id),
+    vessel_name      TEXT,
+    imo_number       TEXT,
+    voyage_number    TEXT,
+    booking_number   TEXT,
+    booking_date     TEXT,
+    pol_port_id      INTEGER REFERENCES op_ports(id),
+    pod_port_id      INTEGER REFERENCES op_ports(id),
+    etd              TEXT,
+    atd              TEXT,
+    eta              TEXT,
+    ata              TEXT,
+    bl_number        TEXT,
+    bl_type          TEXT CHECK(bl_type IN ('ORIGINAL','TELEX_RELEASE','SEA_WAYBILL')),
+    bl_date          TEXT,
+    freight_agent_id INTEGER REFERENCES logistics_providers(id),
+    port_agent_id    INTEGER REFERENCES logistics_providers(id),
+    notes            TEXT,
+    created_by       TEXT,
+    created_at       TEXT DEFAULT (datetime('now')),
+    updated_at       TEXT DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_containers (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id               INTEGER NOT NULL REFERENCES logistics_ops(id),
+    voyage_id           INTEGER REFERENCES logistics_voyages(id),
+    container_number    TEXT    NOT NULL,
+    container_type      TEXT,
+    seal_number         TEXT,
+    gross_weight_kg     REAL,
+    vgm_kg              REAL,
+    vgm_date            TEXT,
+    vgm_method          TEXT,
+    inspection_required INTEGER DEFAULT 0,
+    inspection_date     TEXT,
+    inspection_result   TEXT,
+    inspection_agency   TEXT,
+    notes               TEXT,
+    created_at          TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_milestones (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id                INTEGER NOT NULL REFERENCES logistics_ops(id),
+    milestone_key        TEXT    NOT NULL,
+    milestone_label      TEXT    NOT NULL,
+    planned_date         TEXT,
+    actual_date          TEXT,
+    responsible_username TEXT,
+    evidence_note        TEXT,
+    delay_days           INTEGER,
+    alert_triggered      INTEGER DEFAULT 0,
+    status               TEXT    DEFAULT 'PENDING' CHECK(status IN ('PENDING','COMPLETED','OVERDUE','SKIPPED')),
+    created_at           TEXT    DEFAULT (datetime('now')),
+    updated_at           TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_incidents (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id       INTEGER NOT NULL REFERENCES logistics_ops(id),
+    type        TEXT    NOT NULL,
+    severity    TEXT    DEFAULT 'MEDIUM' CHECK(severity IN ('LOW','MEDIUM','HIGH','CRITICAL')),
+    description TEXT    NOT NULL,
+    reported_by TEXT,
+    reported_at TEXT    DEFAULT (datetime('now')),
+    resolved_at TEXT,
+    resolution  TEXT,
+    status      TEXT    DEFAULT 'OPEN' CHECK(status IN ('OPEN','IN_PROGRESS','RESOLVED','CLOSED'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_audit (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id        INTEGER NOT NULL REFERENCES logistics_ops(id),
+    action       TEXT    NOT NULL,
+    actor        TEXT    NOT NULL,
+    role         TEXT,
+    before_state TEXT,
+    after_state  TEXT,
+    detail       TEXT,
+    created_at   TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_assignments (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id       INTEGER NOT NULL REFERENCES logistics_ops(id),
+    provider_id INTEGER NOT NULL REFERENCES logistics_providers(id),
+    role        TEXT    NOT NULL CHECK(role IN ('NAVIERA','FREIGHT_OPERATOR','PORT_AGENT','LOGISTICS_PROVIDER','INSPECTOR')),
+    assigned_by TEXT,
+    assigned_at TEXT    DEFAULT (datetime('now')),
+    notes       TEXT
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_task_templates (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    trigger_status    TEXT    NOT NULL,
+    title             TEXT    NOT NULL,
+    description       TEXT,
+    area              TEXT,
+    default_due_days  INTEGER DEFAULT 3,
+    requires_evidence INTEGER DEFAULT 0,
+    active            INTEGER DEFAULT 1
+  );
+
+  INSERT OR IGNORE INTO logistics_task_templates (trigger_status, title, description, area, default_due_days, requires_evidence) VALUES
+  ('BOOKING','Confirmar booking con naviera','Obtener número de booking y fechas ETD/ETA confirmadas','LOGISTICA',2,0),
+  ('BOOKING','Emitir instrucciones de embarque','Enviar shipping instructions a la naviera/agente','DOCUMENTACION',3,0),
+  ('CARGA','Coordinar retiro de contenedores vacíos','Programar retiro en depósito/patio','LOGISTICA',2,0),
+  ('CARGA','Verificar VGM','Confirmar peso verificado VGM según SOLAS','LOGISTICA',1,1),
+  ('CARGA','Documentos de exportación','Coordinar DUA, factura, packing list, certificados','DOCUMENTACION',3,1),
+  ('EN_TRANSITO','Solicitar BL Draft','Revisar y aprobar borrador de BL','DOCUMENTACION',2,0),
+  ('EN_TRANSITO','Coordinar seguro de carga','Emitir o verificar póliza de seguro activa','FINANZAS',2,1),
+  ('ARRIBO','Notificar arribo al cliente','Enviar aviso de arribo con ETA actualizado','COMERCIAL',1,0),
+  ('ARRIBO','Coordinar agente portuario','Instruir agente para recepción y almacenaje','LOGISTICA',2,0),
+  ('NACIONALIZACION','Presentar documentos de importación','DUA importación, BL, factura, certificados','ADUANA',2,1),
+  ('ENTREGA','Coordinar transporte de última milla','Programar transporte desde depósito a destino final','LOGISTICA',1,0),
+  ('ENTREGA','Confirmar entrega con cliente','Obtener conformidad firmada de recepción','COMERCIAL',1,1),
+  ('CERRADA','Cierre financiero de operación','Liquidar gastos, confirmar facturación final','FINANZAS',5,0),
+  ('CERRADA','Archivo de documentos originales','Digitalizar y archivar expediente completo','DOCUMENTACION',7,1);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS logistics_op_tasks (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id       INTEGER NOT NULL REFERENCES logistics_ops(id),
+    task_id     INTEGER NOT NULL REFERENCES tasks(id),
+    template_id INTEGER REFERENCES logistics_task_templates(id),
+    created_at  TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+// Default ports seed
+db.exec(`
+  INSERT OR IGNORE INTO op_ports (name, country, locode, type) VALUES
+  ('Puerto de Buenos Aires','AR','ARBUE','SEA'),
+  ('Puerto de Rosario','AR','ARROS','SEA'),
+  ('Puerto de Shanghai','CN','CNSGH','SEA'),
+  ('Puerto de Rotterdam','NL','NLRTM','SEA'),
+  ('Puerto de Santos','BR','BRSST','SEA'),
+  ('Puerto de Callao','PE','PECLL','SEA'),
+  ('Puerto de Valparaíso','CL','CLVAP','SEA'),
+  ('Puerto de Cartagena','CO','COCTG','SEA'),
+  ('Puerto de Hamburgo','DE','DEHAM','SEA'),
+  ('Puerto de Algeciras','ES','ESALG','SEA'),
+  ('Jebel Ali Port','AE','AEJEA','SEA'),
+  ('King Abdulaziz Port','SA','SAJED','SEA');
+`);
+
+// Add logistics_op_id to tasks (idempotent)
+safeAlter("ALTER TABLE tasks ADD COLUMN logistics_op_id INTEGER REFERENCES logistics_ops(id)");
+
+
+// ─── Vessel Charter & Chartering Core ────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vessels (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    imo_number              TEXT    UNIQUE NOT NULL,
+    vessel_name             TEXT    NOT NULL,
+    vessel_type             TEXT    NOT NULL CHECK(vessel_type IN ('BULK_CARRIER','CONTAINER','TANKER','GENERAL_CARGO','REEFER','RORO','LPG','LNG','OFFSHORE','OTHER')),
+    flag                    TEXT,
+    year_built              INTEGER,
+    dwt                     REAL,
+    grt                     REAL,
+    nrt                     REAL,
+    loa                     REAL,
+    beam                    REAL,
+    draft_max               REAL,
+    holds_count             INTEGER,
+    hatches_count           INTEGER,
+    grain_capacity          REAL,
+    bale_capacity           REAL,
+    teu_capacity            INTEGER,
+    classification_society  TEXT,
+    class_expiry            TEXT,
+    p_and_i_club            TEXT,
+    p_and_i_expiry          TEXT,
+    status                  TEXT    DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE','SCRAPPED','LAID_UP')),
+    notes                   TEXT,
+    created_by              TEXT,
+    created_at              TEXT    DEFAULT (datetime('now')),
+    updated_at              TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_vessels_imo ON vessels(imo_number);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vessel_documents (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    vessel_id         INTEGER NOT NULL REFERENCES vessels(id),
+    doc_type          TEXT    NOT NULL,
+    doc_number        TEXT,
+    issued_date       TEXT,
+    expiry_date       TEXT,
+    issuing_authority TEXT,
+    file_ref          TEXT,
+    status            TEXT    DEFAULT 'VALID' CHECK(status IN ('VALID','EXPIRED','PENDING_RENEWAL')),
+    created_at        TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_parties (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    type          TEXT    NOT NULL CHECK(type IN ('SHIPOWNER','OPERATOR','BROKER','P_AND_I','INSPECTOR','OTHER')),
+    country       TEXT,
+    contact_name  TEXT,
+    contact_email TEXT,
+    contact_phone TEXT,
+    address       TEXT,
+    status        TEXT    DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE')),
+    created_at    TEXT    DEFAULT (datetime('now')),
+    updated_at    TEXT    DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO charter_parties (name, type, country) VALUES
+  ('Maersk Line','SHIPOWNER','DK'),
+  ('MSC Mediterranean Shipping','SHIPOWNER','CH'),
+  ('Cargill Ocean Transportation','OPERATOR','US'),
+  ('Clarksons Platou','BROKER','GB'),
+  ('Simpson Spence Young','BROKER','GB'),
+  ('The Standard Club','P_AND_I','GB'),
+  ('London P&I Club','P_AND_I','GB');
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_fixtures (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_number          TEXT    UNIQUE NOT NULL,
+    operation_id            INTEGER REFERENCES logistics_ops(id),
+    vessel_id               INTEGER REFERENCES vessels(id),
+    shipowner_id            INTEGER REFERENCES charter_parties(id),
+    operator_id             INTEGER REFERENCES charter_parties(id),
+    broker_id               INTEGER REFERENCES charter_parties(id),
+    cargo_description       TEXT,
+    cargo_quantity          REAL,
+    cargo_unit              TEXT,
+    cargo_tolerance_pct     REAL,
+    freight_type            TEXT    CHECK(freight_type IN ('RATE_PER_MT','FLAT_RATE','LUMPSUM','RATE_PER_DAY','WORLDSCALE','COA')),
+    freight_rate            REAL,
+    freight_currency        TEXT    DEFAULT 'USD',
+    lumpsum_amount          REAL,
+    commission_pct          REAL,
+    address_commission_pct  REAL,
+    laycan_start            TEXT,
+    laycan_end              TEXT,
+    cancelling_date         TEXT,
+    loading_port            TEXT,
+    discharge_port          TEXT,
+    loading_rate_mt_day     REAL,
+    discharging_rate_mt_day REAL,
+    laytime_type            TEXT    CHECK(laytime_type IN ('SHINC','SHEX','SHEX_UU','SHEX_EIU','WWD','FHEX','FHINC','PWWD','WIBON','WIPON','WCCON')),
+    demurrage_rate_usd_day  REAL,
+    despatch_rate_usd_day   REAL,
+    despatch_on             TEXT    CHECK(despatch_on IN ('ALL_TIME_SAVED','WORKING_TIME_SAVED')),
+    recap_text              TEXT,
+    cp_version              INTEGER DEFAULT 1,
+    cp_signed_date          TEXT,
+    cp_form                 TEXT,
+    voyage_cost_usd         REAL,
+    expected_margin_usd     REAL,
+    actual_margin_usd       REAL,
+    status                  TEXT    DEFAULT 'INQUIRY' CHECK(status IN ('INQUIRY','PRE_FIXTURE','PREFIXTURE','FIXED','SIGNED','CANCELLED','COMPLETED')),
+    created_by              TEXT,
+    created_at              TEXT    DEFAULT (datetime('now')),
+    updated_at              TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cf_status ON charter_fixtures(status);
+  CREATE INDEX IF NOT EXISTS idx_cf_vessel ON charter_fixtures(vessel_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_fixture_versions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id  INTEGER NOT NULL REFERENCES charter_fixtures(id),
+    version     INTEGER NOT NULL,
+    recap_text  TEXT,
+    changed_by  TEXT,
+    changed_at  TEXT    DEFAULT (datetime('now')),
+    change_note TEXT
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS vessel_voyages (
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id                  INTEGER NOT NULL REFERENCES charter_fixtures(id),
+    operation_id                INTEGER REFERENCES logistics_ops(id),
+    vessel_id                   INTEGER NOT NULL REFERENCES vessels(id),
+    pol_port                    TEXT,
+    pol_etd                     TEXT,
+    pol_atd                     TEXT,
+    pod_port                    TEXT,
+    pod_eta                     TEXT,
+    pod_ata                     TEXT,
+    nor_tendered_at             TEXT,
+    nor_accepted_at             TEXT,
+    berthed_at                  TEXT,
+    commenced_loading_at        TEXT,
+    completed_loading_at        TEXT,
+    sailed_at                   TEXT,
+    nor_discharge_tendered_at   TEXT,
+    berthed_discharge_at        TEXT,
+    commenced_discharge_at      TEXT,
+    completed_discharge_at      TEXT,
+    draft_survey_loading        REAL,
+    draft_survey_discharge      REAL,
+    bl_date                     TEXT,
+    bl_quantity                 REAL,
+    master_name                 TEXT,
+    status                      TEXT    DEFAULT 'PENDING' CHECK(status IN ('PENDING','AT_LOAD_PORT','LOADING','LADEN','AT_DISCHARGE_PORT','DISCHARGING','COMPLETED','CANCELLED')),
+    created_at                  TEXT    DEFAULT (datetime('now')),
+    updated_at                  TEXT    DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_vv_fixture ON vessel_voyages(fixture_id);
+  CREATE INDEX IF NOT EXISTS idx_vv_status  ON vessel_voyages(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS laytime_events (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    voyage_id        INTEGER NOT NULL REFERENCES vessel_voyages(id),
+    port_type        TEXT    NOT NULL CHECK(port_type IN ('LOADING','DISCHARGE')),
+    event_type       TEXT    NOT NULL,
+    event_time       TEXT    NOT NULL,
+    duration_hours   REAL,
+    is_excluded      INTEGER DEFAULT 0,
+    exclusion_reason TEXT,
+    notes            TEXT,
+    created_by       TEXT,
+    created_at       TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS laytime_calculations (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    voyage_id         INTEGER NOT NULL REFERENCES vessel_voyages(id),
+    port_type         TEXT    NOT NULL CHECK(port_type IN ('LOADING','DISCHARGE')),
+    allowed_hours     REAL,
+    used_hours        REAL,
+    excluded_hours    REAL    DEFAULT 0,
+    net_hours         REAL,
+    balance_hours     REAL,
+    demurrage_amount  REAL    DEFAULT 0,
+    despatch_amount   REAL    DEFAULT 0,
+    calculation_date  TEXT    DEFAULT (datetime('now')),
+    notes             TEXT
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS statements_of_facts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    voyage_id   INTEGER NOT NULL REFERENCES vessel_voyages(id),
+    port_type   TEXT    NOT NULL CHECK(port_type IN ('LOADING','DISCHARGE')),
+    sof_text    TEXT,
+    agent_name  TEXT,
+    signed_by   TEXT,
+    signed_date TEXT,
+    created_by  TEXT,
+    created_at  TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS voyage_financials (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id       INTEGER NOT NULL REFERENCES charter_fixtures(id),
+    voyage_id        INTEGER REFERENCES vessel_voyages(id),
+    item_type        TEXT    NOT NULL,
+    description      TEXT,
+    amount           REAL,
+    currency         TEXT    DEFAULT 'USD',
+    direction        TEXT    CHECK(direction IN ('INCOME','EXPENSE')),
+    due_date         TEXT,
+    paid_date        TEXT,
+    status           TEXT    DEFAULT 'PENDING' CHECK(status IN ('PENDING','INVOICED','PAID','DISPUTED')),
+    counterparty_id  INTEGER REFERENCES charter_parties(id),
+    created_by       TEXT,
+    created_at       TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_alerts (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id        INTEGER REFERENCES charter_fixtures(id),
+    voyage_id         INTEGER REFERENCES vessel_voyages(id),
+    vessel_id         INTEGER REFERENCES vessels(id),
+    alert_type        TEXT    NOT NULL,
+    severity          TEXT    DEFAULT 'MEDIUM' CHECK(severity IN ('LOW','MEDIUM','HIGH','CRITICAL')),
+    message           TEXT    NOT NULL,
+    acknowledged      INTEGER DEFAULT 0,
+    acknowledged_by   TEXT,
+    acknowledged_at   TEXT,
+    created_at        TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS charter_audit (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    fixture_id   INTEGER REFERENCES charter_fixtures(id),
+    voyage_id    INTEGER REFERENCES vessel_voyages(id),
+    action       TEXT    NOT NULL,
+    actor        TEXT    NOT NULL,
+    role         TEXT,
+    before_state TEXT,
+    after_state  TEXT,
+    detail       TEXT,
+    created_at   TEXT    DEFAULT (datetime('now'))
+  );
+`);
+
+// ─── Cargo Intelligence ───────────────────────────────────────────────────────
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_equipment_profiles (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
+    type        TEXT NOT NULL CHECK(type IN ('container','truck','bulk')),
+    int_length_m  REAL NOT NULL,
+    int_width_m   REAL NOT NULL,
+    int_height_m  REAL NOT NULL,
+    max_weight_kg REAL NOT NULL,
+    tare_kg       REAL NOT NULL DEFAULT 0,
+    is_reefer     INTEGER NOT NULL DEFAULT 0,
+    notes       TEXT,
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_types (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
+    category    TEXT NOT NULL CHECK(category IN ('packaged','bulk')),
+    notes       TEXT,
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_calculations (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    reference           TEXT NOT NULL,
+    logistics_op_id     INTEGER REFERENCES logistics_ops(id),
+    charter_fixture_id  INTEGER,
+    mode                TEXT NOT NULL CHECK(mode IN ('container','bulk')),
+    status              TEXT NOT NULL DEFAULT 'DRAFT' CHECK(status IN ('DRAFT','CONFIRMED','SUPERSEDED')),
+    version             INTEGER NOT NULL DEFAULT 1,
+    parent_id           INTEGER REFERENCES cargo_calculations(id),
+    total_cbm           REAL,
+    total_weight_kg     REAL,
+    equipment_count     INTEGER,
+    stowage_factor      REAL,
+    notes               TEXT,
+    created_by          INTEGER NOT NULL REFERENCES users(id),
+    client_id           INTEGER REFERENCES clients(id),
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    confirmed_at        TEXT,
+    confirmed_by        INTEGER REFERENCES users(id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_lines (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    calculation_id        INTEGER NOT NULL REFERENCES cargo_calculations(id) ON DELETE CASCADE,
+    cargo_type_id         INTEGER NOT NULL REFERENCES cargo_types(id),
+    description           TEXT,
+    quantity              INTEGER NOT NULL DEFAULT 1,
+    length_m              REAL NOT NULL,
+    width_m               REAL NOT NULL,
+    height_m              REAL NOT NULL,
+    weight_kg             REAL NOT NULL,
+    stackable             INTEGER NOT NULL DEFAULT 0,
+    sort_order            INTEGER NOT NULL DEFAULT 0,
+    created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_placements (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    calculation_id        INTEGER NOT NULL REFERENCES cargo_calculations(id) ON DELETE CASCADE,
+    equipment_profile_id  INTEGER NOT NULL REFERENCES cargo_equipment_profiles(id),
+    equipment_index       INTEGER NOT NULL DEFAULT 1,
+    cargo_line_id         INTEGER NOT NULL REFERENCES cargo_lines(id),
+    piece_index           INTEGER NOT NULL DEFAULT 1,
+    x_m                   REAL NOT NULL,
+    y_m                   REAL NOT NULL,
+    z_m                   REAL NOT NULL,
+    rotated               INTEGER NOT NULL DEFAULT 0,
+    created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cargo_audit (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    calculation_id  INTEGER NOT NULL REFERENCES cargo_calculations(id),
+    action          TEXT NOT NULL,
+    actor_id        INTEGER NOT NULL REFERENCES users(id),
+    delta_json      TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+// Seed equipment profiles (idempotent)
+(function seedEquipmentProfiles() {
+  const count = db.prepare("SELECT COUNT(*) AS c FROM cargo_equipment_profiles").get();
+  if (count.c > 0) return;
+  const profiles = [
+    { code:"20GP",      name:"20' General Purpose",   type:"container", l:5.90, w:2.35, h:2.39, max:28000, tare:2200 },
+    { code:"40GP",      name:"40' General Purpose",   type:"container", l:12.03,w:2.35, h:2.39, max:26500, tare:3720 },
+    { code:"40HC",      name:"40' High Cube",          type:"container", l:12.03,w:2.35, h:2.69, max:26460, tare:3940 },
+    { code:"REEFER_20", name:"20' Reefer",             type:"container", l:5.44, w:2.27, h:2.27, max:27400, tare:2800, reefer:1 },
+    { code:"REEFER_40", name:"40' Reefer HC",          type:"container", l:11.56,w:2.27, h:2.50, max:27700, tare:4800, reefer:1 },
+    { code:"OT_20",     name:"20' Open Top",           type:"container", l:5.89, w:2.35, h:2.35, max:28180, tare:2200 },
+    { code:"OT_40",     name:"40' Open Top",           type:"container", l:12.03,w:2.35, h:2.35, max:26730, tare:3900 },
+    { code:"FR_20",     name:"20' Flat Rack",          type:"container", l:5.64, w:2.23, h:2.14, max:30480, tare:2360 },
+    { code:"FR_40",     name:"40' Flat Rack",          type:"container", l:12.10,w:2.13, h:1.98, max:40000, tare:5000 },
+    { code:"TRUCK_STD", name:"Truck Standard",         type:"truck",     l:13.60,w:2.48, h:2.70, max:24000, tare:8000 },
+    { code:"BULK_HOLD", name:"Vessel Bulk Hold",       type:"bulk",      l:30.0, w:20.0, h:15.0, max:60000, tare:0 },
+  ];
+  const ins = db.prepare(
+    "INSERT INTO cargo_equipment_profiles (code,name,type,int_length_m,int_width_m,int_height_m,max_weight_kg,tare_kg,is_reefer) VALUES (?,?,?,?,?,?,?,?,?)"
+  );
+  profiles.forEach(p => ins.run(p.code, p.name, p.type, p.l, p.w, p.h, p.max, p.tare, p.reefer||0));
+})();
+
+// Seed cargo types (idempotent)
+(function seedCargoTypes() {
+  const count = db.prepare("SELECT COUNT(*) AS c FROM cargo_types").get();
+  if (count.c > 0) return;
+  const types = [
+    { code:"BOX",          name:"Box/Carton",       cat:"packaged" },
+    { code:"PALLET",       name:"Pallet",           cat:"packaged" },
+    { code:"BIGBAG",       name:"Big Bag / FIBC",   cat:"packaged" },
+    { code:"DRUM",         name:"Drum / Barrel",    cat:"packaged" },
+    { code:"CYLINDER",     name:"Gas Cylinder",     cat:"packaged" },
+    { code:"ROLL",         name:"Roll / Reel",      cat:"packaged" },
+    { code:"TUBE",         name:"Tube / Pipe",      cat:"packaged" },
+    { code:"EQUIPMENT",    name:"Heavy Equipment",  cat:"packaged" },
+    { code:"IRREGULAR",    name:"Irregular Shape",  cat:"packaged" },
+    { code:"BULK_GRAIN",   name:"Bulk Grain",       cat:"bulk"     },
+    { code:"BULK_LIQUID",  name:"Bulk Liquid",      cat:"bulk"     },
+    { code:"BULK_MINERAL", name:"Bulk Mineral",     cat:"bulk"     },
+  ];
+  const ins = db.prepare(
+    "INSERT INTO cargo_types (code,name,category) VALUES (?,?,?)"
+  );
+  types.forEach(t => ins.run(t.code, t.name, t.cat));
+})();
+
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS observation_zones (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    description   TEXT,
+    location      TEXT,
+    operation_id  TEXT    REFERENCES logistics_ops(operation_number),
+    zone_type     TEXT    NOT NULL DEFAULT 'GENERAL' CHECK(zone_type IN ('LOADING','UNLOADING','STORAGE','INSPECTION','QUARANTINE','GENERAL')),
+    status        TEXT    NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','INACTIVE')),
+    created_by    TEXT    NOT NULL,
+    created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_oz_operation ON observation_zones(operation_id);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS visual_evidence (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    evidence_number  TEXT    NOT NULL UNIQUE,
+    zone_id          INTEGER REFERENCES observation_zones(id),
+    operation_id     TEXT    REFERENCES logistics_ops(operation_number),
+    client_id        INTEGER REFERENCES clients(id),
+    source           TEXT    NOT NULL DEFAULT 'MANUAL' CHECK(source IN ('MANUAL','CAMERA','AI_DETECTOR')),
+    visibility       TEXT    NOT NULL DEFAULT 'INTERNAL' CHECK(visibility IN ('INTERNAL','CLIENT_VISIBLE')),
+    status           TEXT    NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','REVIEWED','APPROVED','REJECTED','ARCHIVED')),
+    description      TEXT,
+    file_url         TEXT,
+    file_type        TEXT,
+    metadata_json    TEXT    DEFAULT '{}',
+    submitted_by     TEXT    NOT NULL,
+    reviewed_by      TEXT,
+    reviewed_at      TEXT,
+    review_notes     TEXT,
+    created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_ve_operation  ON visual_evidence(operation_id);
+  CREATE INDEX IF NOT EXISTS idx_ve_client     ON visual_evidence(client_id);
+  CREATE INDEX IF NOT EXISTS idx_ve_status     ON visual_evidence(status);
+  CREATE INDEX IF NOT EXISTS idx_ve_visibility ON visual_evidence(visibility);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS count_events (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_number         TEXT    NOT NULL UNIQUE,
+    zone_id              INTEGER REFERENCES observation_zones(id),
+    operation_id         TEXT    REFERENCES logistics_ops(operation_number),
+    client_id            INTEGER REFERENCES clients(id),
+    status               TEXT    NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','REVIEWED','CLOSED','DISPUTED')),
+    count_type           TEXT    NOT NULL DEFAULT 'MANUAL' CHECK(count_type IN ('MANUAL','CAMERA_ASSISTED','AI_ASSISTED')),
+    expected_count       INTEGER,
+    actual_count         INTEGER,
+    difference           INTEGER GENERATED ALWAYS AS (actual_count - expected_count) VIRTUAL,
+    requires_review      INTEGER NOT NULL DEFAULT 0,
+    responsible_username TEXT,
+    notes                TEXT,
+    reviewed_by          TEXT,
+    reviewed_at          TEXT,
+    review_notes         TEXT,
+    approved             INTEGER NOT NULL DEFAULT 0,
+    approved_by          TEXT,
+    approved_at          TEXT,
+    created_by           TEXT    NOT NULL,
+    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_ce_operation ON count_events(operation_id);
+  CREATE INDEX IF NOT EXISTS idx_ce_status    ON count_events(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS count_evidence_links (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_event_id INTEGER NOT NULL REFERENCES count_events(id) ON DELETE CASCADE,
+    evidence_id    INTEGER NOT NULL REFERENCES visual_evidence(id) ON DELETE CASCADE,
+    linked_by      TEXT    NOT NULL,
+    linked_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(count_event_id, evidence_id)
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS count_discrepancies (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    count_event_id INTEGER NOT NULL REFERENCES count_events(id),
+    operation_id   TEXT    REFERENCES logistics_ops(operation_number),
+    difference     INTEGER NOT NULL,
+    severity       TEXT    NOT NULL DEFAULT 'LOW' CHECK(severity IN ('LOW','MEDIUM','HIGH')),
+    status         TEXT    NOT NULL DEFAULT 'OPEN' CHECK(status IN ('OPEN','EXPLAINED','RESOLVED')),
+    resolution     TEXT,
+    resolved_by    TEXT,
+    resolved_at    TEXT,
+    created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_cd_count_event ON count_discrepancies(count_event_id);
+  CREATE INDEX IF NOT EXISTS idx_cd_status      ON count_discrepancies(status);
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ve_ai_providers (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    provider    TEXT    NOT NULL,
+    model       TEXT,
+    endpoint    TEXT,
+    enabled     INTEGER NOT NULL DEFAULT 0,
+    use_case    TEXT    NOT NULL DEFAULT 'COUNT' CHECK(use_case IN ('COUNT','DETECTION','CLASSIFICATION','ALL')),
+    notes       TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO ve_ai_providers (name, provider, model, enabled, use_case, notes)
+    VALUES ('GLV-Vision-Count', 'INTERNAL', 'disabled', 0, 'COUNT', 'Placeholder. AI layer disabled by default. Requires manual activation and compliance review.');
+  INSERT OR IGNORE INTO ve_ai_providers (name, provider, model, enabled, use_case, notes)
+    VALUES ('GLV-Vision-Detect', 'INTERNAL', 'disabled', 0, 'DETECTION', 'Placeholder. AI layer disabled by default.');
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ve_audit (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    evidence_id    INTEGER REFERENCES visual_evidence(id),
+    count_event_id INTEGER REFERENCES count_events(id),
+    action         TEXT    NOT NULL,
+    actor          TEXT    NOT NULL,
+    role           TEXT,
+    detail         TEXT,
+    ts             TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_vea_evidence    ON ve_audit(evidence_id);
+  CREATE INDEX IF NOT EXISTS idx_vea_count_event ON ve_audit(count_event_id);
+`);
+
+// ─── getMigrationStatus ───────────────────────────────────────────────────────
+function getMigrationStatus() {
+  const checkTable = (table) => {
+    try { db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get(); return true; } catch (_) { return false; }
+  };
+  const checkColumn = (table, col) => {
+    try { return db.prepare(`PRAGMA table_info(${table})`).all().some(r => r.name === col); } catch (_) { return false; }
+  };
+  const checkSeq = (type) => {
+    try { return !!db.prepare("SELECT 1 FROM doc_id_sequences WHERE type = ?").get(type); } catch (_) { return false; }
+  };
+  return {
+    login_attempts:             checkTable("login_attempts"),
+    password_reset_tokens:      checkTable("password_reset_tokens"),
+    glv_code_sequences:         checkTable("glv_code_sequences"),
+    doc_id_sequences:           checkTable("doc_id_sequences"),
+    users_linked_client_id:     checkColumn("users", "linked_client_id"),
+    clients_glv_code_permanent: checkColumn("clients", "glv_code_permanent"),
+    clients_kyc_status:         checkColumn("clients", "kyc_status"),
+    documents_commercial_data:  checkColumn("documents", "commercial_data"),
+    documents_client_id:        checkColumn("documents", "client_id"),
+    commercial_price_matrix:    checkTable("commercial_price_matrix"),
+    commercial_rules:           checkTable("commercial_rules"),
+    commercial_quotes:          checkTable("commercial_quotes"),
+    commercial_quote_audit:     checkTable("commercial_quote_audit"),
+    commercial_quotes_doc_id:   checkColumn("commercial_quotes", "doc_id"),
+    documents_quote_id:         checkColumn("documents", "quote_id"),
+    doc_id_sequences_quote:     checkSeq("QUOTE"),
+    logistics_providers:        checkTable("logistics_providers"),
+    logistics_ops:               checkTable("logistics_ops"),
+    logistics_voyages:           checkTable("logistics_voyages"),
+    logistics_containers:        checkTable("logistics_containers"),
+    logistics_milestones:        checkTable("logistics_milestones"),
+    logistics_incidents:         checkTable("logistics_incidents"),
+    logistics_audit:             checkTable("logistics_audit"),
+  };
+}
+db.getMigrationStatus = getMigrationStatus;
 
 module.exports = db;
 

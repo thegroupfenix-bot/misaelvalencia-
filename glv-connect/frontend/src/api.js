@@ -1,19 +1,16 @@
 const BASE = import.meta.env.VITE_API_URL || "https://misaelvalencia-production.up.railway.app";
 
-function getToken() {
-  return localStorage.getItem("glv_token");
-}
-
+// Authentication is exclusively via httpOnly cookie set by the server.
+// No token is stored in localStorage or sent in headers from the browser.
 async function request(method, path, body, signal) {
   const headers = { "Content-Type": "application/json" };
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   let res;
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
       headers,
+      credentials: "include",
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
     });
@@ -32,8 +29,11 @@ async function request(method, path, body, signal) {
 export const api = {
   // Auth
   login:          (username, password) => request("POST", "/auth/login", { username, password }),
+  logout:         () => request("POST", "/auth/logout"),
   me:             () => request("GET", "/auth/me"),
   changePassword: (data) => request("POST", "/auth/change-password", data),
+  forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
+  resetPassword:  (token, newPassword) => request("POST", "/auth/reset-password", { token, newPassword }),
 
   // Documents
   getDocs:      (type) => request("GET", `/documents${type ? `?type=${type}` : ""}`),
@@ -84,10 +84,9 @@ export const api = {
   deleteClientDocument: (id, docId)  => request("DELETE", `/clients/${id}/documents/${docId}`),
   getClientDocumentUrl: (id, docId)  => request("GET",    `/clients/${id}/documents/${docId}/url`),
   uploadClientDocument: (id, formData) => {
-    const token = localStorage.getItem("glv_token");
     return fetch(`${BASE}/clients/${id}/documents/upload`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     }).then(async r => {
       const json = await r.json();
@@ -142,10 +141,9 @@ export const api = {
   },
   getMediaItem:        (id) => request("GET", `/media/${id}`),
   uploadMedia:         (formData) => {
-    const token = localStorage.getItem("glv_token");
     return fetch(`${BASE}/media/upload`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     }).then(r => r.json());
   },
@@ -202,4 +200,104 @@ export const api = {
   addClientNote:     (id, data)      => request("POST",   `/clients/${id}/notes`, data),
   updateClientNote:  (id, nId, data) => request("PATCH",  `/clients/${id}/notes/${nId}`, data),
   deleteClientNote:  (id, nId)       => request("DELETE", `/clients/${id}/notes/${nId}`),
+
+  // ─── Commercial Workspace ─────────────────────────────────────────────────────
+  getCommercialMatrix:      (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/commercial/price-matrix${q?"?"+q:""}`); },
+  createCommercialMatrix:   (data)      => request("POST",  "/commercial/price-matrix", data),
+  updateCommercialMatrix:   (id, data)  => request("PATCH", `/commercial/price-matrix/${id}`, data),
+  getCommercialRules:       (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/commercial/rules${q?"?"+q:""}`); },
+  createCommercialRule:     (data)      => request("POST",  "/commercial/rules", data),
+  updateCommercialRule:     (id, data)  => request("PATCH", `/commercial/rules/${id}`, data),
+  getCommercialQuotes:      (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/commercial/quotes${q?"?"+q:""}`); },
+  getCommercialQuote:       (id)        => request("GET",   `/commercial/quotes/${id}`),
+  createCommercialQuote:    (data)      => request("POST",  "/commercial/quotes", data),
+  calculateCommercialQuote: (id)        => request("POST",  `/commercial/quotes/${id}/calculate`),
+  submitCommercialQuote:    (id)        => request("POST",  `/commercial/quotes/${id}/submit`),
+  approveCommercialQuote:   (id, data)  => request("POST",  `/commercial/quotes/${id}/approve`, data),
+  rejectCommercialQuote:    (id, data)  => request("POST",  `/commercial/quotes/${id}/reject`, data),
+  linkCommercialDocument:   (id, data)  => request("POST",  `/commercial/quotes/${id}/link-document`, data),
+
+  // ─── Operations & Logistics ───────────────────────────────────────────────────
+  getLogisticsProviders:    (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/operations-logistics/providers${q?"?"+q:""}`); },
+  createLogisticsProvider:  (data)      => request("POST",  "/operations-logistics/providers", data),
+  updateLogisticsProvider:  (id, data)  => request("PATCH", `/operations-logistics/providers/${id}`, data),
+  getOpPorts:               ()          => request("GET",   "/operations-logistics/ports"),
+  getLogisticsOps:          (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/operations-logistics${q?"?"+q:""}`); },
+  getLogisticsOp:           (id)        => request("GET",   `/operations-logistics/${id}`),
+  createLogisticsOp:        (data)      => request("POST",  "/operations-logistics", data),
+  updateLogisticsOp:        (id, data)  => request("PATCH", `/operations-logistics/${id}`, data),
+  changeLogisticsOpStatus:  (id, data)  => request("PATCH", `/operations-logistics/${id}/status`, data),
+  upsertLogisticsVoyage:    (id, data)  => request("POST",  `/operations-logistics/${id}/voyage`, data),
+  addLogisticsContainer:    (id, data)  => request("POST",  `/operations-logistics/${id}/containers`, data),
+  updateLogisticsContainer: (id,cid,d)  => request("PATCH", `/operations-logistics/${id}/containers/${cid}`, d),
+  addLogisticsMilestone:    (id, data)  => request("POST",  `/operations-logistics/${id}/milestones`, data),
+  updateLogisticsMilestone: (id,mid,d)  => request("PATCH", `/operations-logistics/${id}/milestones/${mid}`, d),
+  reportLogisticsIncident:  (id, data)  => request("POST",  `/operations-logistics/${id}/incidents`, data),
+  updateLogisticsIncident:  (id,iid,d)  => request("PATCH", `/operations-logistics/${id}/incidents/${iid}`, d),
+  assignLogisticsProvider:  (id, data)  => request("POST",  `/operations-logistics/${id}/assignments`, data),
+  getLogisticsDashboard:    ()          => request("GET",   "/operations-logistics/dashboard/summary"),
+
+  // ─── Vessel Charter & Chartering Core ─────────────────────────────────────
+  getVessels:              (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/vessels${q?"?"+q:""}`); },
+  getVessel:               (id)        => request("GET",   `/vessel-charter/vessels/${id}`),
+  createVessel:            (data)      => request("POST",  "/vessel-charter/vessels", data),
+  updateVessel:            (id, data)  => request("PATCH", `/vessel-charter/vessels/${id}`, data),
+  getVesselDocuments:      (id)        => request("GET",   `/vessel-charter/vessels/${id}/documents`),
+  addVesselDocument:       (id, data)  => request("POST",  `/vessel-charter/vessels/${id}/documents`, data),
+
+  getCharterParties:       (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/charter-parties${q?"?"+q:""}`); },
+  createCharterParty:      (data)      => request("POST",  "/vessel-charter/charter-parties", data),
+  updateCharterParty:      (id, data)  => request("PATCH", `/vessel-charter/charter-parties/${id}`, data),
+
+  getFixtures:             (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/fixtures${q?"?"+q:""}`); },
+  getFixture:              (id)        => request("GET",   `/vessel-charter/fixtures/${id}`),
+  createFixture:           (data)      => request("POST",  "/vessel-charter/fixtures", data),
+  updateFixture:           (id, data)  => request("PATCH", `/vessel-charter/fixtures/${id}`, data),
+  saveFixtureVersion:      (id, data)  => request("POST",  `/vessel-charter/fixtures/${id}/versions`, data),
+  getFixtureFinancials:    (id)        => request("GET",   `/vessel-charter/fixtures/${id}/financials`),
+  addFixtureFinancial:     (id, data)  => request("POST",  `/vessel-charter/fixtures/${id}/financials`, data),
+
+  getVesselVoyages:        (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/voyages${q?"?"+q:""}`); },
+  getVesselVoyage:         (id)        => request("GET",   `/vessel-charter/voyages/${id}`),
+  createVesselVoyage:      (data)      => request("POST",  "/vessel-charter/voyages", data),
+  updateVesselVoyage:      (id, data)  => request("PATCH", `/vessel-charter/voyages/${id}`, data),
+  addSof:                  (id, data)  => request("POST",  `/vessel-charter/voyages/${id}/sof`, data),
+  getSof:                  (id)        => request("GET",   `/vessel-charter/voyages/${id}/sof`),
+  addLaytimeEvent:         (id, data)  => request("POST",  `/vessel-charter/voyages/${id}/laytime-events`, data),
+  getLaytimeEvents:        (id)        => request("GET",   `/vessel-charter/voyages/${id}/laytime-events`),
+  calculateLaytime:        (id)        => request("POST",  `/vessel-charter/voyages/${id}/calculate-laytime`),
+
+  getCharterAlerts:        (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/vessel-charter/alerts${q?"?"+q:""}`); },
+  acknowledgeAlert:        (id)        => request("PATCH", `/vessel-charter/alerts/${id}/acknowledge`),
+  getCharterDashboard:     ()          => request("GET",   "/vessel-charter/dashboard/summary"),
+
+  // ─── Cargo Intelligence ───────────────────────────────────────────────────────
+  getCargoEquipmentProfiles: ()               => request("GET",  "/cargo-intelligence/equipment-profiles"),
+  getCargoTypes:             ()               => request("GET",  "/cargo-intelligence/cargo-types"),
+  getCargoCalculations:      (p={})           => { const q=new URLSearchParams(p).toString(); return request("GET",`/cargo-intelligence/calculations${q?"?"+q:""}`); },
+  getCargoCalculation:       (id)             => request("GET",  `/cargo-intelligence/calculations/${id}`),
+  createCargoCalculation:    (data)           => request("POST", "/cargo-intelligence/calculations", data),
+  updateCargoCalculation:    (id, data)       => request("PUT",  `/cargo-intelligence/calculations/${id}`, data),
+  computeCargoCalculation:   (id)             => request("POST", `/cargo-intelligence/calculations/${id}/compute`),
+  confirmCargoCalculation:   (id)             => request("POST", `/cargo-intelligence/calculations/${id}/confirm`),
+  newCargoVersion:           (id)             => request("POST", `/cargo-intelligence/calculations/${id}/new-version`),
+  getCargoCalculationPlacements: (id)         => request("GET",  `/cargo-intelligence/calculations/${id}/placements`),
+
+  // ─── Visual Evidence ────────────────────────────────────────────────────────
+  getObservationZones:      (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence/zones${q?"?"+q:""}`); },
+  createObservationZone:    (data)      => request("POST",  "/visual-evidence/zones", data),
+  updateObservationZone:    (id, data)  => request("PATCH", `/visual-evidence/zones/${id}`, data),
+  getEvidenceList:          (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence${q?"?"+q:""}`); },
+  getEvidence:              (id)        => request("GET",   `/visual-evidence/${id}`),
+  createEvidence:           (data)      => request("POST",  "/visual-evidence", data),
+  reviewEvidence:           (id, data)  => request("PATCH", `/visual-evidence/${id}/review`, data),
+  getCountEvents:           (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence/count-events${q?"?"+q:""}`); },
+  getCountEvent:            (id)        => request("GET",   `/visual-evidence/count-events/${id}`),
+  createCountEvent:         (data)      => request("POST",  "/visual-evidence/count-events", data),
+  reviewCountEvent:         (id, data)  => request("POST",  `/visual-evidence/count-events/${id}/review`, data),
+  linkEvidenceToCount:      (id, data)  => request("POST",  `/visual-evidence/count-events/${id}/link-evidence`, data),
+  getDiscrepancies:         (params={}) => { const q=new URLSearchParams(params).toString(); return request("GET", `/visual-evidence/discrepancies${q?"?"+q:""}`); },
+  resolveDiscrepancy:       (id, data)  => request("PATCH", `/visual-evidence/discrepancies/${id}/resolve`, data),
+  getVeAiProviders:         ()          => request("GET",   "/visual-evidence/ai-providers"),
+  getEvidenceDashboard:     ()          => request("GET",   "/visual-evidence/dashboard/summary"),
 };

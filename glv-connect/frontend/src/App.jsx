@@ -15,6 +15,11 @@ import MediaPanel from "./components/MediaPanel.jsx";
 import ClientDetailPage from "./components/ClientDetailPage.jsx";
 import { FinanceView } from "./components/FinanceView.jsx";
 import { TasksView } from "./components/TasksView.jsx";
+import CommercialWorkspace from "./components/CommercialWorkspace.jsx";
+import OperationsLogistics from "./components/OperationsLogistics.jsx";
+import VesselCharter from "./components/VesselCharter.jsx";
+import CargoIntelligence from "./components/CargoIntelligence.jsx";
+import VisualEvidence from "./components/VisualEvidence.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
@@ -38,8 +43,6 @@ function AuthProvider({ children }) {
   const [lang, setLang] = useState("es");
 
   useEffect(() => {
-    const token = localStorage.getItem("glv_token");
-    if (!token) { setLoading(false); return; }
     const PROFILE_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
     api.me()
       .then(async (u) => {
@@ -49,7 +52,7 @@ function AuthProvider({ children }) {
           try { setAgentProfile(await api.getProfile()); } catch {}
         }
       })
-      .catch(() => localStorage.removeItem("glv_token"))
+      .catch(() => {/* no active session — stay on login */})
       .finally(() => setLoading(false));
   }, []);
 
@@ -58,15 +61,14 @@ function AuthProvider({ children }) {
   }, [user?.preferred_lang]);
 
   const login = async (username, password) => {
-    const { token, user: u } = await api.login(username, password);
-    localStorage.setItem("glv_token", token);
+    const { user: u } = await api.login(username, password);
     setUser(u);
     if (u?.preferred_lang) setLang(u.preferred_lang);
     return u;
   };
 
   const logout = () => {
-    localStorage.removeItem("glv_token");
+    api.logout().catch(() => {});
     setUser(null);
     setAgentProfile(null);
   };
@@ -247,6 +249,12 @@ function Portal() {
         {view === "price-center"  && <PriceCenterView user={user} />}
         {view === "media-center"  && <MediaCenter user={user} />}
         {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
+        {view === "commercial"   && <CommercialWorkspace user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view === "operations-logistics" && <OperationsLogistics user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view === "vessel-charter"      && <VesselCharter user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view === "cargo-intelligence"  && <CargoIntelligence user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view === "visual-evidence"     && <VisualEvidence user={user} setView={safeSetView} showNotif={showNotif} />}
+        {view?.startsWith?.("commercial-quote:") && <CommercialWorkspace user={user} setView={safeSetView} showNotif={showNotif} initialQuoteId={view.split(":")[1]} />}
         {view === "audit"        && hasAuditAccess && <AuditLog />}
         {view === "usuarios"     && isDirector && <UsersPanel />}
         {view === "admin-users"  && isAdmin    && <AdminUsers showNotif={showNotif} />}
@@ -381,6 +389,11 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
     { id: "price-center", icon: "ti-database",         label: "Price Center" },
     ...(!isAgentOnly ? [{ id: "media-center", icon: "ti-photo",            label: "Media Center" }] : []),
     ...(!isMediaOnly ? [{ id: "tasks",        icon: "ti-checklist",        label: "Tareas & Calidad" }] : []),
+    ...(!isMediaOnly ? [{ id: "commercial",          icon: "ti-chart-bar",  label: "Comercial" }] : []),
+    ...(!isMediaOnly ? [{ id: "operations-logistics", icon: "ti-ship",       label: "Operaciones" }] : []),
+    ...(!isMediaOnly ? [{ id: "vessel-charter",      icon: "ti-anchor",     label: "Buques" }] : []),
+    ...(!isMediaOnly ? [{ id: "cargo-intelligence",  icon: "ti-package",    label: "Carga" }] : []),
+    ...(!isMediaOnly ? [{ id: "visual-evidence",     icon: "ti-eye",        label: "Evidencia" }] : []),
     ...(isDirector ? [
       { id: "spa",      icon: "ti-file-certificate", label: "SPA / Contratos" },
       { id: "usuarios", icon: "ti-users",            label: "Usuarios" },

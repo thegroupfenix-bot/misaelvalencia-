@@ -2,13 +2,9 @@ import { api } from "../api.js";
 
 const BASE = import.meta.env.VITE_API_URL || "https://misaelvalencia-production.up.railway.app";
 
+// Authentication is via httpOnly cookie — no token in headers for browser requests.
 function getAuthHeader() {
-  try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("glv_token") : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 async function fetchAsBase64(url, assetId) {
@@ -18,7 +14,7 @@ async function fetchAsBase64(url, assetId) {
     const proxyUrl = `${BASE}/media/proxy?url=${encodeURIComponent(url)}`;
     const headers = getAuthHeader();
     console.log("[media-bind] fetch →", label, "| auth:", !!headers.Authorization, "| proxy:", proxyUrl.substring(0, 120));
-    const res = await fetch(proxyUrl, { headers });
+    const res = await fetch(proxyUrl, { credentials: "include" });
     const elapsed = Date.now() - t0;
     if (!res.ok) {
       console.error("[media-bind] proxy", res.status, "for", label, `(${elapsed}ms)`);

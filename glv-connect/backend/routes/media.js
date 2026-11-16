@@ -21,9 +21,9 @@ const router = express.Router();
 router.use(authenticate);
 
 // Legacy admin check kept for existing admin-only routes (reconcile, debug, r2-raw)
-const ADMIN_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTIVO"]);
+const ADMIN_ROLES = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTOR", "DIRECTIVO"]);
 function requireAdmin(req, res, next) {
-  if (!ADMIN_ROLES.has(req.user?.role) && req.user?.username !== "mvalencia")
+  if (!ADMIN_ROLES.has(req.user?.role))
     return res.status(403).json({ error: "Acceso restringido" });
   next();
 }
@@ -588,12 +588,35 @@ router.get("/:id", requireMediaAccess, (req, res) => {
   res.json(serializeAsset(row));
 });
 
+// Flat allowlist of valid upload category prefixes derived from MEDIA_CATEGORIES
+const ALLOWED_CATEGORY_PREFIXES = new Set([
+  "general",
+  ...Object.keys(MEDIA_CATEGORIES),
+  ...Object.values(MEDIA_CATEGORIES).flat(),
+]);
+
+function isCategoryAllowed(cat) {
+  if (!cat) return true; // defaults to "general"
+  const normalized = cat.replace(/\/+$/, "");
+  if (ALLOWED_CATEGORY_PREFIXES.has(normalized)) return true;
+  // allow sublevel paths that start with a known prefix
+  for (const prefix of ALLOWED_CATEGORY_PREFIXES) {
+    if (normalized.startsWith(prefix + "/")) return true;
+  }
+  return false;
+}
+
 // POST /media/upload — single or multiple files (up to 50)
 router.post("/upload", requireMediaWrite, upload.array("files", 50), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: "Sin archivos" });
 
   let { category = "general", subcategory, country_origin, product_relation,
         operation_relation, document_relation, tags } = req.body;
+
+  if (!isCategoryAllowed(category)) {
+    return res.status(400).json({ error: `Categoría no permitida: "${category}"` });
+  }
+
   const tagsArr = tags ? (typeof tags === "string" ? JSON.parse(tags) : tags) : [];
   const uploaded = [];
 

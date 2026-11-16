@@ -6,6 +6,11 @@ const db      = require("../db/database");
 const { authenticate }         = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 const r2      = require("../storage/r2");
+const { generateGlvCode }      = require("../utils/glvCode");
+
+function isClientUser(user) {
+  return user.role === "CLIENT" || user.role === "SUPPLIER";
+}
 
 const router = express.Router();
 
@@ -13,6 +18,7 @@ const { rateLimit } = require("../middleware/rateLimiter");
 const pii = require("../utils/piiCrypto");
 
 const kycLimiter = rateLimit(15 * 60 * 1000, 10);
+const IS_PROD = (process.env.NODE_ENV || "").toLowerCase() === "production";
 
 // ─── Valid KYC status transitions ─────────────────────────────────────────────
 const KYC_STATUSES = [
@@ -37,6 +43,12 @@ router.post("/kyc", kycLimiter, (req, res) => {
     const rawSize = JSON.stringify(body).length;
     if (rawSize > KYC_MAX_BODY_SIZE) {
       return res.status(413).json({ error: "Payload excede el tamaño máximo permitido." });
+    }
+
+    // Reject in production when PII encryption key is missing — never store plaintext KYC data in prod
+    if (IS_PROD && !pii.isConfigured()) {
+      console.error("[POST /clients/kyc] PII_ENCRYPTION_KEY no configurada en producción — registro rechazado");
+      return res.status(503).json({ error: "Servicio temporalmente no disponible. Contacte a soporte." });
     }
 
     const { glv_code, empresa, email, submission_type } = body;
@@ -64,79 +76,99 @@ router.post("/kyc", kycLimiter, (req, res) => {
     const clientIp = (req.headers["x-forwarded-for"] || req.ip || "").toString().split(",")[0].trim();
     const ua       = (req.headers["user-agent"] || "").slice(0, 512);
 
-    // 1. Guardar en kyc_submissions (staging)
-    const sub = db.prepare(`
-      INSERT INTO kyc_submissions (submission_type, glv_code, raw_data, ip_address, user_agent, status)
-      VALUES (?, ?, ?, ?, ?, 'PENDING')
-    `).run(submType, glv_code, rawJson, clientIp, ua);
-    const submissionId = sub.lastInsertRowid;
-
-    // 2. Verificar si ya existe cliente con ese glv_code
-    let clientId;
-    const existing = db.prepare("SELECT id FROM clients WHERE glv_code = ?").get(glv_code);
-
     const { rep, pais, tel, nit, comercial } = body;
 
-    if (existing) {
+    // Pasos 1–4 en una sola transacción: si cualquier escritura falla,
+    // ninguna queda persistida — el registro nunca queda parcialmente creado.
+    let clientId;
+    db.transaction(() => {
+      // 1. Guardar en kyc_submissions (staging) con datos cifrados
+      const sub = db.prepare(`
+        INSERT INTO kyc_submissions (submission_type, glv_code, raw_data, ip_address, user_agent, status)
+        VALUES (?, ?, ?, ?, ?, 'PENDING')
+      `).run(submType, glv_code, encryptedJson, clientIp, ua);
+      const submissionId = sub.lastInsertRowid;
+
+      // 2. Upsert de cliente — toda PII (company, representative, email, phone, tax_id, nombre empresa)
+      //    se almacena únicamente en kyc_data (cifrado AES-256-GCM). Las columnas individuales y
+      //    clients.name quedan libres de PII: name usa el glv_code como identificador técnico.
+      const existing = db.prepare("SELECT id FROM clients WHERE glv_code = ?").get(glv_code);
+      if (existing) {
+        db.prepare(`
+          UPDATE clients SET
+            name                = ?,
+            country             = COALESCE(?, country),
+            company             = NULL,
+            representative      = NULL,
+            email               = NULL,
+            phone               = NULL,
+            tax_id              = NULL,
+            kyc_data            = ?,
+            registration_source = 'WEB_KYC',
+            kyc_status          = CASE WHEN kyc_status = 'REJECTED' THEN 'PRE_REGISTRATION' ELSE kyc_status END
+          WHERE glv_code = ?
+        `).run(
+          glv_code, pais || null, encryptedJson, glv_code
+        );
+        clientId = existing.id;
+      } else {
+        const ins = db.prepare(`
+          INSERT INTO clients
+            (type, name, country, glv_code, lead_status, kyc_status,
+             registration_source, kyc_data, commercial_score, compliance_flag, active)
+          VALUES ('buyer', ?, ?, ?, 'UNASSIGNED', 'PRE_REGISTRATION', 'WEB_KYC', ?, 0, 0, 1)
+        `).run(
+          glv_code, pais || null, glv_code, encryptedJson
+        );
+        clientId = ins.lastInsertRowid;
+      }
+
+      // 3. Marcar submission como procesada — raw_data reemplazado por marcador;
+      //    los datos cifrados completos permanecen en clients.kyc_data
       db.prepare(`
-        UPDATE clients SET
-          name                = COALESCE(?, name),
-          company             = ?,
-          country             = COALESCE(?, country),
-          representative      = COALESCE(?, representative),
-          email               = ?,
-          phone               = COALESCE(?, phone),
-          tax_id              = COALESCE(?, tax_id),
-          kyc_data            = ?,
-          registration_source = 'WEB_KYC',
-          kyc_status          = CASE WHEN kyc_status = 'REJECTED' THEN 'PRE_REGISTRATION' ELSE kyc_status END
-        WHERE glv_code = ?
+        UPDATE kyc_submissions
+        SET status = 'PROCESSED', processed_at = datetime('now'), mapped_to_id = ?,
+            raw_data = '[CLEARED]'
+        WHERE id = ?
+      `).run(clientId, submissionId);
+
+      // 4. Audit log
+      db.prepare(`
+        INSERT INTO audit_log (username, action, doc_id, client_id, ip)
+        VALUES ('WEB_PORTAL', 'KYC_SUBMITTED', ?, ?, ?)
+      `).run(glv_code, clientId, clientIp);
+    })();
+
+    // 5. Tarea de Compliance — post-commit, no revierte el KYC si falla.
+    //    La descripción no incluye PII: los datos están en /clients/:id/kyc-data (Compliance 65+).
+    try {
+      const complianceUser = db.prepare(
+        "SELECT id FROM users WHERE role = 'COMPLIANCE' AND active = 1 ORDER BY id LIMIT 1"
+      ).get();
+      db.prepare(`
+        INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
+        VALUES (?, ?, 'high', ?, ?, 'pending')
       `).run(
-        comercial || empresa, empresa, pais || null, rep || null,
-        email, tel || null, nit || null, encryptedJson, glv_code
+        `KYC REVIEW REQUIRED — ${glv_code}`,
+        `Nueva pre-inscripción web recibida. GLV Code: ${glv_code}. Consulte el expediente KYC autorizado.`,
+        complianceUser ? complianceUser.id : null,
+        complianceUser ? complianceUser.id : null
       );
-      clientId = existing.id;
-    } else {
-      const ins = db.prepare(`
-        INSERT INTO clients
-          (type, name, company, country, representative, email, phone, tax_id,
-           glv_code, lead_status, kyc_status, registration_source, kyc_data,
-           commercial_score, compliance_flag, active)
-        VALUES ('buyer', ?, ?, ?, ?, ?, ?, ?, ?, 'UNASSIGNED', 'PRE_REGISTRATION', 'WEB_KYC', ?, 0, 0, 1)
-      `).run(
-        comercial || empresa, empresa, pais || null, rep || null,
-        email, tel || null, nit || null, glv_code, encryptedJson
-      );
-      clientId = ins.lastInsertRowid;
+    } catch (taskErr) {
+      // Non-fatal: log server-side, record technical audit event (sin PII), and alert via timeline.
+      console.error("[POST /clients/kyc] compliance task creation failed (non-fatal):", taskErr.message);
+      try {
+        db.prepare(
+          "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+        ).run("SYSTEM", "TASK_CREATION_FAILED", glv_code, clientId, clientIp);
+        db.prepare(`
+          INSERT INTO client_timeline (client_id, event_type, event_description, severity)
+          VALUES (?, 'COMPLIANCE_TASK_FAILED', 'Fallo al crear tarea de Compliance tras KYC. Revisar manualmente.', 'WARNING')
+        `).run(clientId);
+      } catch (alertErr) {
+        console.error("[POST /clients/kyc] secondary alert also failed:", alertErr.message);
+      }
     }
-
-    // 3. Marcar submission como procesada
-    db.prepare(`
-      UPDATE kyc_submissions
-      SET status = 'PROCESSED', processed_at = datetime('now'), mapped_to_id = ?
-      WHERE id = ?
-    `).run(clientId, submissionId);
-
-    // 4. Audit log — KYC_SUBMITTED
-    db.prepare(`
-      INSERT INTO audit_log (username, action, doc_id, client_id, ip)
-      VALUES ('WEB_PORTAL', 'KYC_SUBMITTED', ?, ?, ?)
-    `).run(glv_code, clientId, clientIp);
-
-    // 5. Crear tarea automática para COMPLIANCE
-    const complianceUser = db.prepare(
-      "SELECT id FROM users WHERE role = 'COMPLIANCE' AND active = 1 ORDER BY id LIMIT 1"
-    ).get();
-
-    db.prepare(`
-      INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
-      VALUES (?, ?, 'high', ?, ?, 'pending')
-    `).run(
-      `KYC REVIEW REQUIRED — ${glv_code}`,
-      `Nueva pre-inscripción web recibida.\nEmpresa: ${empresa}\nEmail: ${email}\nGLV Code: ${glv_code}\nFuente: WEB_KYC`,
-      complianceUser ? complianceUser.id : null,
-      complianceUser ? complianceUser.id : null
-    );
 
     return res.status(201).json({
       ok: true,
@@ -148,7 +180,7 @@ router.post("/kyc", kycLimiter, (req, res) => {
     });
   } catch (e) {
     console.error("[POST /clients/kyc]", e.message);
-    return res.status(500).json({ error: "Error procesando KYC. Los datos han sido guardados localmente." });
+    return res.status(500).json({ error: "Error procesando el registro KYC. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -157,6 +189,12 @@ router.use(authenticate);
 
 // ─── GET /clients — list active clients (excludes WEB_KYC leads not yet activated) ──
 router.get("/", (req, res) => {
+  // CLIENT/SUPPLIER roles can only see their own linked client
+  if (isClientUser(req.user)) {
+    if (!req.user.linked_client_id) return res.json([]);
+    const c = db.prepare("SELECT * FROM clients WHERE id = ?").get(req.user.linked_client_id);
+    return res.json(c ? [c] : []);
+  }
   const { type } = req.query;
   let q = `
     SELECT
@@ -199,7 +237,7 @@ router.get("/leads", requireLevel(65), (req, res) => {
     res.json(db.prepare(q).all(...params));
   } catch (e) {
     console.error("[GET /clients/leads]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error recuperando leads. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -207,6 +245,10 @@ router.get("/leads", requireLevel(65), (req, res) => {
 router.get("/:id", (req, res) => {
   const c = db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id);
   if (!c) return res.status(404).json({ error: "Cliente no encontrado" });
+  // CLIENT/SUPPLIER roles can only see their own linked client
+  if (isClientUser(req.user) && req.user.linked_client_id !== c.id) {
+    return res.status(403).json({ error: "Acceso denegado" });
+  }
   res.json(c);
 });
 
@@ -247,7 +289,7 @@ router.get("/:id/kyc-data", requireLevel(65), (req, res) => {
     });
   } catch (e) {
     console.error("[GET /clients/:id/kyc-data]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error accediendo al expediente KYC. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -262,7 +304,7 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       });
     }
 
-    const client = db.prepare("SELECT id, glv_code, kyc_status FROM clients WHERE id = ?").get(req.params.id);
+    const client = db.prepare("SELECT id, glv_code, glv_code_permanent, kyc_status FROM clients WHERE id = ?").get(req.params.id);
     if (!client) return res.status(404).json({ error: "Cliente no encontrado" });
 
     const updates = [];
@@ -290,36 +332,56 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
       return res.status(400).json({ error: "Sin campos para actualizar." });
     }
 
-    db.prepare(`UPDATE clients SET ${updates.join(", ")} WHERE id = ?`).run(...vals, req.params.id);
+    // Toda la activación (UPDATE cliente + GLV code + audit_log + tarea) en una sola transacción.
+    // Si cualquier paso falla, el cliente conserva su estado anterior.
+    // El outer db.transaction() garantiza atomicidad completa — cualquier error revierte todo.
+    db.transaction(() => {
+      if (kyc_status === "ACTIVE_CLIENT" && !client.glv_code_permanent) {
+        // Generación atómica del código GLV dentro de la transacción:
+        // si hay colisión UNIQUE en glv_code_permanent, el outer transaction revierte
+        // tanto el incremento de secuencia como el UPDATE del cliente.
+        const nowStr = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const year   = new Date().getFullYear();
+        const seqRow = db.prepare(
+          "UPDATE glv_code_sequences SET last_seq = last_seq + 1, updated_at = ? WHERE entity_code = 'GLV-CO' RETURNING last_seq"
+        ).get(nowStr);
+        if (!seqRow) throw new Error("GLV-CO sequence not found — check glv_code_sequences table");
+        updates.push("glv_code_permanent = ?");
+        vals.push(`GLV-CO-CLI-${year}-${String(seqRow.last_seq).padStart(5, "0")}`);
+        db.prepare(`UPDATE clients SET ${updates.join(", ")} WHERE id = ?`).run(...vals, req.params.id);
+      } else {
+        db.prepare(`UPDATE clients SET ${updates.join(", ")} WHERE id = ?`).run(...vals, req.params.id);
+      }
 
-    const actionMap = {
-      UNDER_REVIEW:        "KYC_ASSIGNED",
-      COMPLIANCE_APPROVED: "KYC_APPROVED",
-      COMMERCIAL_APPROVED: "KYC_APPROVED",
-      REJECTED:            "KYC_REJECTED",
-      ACTIVE_CLIENT:       "CLIENT_ACTIVATED",
-    };
-    const action = actionMap[kyc_status] || "KYC_REVIEWED";
-    db.prepare(
-      "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
-    ).run(req.user.username, action, client.glv_code, client.id, req.ip);
+      const actionMap = {
+        UNDER_REVIEW:        "KYC_ASSIGNED",
+        COMPLIANCE_APPROVED: "KYC_APPROVED",
+        COMMERCIAL_APPROVED: "KYC_APPROVED",
+        REJECTED:            "KYC_REJECTED",
+        ACTIVE_CLIENT:       "CLIENT_ACTIVATED",
+      };
+      const action = actionMap[kyc_status] || "KYC_REVIEWED";
+      db.prepare(
+        "INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)"
+      ).run(req.user.username, action, client.glv_code, client.id, req.ip);
 
-    // Auto-task on activation
-    if (kyc_status === "ACTIVE_CLIENT") {
-      db.prepare(`
-        INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
-        VALUES (?, ?, 'medium', ?, ?, 'pending')
-      `).run(
-        `CLIENT ACTIVATED — ${client.glv_code}`,
-        `Cliente activado y listo para operaciones.\nGLV Code: ${client.glv_code}\nActivado por: ${req.user.username}`,
-        req.user.id, req.user.id
-      );
-    }
+      // Auto-task on activation — dentro de la misma transacción
+      if (kyc_status === "ACTIVE_CLIENT") {
+        db.prepare(`
+          INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
+          VALUES (?, ?, 'medium', ?, ?, 'pending')
+        `).run(
+          `CLIENT ACTIVATED — ${client.glv_code}`,
+          `Cliente activado y listo para operaciones. GLV Code: ${client.glv_code}. Activado por: ${req.user.username}`,
+          req.user.id, req.user.id
+        );
+      }
+    })();
 
     res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
   } catch (e) {
     console.error("[PATCH /clients/:id/kyc-status]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error actualizando el estado KYC. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -379,7 +441,7 @@ router.patch("/:id/archive", requireLevel(75), (req, res) => {
     res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
   } catch (e) {
     console.error("[PATCH /clients/:id/archive]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error archivando el cliente. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -435,7 +497,7 @@ router.patch("/:id/lifecycle", requireLevel(65), (req, res) => {
     res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
   } catch (e) {
     console.error("[PATCH /clients/:id/lifecycle]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error en la transición de lifecycle. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -458,7 +520,7 @@ router.get("/:id/lifecycle-history", requireLevel(65), (req, res) => {
     res.json({ client, history });
   } catch (e) {
     console.error("[GET /clients/:id/lifecycle-history]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error recuperando historial. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -526,7 +588,7 @@ router.delete("/:id", requireLevel(100), (req, res) => {
     res.json({ ok: true, deleted_id: Number(req.params.id), glv_code: client.glv_code, force: isForce, kyc_unlinked: kycUnlinked });
   } catch (e) {
     console.error("[DELETE /clients/:id]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error eliminando el cliente. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -560,7 +622,7 @@ router.get("/:id/documents", requireLevel(65), (req, res) => {
     res.json(docs);
   } catch (e) {
     console.error("[GET /clients/:id/documents]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error recuperando documentos. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -602,7 +664,7 @@ router.post("/:id/documents/upload", requireLevel(65), docUpload.single("file"),
     ).get(ins.lastInsertRowid));
   } catch (e) {
     console.error("[POST /clients/:id/documents/upload]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error subiendo el documento. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -627,7 +689,7 @@ router.delete("/:id/documents/:docId", requireLevel(65), async (req, res) => {
     res.json({ ok: true, deleted_id: Number(req.params.docId) });
   } catch (e) {
     console.error("[DELETE /clients/:id/documents/:docId]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error eliminando el documento. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -646,7 +708,7 @@ router.get("/:id/documents/:docId/url", requireLevel(65), async (req, res) => {
     res.json({ url, file_name: doc.file_name, mime_type: doc.mime_type });
   } catch (e) {
     console.error("[GET /clients/:id/documents/:docId/url]", e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error generando URL del documento. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -704,7 +766,7 @@ router.post("/catalog/document-types", requireLevel(90), (req, res) => {
     res.status(201).json(db.prepare("SELECT * FROM document_type_catalog WHERE id=?").get(r.lastInsertRowid));
   } catch (e) {
     if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Ya existe un tipo con ese código" });
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error creando tipo de documento. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -739,7 +801,7 @@ router.post("/:id/countries", requireLevel(65), (req, res) => {
     res.status(201).json(db.prepare("SELECT cc.*,cat.name AS country_name,cat.region,cat.subregion FROM client_countries cc JOIN country_catalog cat ON cat.code=cc.country_code WHERE cc.id=?").get(r.lastInsertRowid));
   } catch (e) {
     if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Ya existe esa combinación cliente/país/tipo" });
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error registrando país. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -777,7 +839,7 @@ router.post("/:id/entity-types", requireLevel(65), (req, res) => {
     res.status(201).json(db.prepare("SELECT cet.id, et.id AS entity_type_id, et.code, et.name, et.category, cet.created_at FROM client_entity_types cet JOIN entity_types et ON et.id=cet.entity_type_id WHERE cet.id=?").get(r.lastInsertRowid));
   } catch (e) {
     if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "El cliente ya tiene ese tipo de entidad" });
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error registrando tipo de entidad. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -822,7 +884,7 @@ router.post("/:id/products", requireLevel(65), (req, res) => {
     res.status(201).json(db.prepare("SELECT cp.*,pc.code,pc.name,pc.category FROM client_products cp JOIN product_catalog pc ON pc.id=cp.product_id WHERE cp.id=?").get(r.lastInsertRowid));
   } catch (e) {
     if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Ya existe esa combinación cliente/producto/tipo" });
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error registrando producto. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
@@ -897,7 +959,7 @@ router.post("/:id/relationships", requireLevel(75), (req, res) => {
     res.status(201).json(db.prepare("SELECT * FROM client_relationships WHERE id=?").get(r.lastInsertRowid));
   } catch (e) {
     if (e.message.includes("UNIQUE")) return res.status(409).json({ error: "Esa relación ya existe" });
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: "Error registrando relación. Inténtelo de nuevo o contacte a soporte." });
   }
 });
 
