@@ -92,6 +92,7 @@ describe("CORS — ALLOWED_ORIGINS startup validation (subprocess)", () => {
     DB_PATH:    ":memory:",
     NODE_ENV:   "production",
     JWT_SECRET: require("crypto").randomBytes(32).toString("hex"),
+    SEED_ADMIN_PASSWORD: "startup-security-test-password",
   };
 
   test("exits with code 1 when ALLOWED_ORIGINS contains an HTTP origin in production", () => {
