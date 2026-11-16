@@ -1006,8 +1006,9 @@ function seedUsers() {
     throw new Error("SEED_ADMIN_PASSWORD is required for an empty production database");
   }
 
+  const isGenerated = !process.env.SEED_ADMIN_PASSWORD;
   const bootstrapPassword = process.env.SEED_ADMIN_PASSWORD || generateBootstrapPassword();
-  if (!process.env.SEED_ADMIN_PASSWORD) {
+  if (isGenerated) {
     console.warn("[DB] Development bootstrap password generated. Set SEED_ADMIN_PASSWORD before production use.");
   }
 
