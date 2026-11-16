@@ -73,6 +73,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_ORIGI
   .filter(Boolean);
 
 const { validateAndNormalizeOrigins, makeOriginChecker } = require("./utils/corsOrigin");
+const { apiLimiter, adminLimiter } = require("./middleware/rateLimiter");
 
 let VALIDATED_ORIGINS;
 try {
@@ -112,20 +113,21 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 app.set("trust proxy", 1);
 
-// Health check first — before all other routes
+// Public health check deliberately exposes no operational or data information.
 app.get("/health", (_req, res) => {
-  let dbInfo = {};
-  try {
-    const db = require("./db/database");
-    const mediaCount = db.prepare("SELECT COUNT(*) AS c FROM media_assets WHERE status != 'deleted'").get().c;
-    const userCount  = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
-    dbInfo = { media_assets: mediaCount, users: userCount };
-    try { dbInfo.migrations = db.getMigrationStatus(); } catch (_) {}
-  } catch (e) { dbInfo = { error: e.message }; }
-  res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS, db: dbInfo });
+  res.json({ ok: true, ts: new Date().toISOString(), build: BUILD_TS });
 });
 
 // API routes
+// Apply a shared ceiling before route-specific controls.
+app.use([
+  "/auth", "/documents", "/audit", "/users", "/profile", "/images", "/admin",
+  "/clients", "/operations", "/finance", "/tasks", "/price-center", "/media",
+  "/backup", "/commercial", "/operations-logistics", "/vessel-charter",
+  "/cargo-intelligence", "/visual-evidence"
+], apiLimiter);
+app.use(["/admin", "/users", "/backup"], adminLimiter);
+
 app.use("/auth",         authRouter);
 app.use("/documents",    documentsRouter);
 app.use("/audit",        auditRouter);
