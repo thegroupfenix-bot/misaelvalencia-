@@ -1,5 +1,5 @@
 import React,{useEffect,useState}from "react";
-const api=async(path,options={})=>{const r=await fetch(path,{credentials:"include",headers:{"Content-Type":"application/json"},...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"No fue posible completar la operación.");return d;};
+import { apiFetch as api } from "../api.js";
 const card={background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:12,padding:"1.25rem"};
 const input={width:"100%",padding:"9px 10px",border:"0.5px solid var(--color-border-secondary)",borderRadius:8,boxSizing:"border-box",background:"var(--color-background-primary)",color:"var(--color-text-primary)"};
 const button={background:"#1B2A4A",color:"#fff",border:"none",borderRadius:8,padding:"9px 13px",cursor:"pointer",fontWeight:600};
