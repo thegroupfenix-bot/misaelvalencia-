@@ -74,6 +74,12 @@ function lookupProductPrice(productName) {
   } catch { return null; }
 }
 
+function parseCommercialData(value) {
+  if (!value) return null;
+  if (typeof value !== "string") return value;
+  try { return JSON.parse(value); } catch { return null; }
+}
+
 function toRow(d) {
   return {
     id: d.id,
@@ -114,7 +120,7 @@ function toRow(d) {
     clientIdDocB64: pii.isConfigured() ? pii.decrypt(d.client_id_doc_b64) : d.client_id_doc_b64,
     productCategory: d.product_category,
     lang: d.lang,
-    commercialData: d.commercial_data ? (typeof d.commercial_data === "string" ? JSON.parse(d.commercial_data) : d.commercial_data) : null,
+    commercialData: parseCommercialData(d.commercial_data),
   };
 }
 

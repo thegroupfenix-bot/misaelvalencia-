@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { api } from "./api.js";
 import { applySeo } from "./utils/seo.js";
 import { downloadPDF } from "./components/GlvPDF.jsx";
@@ -195,6 +195,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
+        <Route path="/reset-password" element={<ResetPasswordScreen />} />
         <Route path="/*" element={
           <RequireAuth>
             <Portal />
@@ -292,6 +293,9 @@ function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryMessage, setRecoveryMessage] = useState("");
 
   useEffect(() => { if (user) navigate("/", { replace: true }); }, [user]);
 
@@ -308,6 +312,24 @@ function LoginScreen() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    setError("");
+    setRecoveryMessage("");
+    if (!recoveryEmail.trim()) {
+      setError("Ingrese el correo corporativo asociado a su cuenta.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await api.forgotPassword(recoveryEmail.trim());
+      setRecoveryMessage(result.message || "Si el correo existe, recibirá instrucciones.");
+    } catch (e) {
+      setError(e.message || "No fue posible solicitar la recuperación.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0d1b2a" }}>
       <div style={{ width: 420, background: "#fff", borderRadius: 16, padding: "2.5rem", boxShadow: "0 4px 32px rgba(0,0,0,0.18)" }}>
@@ -315,10 +337,16 @@ function LoginScreen() {
           <div style={{ width: 64, height: 64, borderRadius: 16, background: "#1B2A4A", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
             <span style={{ color: "#fff", fontSize: 28, fontWeight: 700 }}>G</span>
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1B2A4A", margin: "0 0 4px", letterSpacing: "-0.3px" }}>GLV GOS</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1B2A4A", margin: "0 0 4px", letterSpacing: "-0.3px" }}>{forgotMode ? "Recuperar acceso" : "GLV GOS"}</h1>
           <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 2px" }}>Global Operating System</p>
           <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>Enterprise Export & Operations Infrastructure</p>
         </div>
+        {forgotMode ? <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Correo corporativo</label>
+          <input type="email" value={recoveryEmail} onChange={e => setRecoveryEmail(e.target.value)} placeholder="nombre@empresa.com"
+            style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }}
+            onKeyDown={e => e.key === "Enter" && handleForgotPassword()} />
+        </div> : <>
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Usuario</label>
           <input value={username} onChange={e => setUsername(e.target.value)} placeholder="usuario.apellido"
@@ -337,15 +365,65 @@ function LoginScreen() {
             </button>
           </div>
         </div>
+        </>}
         {error && <p style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: "8px 12px", borderRadius: 8, marginBottom: 16 }}>{error}</p>}
-        <button onClick={handleLogin} disabled={loading}
+        {recoveryMessage && <p style={{ fontSize: 13, color: "#166534", background: "#f0fdf4", padding: "8px 12px", borderRadius: 8, marginBottom: 16 }}>{recoveryMessage}</p>}
+        <button onClick={forgotMode ? handleForgotPassword : handleLogin} disabled={loading}
           style={{ width: "100%", padding: "11px", background: loading ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
-          {loading ? "Verificando..." : "Acceder a GLV GOS"}
+          {loading ? "Verificando..." : forgotMode ? "Enviar instrucciones" : "Acceder a GLV GOS"}
+        </button>
+        <button type="button" onClick={() => { setForgotMode(v => !v); setError(""); setRecoveryMessage(""); }}
+          style={{ width: "100%", marginTop: 10, padding: 4, background: "transparent", border: "none", color: "#1B2A4A", cursor: "pointer", fontSize: 12 }}>
+          {forgotMode ? "Volver al inicio de sesión" : "¿Olvidó su contraseña?"}
         </button>
         <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 16 }}>Acceso restringido — GLV Holding Group © 2026 · GLV GOS v1.0</p>
       </div>
     </div>
   );
+}
+
+
+function ResetPasswordScreen() {
+  const navigate = useNavigate();
+  const { search } = useLocation();
+  const token = new URLSearchParams(search).get("token") || "";
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [completed, setCompleted] = useState(false);
+
+  const submit = async () => {
+    setError("");
+    if (!token) return setError("El enlace de recuperación no es válido.");
+    if (newPassword.length < 12) return setError("La contraseña debe tener al menos 12 caracteres.");
+    if (newPassword !== confirmPassword) return setError("Las contraseñas no coinciden.");
+    setSaving(true);
+    try {
+      await api.resetPassword(token, newPassword);
+      setCompleted(true);
+    } catch (e) {
+      setError(e.message || "No fue posible restablecer la contraseña.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0d1b2a", padding: "1rem", boxSizing: "border-box" }}>
+    <div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: 16, padding: "2.5rem", boxShadow: "0 4px 32px rgba(0,0,0,0.18)" }}>
+      <h1 style={{ fontSize: 20, color: "#1B2A4A", margin: "0 0 8px" }}>Crear nueva contraseña</h1>
+      <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 20px" }}>Use una contraseña de al menos 12 caracteres.</p>
+      {completed ? <>
+        <p style={{ fontSize: 13, color: "#166534", background: "#f0fdf4", padding: "10px 12px", borderRadius: 8 }}>Contraseña actualizada. Ya puede iniciar sesión.</p>
+        <button onClick={() => navigate("/login", { replace: true })} style={{ width: "100%", padding: "11px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Ir al inicio de sesión</button>
+      </> : <>
+        <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nueva contraseña" autoComplete="new-password" style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box", marginBottom: 12 }} />
+        <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirmar contraseña" autoComplete="new-password" onKeyDown={e => e.key === "Enter" && submit()} style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box", marginBottom: 12 }} />
+        {error && <p style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", padding: "8px 12px", borderRadius: 8 }}>{error}</p>}
+        <button onClick={submit} disabled={saving} style={{ width: "100%", padding: "11px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>{saving ? "Actualizando..." : "Actualizar contraseña"}</button>
+      </>}
+    </div>
+  </div>;
 }
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────

@@ -539,31 +539,26 @@ router.post("/product-profiles/:productCode", requireMediaWrite, (req, res) => {
 router.get("/proxy", requireMediaAccess, async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "url query param required" });
-  let decoded;
+  let target;
   try {
-    decoded = decodeURIComponent(url);
+    target = new URL(decodeURIComponent(url));
   } catch {
     return res.status(400).json({ error: "Invalid url encoding" });
   }
-  // Allow proxying URLs from our configured R2 domain OR any known Cloudflare R2 pattern
-  const R2_PUB = (process.env.R2_PUBLIC_URL || "").replace(/\/$/, "");
-  const isR2Domain = decoded.includes(".r2.dev") ||
-    decoded.includes(".r2.cloudflarestorage.com") ||
-    decoded.includes("cloudflare") ||
-    decoded.startsWith("https://pub-");
-  const isAllowedDomain = !R2_PUB || decoded.startsWith(R2_PUB) || isR2Domain;
-  if (!isAllowedDomain) {
-    console.warn("[proxy] Blocked URL — not from allowed domain:", decoded.substring(0, 80));
+  let configuredHost = null;
+  try { configuredHost = process.env.R2_PUBLIC_URL ? new URL(process.env.R2_PUBLIC_URL).hostname : null; } catch {}
+  const isR2Host = target.hostname.endsWith(".r2.dev") || target.hostname.endsWith(".r2.cloudflarestorage.com");
+  const isAllowedHost = target.protocol === "https:" && (target.hostname === configuredHost || isR2Host);
+  if (!isAllowedHost) {
+    console.warn("[proxy] Blocked URL — host not allowlisted:", target.hostname);
     return res.status(403).json({ error: "URL not from allowed domain" });
   }
-  console.log("[proxy] Fetching:", decoded.substring(0, 100));
+  console.log("[proxy] Fetching R2 asset:", target.hostname);
   try {
     const https = require("https");
-    const http = require("http");
-    const urlObj = new URL(decoded);
-    const client = urlObj.protocol === "https:" ? https : http;
-    client.get(decoded, (upstream) => {
+    const upstreamRequest = https.get(target, { timeout: 10000 }, (upstream) => {
       if (upstream.statusCode !== 200) {
+        upstream.resume();
         res.status(upstream.statusCode || 502).json({ error: "Upstream error" });
         return;
       }
@@ -571,7 +566,9 @@ router.get("/proxy", requireMediaAccess, async (req, res) => {
       res.setHeader("Content-Type", ct);
       res.setHeader("Cache-Control", "public, max-age=3600");
       upstream.pipe(res);
-    }).on("error", (err) => {
+    });
+    upstreamRequest.on("timeout", () => upstreamRequest.destroy(new Error("Upstream timeout")));
+    upstreamRequest.on("error", (err) => {
       console.error("[GET /media/proxy] fetch error:", err.message);
       res.status(502).json({ error: "Failed to fetch upstream" });
     });
