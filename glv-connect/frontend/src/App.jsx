@@ -179,6 +179,16 @@ function lookupPriceTable(destination) {
   return {};
 }
 
+function parseCommercialData(value) {
+  if (!value) return {};
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
+
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
@@ -422,6 +432,7 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
     LOGISTICS: "#6b7280", AGENTE: "#2563eb", CLIENT: "#374151", SUPPLIER: "#374151",
   };
   const roleColor = ROLE_COLORS[user?.role] || "#6b7280";
+  const displayName = String(user?.name || user?.username || "Usuario").split(" ")[0];
 
   return (
     <aside style={{ width: 230, background: "#1B2A4A", display: "flex", flexDirection: "column", padding: "1.5rem 0", minHeight: "100vh" }}>
@@ -461,7 +472,7 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
       </div>
       <div style={{ padding: "0.75rem 0.75rem", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <div style={{ padding: "8px 12px", marginBottom: 6 }}>
-          <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: "0 0 4px" }}>{user.name.split(" ")[0]}</p>
+          <p style={{ color: "#fff", fontSize: 13, fontWeight: 500, margin: "0 0 4px" }}>{displayName}</p>
           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: roleColor + "33", color: "#fff", border: `1px solid ${roleColor}55` }}>{user.role}</span>
         </div>
         <button onClick={onOpenProfile}
@@ -608,7 +619,7 @@ function Dashboard({ user, setView, setModal }) {
                   {operations.length === 0 ? (
                     <p style={{ fontSize: 13, color: "var(--color-text-secondary)", textAlign: "center", padding: "1rem 0" }}>Sin operaciones aún</p>
                   ) : operations.slice(0, 5).map(op => {
-                    const cd = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
+                    const cd = op.commercial_data ? (typeof op.commercial_data === "string" ? parseCommercialData(op.commercial_data) : op.commercial_data) : {};
                     return (
                       <div key={op.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                         <div>
@@ -1279,7 +1290,7 @@ function OperationsView({ user, setView, showNotif }) {
                 <div style={{ textAlign: "center", padding: "16px 0", color: "var(--color-text-secondary)", fontSize: 11 }}>Sin operaciones</div>
               )}
               {colOps.map(op => {
-                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
+                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? parseCommercialData(op.commercial_data) : op.commercial_data) : {};
                 const contractValue = commercial?.summary?.contractValue;
                 return (
                   <div key={op.id} onClick={() => setView(`op-detail:${op.id}`)}
@@ -1347,7 +1358,7 @@ function OperationsView({ user, setView, showNotif }) {
             <tbody>
               {operations.map(op => {
                 const sc = STATUS_COLORS[op.status] || STATUS_COLORS.DRAFT;
-                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
+                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? parseCommercialData(op.commercial_data) : op.commercial_data) : {};
                 return (
                   <tr key={op.id} onClick={() => setView(`op-detail:${op.id}`)} style={{ borderTop: "0.5px solid var(--color-border-tertiary)", cursor: "pointer" }}
                     onMouseEnter={e => e.currentTarget.style.background = "var(--color-background-secondary)"}
@@ -1495,7 +1506,7 @@ function OperationDetail({ opId, user, setView, showNotif }) {
   if (loading) return <LoadingSpinner />;
   if (!op) return <div style={{ color: "var(--color-text-secondary)", padding: "2rem" }}>Operación no encontrada.</div>;
 
-  const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? JSON.parse(op.commercial_data) : op.commercial_data) : {};
+  const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? parseCommercialData(op.commercial_data) : op.commercial_data) : {};
   const sc = STATUS_COLORS[op.status] || STATUS_COLORS.DRAFT;
   const fmtVal = (v, c = "USD") => v ? new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(v) : "—";
 
