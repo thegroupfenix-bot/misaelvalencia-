@@ -381,6 +381,7 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
   const isAgentOnly      = user?.role === "AGENTE";
   const hasFinanceAccess = isDirector || ["ACCOUNTING", "TREASURY"].includes(user?.role);
   const hasAuditAccess   = isDirector || user?.role === "AUDIT" || user?.role === "COMPLIANCE";
+  const hasSupplyAccess  = isDirector || ["LOGISTICS", "ACCOUNTING", "TREASURY", "COMPLIANCE"].includes(user?.role);
 
   const navItems = [
     { id: "dashboard",    icon: "ti-dashboard",        label: "Dashboard" },
