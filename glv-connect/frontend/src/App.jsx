@@ -21,6 +21,7 @@ import VesselCharter from "./components/VesselCharter.jsx";
 import CargoIntelligence from "./components/CargoIntelligence.jsx";
 import VisualEvidence from "./components/VisualEvidence.jsx";
 import ProcurementInventory from "./components/ProcurementInventory.jsx";
+import CustomsDesk from "./components/CustomsDesk.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
@@ -249,6 +250,7 @@ function Portal() {
         {view === "gos-leads"    && GOS_ROLES.has(user?.role) && <GosLeadsPanel user={user} showNotif={showNotif} />}
         {view === "finance"      && hasFinanceAccess && <FinanceView showNotif={showNotif} />}
         {view === "procurement"  && hasSupplyAccess && <ProcurementInventory user={user} showNotif={showNotif} />}
+        {view === "customs"      && hasSupplyAccess && <CustomsDesk showNotif={showNotif} />}
         {view === "price-center"  && <PriceCenterView user={user} />}
         {view === "media-center"  && <MediaCenter user={user} />}
         {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
@@ -402,7 +404,8 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
       { id: "usuarios", icon: "ti-users",            label: "Usuarios" },
     ] : []),
     ...(hasFinanceAccess ? [{ id: "finance", icon: "ti-currency-dollar", label: "Finanzas" }] : []),
-    ...(hasSupplyAccess ? [{ id: "procurement", icon: "ti-shopping-cart", label: "Compras e Inventario" }] : []),
+    ...(hasSupplyAccess ? [{ id: "procurement", icon: "ti-shopping-cart", label: "Compras e Inventario" },
+      { id: "customs", icon: "ti-file-invoice", label: "Aduanas" }] : []),
     ...(hasAuditAccess   ? [{ id: "audit",   icon: "ti-shield",          label: "Auditoría" }] : []),
     ...(isAdmin ? [
       { id: "admin-users",  icon: "ti-user-cog", label: "Gestión Usuarios" },
