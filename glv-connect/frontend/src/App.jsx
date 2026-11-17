@@ -20,6 +20,7 @@ import OperationsLogistics from "./components/OperationsLogistics.jsx";
 import VesselCharter from "./components/VesselCharter.jsx";
 import CargoIntelligence from "./components/CargoIntelligence.jsx";
 import VisualEvidence from "./components/VisualEvidence.jsx";
+import ProcurementInventory from "./components/ProcurementInventory.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
@@ -222,6 +223,7 @@ function Portal() {
   const isAdmin          = ADMINS.has(user?.role);
   const hasFinanceAccess = isDirector || ["ACCOUNTING", "TREASURY"].includes(user?.role);
   const hasAuditAccess   = isDirector || user?.role === "AUDIT" || user?.role === "COMPLIANCE";
+  const hasSupplyAccess  = isDirector || ["LOGISTICS", "ACCOUNTING", "TREASURY", "COMPLIANCE"].includes(user?.role);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--color-background-tertiary)", fontFamily: "var(--font-sans)" }}>
@@ -246,6 +248,7 @@ function Portal() {
         {view?.startsWith?.("client-detail:") && <ClientDetailPage clientId={Number(view.split(":")[1])} user={user} setView={safeSetView} showNotif={showNotif} />}
         {view === "gos-leads"    && GOS_ROLES.has(user?.role) && <GosLeadsPanel user={user} showNotif={showNotif} />}
         {view === "finance"      && hasFinanceAccess && <FinanceView showNotif={showNotif} />}
+        {view === "procurement"  && hasSupplyAccess && <ProcurementInventory user={user} showNotif={showNotif} />}
         {view === "price-center"  && <PriceCenterView user={user} />}
         {view === "media-center"  && <MediaCenter user={user} />}
         {view === "tasks"        && <TasksView user={user} showNotif={showNotif} />}
@@ -399,6 +402,7 @@ function Sidebar({ user, view, setView, onLogout, lang, setLang, onOpenProfile }
       { id: "usuarios", icon: "ti-users",            label: "Usuarios" },
     ] : []),
     ...(hasFinanceAccess ? [{ id: "finance", icon: "ti-currency-dollar", label: "Finanzas" }] : []),
+    ...(hasSupplyAccess ? [{ id: "procurement", icon: "ti-shopping-cart", label: "Compras e Inventario" }] : []),
     ...(hasAuditAccess   ? [{ id: "audit",   icon: "ti-shield",          label: "Auditoría" }] : []),
     ...(isAdmin ? [
       { id: "admin-users",  icon: "ti-user-cog", label: "Gestión Usuarios" },
