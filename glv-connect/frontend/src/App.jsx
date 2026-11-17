@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 41034)
-Total output lines: 2602
-
 import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { api } from "./api.js";
@@ -384,6 +381,7 @@ function LoginScreen() {
     </div>
   );
 }
+
 
 function ResetPasswordScreen() {
   const navigate = useNavigate();
@@ -971,7 +969,705 @@ function NewDocForm({ type, user, setView, showNotif }) {
           return {
             ...next,
             client: sco.client || next.client,
-            clientCountry: sco.clientCountry || next.clientCoun…11034 tokens truncated…ro", "Tipo", "Cliente", "Valor Ref.", "Estado", "Fecha", ""].map(h => (
+            clientCountry: sco.clientCountry || next.clientCountry,
+            clientRepresentative: sco.clientRepresentative || next.clientRepresentative,
+            clientEmail: sco.clientEmail || next.clientEmail,
+            clientPhone: sco.clientPhone || next.clientPhone,
+            product: sco.product || next.product,
+            destination: sco.destination || next.destination,
+            origin: sco.origin || next.origin,
+            headcount: sco.headcount || next.headcount,
+            avgWeight: sco.avgWeight || next.avgWeight,
+          };
+        }
+      }
+      return next;
+    });
+  };
+
+  const handlePaymentChange = (paymentData) => {
+    setFormState(prev => ({
+      ...prev,
+      paymentOption: paymentData.option || "",
+      docTrigger: paymentData.docTrigger || "",
+      hasGuarantee: paymentData.hasGuarantee || false,
+      guaranteeType: paymentData.guaranteeType || null,
+      guaranteeBank: paymentData.bankName || "",
+    }));
+  };
+
+  const toBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const effectiveDestination = commercialData?.destination || form.destination || "";
+  const effectiveProduct = commercialData?.rows?.[0]?.category || commercialData?.category || form.product || "";
+  const destInfo = lookupPriceTable(effectiveDestination);
+  const pricePerKg = destInfo.price || 0;
+  const totalKg = (parseFloat(form.headcount) || 0) * (parseFloat(form.avgWeight) || 0);
+  const totalValue = commercialData?.summary?.contractValue || (totalKg * pricePerKg) || null;
+  const isAnimalProduct = effectiveProduct === "LIVE_ANIMALS" || (form.product && (form.product.includes("Animales") || form.product.includes("Ovina") || form.product.includes("Bovina")));
+  const isCustomProduct = form.product === "Outro" || form.product === "Otro";
+
+  const exporter = chinaAlert ? "GLV Services SAS (Colombia)" : "GLV Global Food Services LLC (Miami, FL)";
+  const domain   = chinaAlert ? "glvservicesexp.com" : "glvglobalfoodservices.com";
+  const gaccNote = chinaAlert ? "GACC No. YA11000PDY110K805" : null;
+
+  const signedFCOs   = allDocs.filter(d => d.type === "FCO" && d.status === "Firmado");
+  const availableSCOs = allDocs.filter(d => d.type === "SCO");
+
+  const handleSubmit = async () => {
+    setValidationErrors([]);
+
+    // Always read from ref to avoid stale closure — ref is kept in sync via useEffect
+    const cd = commercialDataRef.current;
+
+    // For LIVE_ANIMALS: agents may fill headCount/avgWeight in CommercialEngine DynamicFields
+    // but leave form.headcount empty. Read engine specs as fallback.
+    const engineRow0 = cd?.rows?.[0] || cd;
+    const engineHeadcount = parseFloat(form.headcount)
+      || parseFloat(engineRow0?.specs?.headCount)
+      || 0;
+    const engineAvgWeight = parseFloat(form.avgWeight)
+      || parseFloat(engineRow0?.specs?.avgWeight)
+      || 45;
+    const engineTotalKg = engineHeadcount * engineAvgWeight;
+
+    // effectiveTotalValue: tries engine contractValue → form-based → engine-headcount-based
+    const engineContractValue = cd?.summary?.contractValue
+      || (cd?.rows?.reduce((s, r) => s + (r?.summary?.contractValue || 0), 0) ?? 0);
+    const effectiveTotalValue = engineContractValue > 0
+      ? engineContractValue
+      : ((totalKg * pricePerKg) || (engineTotalKg * pricePerKg) || null);
+
+    console.log("[SCO-DEBUG] role:", user?.role);
+    console.log("[SCO-DEBUG] commercialData:", JSON.stringify(cd));
+    console.log("[SCO-DEBUG] engineContractValue:", engineContractValue);
+    console.log("[SCO-DEBUG] pricePerKg:", pricePerKg, "totalKg:", totalKg, "engineTotalKg:", engineTotalKg);
+    console.log("[SCO-DEBUG] effectiveTotalValue:", effectiveTotalValue);
+    console.log("[SCO-DEBUG] effectiveDestination:", effectiveDestination, "effectiveProduct:", effectiveProduct);
+    console.log("[SCO-DEBUG] paymentOption:", form.paymentOption, "validityDays:", form.validityDays);
+
+    const fData = {
+      client: form.client,
+      clientRepresentative: form.clientRepresentative,
+      clientEmail: form.clientEmail,
+      product: effectiveProduct || form.product,
+      pricePerKg,
+      totalValue: effectiveTotalValue,
+      headcount: engineHeadcount || form.headcount,
+      destination: effectiveDestination,
+      payment_option: form.paymentOption,
+      validityDays: form.validityDays,
+      doc_trigger: form.docTrigger,
+      custom_product_name: form.customProductName,
+      custom_product_desc: form.customProductDesc,
+      fco_confirmed: form.fcoConfirmed ? 1 : 0,
+      client_id_doc_b64: form.clientIdDocB64,
+      commercialData: cd,
+    };
+
+    console.log("[SCO-DEBUG] fData for validation:", JSON.stringify({ ...fData, client_id_doc_b64: fData.client_id_doc_b64 ? "[base64]" : null }));
+
+    const errors = validateDocForm(fData, agentProfile, type, user?.role);
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        type,
+        client: form.client,
+        clientCountry: form.clientCountry,
+        clientRepresentative: form.clientRepresentative,
+        clientEmail: form.clientEmail,
+        clientPhone: form.clientPhone,
+        product: effectiveProduct || form.product,
+        destination: effectiveDestination,
+        origin: chinaAlert ? "Colombia" : (commercialData?.origin || form.origin || "Brazil"),
+        headcount: isAnimalProduct ? form.headcount : null,
+        avgWeight: isAnimalProduct ? form.avgWeight : null,
+        paymentMethod: form.paymentMethod,
+        observations: form.observations,
+        parentId: form.parentId,
+        payment_option: form.paymentOption,
+        doc_trigger: form.docTrigger,
+        has_guarantee: form.hasGuarantee ? 1 : 0,
+        guarantee_type: form.guaranteeType,
+        guarantee_bank: form.guaranteeBank,
+        validity_days: parseInt(form.validityDays) || 15,
+        custom_product_name: isCustomProduct ? form.customProductName : null,
+        custom_product_desc: isCustomProduct ? form.customProductDesc : null,
+        custom_unit: isCustomProduct ? form.customUnit : null,
+        fco_confirmed: form.fcoConfirmed ? 1 : 0,
+        commercial_data: Object.keys(commercialData).length > 0 ? commercialData : null,
+        selected_media: selectedMedia?.selectedIds?.length > 0 ? selectedMedia : null,
+        client_id_doc_b64: form.clientIdDocB64,
+      };
+
+      const doc = await api.createDoc(payload);
+      showNotif(`${type} ${doc.id} generado. Copia enviada a contabilidad@glvservicesexp.com`, "success");
+      setView(type.toLowerCase());
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "2rem" }}>
+        <button onClick={() => setView(type.toLowerCase())} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-secondary)", fontSize: 22 }}>←</button>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>Nuevo {type}</h1>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 14, margin: 0 }}>Complete los campos para generar el documento</p>
+        </div>
+      </div>
+
+      {/* Validation errors */}
+      {validationErrors.length > 0 && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#991b1b", margin: "0 0 8px" }}>
+            <i className="ti ti-alert-circle" style={{ marginRight: 6, verticalAlign: -2 }} />
+            Por favor corrija los siguientes errores antes de continuar:
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {validationErrors.map((err, i) => (
+              <li key={i} style={{ fontSize: 13, color: "#991b1b", marginBottom: 4 }}>{err}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {chinaAlert && (
+        <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", gap: 10 }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 20, color: "#d97706", marginTop: 1 }} />
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#92400e", margin: "0 0 4px" }}>Filtro CHINA activado</p>
+            <p style={{ fontSize: 13, color: "#78350f", margin: 0 }}>Entidad exportadora bloqueada a <strong>GLV Services SAS (Colombia)</strong>. GACC No. YA11000PDY110K805 insertado automáticamente.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Profile status banner — only for agent roles, only when incomplete */}
+      {AGENT_PROFILE_ROLES.has(user?.role) && agentProfile !== null && agentProfile?.completed !== 1 && (
+        <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+          <i className="ti ti-user-exclamation" style={{ fontSize: 22, color: "#ea580c", flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#9a3412", margin: "0 0 2px" }}>Perfil incompleto — complétalo para emitir documentos</p>
+            <p style={{ fontSize: 12, color: "#7c2d12", margin: 0 }}>
+              {!agentProfile?.phone && "Falta teléfono. "}
+              {!agentProfile?.signature_b64 && "Falta firma digital. "}
+              Haz click en <strong>"Mi Perfil"</strong> en el menú lateral.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <FormSection title="Datos del cliente">
+          <FormField label="Nombre / Empresa *" value={form.client} onChange={v => setField("client", v)} placeholder="Nombre completo o razón social" />
+          <FormField label="País del cliente" value={form.clientCountry} onChange={v => setField("clientCountry", v)} placeholder="País" />
+          <FormField label="Representante *" value={form.clientRepresentative} onChange={v => setField("clientRepresentative", v)} placeholder="Nombre del representante" />
+          <FormField label="Email institucional *" value={form.clientEmail} onChange={v => setField("clientEmail", v)} placeholder="correo@empresa.com" />
+          <FormField label="Teléfono / WhatsApp" value={form.clientPhone} onChange={v => setField("clientPhone", v)} placeholder="+1 000 000 0000" />
+        </FormSection>
+
+        <div style={{ gridColumn: "1 / -1" }}>
+          <FormSection title="Programa Comercial de Exportación">
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <button type="button" onClick={() => setShowPriceCenter(true)}
+                style={{ padding: "7px 14px", borderRadius: 8, border: "1px solid #1B2A4A", background: "#f0f4ff", color: "#1B2A4A", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                <i className="ti ti-database" style={{ fontSize: 14 }} />
+                Consultar Price Center
+              </button>
+            </div>
+            <CommercialEngine value={commercialData} onChange={setCommercialData} />
+          </FormSection>
+          <MediaPanel category={effectiveProduct} onChange={setSelectedMedia} />
+        </div>
+        {showPriceCenter && <PriceCenterModal user={user} onClose={() => setShowPriceCenter(false)} />}
+
+        {/* Custom product fields — MODULE 3 */}
+        {isCustomProduct && (
+          <FormSection title="Producto personalizado">
+            <FormField label="Nombre del producto *" value={form.customProductName} onChange={v => setField("customProductName", v)} placeholder="Nombre del producto" />
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Descripción breve *</label>
+              <textarea value={form.customProductDesc} onChange={e => setField("customProductDesc", e.target.value)} rows={3}
+                placeholder="Descripción del producto, especificaciones, características..."
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", fontSize: 14, background: "var(--color-background-primary)", color: "var(--color-text-primary)", resize: "vertical", boxSizing: "border-box" }} />
+            </div>
+            <SelectField label="Unidad de medida" value={form.customUnit} onChange={v => setField("customUnit", v)}>
+              {CUSTOM_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+            </SelectField>
+            <SelectField label="Sistema de pago aplicable" value={form.customPaymentType} onChange={v => setField("customPaymentType", v)}>
+              <option value="TT">Transferencia Bancaria (TT)</option>
+              <option value="LC/SBLC">LC / SBLC</option>
+              <option value="Otro">Otro</option>
+            </SelectField>
+          </FormSection>
+        )}
+
+        {isAnimalProduct && (
+          <FormSection title="Especificaciones del lote">
+            <FormField label="Número de cabezas" value={form.headcount} onChange={v => setField("headcount", v)} placeholder="70000" type="number" />
+            <FormField label="Peso promedio ref. (kg)" value={form.avgWeight} onChange={v => setField("avgWeight", v)} placeholder="45" type="number" />
+            {form.destination && (
+              <div style={{ background: "var(--color-background-secondary)", borderRadius: 8, padding: "12px", border: "0.5px solid var(--color-border-tertiary)" }}>
+                <p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 6px" }}>Precio CFR ({form.destination})</p>
+                <p style={{ fontSize: 20, fontWeight: 700, color: "var(--color-text-primary)", margin: "0 0 4px" }}>USD {pricePerKg.toFixed(2)}/kg</p>
+                {totalValue > 0 && <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>Valor referencial: <strong>{fmt(totalValue)}</strong></p>}
+              </div>
+            )}
+          </FormSection>
+        )}
+
+        {/* Payment selector — MODULE 2 */}
+        {(effectiveProduct || form.product) && (
+          <FormSection title="Sistema de pago *">
+            <PaymentSelector productCategory={effectiveProduct || form.product} onChange={handlePaymentChange} />
+          </FormSection>
+        )}
+
+        <FormSection title="Términos financieros">
+          <FormField label="Validez del documento (días) *" value={form.validityDays} onChange={v => setField("validityDays", v)} type="number" />
+          <FormField label="Duración del programa" value={form.programDuration} onChange={v => setField("programDuration", v)} placeholder="5 años" />
+        </FormSection>
+
+        {type === "FCO" && (
+          <FormSection title="Referencia SCO (opcional)">
+            <SelectField label="SCO de origen" value={form.parentId} onChange={v => setField("parentId", v)}>
+              <option value="">Nueva FCO sin SCO de referencia</option>
+              {availableSCOs.map(s => <option key={s.id} value={s.id}>{s.id} — {s.client}</option>)}
+            </SelectField>
+            <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 12px" }}>Al seleccionar una SCO, sus datos se cargan automáticamente.</p>
+          </FormSection>
+        )}
+
+        {/* FCO specific fields — MODULE 4 */}
+        {type === "FCO" && (
+          <FormSection title="Verificación FCO (obligatorio)">
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginBottom: 16 }}>
+              <input type="checkbox" checked={form.fcoConfirmed} onChange={e => setField("fcoConfirmed", e.target.checked)}
+                style={{ width: 16, height: 16, marginTop: 2, cursor: "pointer" }} />
+              <span style={{ fontSize: 13, color: "var(--color-text-primary)" }}>
+                <strong>*</strong> Confirmo que los precios y condiciones han sido verificados y aprobados internamente antes de emitir esta FCO.
+              </span>
+            </label>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>
+                Documento de identidad del representante del cliente * <span style={{ fontSize: 11, color: "#6b7280" }}>(PDF/JPG)</span>
+              </label>
+              <input type="file" ref={clientIdRef} accept="image/*,.pdf"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = ev => setField("clientIdDocB64", ev.target.result);
+                  reader.readAsDataURL(file);
+                }}
+                style={{ display: "none" }} />
+              <button type="button" onClick={() => clientIdRef.current.click()}
+                style={{ padding: "9px 16px", borderRadius: 8, border: "1px dashed #d1d5db", background: form.clientIdDocB64 ? "#f0fdf4" : "#f9fafb", cursor: "pointer", fontSize: 13, color: form.clientIdDocB64 ? "#166534" : "#6b7280", width: "100%" }}>
+                {form.clientIdDocB64 ? "✓ Documento cargado — click para cambiar" : "Click para subir documento de identidad"}
+              </button>
+            </div>
+          </FormSection>
+        )}
+
+        {type === "SPA" && (
+          <FormSection title="FCO de referencia (obligatorio)">
+            <SelectField label="FCO firmada *" value={form.parentId} onChange={v => setField("parentId", v)}>
+              <option value="">Seleccionar FCO firmada</option>
+              {signedFCOs.map(f => <option key={f.id} value={f.id}>{f.id} — {f.client}</option>)}
+            </SelectField>
+            <div style={{ background: "#ede9fe", borderRadius: 8, padding: "10px 12px", fontSize: 12, color: "#4c1d95" }}>
+              <i className="ti ti-lock" style={{ fontSize: 14, marginRight: 6, verticalAlign: -2 }} />
+              El SPA activa 43 cláusulas legales del modelo SPA2026-03-01.
+            </div>
+          </FormSection>
+        )}
+      </div>
+
+      <FormSection title="Entidad exportadora (auto-generado)">
+        <div style={{ background: "var(--color-background-secondary)", borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--color-border-tertiary)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div><p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 4px" }}>Exportador</p><p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>{exporter}</p></div>
+            <div><p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 4px" }}>Dominio</p><p style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>{domain}</p></div>
+            {gaccNote && <div><p style={{ fontSize: 12, color: "var(--color-text-secondary)", margin: "0 0 4px" }}>GACC</p><p style={{ fontSize: 13, fontWeight: 600, color: "#d97706", margin: 0 }}>{gaccNote}</p></div>}
+          </div>
+        </div>
+      </FormSection>
+
+      <div style={{ marginTop: 20 }}>
+        <label style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Observaciones adicionales</label>
+        <textarea value={form.observations} onChange={e => setField("observations", e.target.value)} rows={3}
+          placeholder="Instrucciones especiales, notas del cliente..."
+          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", fontSize: 14, background: "var(--color-background-primary)", color: "var(--color-text-primary)", resize: "vertical", boxSizing: "border-box" }} />
+      </div>
+
+      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 24 }}>
+        <button onClick={() => setView(type.toLowerCase())}
+          style={{ padding: "10px 20px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 14, color: "var(--color-text-primary)" }}>Cancelar</button>
+        <button onClick={handleSubmit} disabled={submitting}
+          style={{ padding: "10px 24px", background: submitting ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}>
+          <i className="ti ti-file-plus" style={{ fontSize: 16, marginRight: 6, verticalAlign: -2 }} />
+          {submitting ? "Generando..." : `Generar ${type} y enviar a auditoría`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Operations View ─────────────────────────────────────────────────────────
+function OperationsView({ user, setView, showNotif }) {
+  const [operations, setOperations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [viewMode, setViewMode] = useState("table"); // "table" | "kanban"
+
+  const load = () => {
+    setLoading(true);
+    api.getOperations().then(setOperations).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const STATUSES = ["DRAFT", "NEGOTIATING", "ACTIVE", "PENDING_DOCS", "SIGNED", "SHIPPED", "COMPLETED", "CANCELLED"];
+
+  const STATUS_COLORS = {
+    DRAFT: { bg: "#f3f4f6", text: "#374151" },
+    ACTIVE: { bg: "#dcfce7", text: "#166534" },
+    NEGOTIATING: { bg: "#dbeafe", text: "#1e40af" },
+    PENDING_DOCS: { bg: "#fef3c7", text: "#92400e" },
+    SIGNED: { bg: "#ede9fe", text: "#4c1d95" },
+    SHIPPED: { bg: "#f0fdf4", text: "#059669" },
+    COMPLETED: { bg: "#dcfce7", text: "#166534" },
+    CANCELLED: { bg: "#fee2e2", text: "#991b1b" },
+  };
+
+  const KanbanBoard = () => (
+    <div style={{ display: "flex", flexDirection: "row", overflowX: "auto", gap: 12, paddingBottom: 16, alignItems: "flex-start" }}>
+      {STATUSES.map(status => {
+        const sc = STATUS_COLORS[status] || { bg: "#f3f4f6", text: "#374151" };
+        const colOps = operations.filter(op => op.status === status);
+        return (
+          <div key={status} style={{ minWidth: 200, maxWidth: 220, flex: "0 0 200px" }}>
+            <div style={{ background: sc.bg, borderRadius: "8px 8px 0 0", padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `2px solid ${sc.text}33` }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: sc.text, letterSpacing: "0.04em" }}>{status}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: sc.text, background: "rgba(255,255,255,0.6)", borderRadius: 20, padding: "1px 7px" }}>{colOps.length}</span>
+            </div>
+            <div style={{ background: "var(--color-background-secondary)", borderRadius: "0 0 8px 8px", minHeight: 80, padding: 8, display: "flex", flexDirection: "column", gap: 8, border: "0.5px solid var(--color-border-tertiary)", borderTop: "none" }}>
+              {colOps.length === 0 && (
+                <div style={{ textAlign: "center", padding: "16px 0", color: "var(--color-text-secondary)", fontSize: 11 }}>Sin operaciones</div>
+              )}
+              {colOps.map(op => {
+                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? parseCommercialData(op.commercial_data) : op.commercial_data) : {};
+                const contractValue = commercial?.summary?.contractValue;
+                return (
+                  <div key={op.id} onClick={() => setView(`op-detail:${op.id}`)}
+                    style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 8, padding: "10px 12px", cursor: "pointer", boxShadow: "none" }}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(27,42,74,0.13)"}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}>
+                    <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "#1B2A4A", fontWeight: 700, marginBottom: 4 }}>{op.operation_id || op.id}</div>
+                    <div style={{ fontSize: 12, color: "var(--color-text-primary)", fontWeight: 500, marginBottom: 4, lineHeight: 1.3 }}>{op.counterpart_name || "—"}</div>
+                    {contractValue && (
+                      <div style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: commercial.currency || "USD", maximumFractionDigits: 0 }).format(contractValue)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>Operaciones Comerciales</h1>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, margin: 0 }}>{operations.length} operaciones registradas</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => setViewMode(viewMode === "table" ? "kanban" : "table")}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: "var(--color-background-primary)", color: "var(--color-text-primary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+            <i className={`ti ${viewMode === "table" ? "ti-layout-columns" : "ti-table"}`} style={{ fontSize: 15 }} />
+            {viewMode === "table" ? "Vista Kanban" : "Vista Tabla"}
+          </button>
+          <button onClick={() => setShowCreate(true)}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 18px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+            <i className="ti ti-plus" style={{ fontSize: 16 }} />Nueva Operación
+          </button>
+        </div>
+      </div>
+
+      {loading ? <LoadingSpinner /> : operations.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "4rem", color: "var(--color-text-secondary)" }}>
+          <i className="ti ti-briefcase-off" style={{ fontSize: 48, display: "block", marginBottom: 12, opacity: 0.4 }} />
+          <p>No hay operaciones registradas aún.</p>
+          <button onClick={() => setShowCreate(true)}
+            style={{ marginTop: 12, padding: "9px 20px", background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, cursor: "pointer" }}>
+            Crear primera operación
+          </button>
+        </div>
+      ) : viewMode === "kanban" ? (
+        <KanbanBoard />
+      ) : (
+        <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--color-background-secondary)" }}>
+                {["ID Operación", "Producto / Categoría", "Contraparte", "Valor Contrato", "Estado", "Agente", "Fecha"].map(h => (
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {operations.map(op => {
+                const sc = STATUS_COLORS[op.status] || STATUS_COLORS.DRAFT;
+                const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? parseCommercialData(op.commercial_data) : op.commercial_data) : {};
+                return (
+                  <tr key={op.id} onClick={() => setView(`op-detail:${op.id}`)} style={{ borderTop: "0.5px solid var(--color-border-tertiary)", cursor: "pointer" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--color-background-secondary)"}
+                    onMouseLeave={e => e.currentTarget.style.background = ""}>
+                    <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", fontSize: 12, color: "#1B2A4A", fontWeight: 600 }}>{op.operation_id || op.id}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-primary)" }}>
+                      <span style={{ fontSize: 12 }}>{op.product_name || commercial?.product || "—"}</span>
+                      {commercial?.category && <span style={{ display: "block", fontSize: 11, color: "var(--color-text-secondary)" }}>{commercial.category}</span>}
+                    </td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-primary)" }}>{op.counterpart_name || "—"}</td>
+                    <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                      {commercial?.summary?.contractValue
+                        ? new Intl.NumberFormat("en-US", { style: "currency", currency: commercial.currency || "USD", maximumFractionDigits: 0 }).format(commercial.summary.contractValue)
+                        : "—"}
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: sc.bg, color: sc.text, fontWeight: 500 }}>{op.status}</span>
+                    </td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{op.agent_username || op.created_by}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{op.created_at?.split("T")[0] || op.date || "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showCreate && <CreateOperationModal onClose={() => setShowCreate(false)} onCreated={() => { showNotif("Operación creada"); load(); }} showNotif={showNotif} />}
+    </div>
+  );
+}
+
+function CreateOperationModal({ onClose, onCreated, showNotif }) {
+  const [counterpartName, setCounterpartName] = useState("");
+  const [counterpartCountry, setCounterpartCountry] = useState("");
+  const [notes, setNotes] = useState("");
+  const [commercial, setCommercial] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!counterpartName) { showNotif("El nombre de la contraparte es obligatorio.", "error"); return; }
+    if (!commercial?.category) { showNotif("Seleccione una categoría de producto.", "error"); return; }
+    setSaving(true);
+    try {
+      await api.createOperation({
+        counterpart_name: counterpartName,
+        counterpart_country: counterpartCountry,
+        notes,
+        commercial_data: commercial,
+        product_name: commercial?.product || commercial?.category || "",
+        origin: counterpartCountry,
+        destination: "",
+      });
+      onCreated();
+      onClose();
+    } catch (e) {
+      showNotif(e.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: "1rem" }}>
+      <div style={{ background: "var(--color-background-primary)", borderRadius: 16, width: "100%", maxWidth: 820, maxHeight: "92vh", overflowY: "auto", padding: "2rem", boxShadow: "0 8px 48px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: "var(--color-text-primary)", margin: 0 }}>Nueva Operación Comercial</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "var(--color-text-secondary)" }}>×</button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Contraparte / Cliente *</label>
+            <input value={counterpartName} onChange={e => setCounterpartName(e.target.value)} placeholder="Nombre de empresa o cliente"
+              style={{ width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>País de destino</label>
+            <input value={counterpartCountry} onChange={e => setCounterpartCountry(e.target.value)} placeholder="País"
+              style={{ width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", boxSizing: "border-box" }} />
+          </div>
+        </div>
+
+        <CommercialEngine value={commercial} onChange={setCommercial} />
+
+        <div style={{ marginTop: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", display: "block", marginBottom: 5 }}>Notas internas</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Notas, instrucciones especiales..."
+            style={{ width: "100%", padding: "8px 11px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", resize: "vertical", boxSizing: "border-box" }} />
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+          <button onClick={onClose} style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--color-border-secondary)", background: "none", cursor: "pointer", fontSize: 13, color: "var(--color-text-primary)" }}>Cancelar</button>
+          <button onClick={handleCreate} disabled={saving}
+            style={{ padding: "9px 24px", background: saving ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
+            {saving ? "Creando..." : "Crear Operación"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Operation Detail ─────────────────────────────────────────────────────────
+function OperationDetail({ opId, user, setView, showNotif }) {
+  const [op, setOp]         = useState(null);
+  const [docs, setDocs]     = useState([]);
+  const [tasks, setTasks]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [modal, setModal]   = useState(null);
+
+  const STATUSES = ["DRAFT","NEGOTIATING","ACTIVE","PENDING_DOCS","SIGNED","SHIPPED","COMPLETED","CANCELLED"];
+  const STATUS_COLORS = {
+    DRAFT: { bg: "#f3f4f6", text: "#374151" }, ACTIVE: { bg: "#dcfce7", text: "#166534" },
+    NEGOTIATING: { bg: "#dbeafe", text: "#1e40af" }, PENDING_DOCS: { bg: "#fef3c7", text: "#92400e" },
+    SIGNED: { bg: "#ede9fe", text: "#4c1d95" }, SHIPPED: { bg: "#f0fdf4", text: "#059669" },
+    COMPLETED: { bg: "#dcfce7", text: "#166534" }, CANCELLED: { bg: "#fee2e2", text: "#991b1b" },
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      api.getOperation(opId),
+      api.getDocs().catch(() => []),
+      api.getTasks({ operation_id: opId }).catch(() => []),
+    ]).then(([o, allDocs, t]) => {
+      setOp(o);
+      setDocs(allDocs.filter(d => d.operation_id === opId || d.operation_id === o?.operation_id));
+      setTasks(t);
+    }).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
+  }, [opId]);
+
+  const handleStatusChange = async (newStatus) => {
+    setUpdatingStatus(true);
+    try {
+      await api.updateOpStatus(opId, newStatus);
+      setOp(prev => ({ ...prev, status: newStatus }));
+      showNotif(`Estado actualizado: ${newStatus}`);
+    } catch (e) { showNotif(e.message, "error"); }
+    finally { setUpdatingStatus(false); }
+  };
+
+  if (loading) return <LoadingSpinner />;
+  if (!op) return <div style={{ color: "var(--color-text-secondary)", padding: "2rem" }}>Operación no encontrada.</div>;
+
+  const commercial = op.commercial_data ? (typeof op.commercial_data === "string" ? parseCommercialData(op.commercial_data) : op.commercial_data) : {};
+  const sc = STATUS_COLORS[op.status] || STATUS_COLORS.DRAFT;
+  const fmtVal = (v, c = "USD") => v ? new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(v) : "—";
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
+        <button onClick={() => setView("operations")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-secondary)", fontSize: 22 }}>←</button>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--color-text-primary)", margin: 0, fontFamily: "monospace" }}>{op.operation_id || op.id}</h1>
+            <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 20, background: sc.bg, color: sc.text, fontWeight: 600 }}>{op.status}</span>
+          </div>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 13, margin: 0 }}>
+            {op.counterpart_name || "—"} · {commercial?.category || "—"} · Creada {op.created_at?.split("T")[0]}
+          </p>
+        </div>
+        {/* Cambio de estado */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>Estado:</label>
+          <select value={op.status} onChange={e => handleStatusChange(e.target.value)} disabled={updatingStatus}
+            style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--color-border-secondary)", fontSize: 13, background: "var(--color-background-primary)", color: "var(--color-text-primary)", cursor: "pointer" }}>
+            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        {/* Resumen comercial */}
+        <div style={{ background: "linear-gradient(135deg,#1B2A4A 0%,#2d4070 100%)", borderRadius: 12, padding: "1.25rem", color: "#fff" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, opacity: 0.7, margin: "0 0 12px", textTransform: "uppercase" }}>Resumen Comercial</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { label: "Valor Embarque",  value: fmtVal(commercial?.summary?.shipmentValue, commercial?.currency) },
+              { label: "Valor Mensual",   value: fmtVal(commercial?.summary?.monthlyValue,  commercial?.currency) },
+              { label: "Valor Contrato",  value: fmtVal(commercial?.summary?.contractValue, commercial?.currency), big: true },
+              { label: "Duración",        value: commercial?.summary?.durationMonths ? `${commercial.summary.durationMonths} meses` : "—" },
+              { label: "Embarques/año",   value: commercial?.summary?.shipmentsPerYear ?? "—" },
+              { label: "Incoterm",        value: commercial?.incoterm || "—" },
+            ].map(item => (
+              <div key={item.label} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px" }}>
+                <p style={{ fontSize: 10, opacity: 0.65, margin: "0 0 3px", textTransform: "uppercase", letterSpacing: 0.5 }}>{item.label}</p>
+                <p style={{ fontSize: item.big ? 16 : 13, fontWeight: item.big ? 700 : 500, margin: 0 }}>{String(item.value)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Datos generales */}
+        <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 0.5 }}>Datos de Operación</p>
+          {[
+            ["Contraparte",   op.counterpart_name || "—"],
+            ["País destino",  op.destination_country || commercial?.destination || "—"],
+            ["Categoría",     commercial?.category || "—"],
+            ["Producto",      commercial?.product || op.product_name || "—"],
+            ["Moneda",        commercial?.currency || "USD"],
+            ["Creado por",    op.agent_username || op.created_by || "—"],
+            ["Notas",         op.notes || "—"],
+          ].map(([label, val]) => (
+            <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+              <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{label}</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-primary)", maxWidth: 200, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{val}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Documentos vinculados */}
+      <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>
+            <i className="ti ti-files" style={{ fontSize: 16, marginRight: 6, verticalAlign: -2 }} />Documentos vinculados ({docs.length})
+          </h3>
+          <button onClick={() => setView("new-sco")} style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer" }}>+ Nueva SCO →</button>
+        </div>
+        {docs.length === 0 ? (
+          <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0, padding: "0.5rem 0" }}>Sin documentos vinculados aún.</p>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--color-background-secondary)" }}>
+                {["Número", "Tipo", "Cliente", "Valor Ref.", "Estado", "Fecha", ""].map(h => (
                   <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)" }}>{h}</th>
                 ))}
               </tr>
