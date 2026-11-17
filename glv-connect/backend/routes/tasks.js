@@ -127,6 +127,9 @@ router.patch("/:id", requireLevel(40), (req, res) => {
       if (userLevel < 65) {
         return res.status(403).json({ error: "Solo COMPLIANCE+ puede aprobar tareas" });
       }
+      if (task.created_by === req.user.id || task.assigned_to === req.user.id) {
+        return res.status(403).json({ error: "Quien crea o ejecuta una tarea no puede aprobarla" });
+      }
       updates.push("approved_by = ?");
       vals.push(req.user.id);
     }

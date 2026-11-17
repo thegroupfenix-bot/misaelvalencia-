@@ -6,6 +6,14 @@ const { requireLevel } = require("../middleware/rbac");
 const router = express.Router();
 router.use(authenticate);
 
+function totalsByCurrency(rows, field) {
+  return rows.reduce((totals, row) => {
+    const currency = row.currency || "USD";
+    totals[currency] = (totals[currency] || 0) + (Number(row[field]) || 0);
+    return totals;
+  }, {});
+}
+
 // ─── GET /finance/summary — dashboard financiero ──────────────────────────────
 router.get("/summary", requireLevel(50), (req, res) => {
   try {
@@ -19,21 +27,23 @@ router.get("/summary", requireLevel(50), (req, res) => {
       FROM operations WHERE contract_value IS NOT NULL
     `).all();
 
-    const totalDocs = docs.reduce((s, d) => s + (d.total_value || 0), 0);
-    const totalOps  = ops.reduce((s, o) => s + (o.contract_value || 0), 0);
+    const docTotalsByCurrency = totalsByCurrency(docs, "total_value");
+    const opTotalsByCurrency  = totalsByCurrency(ops, "contract_value");
 
     const byType = {};
     docs.forEach(d => {
-      if (!byType[d.type]) byType[d.type] = { count: 0, value: 0 };
+      if (!byType[d.type]) byType[d.type] = { count: 0, byCurrency: {} };
       byType[d.type].count++;
-      byType[d.type].value += d.total_value || 0;
+      const currency = d.currency || "USD";
+      byType[d.type].byCurrency[currency] = (byType[d.type].byCurrency[currency] || 0) + (Number(d.total_value) || 0);
     });
 
     const byStatus = {};
     ops.forEach(o => {
-      if (!byStatus[o.status]) byStatus[o.status] = { count: 0, value: 0 };
+      if (!byStatus[o.status]) byStatus[o.status] = { count: 0, byCurrency: {} };
       byStatus[o.status].count++;
-      byStatus[o.status].value += o.contract_value || 0;
+      const currency = o.currency || "USD";
+      byStatus[o.status].byCurrency[currency] = (byStatus[o.status].byCurrency[currency] || 0) + (Number(o.contract_value) || 0);
     });
 
     const recent = db.prepare(`
@@ -41,7 +51,7 @@ router.get("/summary", requireLevel(50), (req, res) => {
       FROM documents ORDER BY created_at DESC LIMIT 10
     `).all();
 
-    res.json({ totalDocValue: totalDocs, totalOpValue: totalOps, byType, byStatus, recent });
+    res.json({ docTotalsByCurrency, opTotalsByCurrency, byType, byStatus, recent });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
