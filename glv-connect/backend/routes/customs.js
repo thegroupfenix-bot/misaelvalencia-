@@ -58,6 +58,12 @@ router.post("/cases/:id/requirements",access,(req,res)=>{
 });
 router.patch("/requirements/:id",access,(req,res)=>{
  const r=db.prepare("SELECT * FROM customs_requirements WHERE id=?").get(req.params.id);if(!r)return res.status(404).json({error:"Requisito no encontrado."});
+ if(req.body?.status==="approved"){
+  const level=ROLE_LEVEL[req.user.role]||0;
+  if(level<65)return res.status(403).json({error:"La aprobación requiere autorización de supervisión."});
+  if(Number(r.responsible_id)===req.user.id)return res.status(403).json({error:"La persona responsable no puede aprobar su propio requisito."});
+  if(r.supervisor_id&&Number(r.supervisor_id)!==req.user.id&&level<80)return res.status(403).json({error:"La aprobación corresponde al supervisor asignado."});
+ }
  const allowed=["status","evidence_ref","due_date","responsible_id","supervisor_id","notes"];const updates=[],values=[];
  for(const key of allowed){if(req.body?.[key]!==undefined){if(key==="status"&&!REQUIREMENT_STATUSES.has(req.body[key]))return res.status(400).json({error:"Estado inválido."});updates.push(key+"=?");values.push(req.body[key]);}}
  if(!updates.length)return res.json(r);if(req.body.status==="approved")updates.push("completed_at=datetime('now')");updates.push("updated_at=datetime('now')");values.push(r.id);

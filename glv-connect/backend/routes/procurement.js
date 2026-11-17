@@ -173,11 +173,29 @@ function event(entityType, entityId, action, userId, details = {}) {
     .run(entityType, String(entityId), action, userId, JSON.stringify(details));
 }
 function availableStock(itemId, warehouseId) {
-  const received = db.prepare(`SELECT COALESCE(SUM(CASE WHEN movement_type IN ('receipt','transfer_in','adjustment_in') THEN quantity ELSE -quantity END),0) quantity
+  const received = db.prepare(`SELECT COALESCE(SUM(CASE
+      WHEN movement_type IN ('receipt','transfer_in','adjustment_in') THEN quantity
+      WHEN movement_type IN ('issue','transfer_out','adjustment_out') THEN -quantity
+      ELSE 0 END),0) quantity
     FROM inventory_movements WHERE item_id=? AND warehouse_id=?`).get(itemId, warehouseId).quantity;
   const reserved = db.prepare("SELECT COALESCE(SUM(quantity),0) quantity FROM inventory_reservations WHERE item_id=? AND warehouse_id=? AND status='active'")
     .get(itemId, warehouseId).quantity;
   return { physical: received, available: received - reserved, reserved };
+}
+function currentUnitCost(itemId, warehouseId) {
+  const balance = db.prepare(`SELECT
+      COALESCE(SUM(CASE
+        WHEN movement_type IN ('receipt','transfer_in','adjustment_in') THEN quantity * unit_cost
+        WHEN movement_type IN ('issue','transfer_out','adjustment_out') THEN -quantity * unit_cost
+        ELSE 0 END), 0) AS value,
+      COALESCE(SUM(CASE
+        WHEN movement_type IN ('receipt','transfer_in','adjustment_in') THEN quantity
+        WHEN movement_type IN ('issue','transfer_out','adjustment_out') THEN -quantity
+        ELSE 0 END), 0) AS quantity
+    FROM inventory_movements WHERE item_id=? AND warehouse_id=?`).get(itemId, warehouseId);
+  if (Number(balance.quantity) > 0 && Number(balance.value) >= 0) return Number(balance.value) / Number(balance.quantity);
+  const item = db.prepare("SELECT standard_cost FROM inventory_items WHERE id=?").get(itemId);
+  return Math.max(0, Number(item?.standard_cost) || 0);
 }
 function purchaseAccess(req, res, next) {
   if ((ROLE_LEVEL[req.user.role] || 0) < 40) return res.status(403).json({ error: "Permisos insuficientes para compras." });
@@ -325,9 +343,14 @@ router.post("/movements", inventoryAccess, (req, res) => {
   const { item_id, warehouse_id, movement_type, quantity, unit_cost = 0, operation_id = null, notes = null } = req.body || {};
   if (!item_id || !warehouse_id || !MOVEMENT_TYPES.has(movement_type) || !(Number(quantity) > 0)) return res.status(400).json({ error: "Datos de movimiento inválidos." });
   const reducing = ["issue", "transfer_out", "adjustment_out"].includes(movement_type);
+  const receiving = ["receipt", "transfer_in", "adjustment_in"].includes(movement_type);
   if (reducing && availableStock(item_id, warehouse_id).available < Number(quantity)) return res.status(409).json({ error: "Stock disponible insuficiente." });
+  const requestedCost = Number(unit_cost);
+  if (receiving && (!Number.isFinite(requestedCost) || requestedCost < 0)) return res.status(400).json({ error: "El costo unitario de ingreso es inválido." });
+  // Salidas toman el costo vigente del kardex. El cliente no puede alterar la valoración.
+  const appliedCost = reducing ? currentUnitCost(item_id, warehouse_id) : (receiving ? requestedCost : 0);
   const result = db.prepare(`INSERT INTO inventory_movements (item_id,warehouse_id,movement_type,quantity,unit_cost,operation_id,notes,created_by)
-    VALUES (?,?,?,?,?,?,?,?)`).run(item_id, warehouse_id, movement_type, Number(quantity), Number(unit_cost), operation_id, notes, req.user.id);
+    VALUES (?,?,?,?,?,?,?,?)`).run(item_id, warehouse_id, movement_type, Number(quantity), appliedCost, operation_id, notes, req.user.id);
   event("inventory_movement", result.lastInsertRowid, movement_type, req.user.id, { item_id, warehouse_id, quantity: Number(quantity) });
   res.status(201).json(db.prepare("SELECT * FROM inventory_movements WHERE id=?").get(result.lastInsertRowid));
 });
@@ -344,9 +367,9 @@ router.get("/kardex", inventoryAccess, (req, res) => {
 });
 router.get("/stock", inventoryAccess, (_req, res) => {
   const rows=db.prepare(`SELECT i.id item_id,i.sku,i.name,i.unit,i.minimum_stock,w.id warehouse_id,w.code warehouse_code,w.name warehouse_name,
-    COALESCE(SUM(CASE WHEN m.movement_type IN ('receipt','transfer_in','adjustment_in') THEN m.quantity ELSE -m.quantity END),0) physical,
+    COALESCE(SUM(CASE WHEN m.movement_type IN ('receipt','transfer_in','adjustment_in') THEN m.quantity WHEN m.movement_type IN ('issue','transfer_out','adjustment_out') THEN -m.quantity ELSE 0 END),0) physical,
     COALESCE((SELECT SUM(r.quantity) FROM inventory_reservations r WHERE r.item_id=i.id AND r.warehouse_id=w.id AND r.status='active'),0) reserved,
-    COALESCE(SUM(CASE WHEN m.movement_type IN ('receipt','transfer_in','adjustment_in') THEN m.quantity ELSE -m.quantity END),0)
+    COALESCE(SUM(CASE WHEN m.movement_type IN ('receipt','transfer_in','adjustment_in') THEN m.quantity WHEN m.movement_type IN ('issue','transfer_out','adjustment_out') THEN -m.quantity ELSE 0 END),0)
      - COALESCE((SELECT SUM(r.quantity) FROM inventory_reservations r WHERE r.item_id=i.id AND r.warehouse_id=w.id AND r.status='active'),0) available,
     COALESCE(SUM(CASE WHEN m.movement_type IN ('receipt','transfer_in','adjustment_in') THEN m.quantity*m.unit_cost ELSE 0 END),0) inventory_value
     FROM inventory_items i CROSS JOIN warehouses w LEFT JOIN inventory_movements m ON m.item_id=i.id AND m.warehouse_id=w.id
