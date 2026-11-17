@@ -57,6 +57,8 @@ const vesselCharterRouter = require("./routes/vessel-charter");
 const cargoIntelRouter    = require("./routes/cargo-intelligence");
 const visualEvidRouter    = require("./routes/visual-evidence");
 const governanceRouter    = require("./routes/governance");
+const procurementRouter   = require("./routes/procurement");
+const reportsRouter       = require("./routes/reports");
 
 const app = express();
 
@@ -147,6 +149,8 @@ app.use("/vessel-charter",        vesselCharterRouter);
 app.use("/cargo-intelligence",    cargoIntelRouter);
 app.use("/visual-evidence",       visualEvidRouter);
 app.use("/governance",         governanceRouter);
+app.use("/procurement",        procurementRouter);
+app.use("/reports",            reportsRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
