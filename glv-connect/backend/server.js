@@ -56,6 +56,7 @@ const opsLogisticsRouter = require("./routes/operations-logistics");
 const vesselCharterRouter = require("./routes/vessel-charter");
 const cargoIntelRouter    = require("./routes/cargo-intelligence");
 const visualEvidRouter    = require("./routes/visual-evidence");
+const governanceRouter    = require("./routes/governance");
 
 const app = express();
 
@@ -145,6 +146,7 @@ app.use("/operations-logistics",  opsLogisticsRouter);
 app.use("/vessel-charter",        vesselCharterRouter);
 app.use("/cargo-intelligence",    cargoIntelRouter);
 app.use("/visual-evidence",       visualEvidRouter);
+app.use("/governance",         governanceRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
@@ -184,6 +186,7 @@ if (require.main === module) {
     console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
     console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
     console.log(`BUILD_TS: ${BUILD_TS}`);
+    setInterval(() => { try { governanceRouter.sweepOverdueTasks(); } catch (e) { console.error("[governance] sweep error:", e.message); } }, 60 * 60 * 1000);
   });
 }
 

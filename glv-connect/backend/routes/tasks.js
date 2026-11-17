@@ -9,11 +9,12 @@ router.use(authenticate);
 
 const VALID_STATUSES   = new Set(["pending", "in_progress", "completed", "approved", "rejected"]);
 const VALID_PRIORITIES = new Set(["low", "medium", "high", "critical"]);
+const VALID_MODULES = new Set(["commercial", "operations", "logistics", "customs", "vessel_charter", "cargo_intelligence", "finance", "compliance", "audit", "media"]);
 
 // ─── GET /tasks ───────────────────────────────────────────────────────────────
 router.get("/", (req, res) => {
   try {
-    const { status, priority, assigned_to, operation_id } = req.query;
+    const { status, priority, assigned_to, operation_id, module } = req.query;
     let sql = `
       SELECT t.*,
              u.name AS assigned_name, u.username AS assigned_username,
@@ -35,6 +36,7 @@ router.get("/", (req, res) => {
     if (priority)     { conditions.push("t.priority = ?");     params.push(priority); }
     if (assigned_to)  { conditions.push("t.assigned_to = ?");  params.push(assigned_to); }
     if (operation_id) { conditions.push("t.operation_id = ?"); params.push(operation_id); }
+    if (module) { conditions.push("t.module = ?"); params.push(module); }
 
     if (conditions.length) sql += " WHERE " + conditions.join(" AND ");
     sql += " ORDER BY t.created_at DESC LIMIT 200";
@@ -49,21 +51,24 @@ router.get("/", (req, res) => {
 // ─── POST /tasks ──────────────────────────────────────────────────────────────
 router.post("/", requireLevel(40), (req, res) => {
   try {
-    const { title, description, priority = "medium", assigned_to, deadline, operation_id, doc_id } = req.body;
+    const { title, description, priority = "medium", assigned_to, supervisor_id, deadline, operation_id, doc_id, module = "operations", department = null } = req.body;
     if (!title || typeof title !== "string" || !title.trim()) {
       return res.status(400).json({ error: "El título es obligatorio." });
+    }
+    if (!VALID_MODULES.has(module)) {
+      return res.status(400).json({ error: "Módulo inválido." });
     }
     if (priority && !VALID_PRIORITIES.has(priority)) {
       return res.status(400).json({ error: `Prioridad inválida: ${priority}` });
     }
 
     const result = db.prepare(`
-      INSERT INTO tasks (title, description, priority, assigned_to, deadline, operation_id, doc_id, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tasks (title, description, priority, assigned_to, supervisor_id, deadline, operation_id, doc_id, created_by, module, department)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       title.trim(), description || null, priority,
-      assigned_to || null, deadline || null,
-      operation_id || null, doc_id || null, req.user.id
+      assigned_to || null, supervisor_id || null, deadline || null,
+      operation_id || null, doc_id || null, req.user.id, module, department
     );
 
     res.status(201).json(db.prepare("SELECT * FROM tasks WHERE id = ?").get(result.lastInsertRowid));
@@ -89,10 +94,13 @@ router.patch("/:id", requireLevel(40), (req, res) => {
       }
     }
 
-    const { status, priority, evidence, assigned_to, deadline } = req.body;
+    const { status, priority, evidence, assigned_to, supervisor_id, deadline, module, department } = req.body;
 
     if (status !== undefined && !VALID_STATUSES.has(status)) {
       return res.status(400).json({ error: `Estado inválido: ${status}` });
+    }
+    if (module !== undefined && !VALID_MODULES.has(module)) {
+      return res.status(400).json({ error: "Módulo inválido." });
     }
     if (priority !== undefined && !VALID_PRIORITIES.has(priority)) {
       return res.status(400).json({ error: `Prioridad inválida: ${priority}` });
@@ -110,6 +118,9 @@ router.patch("/:id", requireLevel(40), (req, res) => {
     if (evidence !== undefined)    { updates.push("evidence = ?");    vals.push(evidence); }
     if (assigned_to !== undefined) { updates.push("assigned_to = ?"); vals.push(assigned_to); }
     if (deadline !== undefined)    { updates.push("deadline = ?");    vals.push(deadline); }
+    if (supervisor_id !== undefined) { updates.push("supervisor_id = ?"); vals.push(supervisor_id); }
+    if (module !== undefined)      { updates.push("module = ?");      vals.push(module); }
+    if (department !== undefined)  { updates.push("department = ?");  vals.push(department); }
     updates.push("updated_at = datetime('now')");
 
     if (status === "approved") {
