@@ -26,6 +26,15 @@ async function request(method, path, body, signal) {
   return res.json();
 }
 
+export async function apiFetch(path, options = {}) {
+  const { method = "GET", body, signal } = options;
+  let payload = body;
+  if (typeof body === "string") {
+    try { payload = JSON.parse(body); } catch { throw new Error("Solicitud inválida"); }
+  }
+  return request(method, path, payload, signal);
+}
+
 export const api = {
   // Auth
   login:          (username, password) => request("POST", "/auth/login", { username, password }),
