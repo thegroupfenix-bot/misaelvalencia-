@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { apiFetch as api } from "../api.js";
 
-const api = async (path, options = {}) => {
-  const response = await fetch(path, { credentials: "include", headers: { "Content-Type": "application/json", ...(options.headers || {}) }, ...options });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || "No fue posible completar la operación.");
-  return body;
-};
 const card = { background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, padding: "1.25rem" };
 const input = { width: "100%", padding: "9px 10px", border: "0.5px solid var(--color-border-secondary)", borderRadius: 8, boxSizing: "border-box", background: "var(--color-background-primary)", color: "var(--color-text-primary)" };
 const button = { background: "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, padding: "9px 13px", cursor: "pointer", fontWeight: 600 };
@@ -39,6 +34,7 @@ export default function ProcurementInventory({ user, showNotif }) {
   };
   useEffect(() => { load(); }, []);
   const approvedRequests = useMemo(() => data.requests.filter(r => r.status === "approved"), [data.requests]);
+  const canManageWarehouses = ["SUPER_ADMIN", "CORPORATE_ADMIN", "CFO", "DIRECTOR", "DIRECTIVO", "COMMERCIAL_DIRECTOR", "COMPLIANCE"].includes(user?.role);
 
   const submit = async (event, path, payload, message) => {
     event.preventDefault();
@@ -59,8 +55,8 @@ export default function ProcurementInventory({ user, showNotif }) {
     {tab === "catalog" && <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.9fr) minmax(0, 1.5fr)", gap: 16 }}>
       <div style={card}><h3 style={{ marginTop: 0 }}>Nuevo artículo</h3><form onSubmit={e => submit(e, "/procurement/items", Object.fromEntries(new FormData(e.currentTarget)), "Artículo creado.")}>
         <Field label="SKU"><input required name="sku" style={input}/></Field><Field label="Nombre"><input required name="name" style={input}/></Field><Field label="Unidad"><input required name="unit" defaultValue="und" style={input}/></Field><Field label="Stock mínimo"><input name="minimum_stock" type="number" min="0" defaultValue="0" style={input}/></Field><Field label="Costo estándar"><input name="standard_cost" type="number" min="0" step="0.01" defaultValue="0" style={input}/></Field><Field label="Moneda"><input name="currency" defaultValue="USD" style={input}/></Field><button style={button}>Crear artículo</button></form>
-        <hr style={{ border: 0, borderTop: "1px solid var(--color-border-tertiary)", margin: "18px 0" }}/><h3 style={{ marginTop: 0 }}>Nueva bodega</h3><form onSubmit={e => submit(e, "/procurement/warehouses", Object.fromEntries(new FormData(e.currentTarget)), "Bodega creada.")}>
-        <Field label="Código"><input required name="code" style={input}/></Field><Field label="Nombre"><input required name="name" style={input}/></Field><Field label="País"><input name="country" style={input}/></Field><Field label="Dirección"><input name="address" style={input}/></Field><button style={button}>Crear bodega</button></form></div>
+        {canManageWarehouses && <><hr style={{ border: 0, borderTop: "1px solid var(--color-border-tertiary)", margin: "18px 0" }}/><h3 style={{ marginTop: 0 }}>Nueva bodega</h3><form onSubmit={e => submit(e, "/procurement/warehouses", Object.fromEntries(new FormData(e.currentTarget)), "Bodega creada.")}>
+        <Field label="Código"><input required name="code" style={input}/></Field><Field label="Nombre"><input required name="name" style={input}/></Field><Field label="País"><input name="country" style={input}/></Field><Field label="Dirección"><input name="address" style={input}/></Field><button style={button}>Crear bodega</button></form></>}</div>
       <div style={card}><h3 style={{ marginTop: 0 }}>Artículos registrados</h3><Table rows={data.items} columns={[{label:"SKU",key:"sku"},{label:"Artículo",key:"name"},{label:"Unidad",key:"unit"},{label:"Mínimo",key:"minimum_stock"},{label:"Costo",render:r=>r.standard_cost+" "+r.currency}]}/><h3>Bodegas</h3><Table rows={data.warehouses} columns={[{label:"Código",key:"code"},{label:"Bodega",key:"name"},{label:"País",key:"country"}]}/></div>
     </div>}
 
