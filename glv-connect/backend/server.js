@@ -59,6 +59,7 @@ const visualEvidRouter    = require("./routes/visual-evidence");
 const governanceRouter    = require("./routes/governance");
 const procurementRouter   = require("./routes/procurement");
 const reportsRouter       = require("./routes/reports");
+const customsRouter       = require("./routes/customs");
 
 const app = express();
 
@@ -151,6 +152,7 @@ app.use("/visual-evidence",       visualEvidRouter);
 app.use("/governance",         governanceRouter);
 app.use("/procurement",        procurementRouter);
 app.use("/reports",            reportsRouter);
+app.use("/customs",            customsRouter);
 
 // Serve React frontend
 const DIST = path.join(__dirname, "public");
