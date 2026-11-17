@@ -4,10 +4,9 @@ import { api } from "../api.js";
 const fmt = (n, currency = "USD") =>
   new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(n || 0);
 
-const fmtShort = (n) => {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n}`;
+const formatTotals = (totals = {}) => {
+  const entries = Object.entries(totals).filter(([, value]) => Number(value) !== 0);
+  return entries.length ? entries.map(([currency, value]) => fmt(value, currency)).join(" · ") : "—";
 };
 
 export function FinanceView({ showNotif }) {
@@ -93,8 +92,8 @@ function StatCard({ label, value, sub, icon, color }) {
 }
 
 function OverviewTab({ summary }) {
-  const totalDocs = summary.totalDocValue || 0;
-  const totalOps  = summary.totalOpValue  || 0;
+  const docTotals = summary.docTotalsByCurrency || {};
+  const opTotals  = summary.opTotalsByCurrency || {};
   const byType    = summary.byType  || {};
   const byStatus  = summary.byStatus || {};
   const recent    = summary.recent  || [];
@@ -103,9 +102,9 @@ function OverviewTab({ summary }) {
     <div>
       {/* KPI cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
-        <StatCard label="Valor Total Documentos"   value={fmtShort(totalDocs)} sub={fmt(totalDocs)}             icon="ti-file-dollar"     color="#2563eb" />
-        <StatCard label="Valor Total Operaciones"  value={fmtShort(totalOps)}  sub={fmt(totalOps)}             icon="ti-briefcase"       color="#7c3aed" />
-        <StatCard label="SCO emitidos"             value={byType.SCO?.count || 0} sub={fmt(byType.SCO?.value)} icon="ti-file-description" color="#059669" />
+        <StatCard label="Valor Total Documentos"   value={formatTotals(docTotals)} sub="Valores separados por moneda" icon="ti-file-dollar" color="#2563eb" />
+        <StatCard label="Valor Total Operaciones"  value={formatTotals(opTotals)} sub="Valores separados por moneda" icon="ti-briefcase" color="#7c3aed" />
+        <StatCard label="SCO emitidos"             value={byType.SCO?.count || 0} sub={formatTotals(byType.SCO?.byCurrency)} icon="ti-file-description" color="#059669" />
         <StatCard label="FCO / SPA cerrados"       value={(byType.FCO?.count || 0) + (byType.SPA?.count || 0)} sub="contratos"           icon="ti-file-certificate" color="#d97706" />
       </div>
 
@@ -121,7 +120,7 @@ function OverviewTab({ summary }) {
                   color:      type === "SCO" ? "#1e40af" : type === "FCO" ? "#4c1d95" : "#166534" }}>{type}</span>
                 <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{data.count} docs</span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)" }}>{fmt(data.value)}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)" }}>{formatTotals(data.byCurrency)}</span>
             </div>
           ))}
         </div>
