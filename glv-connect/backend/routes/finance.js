@@ -2,8 +2,10 @@ const express = require("express");
 const db = require("../db/database");
 const { authenticate } = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
+const { ensureFinanceSchema } = require("../utils/financeSchema");
 
 const router = express.Router();
+ensureFinanceSchema(db);
 router.use(authenticate);
 
 function totalsByCurrency(rows, field) {
@@ -64,7 +66,7 @@ function validateLines(lines) {
 }
 
 // ─── GET /finance/summary — dashboard financiero ──────────────────────────────
-router.get("/summary", requireLevel(50), (req, res) => {
+router.get("/summary", requireLevel(60), (req, res) => {
   try {
     const docs = db.prepare(`
       SELECT type, status, total_value, currency, created_at, client, destination, agent
@@ -96,7 +98,7 @@ router.get("/summary", requireLevel(50), (req, res) => {
     });
 
     const recent = db.prepare(`
-      SELECT id, type, status, total_value, client, agent, created_at
+      SELECT id, type, status, total_value, currency, client, agent, created_at
       FROM documents ORDER BY created_at DESC LIMIT 10
     `).all();
 
@@ -108,7 +110,7 @@ router.get("/summary", requireLevel(50), (req, res) => {
 });
 
 // ─── GET /finance/invoices — tabla de facturas/valores por operación ──────────
-router.get("/invoices", requireLevel(50), (req, res) => {
+router.get("/invoices", requireLevel(60), (req, res) => {
   try {
     const rows = db.prepare(`
       SELECT o.id AS operation_id, o.status, o.contract_value, o.currency,
@@ -287,7 +289,7 @@ router.post("/commercial-documents/:id/cancel", requireLevel(60), (req, res) => 
 });
 
 // ─── GET /finance/by-country — agrupado por país destino ─────────────────────
-router.get("/by-country", requireLevel(50), (req, res) => {
+router.get("/by-country", requireLevel(60), (req, res) => {
   try {
     const rows = db.prepare(`
       SELECT destination_country AS country,
