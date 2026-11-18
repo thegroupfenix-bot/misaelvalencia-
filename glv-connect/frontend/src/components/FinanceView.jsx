@@ -1,8 +1,21 @@
 import { useState, useEffect } from "react";
 import { api } from "../api.js";
 
+const safeCurrency = (currency) => {
+  const code = typeof currency === "string" ? currency.trim().toUpperCase() : "";
+  if (!code) return "USD";
+  try {
+    new Intl.NumberFormat("en-US", { style: "currency", currency: code }).format(0);
+    return code;
+  } catch {
+    return "USD";
+  }
+};
+
 const fmt = (n, currency = "USD") =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(n || 0);
+  new Intl.NumberFormat("en-US", { style: "currency", currency: safeCurrency(currency), maximumFractionDigits: 0 }).format(Number(n) || 0);
+
+const formatDate = (value) => value ? String(value).replace(" ", "T").slice(0, 10) : "—";
 
 const formatTotals = (totals = {}) => {
   const entries = Object.entries(totals).filter(([, value]) => Number(value) !== 0);
@@ -14,20 +27,30 @@ export function FinanceView({ showNotif }) {
   const [invoices, setInvoices]   = useState([]);
   const [byCountry, setByCountry] = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
   const [tab, setTab]             = useState("overview");
 
-  useEffect(() => {
+  const loadFinance = async () => {
     setLoading(true);
-    Promise.all([
+    setError(null);
+    const results = await Promise.allSettled([
       api.getFinanceSummary(),
       api.getFinanceInvoices(),
       api.getFinanceByCountry(),
-    ]).then(([s, inv, bc]) => {
-      setSummary(s);
-      setInvoices(inv);
-      setByCountry(bc);
-    }).catch(e => showNotif(e.message, "error")).finally(() => setLoading(false));
-  }, []);
+    ]);
+    const [summaryResult, invoicesResult, countryResult] = results;
+    if (summaryResult.status === "fulfilled") setSummary(summaryResult.value);
+    if (invoicesResult.status === "fulfilled") setInvoices(invoicesResult.value);
+    if (countryResult.status === "fulfilled") setByCountry(countryResult.value);
+    if (results.some(result => result.status === "rejected")) {
+      const message = "No se pudieron cargar todos los datos financieros. Reintenta en unos minutos.";
+      setError(message);
+      showNotif?.(message, "error");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadFinance(); }, []);
 
   const TABS = [
     { id: "overview", label: "Resumen General" },
@@ -67,11 +90,31 @@ export function FinanceView({ showNotif }) {
         </div>
       ) : (
         <>
-          {tab === "overview" && summary && <OverviewTab summary={summary} />}
+          {error && <LoadError onRetry={loadFinance} />}
+          {tab === "overview" && (summary ? <OverviewTab summary={summary} /> : <UnavailableState onRetry={loadFinance} />)}
           {tab === "invoices" && <InvoicesTab invoices={invoices} />}
           {tab === "country"  && <CountryTab byCountry={byCountry} />}
         </>
       )}
+    </div>
+  );
+}
+
+function LoadError({ onRetry }) {
+  return (
+    <div role="alert" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 20, padding: "12px 14px", border: "1px solid #fca5a5", borderRadius: 10, background: "#fef2f2", color: "#991b1b" }}>
+      <span>No se pudieron cargar todos los datos financieros. Los datos disponibles siguen visibles.</span>
+      <button type="button" onClick={onRetry} style={{ flexShrink: 0, padding: "7px 12px", border: "1px solid #b91c1c", borderRadius: 7, background: "white", color: "#991b1b", cursor: "pointer", fontWeight: 600 }}>Reintentar</button>
+    </div>
+  );
+}
+
+function UnavailableState({ onRetry }) {
+  return (
+    <div role="status" style={{ textAlign: "center", padding: "4rem 1rem", color: "var(--color-text-secondary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, background: "var(--color-background-primary)" }}>
+      <i className="ti ti-chart-bar-off" style={{ fontSize: 32, display: "block", marginBottom: 12 }} />
+      <p style={{ margin: "0 0 14px" }}>El resumen financiero no está disponible por ahora.</p>
+      <button type="button" onClick={onRetry} style={{ padding: "8px 14px", border: "none", borderRadius: 7, background: "#1B2A4A", color: "white", cursor: "pointer", fontWeight: 600 }}>Reintentar carga</button>
     </div>
   );
 }
@@ -105,7 +148,7 @@ function OverviewTab({ summary }) {
         <StatCard label="Valor Total Documentos"   value={formatTotals(docTotals)} sub="Valores separados por moneda" icon="ti-file-dollar" color="#2563eb" />
         <StatCard label="Valor Total Operaciones"  value={formatTotals(opTotals)} sub="Valores separados por moneda" icon="ti-briefcase" color="#7c3aed" />
         <StatCard label="SCO emitidos"             value={byType.SCO?.count || 0} sub={formatTotals(byType.SCO?.byCurrency)} icon="ti-file-description" color="#059669" />
-        <StatCard label="FCO / SPA cerrados"       value={(byType.FCO?.count || 0) + (byType.SPA?.count || 0)} sub="contratos"           icon="ti-file-certificate" color="#d97706" />
+        <StatCard label="FCO / SPA emitidos"       value={(byType.FCO?.count || 0) + (byType.SPA?.count || 0)} sub="documentos"         icon="ti-file-certificate" color="#d97706" />
       </div>
 
       {/* Por tipo de documento */}
@@ -135,7 +178,7 @@ function OverviewTab({ summary }) {
                 <span style={{ fontSize: 11, color: "var(--color-text-secondary)", marginLeft: 8 }}>{doc.client}</span>
               </div>
               <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-primary)" }}>
-                {doc.total_value ? fmt(doc.total_value) : "—"}
+                {doc.total_value ? fmt(doc.total_value, doc.currency) : "—"}
               </span>
             </div>
           ))}
@@ -170,7 +213,7 @@ function InvoicesTab({ invoices }) {
               <td style={{ padding: "10px 14px" }}>
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "#dbeafe", color: "#1e40af" }}>{inv.status}</span>
               </td>
-              <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{inv.created_at?.split("T")[0] || "—"}</td>
+              <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)", fontSize: 12 }}>{formatDate(inv.created_at)}</td>
             </tr>
           ))}
         </tbody>
@@ -180,7 +223,11 @@ function InvoicesTab({ invoices }) {
 }
 
 function CountryTab({ byCountry }) {
-  const total = byCountry.reduce((s, r) => s + (r.total_value || 0), 0);
+  const totalsByCurrency = byCountry.reduce((totals, row) => {
+    const currency = safeCurrency(row.currency);
+    totals[currency] = (totals[currency] || 0) + (Number(row.total_value) || 0);
+    return totals;
+  }, {});
   return (
     <div>
       {byCountry.length === 0 ? (
@@ -190,20 +237,22 @@ function CountryTab({ byCountry }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--color-background-secondary)" }}>
-                {["País destino", "Operaciones", "Valor total", "Moneda", "% del total"].map(h => (
+                {["País destino", "Operaciones", "Valor total", "Moneda", "% en su moneda"].map(h => (
                   <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--color-text-secondary)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {byCountry.map((row, i) => {
-                const pct = total > 0 ? ((row.total_value / total) * 100).toFixed(1) : "0";
+                const currency = safeCurrency(row.currency);
+                const totalInCurrency = totalsByCurrency[currency] || 0;
+                const pct = totalInCurrency > 0 ? (((Number(row.total_value) || 0) / totalInCurrency) * 100).toFixed(1) : "0";
                 return (
                   <tr key={i} style={{ borderTop: "0.5px solid var(--color-border-tertiary)" }}>
                     <td style={{ padding: "10px 14px", fontWeight: 500, color: "var(--color-text-primary)" }}>{row.country || "—"}</td>
                     <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{row.operations}</td>
-                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{fmt(row.total_value, row.currency || "USD")}</td>
-                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{row.currency || "USD"}</td>
+                    <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--color-text-primary)" }}>{fmt(row.total_value, currency)}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{currency}</td>
                     <td style={{ padding: "10px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ height: 6, width: `${Math.min(100, parseFloat(pct))}%`, minWidth: 4, background: "#1B2A4A", borderRadius: 3, maxWidth: 80 }} />

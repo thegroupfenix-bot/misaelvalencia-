@@ -184,6 +184,10 @@ router.post("/", requireLevel(40), async (req, res) => {
     ? (() => { try { return JSON.parse(commercial_data); } catch { return {}; } })()
     : (commercial_data || {});
   const cdRow0 = cdData?.rows?.[0] || {};
+  const requestedCurrency = String(
+    req.body?.currency || cdData?.currency || cdRow0?.currency || cdRow0?.pricing?.currency || "USD"
+  ).trim().toUpperCase();
+  const currency = /^[A-Z]{3}$/.test(requestedCurrency) ? requestedCurrency : "USD";
 
   const effectiveProduct     = product || cdRow0.category || cdData.category || null;
   const effectiveDestination = destination || cdData.destination || null;
@@ -239,18 +243,18 @@ router.post("/", requireLevel(40), async (req, res) => {
     INSERT INTO documents
       (id, type, status, client, client_id, client_country, client_representative, client_email, client_phone,
        agent, date, destination, product, headcount, avg_weight, price_per_kg, origin,
-       total_value, payment_method, exporter, domain, gacc_note, parent_id, observations,
+       total_value, currency, payment_method, exporter, domain, gacc_note, parent_id, observations,
        payment_option, doc_trigger, has_guarantee, guarantee_type, guarantee_bank,
        validity_days, custom_product_name, custom_product_desc, custom_unit,
        fco_confirmed, client_id_doc_b64, commercial_data)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id, type, status, client, resolvedClientId || null,
     clientCountry || null, clientRepresentative || null,
     clientEmail || null, clientPhone || null,
     req.user.username, date, effectiveDestination, effectiveProduct,
     effectiveHeadcount, effectiveAvgWeight, pricePerKg,
-    effectiveOrigin, totalValue, paymentMethod || null,
+    effectiveOrigin, totalValue, currency, paymentMethod || null,
     exporter, domain, gaccNote, parentId || null, observations || null,
     payment_option || null, doc_trigger || null, has_guarantee ? 1 : 0,
     guarantee_type || null, guarantee_bank || null,
