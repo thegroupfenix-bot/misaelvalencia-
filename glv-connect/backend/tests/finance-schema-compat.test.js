@@ -21,17 +21,33 @@ test("legacy finance tables gain currency and retain historical values", () => {
       id TEXT PRIMARY KEY, type TEXT NOT NULL, status TEXT NOT NULL,
       client TEXT NOT NULL, agent TEXT NOT NULL, date TEXT NOT NULL,
       destination TEXT NOT NULL, product TEXT NOT NULL,
-      total_value REAL, created_at TEXT NOT NULL
+      client_country TEXT, client_representative TEXT, client_email TEXT,
+      client_phone TEXT, product_category TEXT, product_specs TEXT,
+      headcount REAL, avg_weight REAL, price_per_kg REAL, origin TEXT,
+      total_value REAL, payment_method TEXT, exporter TEXT, domain TEXT,
+      gacc_note TEXT, parent_id TEXT, observations TEXT, operation_id TEXT,
+      lang TEXT DEFAULT 'es', client_id INTEGER, commercial_data TEXT,
+      deleted INTEGER DEFAULT 0, created_at TEXT NOT NULL
     );
     CREATE TABLE operations (
-      id TEXT PRIMARY KEY, status TEXT NOT NULL,
-      contract_value REAL, destination_country TEXT, created_at TEXT NOT NULL
+      id TEXT PRIMARY KEY, type TEXT NOT NULL DEFAULT 'export',
+      status TEXT NOT NULL DEFAULT 'active', product_category TEXT NOT NULL,
+      product_detail TEXT, commercial_data TEXT, origin_country TEXT,
+      destination_country TEXT, incoterm TEXT DEFAULT 'CFR', shipment_qty REAL,
+      unit_type TEXT, unit_price REAL, shipment_value REAL, monthly_value REAL,
+      contract_value REAL, delivery_frequency TEXT, num_shipments INTEGER,
+      contract_duration TEXT, client_id INTEGER, assigned_agent INTEGER,
+      created_by INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     );
   `);
-  legacy.prepare("INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+  legacy.prepare(`INSERT INTO documents
+    (id, type, status, client, agent, date, destination, product, total_value, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run("SCO-LEGACY", "SCO", "Emitido", "Cliente", "agente", "2026-01-01", "CO", "Producto", 1250, "2026-01-01 12:00:00");
-  legacy.prepare("INSERT INTO operations VALUES (?, ?, ?, ?, ?)")
-    .run("OP-LEGACY", "active", 2200, "CO", "2026-01-01 12:00:00");
+  legacy.prepare(`INSERT INTO operations
+    (id, status, product_category, contract_value, destination_country, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run("OP-LEGACY", "active", "LEGACY", 2200, "CO", "2026-01-01 12:00:00", "2026-01-01 12:00:00");
   legacy.close();
 
   const probe = `
