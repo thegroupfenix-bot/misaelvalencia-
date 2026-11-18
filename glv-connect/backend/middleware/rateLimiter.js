@@ -58,5 +58,6 @@ function rateLimit(windowMs, maxRequests) {
 const apiLimiter    = rateLimit(60 * 1000, 100);  // 100 req/min
 const uploadLimiter = rateLimit(60 * 1000, 10);   // 10 req/min
 const adminLimiter  = rateLimit(60 * 1000, 30);   // 30 req/min
+const authLimiter   = rateLimit(15 * 60 * 1000, 20); // password recovery and auth actions
 
-module.exports = { rateLimit, apiLimiter, uploadLimiter, adminLimiter };
+module.exports = { rateLimit, apiLimiter, uploadLimiter, adminLimiter, authLimiter };

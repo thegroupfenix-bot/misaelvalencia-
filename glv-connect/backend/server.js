@@ -36,6 +36,7 @@ const cors         = require("cors");
 const cookieParser = require("cookie-parser");
 const path         = require("path");
 const fs           = require("fs");
+const { apiLimiter, adminLimiter } = require("./middleware/rateLimiter");
 
 const authRouter        = require("./routes/auth");
 const documentsRouter   = require("./routes/documents");
@@ -130,13 +131,14 @@ app.get("/health", (_req, res) => {
 });
 
 // API routes
+app.use(apiLimiter);
 app.use("/auth",         authRouter);
 app.use("/documents",    documentsRouter);
 app.use("/audit",        auditRouter);
 app.use("/users",        usersRouter);
 app.use("/profile",      profileRouter);
 app.use("/images",       imagesRouter);
-app.use("/admin",        adminRouter);
+app.use("/admin",        adminLimiter, adminRouter);
 app.use("/clients",      clientsRouter);
 app.use("/operations",   operationsRouter);
 app.use("/finance",      financeRouter);
@@ -192,6 +194,7 @@ if (require.main === module) {
     console.log(`Frontend: ${fs.existsSync(indexHtml) ? indexHtml : "NO ENCONTRADO"}`);
     console.log(`NODE_ENV: ${process.env.NODE_ENV || "development"}`);
     console.log(`BUILD_TS: ${BUILD_TS}`);
+    try { governanceRouter.sweepOverdueTasks(); } catch (e) { console.error("[governance] initial sweep error:", e.message); }
     setInterval(() => { try { governanceRouter.sweepOverdueTasks(); } catch (e) { console.error("[governance] sweep error:", e.message); } }, 60 * 60 * 1000);
   });
 }
