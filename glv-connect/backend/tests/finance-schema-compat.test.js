@@ -58,6 +58,7 @@ test("legacy finance tables gain currency and retain historical values", () => {
     db.prepare('SELECT type, status, total_value, currency FROM documents').all();
     db.prepare('SELECT status, contract_value, currency FROM operations').all();
     process.stdout.write(JSON.stringify({ document, operation }));
+    process.exit(0);
   `;
   const result = spawnSync(process.execPath, ["-e", probe], {
     cwd: join(__dirname, ".."),
