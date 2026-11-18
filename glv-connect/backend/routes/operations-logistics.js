@@ -24,7 +24,9 @@ function opAudit(opId, action, actor, role, before, after, detail) {
 }
 
 function canManageOperation(user, op) {
-  return roleLevel(user.role) >= 65 || op.responsible_username === user.username || op.created_by === user.username;
+  // Logistics is the operational control desk. Other non-supervisory roles
+  // are limited to operations they created or are responsible for.
+  return user.role === "LOGISTICS" || roleLevel(user.role) >= 65 || op.responsible_username === user.username || op.created_by === user.username;
 }
 
 function requireManagedOperation(req, res, next) {
@@ -188,7 +190,7 @@ router.get("/", requireLevel(20), (req, res) => {
     if (!userRow?.linked_client_id) return res.json([]);
     q += " AND o.client_id=? AND o.status NOT IN ('PREPARACION','DOCUMENTOS')";
     p.push(userRow.linked_client_id);
-  } else if (lvl < 65) {
+  } else if (u.role !== "LOGISTICS" && lvl < 65) {
     // Collection endpoints must filter in SQL. There is no single operation to
     // authorize here, and access is limited to assigned or created operations.
     q += " AND (o.responsible_username=? OR o.created_by=?)";

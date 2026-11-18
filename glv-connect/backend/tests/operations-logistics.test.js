@@ -265,11 +265,11 @@ describe("Operations & Logistics API", () => {
     assert.equal(res.status, 403);
   });
 
-  it("PATCH /operations-logistics/:id/status CERRADA — audit entry created", async () => {
+  it("PATCH /operations-logistics/:id/status CARGA — audit entry created", async () => {
     await request(app)
       .patch(`/operations-logistics/${createdOpId}/status`)
       .set("Cookie", logisticsCookie)
-      .send({ status:"CERRADA", reason:"Operación completada" });
+      .send({ status:"CARGA", reason:"Operación cargada" });
 
     const audit = db.prepare("SELECT * FROM logistics_audit WHERE op_id=? AND action='STATUS_CHANGED'").all(createdOpId);
     assert.ok(audit.length >= 1, "Audit entries for STATUS_CHANGE must exist");
