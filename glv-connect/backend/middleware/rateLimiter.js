@@ -55,8 +55,12 @@ function rateLimit(windowMs, maxRequests) {
 }
 
 // Pre-built limiter instances for common use cases
-const apiLimiter    = rateLimit(60 * 1000, 100);  // 100 req/min
+// The global limiter is deliberately permissive. Endpoint limits protect the
+// abuse-prone actions without making a normal operational session fail when a
+// dashboard loads several modules at once.
+const apiLimiter    = rateLimit(60 * 1000, 500);  // 500 req/min/IP
 const uploadLimiter = rateLimit(60 * 1000, 10);   // 10 req/min
 const adminLimiter  = rateLimit(60 * 1000, 30);   // 30 req/min
+const authLimiter   = rateLimit(15 * 60 * 1000, 5); // password recovery actions
 
-module.exports = { rateLimit, apiLimiter, uploadLimiter, adminLimiter };
+module.exports = { rateLimit, apiLimiter, uploadLimiter, adminLimiter, authLimiter };

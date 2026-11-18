@@ -8,6 +8,25 @@ const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 function roleLevel(role) { return ROLE_LEVEL[role] || 0; }
 router.use(authenticate);
 
+function canAccessCalculation(user, calculation) {
+  if (roleLevel(user.role) >= 65) return true;
+  if (calculation.created_by === user.id) return true;
+  if (roleLevel(user.role) < 40) return calculation.client_id === user.linked_client_id;
+  if (!calculation.logistics_op_id) return false;
+  const operation = db.prepare(
+    "SELECT responsible_username, created_by FROM logistics_ops WHERE id=?"
+  ).get(calculation.logistics_op_id);
+  return Boolean(operation && (operation.responsible_username === user.username || operation.created_by === user.username));
+}
+
+function requireCalculationAccess(req, res, next) {
+  const calculation = db.prepare("SELECT * FROM cargo_calculations WHERE id=?").get(req.params.id);
+  if (!calculation) return res.status(404).json({ error: "Not found" });
+  if (!canAccessCalculation(req.user, calculation)) return res.status(403).json({ error: "Forbidden" });
+  req.cargoCalculation = calculation;
+  next();
+}
+
 // ── Equipment Profiles ────────────────────────────────────────────────────────
 router.get("/equipment-profiles", requireLevel(20), (req, res) => {
   const rows = db.prepare(
@@ -29,10 +48,18 @@ router.get("/calculations", requireLevel(20), (req, res) => {
   const user = req.user;
   const lvl  = roleLevel(user.role);
   let rows;
-  if (lvl >= 40) {
+  if (lvl >= 65) {
     rows = db.prepare(
       "SELECT c.*, u.name AS creator_name FROM cargo_calculations c LEFT JOIN users u ON c.created_by=u.id ORDER BY c.created_at DESC"
     ).all();
+  } else if (lvl >= 40) {
+    rows = db.prepare(
+      `SELECT c.*, u.name AS creator_name FROM cargo_calculations c
+       LEFT JOIN users u ON c.created_by=u.id
+       LEFT JOIN logistics_ops o ON o.id=c.logistics_op_id
+       WHERE c.created_by=? OR o.responsible_username=? OR o.created_by=?
+       ORDER BY c.created_at DESC`
+    ).all(user.id, user.username, user.username);
   } else {
     rows = db.prepare(
       "SELECT c.*, u.name AS creator_name FROM cargo_calculations c LEFT JOIN users u ON c.created_by=u.id WHERE c.client_id=? ORDER BY c.created_at DESC"
@@ -41,17 +68,9 @@ router.get("/calculations", requireLevel(20), (req, res) => {
   res.json(rows);
 });
 
-router.get("/calculations/:id", requireLevel(20), (req, res) => {
-  const calc = db.prepare(
-    "SELECT c.*, u.name AS creator_name FROM cargo_calculations c LEFT JOIN users u ON c.created_by=u.id WHERE c.id=?"
-  ).get(req.params.id);
-  if (!calc) return res.status(404).json({ error: "Not found" });
-
-  const user = req.user;
-  const lvl  = roleLevel(user.role);
-  if (lvl < 40 && calc.client_id !== user.linked_client_id) {
-    return res.status(403).json({ error: "Forbidden" });
-  }
+router.get("/calculations/:id", requireLevel(20), requireCalculationAccess, (req, res) => {
+  const calc = req.cargoCalculation;
+  const lvl = roleLevel(req.user.role);
 
   const lines = db.prepare(
     "SELECT l.*, t.code AS cargo_type_code, t.name AS cargo_type_name, t.category FROM cargo_lines l JOIN cargo_types t ON l.cargo_type_id=t.id WHERE l.calculation_id=? ORDER BY l.sort_order"
@@ -95,9 +114,8 @@ router.post("/calculations", requireLevel(40), (req, res) => {
   res.status(201).json({ id: calcId });
 });
 
-router.put("/calculations/:id", requireLevel(40), (req, res) => {
-  const calc = db.prepare("SELECT * FROM cargo_calculations WHERE id=?").get(req.params.id);
-  if (!calc) return res.status(404).json({ error: "Not found" });
+router.put("/calculations/:id", requireLevel(40), requireCalculationAccess, (req, res) => {
+  const calc = req.cargoCalculation;
   if (calc.status !== "DRAFT") return res.status(409).json({ error: "Only DRAFT calculations can be edited" });
 
   const { reference, notes, lines } = req.body;
@@ -121,9 +139,8 @@ router.put("/calculations/:id", requireLevel(40), (req, res) => {
 });
 
 // ── Compute (backend bin-packing) ─────────────────────────────────────────────
-router.post("/calculations/:id/compute", requireLevel(40), (req, res) => {
-  const calc = db.prepare("SELECT * FROM cargo_calculations WHERE id=?").get(req.params.id);
-  if (!calc) return res.status(404).json({ error: "Not found" });
+router.post("/calculations/:id/compute", requireLevel(40), requireCalculationAccess, (req, res) => {
+  const calc = req.cargoCalculation;
   if (calc.status !== "DRAFT") return res.status(409).json({ error: "Only DRAFT calculations can be computed" });
 
   const lines = db.prepare(
@@ -161,9 +178,8 @@ router.post("/calculations/:id/compute", requireLevel(40), (req, res) => {
 });
 
 // ── Confirm ────────────────────────────────────────────────────────────────────
-router.post("/calculations/:id/confirm", requireLevel(45), (req, res) => {
-  const calc = db.prepare("SELECT * FROM cargo_calculations WHERE id=?").get(req.params.id);
-  if (!calc) return res.status(404).json({ error: "Not found" });
+router.post("/calculations/:id/confirm", requireLevel(45), requireCalculationAccess, (req, res) => {
+  const calc = req.cargoCalculation;
   if (calc.status !== "DRAFT") return res.status(409).json({ error: "Only DRAFT calculations can be confirmed" });
   if (!calc.total_cbm) return res.status(400).json({ error: "Run compute before confirming" });
 
@@ -176,9 +192,8 @@ router.post("/calculations/:id/confirm", requireLevel(45), (req, res) => {
 });
 
 // ── New Version ────────────────────────────────────────────────────────────────
-router.post("/calculations/:id/new-version", requireLevel(40), (req, res) => {
-  const calc = db.prepare("SELECT * FROM cargo_calculations WHERE id=?").get(req.params.id);
-  if (!calc) return res.status(404).json({ error: "Not found" });
+router.post("/calculations/:id/new-version", requireLevel(40), requireCalculationAccess, (req, res) => {
+  const calc = req.cargoCalculation;
   if (calc.status !== "CONFIRMED") return res.status(409).json({ error: "Only CONFIRMED calculations can be versioned" });
 
   const lines = db.prepare("SELECT * FROM cargo_lines WHERE calculation_id=?").all(calc.id);
@@ -206,14 +221,8 @@ router.post("/calculations/:id/new-version", requireLevel(40), (req, res) => {
 });
 
 // ── Placements (for viz) ──────────────────────────────────────────────────────
-router.get("/calculations/:id/placements", requireLevel(20), (req, res) => {
-  const calc = db.prepare("SELECT * FROM cargo_calculations WHERE id=?").get(req.params.id);
-  if (!calc) return res.status(404).json({ error: "Not found" });
-
-  const user = req.user;
-  if (roleLevel(user.role) < 40 && calc.client_id !== user.linked_client_id) {
-    return res.status(403).json({ error: "Forbidden" });
-  }
+router.get("/calculations/:id/placements", requireLevel(20), requireCalculationAccess, (req, res) => {
+  const calc = req.cargoCalculation;
 
   const placements = db.prepare(
     `SELECT p.*, ep.code AS equip_code, ep.name AS equip_name,

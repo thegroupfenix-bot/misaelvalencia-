@@ -4,6 +4,7 @@ const jwt     = require("jsonwebtoken");
 const crypto  = require("crypto");
 const db      = require("../db/database");
 const { authenticate, COOKIE_NAME } = require("../middleware/auth");
+const { authLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
@@ -177,7 +178,7 @@ router.post("/change-password", authenticate, (req, res) => {
 
 // ── POST /auth/forgot-password ───────────────────────────────────────────────
 
-router.post("/forgot-password", (req, res) => {
+router.post("/forgot-password", authLimiter, (req, res) => {
   const { email } = req.body;
   // Always respond success to avoid user enumeration
   res.json({ ok: true, message: "Si el correo existe, recibirás instrucciones." });

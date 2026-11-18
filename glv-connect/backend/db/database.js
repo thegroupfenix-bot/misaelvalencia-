@@ -735,6 +735,78 @@ db.exec(`
 // documents: FK to clients for proper portal access control
 safeAlter("ALTER TABLE documents ADD COLUMN client_id INTEGER REFERENCES clients(id)");
 
+// ─── Commercial documents foundation ───────────────────────────────────────
+// These records are intentionally separate from `documents`: SCO/FCO/SPA are
+// working documents, while a proforma or commercial invoice needs line-level
+// traceability and an immutable issued version.  They are NOT fiscal documents.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS legal_entities (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    legal_name      TEXT NOT NULL,
+    country_code    TEXT NOT NULL,
+    tax_id          TEXT,
+    address         TEXT,
+    active          INTEGER NOT NULL DEFAULT 1,
+    created_by      INTEGER NOT NULL REFERENCES users(id),
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(legal_name, country_code)
+  );
+
+  CREATE TABLE IF NOT EXISTS commercial_documents (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_number     TEXT NOT NULL UNIQUE,
+    document_type       TEXT NOT NULL CHECK(document_type IN ('PROFORMA','COMMERCIAL_INVOICE')),
+    lifecycle_status    TEXT NOT NULL DEFAULT 'DRAFT' CHECK(lifecycle_status IN ('DRAFT','ISSUED','CANCELLED')),
+    fiscal_status       TEXT NOT NULL DEFAULT 'NON_FISCAL' CHECK(fiscal_status = 'NON_FISCAL'),
+    legal_entity_id     INTEGER NOT NULL REFERENCES legal_entities(id),
+    client_id           INTEGER NOT NULL REFERENCES clients(id),
+    operation_id        TEXT REFERENCES operations(id),
+    language            TEXT NOT NULL DEFAULT 'es' CHECK(language IN ('es','en')),
+    currency_code       TEXT NOT NULL CHECK(length(currency_code) = 3),
+    incoterm            TEXT,
+    origin_country      TEXT,
+    destination_country TEXT,
+    payment_terms       TEXT,
+    issue_date          TEXT NOT NULL,
+    due_date            TEXT,
+    subtotal_minor      INTEGER NOT NULL DEFAULT 0,
+    freight_minor       INTEGER NOT NULL DEFAULT 0,
+    insurance_minor     INTEGER NOT NULL DEFAULT 0,
+    total_minor         INTEGER NOT NULL DEFAULT 0,
+    version             INTEGER NOT NULL DEFAULT 1,
+    created_by          INTEGER NOT NULL REFERENCES users(id),
+    issued_by           INTEGER REFERENCES users(id),
+    issued_at           TEXT,
+    cancelled_by        INTEGER REFERENCES users(id),
+    cancelled_at        TEXT,
+    cancel_reason       TEXT,
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS commercial_document_lines (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    commercial_document_id INTEGER NOT NULL REFERENCES commercial_documents(id) ON DELETE CASCADE,
+    line_no               INTEGER NOT NULL,
+    description           TEXT NOT NULL,
+    quantity              TEXT NOT NULL,
+    unit                  TEXT NOT NULL,
+    unit_price_minor      INTEGER NOT NULL,
+    line_total_minor      INTEGER NOT NULL,
+    hs_code               TEXT,
+    country_of_origin     TEXT,
+    packages              INTEGER,
+    gross_weight_kg       TEXT,
+    net_weight_kg         TEXT,
+    UNIQUE(commercial_document_id, line_no)
+  );
+
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('PROFORMA', 0);
+  INSERT OR IGNORE INTO doc_id_sequences(type, last_seq) VALUES ('COMMERCIAL_INVOICE', 0);
+  CREATE INDEX IF NOT EXISTS idx_commercial_documents_client ON commercial_documents(client_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_commercial_documents_operation ON commercial_documents(operation_id, created_at DESC);
+`);
+
 // ─── Phase 0: login rate-limiting + password reset + GLV code sequences ───────
 db.exec(`
   CREATE TABLE IF NOT EXISTS login_attempts (

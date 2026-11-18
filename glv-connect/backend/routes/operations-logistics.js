@@ -23,6 +23,33 @@ function opAudit(opId, action, actor, role, before, after, detail) {
   );
 }
 
+function canManageOperation(user, op) {
+  // Logistics is the operational control desk. Other non-supervisory roles
+  // are limited to operations they created or are responsible for.
+  return user.role === "LOGISTICS" || roleLevel(user.role) >= 65 || op.responsible_username === user.username || op.created_by === user.username;
+}
+
+function requireManagedOperation(req, res, next) {
+  const op = db.prepare("SELECT * FROM logistics_ops WHERE id=?").get(req.params.id);
+  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  if (!canManageOperation(req.user, op)) return res.status(403).json({ error: "Acceso denegado a esta operación" });
+  req.logisticsOp = op;
+  next();
+}
+
+const STATUS_TRANSITIONS = {
+  PREPARACION: ["DOCUMENTOS", "CANCELADA"],
+  DOCUMENTOS: ["BOOKING", "CANCELADA"],
+  BOOKING: ["CARGA", "CANCELADA"],
+  CARGA: ["EN_TRANSITO", "CANCELADA"],
+  EN_TRANSITO: ["ARRIBO", "CANCELADA"],
+  ARRIBO: ["NACIONALIZACION", "CANCELADA"],
+  NACIONALIZACION: ["ENTREGA", "CANCELADA"],
+  ENTREGA: ["CERRADA", "CANCELADA"],
+  CERRADA: [],
+  CANCELADA: [],
+};
+
 function nextOpNumber() {
   const year = new Date().getFullYear();
   const last = db.prepare(
@@ -33,7 +60,7 @@ function nextOpNumber() {
   return `OPS-${year}-${String(seq).padStart(4, "0")}`;
 }
 
-function autoCreateTasks(opId, newStatus, username) {
+function autoCreateTasks(opId, newStatus, userId) {
   const templates = db.prepare(
     `SELECT * FROM logistics_task_templates WHERE trigger_status=? AND active=1`
   ).all(newStatus);
@@ -49,7 +76,7 @@ function autoCreateTasks(opId, newStatus, username) {
       "pending",
       "high",
       due.toISOString().split("T")[0],
-      username,
+      userId,
       opId
     );
     db.prepare(
@@ -163,9 +190,11 @@ router.get("/", requireLevel(20), (req, res) => {
     if (!userRow?.linked_client_id) return res.json([]);
     q += " AND o.client_id=? AND o.status NOT IN ('PREPARACION','DOCUMENTOS')";
     p.push(userRow.linked_client_id);
-  } else if (u.role === "LOGISTICS") {
-    q += " AND o.responsible_username=?";
-    p.push(u.username);
+  } else if (u.role !== "LOGISTICS" && lvl < 65) {
+    // Collection endpoints must filter in SQL. There is no single operation to
+    // authorize here, and access is limited to assigned or created operations.
+    q += " AND (o.responsible_username=? OR o.created_by=?)";
+    p.push(u.username, u.username);
   }
 
   if (status)                        { q += " AND o.status=?";               p.push(status); }
@@ -277,17 +306,23 @@ router.post("/", requireLevel(40), (req, res) => {
 
 // ── CHANGE STATUS ─────────────────────────────────────────────────────────────
 
-router.patch("/:id/status", requireLevel(42), (req, res) => {
+router.patch("/:id/status", requireLevel(42), requireManagedOperation, (req, res) => {
   const u  = req.user;
   if (u.role === "CLIENT" || u.role === "SUPPLIER")
     return res.status(403).json({ error: "Acceso denegado" });
 
-  const op = db.prepare("SELECT * FROM logistics_ops WHERE id=?").get(req.params.id);
-  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  const op = req.logisticsOp;
 
   const { status, reason } = req.body;
   const VALID = ["PREPARACION","DOCUMENTOS","BOOKING","CARGA","EN_TRANSITO","ARRIBO","NACIONALIZACION","ENTREGA","CERRADA","CANCELADA"];
   if (!VALID.includes(status)) return res.status(400).json({ error: "Estado inválido" });
+  if (!STATUS_TRANSITIONS[op.status]?.includes(status)) return res.status(409).json({ error: `Transición no permitida: ${op.status} a ${status}` });
+  if (status === "CERRADA") {
+    const openTasks = db.prepare(`SELECT COUNT(*) AS count FROM tasks t
+      JOIN logistics_op_tasks lot ON lot.task_id=t.id WHERE lot.op_id=?
+      AND t.status NOT IN ('completed','approved','rejected')`).get(op.id).count;
+    if (openTasks) return res.status(409).json({ error: "No se puede cerrar una operación con tareas logísticas pendientes" });
+  }
 
   const extra = [];
   const eVals = [];
@@ -295,23 +330,27 @@ router.patch("/:id/status", requireLevel(42), (req, res) => {
   if (status === "CANCELADA") { extra.push("cancelled_at=?","cancellation_reason=?"); eVals.push(new Date().toISOString(), reason||null); }
 
   const setStr = ["status=?","updated_at=datetime('now')", ...extra].join(",");
-  db.prepare(`UPDATE logistics_ops SET ${setStr} WHERE id=?`).run(status, ...eVals, op.id);
-
-  opAudit(op.id,"STATUS_CHANGED",u.username,u.role,{ status:op.status },{ status },reason||null);
-
-  try { autoCreateTasks(op.id, status, u.username); } catch(_) {}
+  const changeStatus = db.transaction(() => {
+    db.prepare(`UPDATE logistics_ops SET ${setStr} WHERE id=?`).run(status, ...eVals, op.id);
+    autoCreateTasks(op.id, status, u.id);
+    opAudit(op.id,"STATUS_CHANGED",u.username,u.role,{ status:op.status },{ status },reason||null);
+  });
+  try { changeStatus(); }
+  catch (error) {
+    console.error("[operations-logistics] status transaction failed:", error.message);
+    return res.status(500).json({ error: "No fue posible actualizar el estado de la operación" });
+  }
 
   res.json({ ok: true, status });
 });
 
 // ── UPDATE FIELDS ─────────────────────────────────────────────────────────────
 
-router.patch("/:id", requireLevel(42), (req, res) => {
+router.patch("/:id", requireLevel(42), requireManagedOperation, (req, res) => {
   const u = req.user;
   if (u.role === "CLIENT" || u.role === "SUPPLIER")
     return res.status(403).json({ error: "Acceso denegado" });
-  const op = db.prepare("SELECT * FROM logistics_ops WHERE id=?").get(req.params.id);
-  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  const op = req.logisticsOp;
 
   const ALLOWED = ["responsible_username","estimated_start_date","estimated_delivery_date","actual_delivery_date","product_name","product_code","quantity","unit"];
   const fields = []; const vals = [];
@@ -327,10 +366,9 @@ router.patch("/:id", requireLevel(42), (req, res) => {
 
 // ── VOYAGE ────────────────────────────────────────────────────────────────────
 
-router.post("/:id/voyage", requireLevel(42), (req, res) => {
+router.post("/:id/voyage", requireLevel(42), requireManagedOperation, (req, res) => {
   const u  = req.user;
-  const op = db.prepare("SELECT id FROM logistics_ops WHERE id=?").get(req.params.id);
-  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  const op = req.logisticsOp;
 
   const {
     naviera_id, vessel_name, imo_number, voyage_number, booking_number, booking_date,
@@ -373,10 +411,9 @@ router.post("/:id/voyage", requireLevel(42), (req, res) => {
 
 // ── CONTAINERS ────────────────────────────────────────────────────────────────
 
-router.post("/:id/containers", requireLevel(42), (req, res) => {
+router.post("/:id/containers", requireLevel(42), requireManagedOperation, (req, res) => {
   const u  = req.user;
-  const op = db.prepare("SELECT id FROM logistics_ops WHERE id=?").get(req.params.id);
-  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  const op = req.logisticsOp;
   const { container_number, container_type, seal_number, gross_weight_kg, vgm_kg, vgm_date, vgm_method, voyage_id, notes } = req.body;
   if (!container_number) return res.status(400).json({ error: "container_number es obligatorio" });
   const r = db.prepare(
@@ -388,7 +425,7 @@ router.post("/:id/containers", requireLevel(42), (req, res) => {
   res.status(201).json({ id: r.lastInsertRowid });
 });
 
-router.patch("/:id/containers/:cid", requireLevel(42), (req, res) => {
+router.patch("/:id/containers/:cid", requireLevel(42), requireManagedOperation, (req, res) => {
   const u = req.user;
   const { seal_number, gross_weight_kg, vgm_kg, vgm_date, vgm_method, inspection_required, inspection_date, inspection_result, inspection_agency } = req.body;
   db.prepare(
@@ -405,10 +442,9 @@ router.patch("/:id/containers/:cid", requireLevel(42), (req, res) => {
 
 // ── MILESTONES ────────────────────────────────────────────────────────────────
 
-router.post("/:id/milestones", requireLevel(42), (req, res) => {
+router.post("/:id/milestones", requireLevel(42), requireManagedOperation, (req, res) => {
   const u  = req.user;
-  const op = db.prepare("SELECT id FROM logistics_ops WHERE id=?").get(req.params.id);
-  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  const op = req.logisticsOp;
   const { milestone_key, milestone_label, planned_date, actual_date, responsible_username, evidence_note, status } = req.body;
   if (!milestone_key || !milestone_label) return res.status(400).json({ error: "milestone_key y milestone_label son obligatorios" });
   const r = db.prepare(
@@ -420,7 +456,7 @@ router.post("/:id/milestones", requireLevel(42), (req, res) => {
   res.status(201).json({ id: r.lastInsertRowid });
 });
 
-router.patch("/:id/milestones/:mid", requireLevel(42), (req, res) => {
+router.patch("/:id/milestones/:mid", requireLevel(42), requireManagedOperation, (req, res) => {
   const u = req.user;
   const { actual_date, status, evidence_note, delay_days } = req.body;
   db.prepare(
@@ -435,12 +471,11 @@ router.patch("/:id/milestones/:mid", requireLevel(42), (req, res) => {
 
 // ── INCIDENTS ─────────────────────────────────────────────────────────────────
 
-router.post("/:id/incidents", requireLevel(40), (req, res) => {
+router.post("/:id/incidents", requireLevel(40), requireManagedOperation, (req, res) => {
   const u = req.user;
   if (u.role === "CLIENT" || u.role === "SUPPLIER")
     return res.status(403).json({ error: "Acceso denegado" });
-  const op = db.prepare("SELECT id FROM logistics_ops WHERE id=?").get(req.params.id);
-  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  const op = req.logisticsOp;
   const { type, severity, description } = req.body;
   if (!type || !description) return res.status(400).json({ error: "type y description son obligatorios" });
   const r = db.prepare(
@@ -450,7 +485,7 @@ router.post("/:id/incidents", requireLevel(40), (req, res) => {
   res.status(201).json({ id: r.lastInsertRowid });
 });
 
-router.patch("/:id/incidents/:iid", requireLevel(42), (req, res) => {
+router.patch("/:id/incidents/:iid", requireLevel(42), requireManagedOperation, (req, res) => {
   const u = req.user;
   const { status, resolution } = req.body;
   const resolved_at = (status === "RESOLVED" || status === "CLOSED") ? new Date().toISOString() : null;
@@ -464,10 +499,9 @@ router.patch("/:id/incidents/:iid", requireLevel(42), (req, res) => {
 
 // ── ASSIGNMENTS ───────────────────────────────────────────────────────────────
 
-router.post("/:id/assignments", requireLevel(45), (req, res) => {
+router.post("/:id/assignments", requireLevel(45), requireManagedOperation, (req, res) => {
   const u  = req.user;
-  const op = db.prepare("SELECT id FROM logistics_ops WHERE id=?").get(req.params.id);
-  if (!op) return res.status(404).json({ error: "Operación no encontrada" });
+  const op = req.logisticsOp;
   const { provider_id, role, notes } = req.body;
   if (!provider_id || !role) return res.status(400).json({ error: "provider_id y role son obligatorios" });
   const r = db.prepare(

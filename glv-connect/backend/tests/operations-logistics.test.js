@@ -175,7 +175,19 @@ describe("Operations & Logistics API", () => {
     assert.ok(Array.isArray(res.body));
   });
 
-  it("PATCH /operations-logistics/:id/status — LOGISTICS can change status to BOOKING", async () => {
+  it("PATCH /operations-logistics/:id/status — only valid sequential status transitions succeed", async () => {
+    const invalid = await request(app)
+      .patch(`/operations-logistics/${createdOpId}/status`)
+      .set("Cookie", logisticsCookie)
+      .send({ status:"BOOKING", reason:"Test booking" });
+    assert.equal(invalid.status, 409, JSON.stringify(invalid.body));
+
+    const documents = await request(app)
+      .patch(`/operations-logistics/${createdOpId}/status`)
+      .set("Cookie", logisticsCookie)
+      .send({ status:"DOCUMENTOS", reason:"Documentos completos" });
+    assert.equal(documents.status, 200, JSON.stringify(documents.body));
+
     const res = await request(app)
       .patch(`/operations-logistics/${createdOpId}/status`)
       .set("Cookie", logisticsCookie)
@@ -253,11 +265,11 @@ describe("Operations & Logistics API", () => {
     assert.equal(res.status, 403);
   });
 
-  it("PATCH /operations-logistics/:id/status CERRADA — audit entry created", async () => {
+  it("PATCH /operations-logistics/:id/status CARGA — audit entry created", async () => {
     await request(app)
       .patch(`/operations-logistics/${createdOpId}/status`)
       .set("Cookie", logisticsCookie)
-      .send({ status:"CERRADA", reason:"Operación completada" });
+      .send({ status:"CARGA", reason:"Operación cargada" });
 
     const audit = db.prepare("SELECT * FROM logistics_audit WHERE op_id=? AND action='STATUS_CHANGED'").all(createdOpId);
     assert.ok(audit.length >= 1, "Audit entries for STATUS_CHANGE must exist");
