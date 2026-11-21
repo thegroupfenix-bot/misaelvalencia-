@@ -13,6 +13,7 @@ const EMAIL_REGEX   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_EXPIRY   = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS  = 5;
 const MAX_RESENDS   = 3;
+const INITIAL_CLIENT_SEQUENCE = 2356;
 
 const resendInFlight = new Set();
 
@@ -46,10 +47,10 @@ function generateGlvCode() {
   const last = db.prepare(
     "SELECT glv_code FROM clients WHERE glv_code LIKE ? ORDER BY glv_code DESC LIMIT 1"
   ).get(prefix + "%");
-  let seq = 1;
+  let seq = INITIAL_CLIENT_SEQUENCE;
   if (last) {
     const n = parseInt((last.glv_code || "").split("-").pop(), 10);
-    if (!isNaN(n)) seq = n + 1;
+    if (!isNaN(n)) seq = Math.max(INITIAL_CLIENT_SEQUENCE, n + 1);
   }
   let glvCode, tries = 0;
   do {
