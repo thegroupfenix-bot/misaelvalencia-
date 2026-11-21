@@ -25,6 +25,7 @@ import CustomsDesk from "./components/CustomsDesk.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
+import { loadAuditState } from "./utils/auditResponse.js";
 import { LANGUAGES, t } from "./i18n.js";
 
 const ADMINS    = new Set(["SUPER_ADMIN","CORPORATE_ADMIN"]);
@@ -598,7 +599,9 @@ function Dashboard({ user, setView, setModal }) {
         api.getOperations(),
         api.getTasks({ status: "pending" }),
       ]).then(([d, o, t]) => {
-        setDocs(d); setOps(o); setTasks(t);
+        setDocs(Array.isArray(d) ? d : []);
+        setOps(Array.isArray(o) ? o : []);
+        setTasks(Array.isArray(t) ? t : []);
       }).catch(console.error).finally(() => setLoading(false));
     }
   }, []);
@@ -2194,20 +2197,12 @@ function AuditLog() {
   const loadAudit = async () => {
     setLoading(true);
     setError("");
-    try {
-      const response = await api.getAudit();
-      const rows = Array.isArray(response) ? response : response?.rows;
-      if (!Array.isArray(rows)) throw new Error("Respuesta de auditoría no válida");
-      setLogs(rows);
-      setTotal(Number.isFinite(response?.total) ? response.total : rows.length);
-    } catch (e) {
-      console.error("[audit]", e);
-      setLogs([]);
-      setTotal(0);
-      setError("No fue posible cargar el registro de auditoría. Verifica la conexión e inténtalo de nuevo.");
-    } finally {
-      setLoading(false);
-    }
+    const state = await loadAuditState(() => api.getAudit());
+    if (state.cause) console.error("[audit]", state.cause);
+    setLogs(state.logs);
+    setTotal(state.total);
+    setError(state.error);
+    setLoading(false);
   };
 
   useEffect(() => { loadAudit(); }, []);
