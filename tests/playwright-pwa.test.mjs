@@ -14,8 +14,7 @@
  *               sin guía Chrome cuando prompt nativo existe
  */
 
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
-const { chromium } = pkg;
+import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import fs from 'node:fs';

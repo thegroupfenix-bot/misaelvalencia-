@@ -25,3 +25,19 @@
 - No cubierto: `resend-code` con fallo de envío (implementado, sin prueba), límites de intentos/expiración, CORS, 409 de cliente activo.
 - `.github/AI_AUTOMATION_PROTOCOL.md` no existe en el repositorio.
 - Sin merge, despliegue, cambios de secretos ni contacto con clientes.
+
+## Bloque: guía de instalación dentro de la pantalla (menú móvil)
+**SHA base:** 0769333 (el commit queda en el historial de la rama).
+- `index.html`: nueva `placeHint()` compartida por `showInstallHint` y `showIOSHint`. Coloca la guía debajo del ancla si cabe; si no, encima; ajusta ancho (`min(max, ancho visible − 16)`) y posición horizontal, y limita `top` a la ventana. Se conservan cierre (clic/temporizador/clic exterior), limpieza en `appinstalled`/standalone, prompt nativo, ambos controles y el panel de registro en línea.
+- `tests/pwa-install-behavior.test.mjs`: sección 8 (ventana móvil 360×420, botón al final del menú, 4 posiciones de ancla, Chrome sin prompt + Safari iPhone/iPadOS, ventana mínima 300×200): toda la guía queda dentro del viewport; encima cuando no cabe debajo; cierre y `appinstalled` limpian.
+- `tests/pwa-security.test.mjs` (E12): exige `placeHint` en lugar de buscar `style.top` dentro de cada función.
+- `tests/playwright-pwa.test.mjs`: import `playwright` sin ruta absoluta.
+
+### Resultados
+- `npm run test:pwa` → 2/2 archivos pasan.
+- La sección 8 falla con el `index.html` anterior (comprobado).
+- `node --check tests/playwright-pwa.test.mjs` → OK.
+
+### No ejecutado
+- `tests/playwright-pwa.test.mjs` no se ejecutó (sin navegador/servidor; requiere `playwright` instalado como dependencia).
+- DOM simulado (`node:vm`): el alto de la guía se fija en 96 px; no se probó en navegador real ni con teclado virtual/`visualViewport`.

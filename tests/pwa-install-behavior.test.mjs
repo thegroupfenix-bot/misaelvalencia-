@@ -17,19 +17,26 @@ const UA = {
   ipados: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15',
 };
 
-function makeEnv({ ua, platform = 'Win32', touch = 0, standalone = false }) {
+function makeEnv({ ua, platform = 'Win32', touch = 0, standalone = false, vw = 1024, vh = 768, anchorRect = { top: 10, bottom: 40, right: 300, left: 200, width: 100, height: 30 } }) {
   const timers = new Map(); let tid = 0;
   const docListeners = []; const winListeners = {}; const keydown = [];
   const byId = new Map();
   const body = mkEl('body');
   function mkEl(tag, id) {
     const el = {
-      tag, id, style: {}, children: [], parentNode: null, listeners: {}, _classes: new Set(), attrs: {},
+      tag, id, style: { set cssText(v) { this._css = v; for (const m of v.matchAll(/([a-z-]+):([^;]+);/g)) if (m[1] === 'position' || m[1] === 'max-width') this[m[1] === 'max-width' ? 'maxWidth' : 'position'] = m[2]; }, get cssText() { return this._css || ''; } }, children: [], parentNode: null, listeners: {}, _classes: new Set(), attrs: {},
       classList: { add: c => el._classes.add(c), remove: c => el._classes.delete(c), contains: c => el._classes.has(c) },
       focus() { el.focused = true; },
       setAttribute(k, v) { el.attrs[k] = v; },
       addEventListener(t, f) { (el.listeners[t] ||= []).push(f); },
-      getBoundingClientRect: () => ({ top: 10, bottom: 40, right: 300, left: 200, width: 100, height: 30 }),
+      getBoundingClientRect: () => {
+        if (tag === 'div' && el.style.position === 'fixed') { // guide: size from style, fixed content height 96
+          const w = parseFloat(el.style.width) || parseFloat(el.style.maxWidth) || 280;
+          const t = parseFloat(el.style.top) || 0, l = parseFloat(el.style.left) || 0;
+          return { top: t, left: l, width: w, height: 96, bottom: t + 96, right: l + w };
+        }
+        return anchorRect;
+      },
       contains: n => n === el || el.children.some(c => c.contains && c.contains(n)),
       appendChild(c) { c.parentNode = el; el.children.push(c); if (c.id) byId.set(c.id, c); return c; },
       removeChild(c) { c.remove(); },
@@ -53,14 +60,14 @@ function makeEnv({ ua, platform = 'Win32', touch = 0, standalone = false }) {
   mkEl('button', 'navHamburger'); mkEl('div', 'mobMenu'); mkEl('button', 'mobMenuClose');
   [navBtn, mobSlot].forEach(e => { e.parentNode = body; body.children.push(e); });
   const document = {
-    body, documentElement: { clientWidth: 1024 },
+    body, documentElement: { clientWidth: vw, clientHeight: vh },
     getElementById: id => byId.get(id) || null,
     createElement: t => mkEl(t),
     addEventListener(t, f, o) { docListeners.push({ t, f, o }); if (t === 'keydown') keydown.push(f); },
     removeEventListener(t, f) { const i = docListeners.findIndex(l => l.t === t && l.f === f); if (i >= 0) docListeners.splice(i, 1); },
   };
   const win = {
-    innerWidth: 1024, MSStream: undefined,
+    innerWidth: vw, innerHeight: vh, MSStream: undefined,
     matchMedia: () => ({ matches: standalone }),
     addEventListener(t, f) { (winListeners[t] ||= []).push(f); },
     navigator: { userAgent: ua, platform, maxTouchPoints: touch, serviceWorker: { register: () => ({ catch() {} }) } },
@@ -220,5 +227,44 @@ for (const [name, cfg] of Object.entries(platforms)) {
   m.e.fire('appinstalled'); assertClean(m.e, `${name} menu+appinstalled`);
   m.ham.click(); assert.equal(m.e.mobButtons().length, 0, `${name}: no install button after install (menu open)`);
   console.log(`  PASS 7 ${name}: menu open/close, PWA access, cleanup`);
+}
+
+// 8. low mobile window, install button at the end of the scrollable menu: whole guide must stay inside the viewport
+{
+  const inside = (h, vw, vh, label) => {
+    const r = h.getBoundingClientRect();
+    assert.ok(r.top >= 0 && r.left >= 0 && r.bottom <= vh && r.right <= vw && r.width <= vw, `${label}: guide inside viewport ${JSON.stringify(r)}`);
+  };
+  const vw = 360, vh = 420;
+  const cases = [
+    ['bottom edge', { top: 380, bottom: 416, left: 16, right: 344, width: 328, height: 36 }],
+    ['partly below viewport', { top: 400, bottom: 436, left: 16, right: 344, width: 328, height: 36 }],
+    ['near top (fits below)', { top: 20, bottom: 56, left: 16, right: 344, width: 328, height: 36 }],
+    ['narrow left anchor', { top: 380, bottom: 416, left: 0, right: 90, width: 90, height: 36 }],
+  ];
+  for (const [label, anchorRect] of cases) {
+    // desktop/Chrome path without native prompt → showInstallHint from mobile menu button
+    let e = makeEnv({ ...platforms.desktop, vw, vh, anchorRect });
+    e.mobButtons()[0].click();
+    let h = e.find('pwa-install-hint'); assert.ok(h, `${label}: Chrome guide shown`);
+    inside(h, vw, vh, `Chrome ${label}`);
+    if (label === 'bottom edge') assert.ok(h.getBoundingClientRect().bottom <= anchorRect.top, 'placed above the button when it does not fit below');
+    if (label === 'near top (fits below)') assert.ok(h.getBoundingClientRect().top >= anchorRect.bottom, 'placed below when it fits');
+    // still dismissible and cleaned on appinstalled
+    h.click(); assert.equal(e.hints().length, 0); assert.equal(e.timers.size, 0);
+    e.mobButtons()[0].click(); e.fire('appinstalled'); assertClean(e, `Chrome ${label} appinstalled`);
+    // Safari guides reuse the same placement
+    for (const n of ['iphone', 'iPadOS MacIntel']) {
+      e = makeEnv({ ...platforms[n], vw, vh, anchorRect });
+      e.mobButtons()[0].click();
+      h = e.find('pwa-ios-hint'); assert.ok(h && /Safari/.test(h.innerHTML), `${n} ${label}: Safari guide`);
+      inside(h, vw, vh, `${n} ${label}`);
+      e.fire('appinstalled'); assertClean(e, `${n} ${label} appinstalled`);
+    }
+  }
+  // very small window: guide clamped, never offscreen
+  const e = makeEnv({ ...platforms.desktop, vw: 300, vh: 200, anchorRect: { top: 150, bottom: 190, left: 10, right: 290, width: 280, height: 40 } });
+  e.mobButtons()[0].click(); inside(e.find('pwa-install-hint'), 300, 200, 'tiny window');
+  console.log('  PASS 8 low mobile window: guides stay inside the viewport (Chrome + Safari)');
 }
 console.log('\n✅ PWA install behavior tests passed');

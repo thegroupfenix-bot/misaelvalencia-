@@ -296,8 +296,10 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   const iosHintCode = indexSource.match(/function showIOSHint[\s\S]*?hint\.addEventListener\('click', dismiss\);[\s\S]*?document\.addEventListener\('click', onDoc/)?.[0] || '';
   assert.ok(!hintCode.includes('inset:0') && !hintCode.includes('inset: 0'), 'showInstallHint must not use inset:0 overlay');
   assert.ok(!iosHintCode.includes('inset:0') && !iosHintCode.includes('inset: 0'), 'showIOSHint must not use inset:0 overlay');
-  assert.ok(hintCode.includes('style.top') || hintCode.includes('style.bottom'), 'showInstallHint must use specific top/bottom positioning');
-  assert.ok(iosHintCode.includes('style.top') || iosHintCode.includes('style.bottom'), 'showIOSHint must use specific top/bottom positioning');
+  const placeCode = indexSource.match(/function placeHint[\s\S]*?\n      }\n/)?.[0] || '';
+  assert.ok(placeCode.includes('style.top') && placeCode.includes('style.left') && placeCode.includes('innerHeight'), 'placeHint must position the guide inside the visible window');
+  assert.ok(hintCode.includes('placeHint(hint'), 'showInstallHint must use placeHint');
+  assert.ok(iosHintCode.includes('placeHint(hint'), 'showIOSHint must use placeHint');
   console.log('  PASS E12 install hints use specific positioning, no page-covering inset:0');
 
   // E13: PWA installed mode — standalone detection + install UI hidden

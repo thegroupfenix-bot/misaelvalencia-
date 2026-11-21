@@ -3586,6 +3586,36 @@ window.addEventListener('scroll', () => {
         return;
       }
 
+      // Place a fixed, non-blocking guide fully inside the visible window:
+      // below the anchor if it fits, otherwise above it; width and horizontal position clamped to the viewport.
+      function placeHint(hint, anchor, maxW) {
+        var M = 8;
+        var vw = document.documentElement.clientWidth || window.innerWidth || 320;
+        var vh = window.innerHeight || document.documentElement.clientHeight || 480;
+        var w = Math.max(120, Math.min(maxW, vw - 2 * M));
+        hint.style.boxSizing = 'border-box';
+        hint.style.maxWidth = w + 'px';
+        hint.style.width = w + 'px';
+        hint.style.right = 'auto';
+        hint.style.bottom = 'auto';
+        var hr = hint.getBoundingClientRect();
+        var h = (hr && hr.height) || 0;
+        var r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+        var top, left;
+        if (r && r.width > 0 && r.height > 0) {
+          top = r.bottom + M;
+          if (top + h > vh - M) top = r.top - M - h; // does not fit below → place above
+          left = r.right - w;
+        } else {
+          top = vh - M - h - 72;
+          left = M;
+        }
+        top = Math.max(M, Math.min(top, vh - M - h));
+        left = Math.max(M, Math.min(left, vw - M - w));
+        hint.style.top = top + 'px';
+        hint.style.left = left + 'px';
+      }
+
       // Show a dismissable hint when the install prompt is not yet available
       function showInstallHint(anchor) {
         if (appInstalled) return;
@@ -3596,10 +3626,8 @@ window.addEventListener('scroll', () => {
         hint.setAttribute('role', 'alert');
         hint.style.cssText = 'position:fixed;background:#1B2A4A;color:#fff;font-size:0.82rem;line-height:1.5;padding:10px 14px;border-radius:6px;max-width:280px;z-index:10001;box-shadow:0 4px 20px rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.4);cursor:pointer;';
         hint.innerHTML = 'La instalación aún no está disponible.<br>Usa el menú de Chrome &rarr; <strong>Instalar página</strong> o <strong>Añadir al escritorio</strong>.';
-        var rect = anchor.getBoundingClientRect();
-        hint.style.top = (rect.bottom + 8) + 'px';
-        hint.style.right = (window.innerWidth - rect.right) + 'px';
         document.body.appendChild(hint);
+        placeHint(hint, anchor, 280);
         function onDoc(e) { if (!hint.contains(e.target) && e.target !== anchor) dismiss(); }
         function dismiss() { clearTimeout(hint._t); document.removeEventListener('click', onDoc, { capture: true }); if (hint.parentNode) hint.remove(); }
         hint._t = setTimeout(dismiss, 5000);
@@ -3618,17 +3646,8 @@ window.addEventListener('scroll', () => {
         hint.setAttribute('role', 'status');
         hint.style.cssText = 'position:fixed;background:#1B2A4A;color:#fff;font-size:0.82rem;line-height:1.6;padding:12px 16px;border-radius:8px;max-width:300px;z-index:9000;box-shadow:0 4px 20px rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.4);cursor:pointer;';
         hint.innerHTML = '<strong style="color:#C9A84C;display:block;margin-bottom:6px;">Añadir a pantalla de inicio</strong>1. Abre en <strong>Safari</strong><br>2. Toca <strong>Compartir</strong> (□↑)<br>3. Selecciona <strong>"Agregar a pantalla de inicio"</strong>';
-        if (anchor) {
-          var r = anchor.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            hint.style.top = (r.bottom + 8) + 'px';
-            hint.style.right = Math.max(8, document.documentElement.clientWidth - r.right) + 'px';
-          } else {
-            hint.style.bottom = '80px';
-            hint.style.left = '16px';
-          }
-        } else { hint.style.bottom = '80px'; hint.style.right = '16px'; }
         document.body.appendChild(hint);
+        placeHint(hint, anchor, 300);
         function onDoc(e) { if (!hint.contains(e.target) && e.target !== anchor) dismiss(); }
         function dismiss() { clearTimeout(hint._t); document.removeEventListener('click', onDoc, { capture: true }); if (hint.parentNode) hint.remove(); }
         hint._t = setTimeout(dismiss, 7000);
