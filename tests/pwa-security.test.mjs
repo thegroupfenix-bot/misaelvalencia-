@@ -208,7 +208,10 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   // E5: mobile menu slot present
   assert.ok(indexSource.includes('id="mob-pwa-slot"'), 'Mobile menu PWA slot must exist');
   assert.ok(indexSource.includes('id="navHamburger"'), 'Hamburger button must exist');
-  assert.ok(indexSource.includes('class="mob-menu-overlay"'), 'Mobile menu overlay must exist');
+  assert.ok(indexSource.includes('id="mobMenu"') && indexSource.includes('class="mob-menu"'), 'Mobile dropdown menu must exist');
+  assert.ok(!indexSource.includes('mob-menu-overlay') && !indexSource.includes('mobMenuOverlay'), 'Mobile menu overlay must be gone');
+  assert.ok(/aria-controls="mobMenu"/.test(indexSource) && /aria-expanded="false"/.test(indexSource), 'Hamburger needs aria-controls/aria-expanded');
+  assert.ok(!/document\.body\.style\.overflow/.test(indexSource), 'Menu must not lock body scroll');
   console.log('  PASS E5 mobile menu structure present');
 
   // E8: Contacto link in mobile menu, immediately before mob-pwa-slot

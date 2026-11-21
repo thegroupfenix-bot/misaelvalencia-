@@ -19,13 +19,14 @@ const UA = {
 
 function makeEnv({ ua, platform = 'Win32', touch = 0, standalone = false }) {
   const timers = new Map(); let tid = 0;
-  const docListeners = []; const winListeners = {};
+  const docListeners = []; const winListeners = {}; const keydown = [];
   const byId = new Map();
   const body = mkEl('body');
   function mkEl(tag, id) {
     const el = {
       tag, id, style: {}, children: [], parentNode: null, listeners: {}, _classes: new Set(), attrs: {},
-      classList: { add: c => el._classes.add(c), remove: c => el._classes.delete(c) },
+      classList: { add: c => el._classes.add(c), remove: c => el._classes.delete(c), contains: c => el._classes.has(c) },
+      focus() { el.focused = true; },
       setAttribute(k, v) { el.attrs[k] = v; },
       addEventListener(t, f) { (el.listeners[t] ||= []).push(f); },
       getBoundingClientRect: () => ({ top: 10, bottom: 40, right: 300, left: 200, width: 100, height: 30 }),
@@ -49,13 +50,13 @@ function makeEnv({ ua, platform = 'Win32', touch = 0, standalone = false }) {
   }
   const navBtn = mkEl('button', 'pwa-install-nav-btn'); navBtn.style.display = 'none';
   const mobSlot = mkEl('div', 'mob-pwa-slot');
-  mkEl('button', 'navHamburger'); mkEl('div', 'mobMenuOverlay'); mkEl('button', 'mobMenuClose');
+  mkEl('button', 'navHamburger'); mkEl('div', 'mobMenu'); mkEl('button', 'mobMenuClose');
   [navBtn, mobSlot].forEach(e => { e.parentNode = body; body.children.push(e); });
   const document = {
     body, documentElement: { clientWidth: 1024 },
     getElementById: id => byId.get(id) || null,
     createElement: t => mkEl(t),
-    addEventListener(t, f, o) { docListeners.push({ t, f, o }); },
+    addEventListener(t, f, o) { docListeners.push({ t, f, o }); if (t === 'keydown') keydown.push(f); },
     removeEventListener(t, f) { const i = docListeners.findIndex(l => l.t === t && l.f === f); if (i >= 0) docListeners.splice(i, 1); },
   };
   const win = {
@@ -74,7 +75,7 @@ function makeEnv({ ua, platform = 'Win32', touch = 0, standalone = false }) {
   const find = id => document.getElementById(id);
   const visible = el => !!el && el.parentNode && el.style.display !== 'none';
   return {
-    navBtn, mobSlot, find, docListeners, timers, body,
+    navBtn, mobSlot, find, docListeners, keydown, timers, body,
     fire: (t, ev = {}) => (winListeners[t] || []).forEach(f => f(ev)),
     hasHandler: t => (winListeners[t] || []).length > 0,
     hints: () => ['pwa-install-hint', 'pwa-ios-hint'].map(find).filter(Boolean),
@@ -174,11 +175,50 @@ for (const name of ['iphone', 'iPadOS MacIntel']) {
 for (const f of ['index.html', 'registro-clientes.html', 'portal-clientes.html']) {
   const src = readFileSync(path.join(root, f), 'utf8');
   const inline = [...src.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
-  // the pre-existing navigation menu (mobMenuOverlay) is not an install guide; every other modal marker is forbidden
-  const noNav = src.replace(/<div class="mob-menu-overlay"[^>]*>/, '');
-  assert.ok(!/<dialog|showModal\(|aria-modal\s*=\s*["']true|iosGuideBackdrop|pwa-install-banner/i.test(noNav), `${f}: no modal/banner`);
+  // no exceptions: no modal/overlay markers anywhere in the page
+  assert.ok(!/<dialog|showModal\(|aria-modal\s*=\s*["']?true|role\s*=\s*["']?(?:alert)?dialog|iosGuideBackdrop|pwa-install-banner|mob-menu-overlay|mobMenuOverlay/i.test(src), `${f}: no modal/overlay`);
+  const css = [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
+  for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const body = rule[2];
+    assert.ok(!(/inset\s*:\s*0\s*;/.test(body) && /position\s*:\s*fixed/.test(body)), `${f}: fixed inset:0 rule "${rule[1].trim()}"`);
+    assert.ok(!(/position\s*:\s*fixed/.test(body) && /rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0?\.[4-9]\d*\)/.test(body) && /background/.test(body)), `${f}: fixed dark backdrop rule "${rule[1].trim()}"`);
+  }
+  assert.ok(!/document\.body\.style\.overflow\s*=\s*['"]hidden/.test(inline), `${f}: no body scroll lock`);
   const installJs = inline.match(/function show(?:Install|IOS)Hint[\s\S]*?hint\.addEventListener\('click', dismiss\)/g) || [];
   for (const c of installJs) assert.ok(!/inset\s*:\s*0|100vw|100vh|rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0?\.[5-9]\)\s*;?[^']*z-index/.test(c), `${f}: hint not overlay`);
   console.log(`  PASS 6 ${f}: no fullscreen install modal/overlay`);
+}
+
+// 7. mobile menu: open/close (hamburger toggle, close button, Escape, outside click), PWA button access, no scroll lock
+function menuEnv(cfg) {
+  const e = makeEnv(cfg);
+  const menu = e.find('mobMenu'), ham = e.find('navHamburger'), close = e.find('mobMenuClose');
+  const key = k => e.keydown.forEach(f => f({ key: k }));
+  return { e, menu, ham, close, key, isOpen: () => menu._classes.has('open'), outsideClick: () => e.docListeners.filter(l => l.t === 'click').forEach(l => l.f({ target: e.body })) };
+}
+for (const [name, cfg] of Object.entries(platforms)) {
+  const m = menuEnv(cfg);
+  assert.equal(m.isOpen(), false, `${name}: closed initially`);
+  m.ham.click();
+  assert.ok(m.isOpen() && m.ham.attrs['aria-expanded'] === 'true', `${name}: hamburger opens`);
+  assert.equal(m.e.body.style.overflow, undefined, `${name}: no scroll lock`);
+  assert.ok(m.e.mobButtons().length === 1, `${name}: PWA button reachable in open menu`);
+  m.ham.click(); assert.ok(!m.isOpen() && m.ham.attrs['aria-expanded'] === 'false', `${name}: hamburger toggles closed`);
+  m.ham.click(); m.close.click(); assert.ok(!m.isOpen(), `${name}: close button`);
+  m.ham.click(); m.key('Escape'); assert.ok(!m.isOpen() && m.ham.attrs['aria-expanded'] === 'false', `${name}: Escape`);
+  m.ham.click(); m.outsideClick(); assert.ok(!m.isOpen(), `${name}: outside click`);
+  assert.equal(m.e.clickDocs().length, 0, `${name}: outside-click listener removed when closed`);
+  // PWA button inside menu: iOS guide / native prompt / hint
+  m.ham.click();
+  const btn = m.e.mobButtons()[0];
+  if (name === 'desktop') {
+    const p = fakePrompt('dismissed'); m.e.fire('beforeinstallprompt', p); btn.click();
+    assert.equal(p.prompted, 1, 'desktop: native prompt from mobile menu');
+    await Promise.resolve(); await Promise.resolve(); assert.ok(!m.isOpen(), 'desktop: menu closes after prompt choice');
+  } else { btn.click(); assert.ok(m.e.find('pwa-ios-hint'), `${name}: iOS guide from menu`); assert.ok(!m.isOpen(), `${name}: menu closes for guide`); }
+  // installed cleanup still holds with menu used
+  m.e.fire('appinstalled'); assertClean(m.e, `${name} menu+appinstalled`);
+  m.ham.click(); assert.equal(m.e.mobButtons().length, 0, `${name}: no install button after install (menu open)`);
+  console.log(`  PASS 7 ${name}: menu open/close, PWA access, cleanup`);
 }
 console.log('\n✅ PWA install behavior tests passed');

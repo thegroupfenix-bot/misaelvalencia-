@@ -1,27 +1,20 @@
 # Informe de ejecución — PR #160
 
-**SHA probado (base):** f47fda1 en `fix/client-activation-email-verification`. El SHA del commit de corrección queda en el historial de la rama (un commit no puede contener su propio SHA).
+**SHA probado (base):** 0099feb en `fix/client-activation-email-verification`. El SHA del commit de corrección queda en el historial de la rama (un commit no puede contener su propio SHA).
 
 ## Cambio
-- `index.html` (script PWA): `appinstalled` se registra antes de cualquier retorno por iOS/standalone. Nueva limpieza centralizada `markInstalled()` + `removeHint()`: anula `deferredPrompt`, oculta botón de escritorio, renderiza el slot móvil como «instalado», elimina `pwa-install-hint`/`pwa-ios-hint` con su temporizador y listener de documento. Se usa en la detección inicial de standalone, en `appinstalled` y al aceptar el prompt nativo. Tras instalación, `showInstallHint`/`showIOSHint`, `renderMobPWA` (no-installed) y `beforeinstallprompt` quedan inertes.
-- `registro-clientes.html` y endpoints `/registration/*`: sin cambios (panel en línea conservado).
-
-## Archivos
-- `index.html`
-- `tests/pwa-install-behavior.test.mjs` (nuevo; ejecuta el script real de index.html en DOM simulado con `node:vm`)
-- `package.json` (`test:pwa` incluye el nuevo archivo)
-- `docs/automation/latest-execution-report.md`
+- `index.html`: se eliminan `.mob-menu-overlay` / `#mobMenuOverlay` (position:fixed, inset:0, fondo rgba(0,0,0,.5), role=dialog, aria-modal=true) y el bloqueo de `document.body.style.overflow`. Se sustituyen por un menú desplegable `#mobMenu` (`role="region"`), dentro de `<nav>`, `position:absolute` bajo la barra, ancho acotado (`min(320px, 100vw-1.2rem)`), sin fondo de cobertura, no modal. Hamburguesa con `aria-controls="mobMenu"` y `aria-expanded`; alterna abrir/cerrar; cierre con botón ✕, Escape (devuelve foco a la hamburguesa) y clic exterior (listener de documento solo mientras está abierto). Se conservan enlaces, botón de instalación en `#mob-pwa-slot` y `markInstalled`/`removeHint`.
+- `tests/pwa-security.test.mjs` (E5): exige `#mobMenu`, ausencia de overlay, aria-controls/aria-expanded y ausencia de bloqueo de scroll.
+- `tests/pwa-install-behavior.test.mjs`: se retira el `replace` que excluía el menú; la sección 6 revisa HTML y reglas CSS reales de `index.html`, `registro-clientes.html` y `portal-clientes.html` (sin dialog/aria-modal/role=dialog/overlay, ninguna regla fixed+inset:0 ni fixed con fondo oscuro, sin scroll lock). Nueva sección 7: abrir/cerrar menú (hamburguesa, ✕, Escape, clic exterior), botón PWA accesible en el menú, prompt nativo (escritorio) o guía Safari (iPhone/iPadOS MacIntel), y limpieza tras `appinstalled`.
+- `tests/playwright-pwa.test.mjs`: selectores actualizados a `#mobMenu` y sin whitelist de overlays (no ejecutado, ver limitaciones).
 
 ## Comandos y resultados
-- `npm run test:pwa` → 2/2 archivos pasan (pwa-security A–G + pwa-install-behavior 1–6).
-- `node tests/glv-forms.test.cjs` → 24/24 pasan (ver nota de alcance).
-- Con el `index.html` anterior, el nuevo test de comportamiento falla (comprobado).
+- `npm run test:pwa` → 2/2 archivos pasan.
+- `node tests/glv-forms.test.cjs` → 24/24 pasan (sin cambios en ese código).
 
-## Casos cubiertos (comportamiento real)
-Escritorio, iPhone e iPadOS (MacIntel + touch): `appinstalled`; guía abierta antes de `appinstalled` (sin temporizador ni listener residual); standalone inicial (más eventos posteriores sin reactivar controles); botón de escritorio y botón del menú móvil; prompt nativo disponible, rechazado/consumido y aceptado; guía no bloqueante sin prompt; instrucciones Safari (Compartir / pantalla de inicio); ausencia de modal/overlay de instalación en `index.html`, `registro-clientes.html`, `portal-clientes.html` (se excluye el menú de navegación preexistente `mobMenuOverlay`, que no es guía de instalación).
-
-## No ejecutado / limitaciones
-- DOM simulado, no navegador real (Chrome/Safari/iOS reales no probados; `beforeinstallprompt`/`appinstalled` simulados).
-- `glv-forms.test.cjs` no valida SMTP ni el router Express `/registration`; no hay prueba integral del alta de clientes. Tampoco se ejecutó backend ni SMTP.
-- `.github/AI_AUTOMATION_PROTOCOL.md` no existe en el repositorio; no pudo leerse.
+## Limitaciones
+- DOM simulado (`node:vm`), no navegador real; el CSS se analiza por reglas, no se calcula layout.
+- `tests/playwright-pwa.test.mjs` solo se verificó sintácticamente (`node --check`); no se ejecutó (sin navegador/servidor).
+- `glv-forms.test.cjs` no cubre SMTP ni el router `/registration`; sin prueba integral del alta de clientes.
+- `.github/AI_AUTOMATION_PROTOCOL.md` no existe en el repositorio.
 - Sin merge, despliegue, cambios de secretos ni contacto con clientes.

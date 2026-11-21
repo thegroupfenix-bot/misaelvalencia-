@@ -1430,28 +1430,24 @@ nav {
 }
 @media (max-width: 768px) { .nav-hamburger { display: flex; } }
 
-/* Mobile menu overlay */
-.mob-menu-overlay {
+/* Mobile dropdown menu: bounded, non-modal, no backdrop, anchored under the navbar */
+.mob-menu {
   display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 1100;
-}
-.mob-menu-overlay.open { display: block; }
-.mob-menu-panel {
   position: absolute;
-  top: 0; right: 0;
-  width: min(320px, 90vw);
-  height: 100%;
-  background: rgba(8,26,38,0.98);
-  backdrop-filter: blur(16px);
-  border-left: 1px solid rgba(137,168,185,0.15);
+  top: 100%;
+  right: max(0.6rem, env(safe-area-inset-right));
+  width: min(320px, calc(100vw - 1.2rem));
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
-  padding: 1.2rem 0 2rem;
-  display: flex;
+  background: rgba(8,26,38,0.98);
+  border: 1px solid rgba(137,168,185,0.25);
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  padding: 0.6rem 0 1rem;
   flex-direction: column;
 }
+.mob-menu.open { display: flex; }
+@media (min-width: 769px) { .mob-menu, .mob-menu.open { display: none; } }
 .mob-menu-close {
   align-self: flex-end;
   margin: 0 1.2rem 0.5rem;
@@ -1628,17 +1624,13 @@ nav {
     <a href="/cotizacion" class="nav-cta">
       <span lang-es>Cotizar</span><span lang-en>Get Quote</span><span lang-pt-br>Solicitar Cotação</span><span lang-ar>اطلب عرضاً</span><span lang-zh>获取报价</span>
     </a>
-    <button class="nav-hamburger" id="navHamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobMenuOverlay">
+    <button class="nav-hamburger" id="navHamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobMenu">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
   </div>
 <details class="agri-menu home-agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/pollo-colombiano?v=20260915"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></a><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
-</nav>
-
-<!-- ─── MOBILE MENU ─── -->
-<div class="mob-menu-overlay" id="mobMenuOverlay" role="dialog" aria-label="Menú de navegación" aria-modal="true">
-  <div class="mob-menu-panel" id="mobMenuPanel">
-    <button class="mob-menu-close" id="mobMenuClose" aria-label="Cerrar menú">✕</button>
+<div class="mob-menu" id="mobMenu" role="region" aria-label="Menú de navegación">
+  <button class="mob-menu-close" id="mobMenuClose" aria-label="Cerrar menú">✕</button>
     <ul class="mob-menu-links">
       <li><a href="/" onclick="closeMobMenu()"><span lang-es>Inicio</span><span lang-en>Home</span><span lang-pt-br>Início</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a></li>
       <li><a href="/animales-vivos" onclick="closeMobMenu()"><span lang-es>Animales Vivos</span><span lang-en>Live Animals</span><span lang-pt-br>Animais Vivos</span><span lang-ar>الحيوانات الحية</span><span lang-zh>活体动物</span></a></li>
@@ -1652,8 +1644,8 @@ nav {
     <!-- PWA install option injected by JS — immediately after Contacto -->
     <div id="mob-pwa-slot"></div>
     <div class="mob-menu-sep"></div>
-  </div>
 </div>
+</nav>
 
 <!-- ─── HERO WITH CORPORATE VIDEO + CURVED REVEAL ─── -->
 <section class="hero home-production"><div class="hero-video-container">
@@ -3485,7 +3477,7 @@ window.addEventListener('scroll', () => {
       var navBtn = document.getElementById('pwa-install-nav-btn');
       var mobSlot = document.getElementById('mob-pwa-slot');
       var hamburger = document.getElementById('navHamburger');
-      var overlay = document.getElementById('mobMenuOverlay');
+      var mobMenu = document.getElementById('mobMenu');
       var mobClose = document.getElementById('mobMenuClose');
 
       var isIOS = (/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream) ||
@@ -3520,24 +3512,34 @@ window.addEventListener('scroll', () => {
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
       }
 
-      // Hamburger menu
+      // Hamburger dropdown menu (non-modal: no backdrop, no scroll lock)
+      function onOutsideClick(e) {
+        var t = e && e.target;
+        if (mobMenu && t && (mobMenu.contains(t) || (hamburger && hamburger.contains(t)))) return;
+        closeMobMenu();
+      }
       function openMobMenu() {
-        if (overlay) overlay.classList.add('open');
+        if (!mobMenu) return;
+        mobMenu.classList.add('open');
         if (hamburger) hamburger.setAttribute('aria-expanded', 'true');
-        document.body.style.overflow = 'hidden';
+        document.addEventListener('click', onOutsideClick);
       }
       function closeMobMenu() {
-        if (overlay) overlay.classList.remove('open');
+        if (mobMenu) mobMenu.classList.remove('open');
         if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
+        document.removeEventListener('click', onOutsideClick);
       }
       window.closeMobMenu = closeMobMenu;
-      if (hamburger) hamburger.addEventListener('click', openMobMenu);
-      if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) closeMobMenu(); });
-      if (mobClose) mobClose.addEventListener('click', closeMobMenu);
+      if (hamburger) hamburger.addEventListener('click', function() {
+        if (mobMenu && mobMenu.classList.contains('open')) closeMobMenu(); else openMobMenu();
+      });
+      if (mobClose) mobClose.addEventListener('click', function() { closeMobMenu(); if (hamburger && hamburger.focus) hamburger.focus(); });
 
       document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') { closeMobMenu(); }
+        if (e.key === 'Escape' && mobMenu && mobMenu.classList.contains('open')) {
+          closeMobMenu();
+          if (hamburger && hamburger.focus) hamburger.focus();
+        }
       });
 
       // Render mobile menu PWA slot
