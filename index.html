@@ -1430,28 +1430,24 @@ nav {
 }
 @media (max-width: 768px) { .nav-hamburger { display: flex; } }
 
-/* Mobile menu overlay */
-.mob-menu-overlay {
+/* Mobile dropdown menu: bounded, non-modal, no backdrop, anchored under the navbar */
+.mob-menu {
   display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 1100;
-}
-.mob-menu-overlay.open { display: block; }
-.mob-menu-panel {
   position: absolute;
-  top: 0; right: 0;
-  width: min(320px, 90vw);
-  height: 100%;
-  background: rgba(8,26,38,0.98);
-  backdrop-filter: blur(16px);
-  border-left: 1px solid rgba(137,168,185,0.15);
+  top: 100%;
+  right: max(0.6rem, env(safe-area-inset-right));
+  width: min(320px, calc(100vw - 1.2rem));
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
-  padding: 1.2rem 0 2rem;
-  display: flex;
+  background: rgba(8,26,38,0.98);
+  border: 1px solid rgba(137,168,185,0.25);
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  padding: 0.6rem 0 1rem;
   flex-direction: column;
 }
+.mob-menu.open { display: flex; }
+@media (min-width: 769px) { .mob-menu, .mob-menu.open { display: none; } }
 .mob-menu-close {
   align-self: flex-end;
   margin: 0 1.2rem 0.5rem;
@@ -1628,17 +1624,13 @@ nav {
     <a href="/cotizacion" class="nav-cta">
       <span lang-es>Cotizar</span><span lang-en>Get Quote</span><span lang-pt-br>Solicitar Cotação</span><span lang-ar>اطلب عرضاً</span><span lang-zh>获取报价</span>
     </a>
-    <button class="nav-hamburger" id="navHamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobMenuOverlay">
+    <button class="nav-hamburger" id="navHamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobMenu">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
   </div>
 <details class="agri-menu home-agri-menu"><summary><span lang-es>Divisiones</span><span lang-en>Divisions</span><span lang-pt-br>Divisões</span><span lang-ar>الأقسام</span><span lang-zh>业务部门</span></summary><div class="agri-menu-panel"><a href="/pollo-colombiano?v=20260915"><span lang-es>Pollo colombiano</span><span lang-en>Colombian chicken</span><span lang-pt-br>Frango colombiano</span><span lang-ar>الدجاج الكولومبي</span><span lang-zh>哥伦比亚鸡肉</span></a><a href="/agronegocios-fertilizantes"><span lang-es>Agronegocios y Fertilizantes</span><span lang-en>Agribusiness and Fertilizers</span><span lang-pt-br>Agronegócios e Fertilizantes</span><span lang-ar>الأعمال الزراعية والأسمدة</span><span lang-zh>农业与肥料</span></a></div></details>
-</nav>
-
-<!-- ─── MOBILE MENU ─── -->
-<div class="mob-menu-overlay" id="mobMenuOverlay" role="dialog" aria-label="Menú de navegación" aria-modal="true">
-  <div class="mob-menu-panel" id="mobMenuPanel">
-    <button class="mob-menu-close" id="mobMenuClose" aria-label="Cerrar menú">✕</button>
+<div class="mob-menu" id="mobMenu" role="region" aria-label="Menú de navegación">
+  <button class="mob-menu-close" id="mobMenuClose" aria-label="Cerrar menú">✕</button>
     <ul class="mob-menu-links">
       <li><a href="/" onclick="closeMobMenu()"><span lang-es>Inicio</span><span lang-en>Home</span><span lang-pt-br>Início</span><span lang-ar>الرئيسية</span><span lang-zh>首页</span></a></li>
       <li><a href="/animales-vivos" onclick="closeMobMenu()"><span lang-es>Animales Vivos</span><span lang-en>Live Animals</span><span lang-pt-br>Animais Vivos</span><span lang-ar>الحيوانات الحية</span><span lang-zh>活体动物</span></a></li>
@@ -1652,8 +1644,8 @@ nav {
     <!-- PWA install option injected by JS — immediately after Contacto -->
     <div id="mob-pwa-slot"></div>
     <div class="mob-menu-sep"></div>
-  </div>
 </div>
+</nav>
 
 <!-- ─── HERO WITH CORPORATE VIDEO + CURVED REVEAL ─── -->
 <section class="hero home-production"><div class="hero-video-container">
@@ -3485,43 +3477,76 @@ window.addEventListener('scroll', () => {
       var navBtn = document.getElementById('pwa-install-nav-btn');
       var mobSlot = document.getElementById('mob-pwa-slot');
       var hamburger = document.getElementById('navHamburger');
-      var overlay = document.getElementById('mobMenuOverlay');
+      var mobMenu = document.getElementById('mobMenu');
       var mobClose = document.getElementById('mobMenuClose');
 
       var isIOS = (/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream) ||
                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       var isStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.navigator.standalone === true;
+      var appInstalled = false;
+
+      // Centralized cleanup: once the app is installed, no install control or guide may remain
+      // (deferredPrompt, desktop button, mobile menu slot, pwa-install-hint / pwa-ios-hint + timers/listeners).
+      function removeHint(id) {
+        var h = document.getElementById(id);
+        if (!h) return;
+        clearTimeout(h._t);
+        if (h._onDoc) document.removeEventListener('click', h._onDoc, { capture: true });
+        if (h.parentNode) h.parentNode.removeChild(h);
+      }
+      function markInstalled() {
+        appInstalled = true;
+        deferredPrompt = null;
+        if (navBtn) navBtn.style.display = 'none';
+        removeHint('pwa-install-hint');
+        removeHint('pwa-ios-hint');
+        renderMobPWA('installed');
+      }
+
+      // Registered before any iOS / standalone early return
+      window.addEventListener('appinstalled', markInstalled);
 
       // Service Worker
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
       }
 
-      // Hamburger menu
+      // Hamburger dropdown menu (non-modal: no backdrop, no scroll lock)
+      function onOutsideClick(e) {
+        var t = e && e.target;
+        if (mobMenu && t && (mobMenu.contains(t) || (hamburger && hamburger.contains(t)))) return;
+        closeMobMenu();
+      }
       function openMobMenu() {
-        if (overlay) overlay.classList.add('open');
+        if (!mobMenu) return;
+        mobMenu.classList.add('open');
         if (hamburger) hamburger.setAttribute('aria-expanded', 'true');
-        document.body.style.overflow = 'hidden';
+        document.addEventListener('click', onOutsideClick);
       }
       function closeMobMenu() {
-        if (overlay) overlay.classList.remove('open');
+        if (mobMenu) mobMenu.classList.remove('open');
         if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
+        document.removeEventListener('click', onOutsideClick);
       }
       window.closeMobMenu = closeMobMenu;
-      if (hamburger) hamburger.addEventListener('click', openMobMenu);
-      if (overlay) overlay.addEventListener('click', function(e) { if (e.target === overlay) closeMobMenu(); });
-      if (mobClose) mobClose.addEventListener('click', closeMobMenu);
+      if (hamburger) hamburger.addEventListener('click', function() {
+        if (mobMenu && mobMenu.classList.contains('open')) closeMobMenu(); else openMobMenu();
+      });
+      if (mobClose) mobClose.addEventListener('click', function() { closeMobMenu(); if (hamburger && hamburger.focus) hamburger.focus(); });
 
       document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') { closeMobMenu(); }
+        if (e.key === 'Escape' && mobMenu && mobMenu.classList.contains('open')) {
+          closeMobMenu();
+          if (hamburger && hamburger.focus) hamburger.focus();
+        }
       });
 
       // Render mobile menu PWA slot
       var DL_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
       function renderMobPWA(state) {
         if (!mobSlot) return;
+        if (appInstalled && state !== 'installed') return;
         if (state === 'installed') {
           mobSlot.innerHTML = '<div class="mob-pwa-installed-msg" role="status">✓ GLV ya está instalado</div>';
         } else if (state === 'ios') {
@@ -3538,7 +3563,7 @@ window.addEventListener('scroll', () => {
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then(function(result) {
               deferredPrompt = null;
-              if (result.outcome === 'accepted') { renderMobPWA('installed'); if (navBtn) navBtn.style.display = 'none'; }
+              if (result.outcome === 'accepted') markInstalled();
               closeMobMenu();
             });
           });
@@ -3547,8 +3572,7 @@ window.addEventListener('scroll', () => {
 
       // Already installed — standalone mode
       if (isStandalone) {
-        renderMobPWA('installed');
-        if (navBtn) navBtn.style.display = 'none';
+        markInstalled();
         return;
       }
 
@@ -3556,14 +3580,45 @@ window.addEventListener('scroll', () => {
       if (isIOS) {
         renderMobPWA('ios');
         if (navBtn) {
-          navBtn.style.display = 'inline-flex';
+          if (!appInstalled) navBtn.style.display = 'inline-flex';
           navBtn.addEventListener('click', function() { showIOSHint(navBtn); });
         }
         return;
       }
 
+      // Place a fixed, non-blocking guide fully inside the visible window:
+      // below the anchor if it fits, otherwise above it; width and horizontal position clamped to the viewport.
+      function placeHint(hint, anchor, maxW) {
+        var M = 8;
+        var vw = document.documentElement.clientWidth || window.innerWidth || 320;
+        var vh = window.innerHeight || document.documentElement.clientHeight || 480;
+        var w = Math.max(120, Math.min(maxW, vw - 2 * M));
+        hint.style.boxSizing = 'border-box';
+        hint.style.maxWidth = w + 'px';
+        hint.style.width = w + 'px';
+        hint.style.right = 'auto';
+        hint.style.bottom = 'auto';
+        var hr = hint.getBoundingClientRect();
+        var h = (hr && hr.height) || 0;
+        var r = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+        var top, left;
+        if (r && r.width > 0 && r.height > 0) {
+          top = r.bottom + M;
+          if (top + h > vh - M) top = r.top - M - h; // does not fit below → place above
+          left = r.right - w;
+        } else {
+          top = vh - M - h - 72;
+          left = M;
+        }
+        top = Math.max(M, Math.min(top, vh - M - h));
+        left = Math.max(M, Math.min(left, vw - M - w));
+        hint.style.top = top + 'px';
+        hint.style.left = left + 'px';
+      }
+
       // Show a dismissable hint when the install prompt is not yet available
       function showInstallHint(anchor) {
+        if (appInstalled) return;
         var existing = document.getElementById('pwa-install-hint');
         if (existing) { clearTimeout(existing._t); document.removeEventListener('click', existing._onDoc, { capture: true }); existing.remove(); }
         var hint = document.createElement('div');
@@ -3571,10 +3626,8 @@ window.addEventListener('scroll', () => {
         hint.setAttribute('role', 'alert');
         hint.style.cssText = 'position:fixed;background:#1B2A4A;color:#fff;font-size:0.82rem;line-height:1.5;padding:10px 14px;border-radius:6px;max-width:280px;z-index:10001;box-shadow:0 4px 20px rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.4);cursor:pointer;';
         hint.innerHTML = 'La instalación aún no está disponible.<br>Usa el menú de Chrome &rarr; <strong>Instalar página</strong> o <strong>Añadir al escritorio</strong>.';
-        var rect = anchor.getBoundingClientRect();
-        hint.style.top = (rect.bottom + 8) + 'px';
-        hint.style.right = (window.innerWidth - rect.right) + 'px';
         document.body.appendChild(hint);
+        placeHint(hint, anchor, 280);
         function onDoc(e) { if (!hint.contains(e.target) && e.target !== anchor) dismiss(); }
         function dismiss() { clearTimeout(hint._t); document.removeEventListener('click', onDoc, { capture: true }); if (hint.parentNode) hint.remove(); }
         hint._t = setTimeout(dismiss, 5000);
@@ -3585,6 +3638,7 @@ window.addEventListener('scroll', () => {
 
       // Small non-blocking hint for iOS Safari (no fullscreen, no dark overlay)
       function showIOSHint(anchor) {
+        if (appInstalled) return;
         var ex = document.getElementById('pwa-ios-hint');
         if (ex) { clearTimeout(ex._t); document.removeEventListener('click', ex._onDoc, { capture: true }); ex.remove(); }
         var hint = document.createElement('div');
@@ -3592,17 +3646,8 @@ window.addEventListener('scroll', () => {
         hint.setAttribute('role', 'status');
         hint.style.cssText = 'position:fixed;background:#1B2A4A;color:#fff;font-size:0.82rem;line-height:1.6;padding:12px 16px;border-radius:8px;max-width:300px;z-index:9000;box-shadow:0 4px 20px rgba(0,0,0,0.5);border:1px solid rgba(201,168,76,0.4);cursor:pointer;';
         hint.innerHTML = '<strong style="color:#C9A84C;display:block;margin-bottom:6px;">Añadir a pantalla de inicio</strong>1. Abre en <strong>Safari</strong><br>2. Toca <strong>Compartir</strong> (□↑)<br>3. Selecciona <strong>"Agregar a pantalla de inicio"</strong>';
-        if (anchor) {
-          var r = anchor.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            hint.style.top = (r.bottom + 8) + 'px';
-            hint.style.right = Math.max(8, document.documentElement.clientWidth - r.right) + 'px';
-          } else {
-            hint.style.bottom = '80px';
-            hint.style.left = '16px';
-          }
-        } else { hint.style.bottom = '80px'; hint.style.right = '16px'; }
         document.body.appendChild(hint);
+        placeHint(hint, anchor, 300);
         function onDoc(e) { if (!hint.contains(e.target) && e.target !== anchor) dismiss(); }
         function dismiss() { clearTimeout(hint._t); document.removeEventListener('click', onDoc, { capture: true }); if (hint.parentNode) hint.remove(); }
         hint._t = setTimeout(dismiss, 7000);
@@ -3619,7 +3664,7 @@ window.addEventListener('scroll', () => {
           deferredPrompt.prompt();
           deferredPrompt.userChoice.then(function(result) {
             deferredPrompt = null;
-            if (result.outcome === 'accepted') { navBtn.style.display = 'none'; renderMobPWA('installed'); }
+            if (result.outcome === 'accepted') markInstalled();
           });
         });
       }
@@ -3627,15 +3672,11 @@ window.addEventListener('scroll', () => {
 
       window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
+        if (appInstalled) return;
         deferredPrompt = e;
         // navBtn already visible; click handler already attached
       });
 
-      window.addEventListener('appinstalled', function() {
-        deferredPrompt = null;
-        if (navBtn) navBtn.style.display = 'none';
-        renderMobPWA('installed');
-      });
     })();
   </script>
 </body>

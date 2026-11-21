@@ -14,8 +14,7 @@
  *               sin guía Chrome cuando prompt nativo existe
  */
 
-import pkg from '/opt/node22/lib/node_modules/playwright/index.js';
-const { chromium } = pkg;
+import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -183,7 +182,7 @@ try {
     console.log(`  PASS 1a navBtn display="${navDisplay}"`);
 
     // 1b — overlay móvil cerrado en escritorio
-    const overlayOpen = await page.$eval('#mobMenuOverlay', el => el.classList.contains('open')).catch(() => false);
+    const overlayOpen = await page.$eval('#mobMenu', el => el.classList.contains('open')).catch(() => false);
     assert.ok(!overlayOpen, 'Mobile overlay must not be open on desktop load');
     console.log('  PASS 1b mobile overlay is closed on desktop');
 
@@ -303,7 +302,7 @@ try {
 
   // ══════════════════════════════════════════════════════════════════════════
   // TEST 2 — Mobile iPhone 390px: navBtn oculto, hamburguesa clic real, iOS hint,
-  //          overlay check con whitelist mobMenuOverlay
+  //          overlay check con sin excepciones
   // ══════════════════════════════════════════════════════════════════════════
   {
     console.log('\nTEST 2: Mobile iPhone 390px — hamburguesa clic real, iOS hint, overlay check');
@@ -325,9 +324,9 @@ try {
     assert.ok(hamBtn !== null, '#navHamburger must exist');
     await page.click('#navHamburger');
     await page.waitForTimeout(300);
-    const overlayOpen = await page.$eval('#mobMenuOverlay', el => el.classList.contains('open')).catch(() => false);
-    assert.ok(overlayOpen, 'Hamburger click must open #mobMenuOverlay with class open');
-    console.log('  PASS 2b hamburguesa abre overlay por clic real (mobMenuOverlay.open=true)');
+    const overlayOpen = await page.$eval('#mobMenu', el => el.classList.contains('open')).catch(() => false);
+    assert.ok(overlayOpen, 'Hamburger click must open #mobMenu dropdown with class open');
+    console.log('  PASS 2b hamburguesa abre overlay por clic real (mobMenu.open=true)');
 
     // 2c — mob-pwa-slot tiene exactamente 1 botón visible
     const mobBtnCount = await page.$$eval('#mob-pwa-slot button', btns =>
@@ -377,11 +376,11 @@ try {
     assert.ok(await noFixedInset0Inline(page), 'No inline position:fixed+inset:0 on mobile');
     console.log('  PASS 2f no inline position:fixed+inset:0');
 
-    // 2g — noFullWindowFixedOverlay (whitelist mobMenuOverlay porque está abierto)
-    const badOverlay2g = await noFullWindowFixedOverlay(page, ['mobMenuOverlay']);
+    // 2g — noFullWindowFixedOverlay (sin excepciones, menú abierto)
+    const badOverlay2g = await noFullWindowFixedOverlay(page, []);
     assert.equal(badOverlay2g.length, 0,
-      `No full-window fixed overlay allowed on mobile (excluding mobMenuOverlay); found: ${JSON.stringify(badOverlay2g)}`);
-    console.log('  PASS 2g noFullWindowFixedOverlay — solo mobMenuOverlay permitido en móvil');
+      `No full-window fixed overlay allowed on mobile ; found: ${JSON.stringify(badOverlay2g)}`);
+    console.log('  PASS 2g noFullWindowFixedOverlay — sin excepciones con menú abierto');
 
     // 2h — WhatsApp accesible después de cerrar guía iOS (elementFromPoint, con check fuera de viewport)
     const waEfp2h = await checkElementFromPoint(page, 'a.wa-btn');
@@ -393,7 +392,7 @@ try {
     await page.waitForTimeout(300);
     const mobLinksOk = await page.evaluate(() => {
       const checks = [
-        { label: 'Cotizar', sel: '#mobMenuOverlay a[href="/cotizacion"]:not([aria-label="Contacto"])' },
+        { label: 'Cotizar', sel: '#mobMenu a[href="/cotizacion"]:not([aria-label="Contacto"])' },
         { label: 'Contacto', sel: '#mob-contacto-item a' },
       ];
       return checks.map(({ label, sel }) => {
