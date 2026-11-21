@@ -39,6 +39,8 @@ const fs           = require("fs");
 const { apiLimiter, adminLimiter } = require("./middleware/rateLimiter");
 
 const authRouter        = require("./routes/auth");
+const registrationRouter = require("./routes/registration");
+const clientPortalRouter = require("./routes/client-portal");
 const documentsRouter   = require("./routes/documents");
 const auditRouter       = require("./routes/audit");
 const usersRouter       = require("./routes/users");
@@ -133,6 +135,8 @@ app.get("/health", (_req, res) => {
 // API routes
 app.use(apiLimiter);
 app.use("/auth",         authRouter);
+app.use("/registration", registrationRouter);
+app.use("/client-portal", clientPortalRouter);
 app.use("/documents",    documentsRouter);
 app.use("/audit",        auditRouter);
 app.use("/users",        usersRouter);

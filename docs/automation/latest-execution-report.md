@@ -1,3 +1,52 @@
+# Ejecución: Portal de Clientes GLV
+
+## Alcance añadido
+
+- Al activar un KYC como `ACTIVE_CLIENT`, GOS crea o vincula la cuenta `CLIENT`.
+- El usuario de acceso es el código GLV del cliente.
+- El correo recibe un enlace de un solo uso, válido por una hora, para definir su contraseña.
+- El portal permite actualizar correo, teléfono, WhatsApp y dirección.
+- El portal exige un certificado comercial antes de enviar una solicitud de cambio de razón social.
+- Las solicitudes quedan con estado `PENDING`, documento asociado y auditoría.
+
+## Verificación requerida antes de integrar
+
+1. Ejecutar `cd glv-connect/backend && npm test`.
+2. Configurar en Railway `JWT_SECRET`, `PII_ENCRYPTION_KEY`, SMTP, `CLIENT_ORIGIN` y `ALLOWED_ORIGINS`.
+3. Activar un cliente de prueba desde GOS Leads/KYC.
+4. Confirmar que recibe el correo de activación, define contraseña y entra con su código GLV.
+5. Confirmar que actualiza datos de contacto y que la solicitud de razón social adjunta el certificado.
+6. Validar que la cuenta CLIENT no muestra los módulos operativos internos.
+
+## Resultado de esta ejecución
+
+Validación automática aprobada el 21 de noviembre de 2026. Website validation, GLV forms validation y GOS release verification finalizaron correctamente. No se hizo merge ni despliegue.
+
+# Recuperación de altas públicas hacia GOS
+
+## Estado
+
+PR 167 creado el 21 de noviembre de 2026 para recuperar el ingreso de clientes públicos a GOS Leads y KYC.
+
+El formulario público conserva su flujo actual con Apps Script durante esta etapa. El PR incorpora la ruta de GOS que registra y controla cada alta verificada.
+
+## Cambios incluidos
+
+- POST /registration/request-code crea un código temporal enviado por correo.
+- POST /registration/verify-code crea un cliente en GOS con estado UNASSIGNED y PRE_REGISTRATION.
+- Cada alta crea un expediente en kyc_submissions, una entrada en audit_log y una tarea de revisión para Compliance.
+- POST /registration/resend-code conserva el código vigente si el correo falla y evita duplicados por reenvío concurrente.
+- Los códigos GLV se generan en el servidor y los datos pendientes se cifran cuando existe PII_ENCRYPTION_KEY.
+
+## Pruebas requeridas antes de integrar
+
+- cd glv-connect/backend && npm test
+- Confirmar REGISTRATION_CODE_SECRET, SMTP y los dominios públicos de GLV en ALLOWED_ORIGINS.
+- Validar una alta ficticia completa con correo controlado.
+- Conectar el formulario público al endpoint de GOS mediante un cambio posterior y verificar que cada alta aparezca una vez en Leads y KYC.
+
+## Registro anterior
+
 # Evidencia de ejecución automática
 
 ## Estado

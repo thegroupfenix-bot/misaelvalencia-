@@ -23,6 +23,7 @@ import VisualEvidence from "./components/VisualEvidence.jsx";
 import ProcurementInventory from "./components/ProcurementInventory.jsx";
 import CustomsDesk from "./components/CustomsDesk.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
+import ClientPortal from "./components/ClientPortal.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
 import { loadAuditState } from "./utils/auditResponse.js";
@@ -46,7 +47,7 @@ function AuthProvider({ children }) {
   const [lang, setLang] = useState("es");
 
   useEffect(() => {
-    const PROFILE_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
+    const PROFILE_ROLES = new Set(["AGENTE", "LOGISTICS"]);
     api.me()
       .then(async (u) => {
         setUser(u);
@@ -103,7 +104,7 @@ function AuthProvider({ children }) {
     );
   }
 
-  const AGENT_ROLES = new Set(["AGENTE", "LOGISTICS", "CLIENT", "SUPPLIER"]);
+  const AGENT_ROLES = new Set(["AGENTE", "LOGISTICS"]);
   const needsPasswordChange = user?.first_login === 1;
   const needsProfileSetup = user && !needsPasswordChange && !user.profile_completed && AGENT_ROLES.has(user.role);
 
@@ -210,6 +211,7 @@ export default function App() {
 // ─── Portal shell ─────────────────────────────────────────────────────────────
 function Portal() {
   const { user, logout, lang, setLang, agentProfile, refreshProfile } = useAuth();
+
   const [view, setView] = useState("dashboard");
   const [modal, setModal] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -217,6 +219,8 @@ function Portal() {
   const [newDocKey, setNewDocKey] = useState(0);
 
   useEffect(() => { applySeo(view); }, [view]);
+
+  if (user?.role === "CLIENT") return <ClientPortal user={user} logout={logout} />;
 
   // safeSetView guarantees NewDocForm remounts on EVERY new-* navigation,
   // even when the current view is already that same new-* route (e.g. user

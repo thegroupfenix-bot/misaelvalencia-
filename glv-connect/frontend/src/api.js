@@ -44,6 +44,12 @@ export const api = {
   forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
   resetPassword:  (token, newPassword) => request("POST", "/auth/reset-password", { token, newPassword }),
 
+  // Client portal
+  getClientPortalProfile: () => request("GET", "/client-portal/me"),
+  updateClientContact: (data) => request("PATCH", "/client-portal/contact", data),
+  getClientNameRequests: () => request("GET", "/client-portal/name-change-requests"),
+  createClientNameRequest: (data) => request("POST", "/client-portal/name-change-requests", data),
+
   // Documents
   getDocs:      (type) => request("GET", `/documents${type ? `?type=${type}` : ""}`),
   getDoc:       (id)   => request("GET", `/documents/${id}`),

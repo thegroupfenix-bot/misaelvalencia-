@@ -1,12 +1,14 @@
 const express = require("express");
 const multer  = require("multer");
 const crypto  = require("crypto");
+const bcrypt  = require("bcryptjs");
 const path    = require("path");
 const db      = require("../db/database");
 const { authenticate }         = require("../middleware/auth");
 const { requireLevel, ROLE_LEVEL } = require("../middleware/rbac");
 const r2      = require("../storage/r2");
 const { generateGlvCode }      = require("../utils/glvCode");
+const { sendPasswordResetEmail } = require("../utils/email");
 
 function isClientUser(user) {
   return user.role === "CLIENT" || user.role === "SUPPLIER";
@@ -294,7 +296,7 @@ router.get("/:id/kyc-data", requireLevel(65), (req, res) => {
 });
 
 // ─── PATCH /clients/:id/kyc-status (COMPLIANCE 65+) ─────────────────────────
-router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
+router.patch("/:id/kyc-status", requireLevel(65), async (req, res) => {
   try {
     const { kyc_status, lead_status, assigned_agent, onboarding_notes } = req.body;
 
@@ -375,10 +377,71 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
           `Cliente activado y listo para operaciones. GLV Code: ${client.glv_code}. Activado por: ${req.user.username}`,
           req.user.id, req.user.id
         );
+
+        // El código GLV es el usuario del portal. Se vincula una única cuenta CLIENT.
+        const fullClient = db.prepare("SELECT * FROM clients WHERE id=?").get(client.id);
+        let kyc = {};
+        try {
+          const decrypted = fullClient.kyc_data && (pii.isConfigured() ? pii.decrypt(fullClient.kyc_data) : fullClient.kyc_data);
+          kyc = decrypted ? JSON.parse(decrypted) : {};
+        } catch (_) {}
+        const portalEmail = fullClient.email || kyc.email;
+        if (portalEmail) {
+          const username = String(fullClient.glv_code || fullClient.glv_code_permanent || "").toLowerCase();
+          if (!username) throw new Error("CLIENT_PORTAL_USERNAME_MISSING");
+          const existingUser = db.prepare("SELECT id FROM users WHERE username=?").get(username);
+          if (existingUser) {
+            db.prepare("UPDATE users SET linked_client_id=?, role='CLIENT', email=?, active=1 WHERE id=?")
+              .run(client.id, portalEmail.toLowerCase(), existingUser.id);
+          } else {
+            const temporaryHash = bcrypt.hashSync(crypto.randomBytes(32).toString("hex"), 10);
+            db.prepare(`INSERT INTO users
+              (username, password, role, name, email, first_login, profile_completed, linked_client_id, active)
+              VALUES (?, ?, 'CLIENT', ?, ?, 1, 1, ?, 1)`)
+              .run(username, temporaryHash, fullClient.glv_code || username, portalEmail.toLowerCase(), client.id);
+          }
+          db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+            .run(req.user.username, "CLIENT_PORTAL_PROVISIONED", fullClient.glv_code, client.id, req.ip);
+        } else {
+          // No bloquea la aprobación KYC heredada sin correo. Compliance conserva evidencia para completar el dato.
+          db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+            .run(req.user.username, "CLIENT_PORTAL_PENDING_EMAIL", fullClient.glv_code, client.id, req.ip);
+        }
       }
     })();
 
-    res.json(db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id));
+    // La cuenta se crea en la transacción anterior. El correo lleva un enlace de un solo uso
+    // para que el cliente defina su propia contraseña, nunca una contraseña temporal.
+    let portalInvitation = null;
+    if (kyc_status === "ACTIVE_CLIENT") {
+      try {
+        const activated = db.prepare("SELECT id, glv_code FROM clients WHERE id=?").get(req.params.id);
+        const account = db.prepare("SELECT id, username, name, email FROM users WHERE linked_client_id=? AND role='CLIENT' AND active=1").get(activated.id);
+        if (account && account.email) {
+          const rawToken = crypto.randomBytes(32).toString("hex");
+          const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+          const now = new Date();
+          const expiresAt = new Date(now.getTime() + 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+          db.prepare("INSERT INTO password_reset_tokens (token_hash, user_id, created_at, expires_at, created_from_ip) VALUES (?, ?, ?, ?, ?)")
+            .run(tokenHash, account.id, now.toISOString().slice(0, 19).replace("T", " "), expiresAt, (req.ip || "").slice(0, 45));
+          const origin = (process.env.CLIENT_ORIGIN || "").replace(/\/$/, "");
+          if (!origin) throw new Error("CLIENT_ORIGIN_NOT_CONFIGURED");
+          await sendPasswordResetEmail(account, `${origin}/reset-password?token=${rawToken}`);
+          portalInvitation = { sent: true, username: account.username };
+          db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+            .run(req.user.username, "CLIENT_PORTAL_INVITATION_SENT", activated.glv_code, activated.id, req.ip);
+        }
+      } catch (inviteError) {
+        console.error("[CLIENT_PORTAL_INVITATION]", inviteError.message);
+        portalInvitation = { sent: false };
+        try {
+          db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+            .run(req.user.username, "CLIENT_PORTAL_INVITATION_FAILED", client.glv_code, client.id, req.ip);
+        } catch (_) {}
+      }
+    }
+
+    res.json({ ...db.prepare("SELECT * FROM clients WHERE id = ?").get(req.params.id), portal_invitation: portalInvitation });
   } catch (e) {
     console.error("[PATCH /clients/:id/kyc-status]", e.message);
     res.status(500).json({ error: "Error actualizando el estado KYC. Inténtelo de nuevo o contacte a soporte." });
@@ -627,7 +690,11 @@ router.get("/:id/documents", requireLevel(65), (req, res) => {
 });
 
 // ─── POST /clients/:id/documents/upload (COMPLIANCE 65+) ─────────────────────
-router.post("/:id/documents/upload", requireLevel(65), docUpload.single("file"), async (req, res) => {
+router.post("/:id/documents/upload", (req, res, next) => {
+  const ownClient = (req.user.role === "CLIENT" || req.user.role === "SUPPLIER") && Number(req.user.linked_client_id) === Number(req.params.id);
+  if (!ownClient && (ROLE_LEVEL[req.user.role] || 0) < 65) return res.status(403).json({ error: "Acceso denegado" });
+  next();
+}, docUpload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No se recibió archivo." });
 
