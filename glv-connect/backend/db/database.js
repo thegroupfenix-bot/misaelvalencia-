@@ -307,6 +307,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_reg_codes_email ON registration_codes(email);
 `);
 
+
+// ─── Client legal-name change workflow ────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS client_name_change_requests (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id            INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    requested_name       TEXT    NOT NULL,
+    reason               TEXT,
+    evidence_document_id INTEGER REFERENCES client_documents(id),
+    status               TEXT    NOT NULL DEFAULT 'PENDING',
+    reviewed_by          INTEGER REFERENCES users(id),
+    review_notes         TEXT,
+    created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+    reviewed_at          TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_client_name_change_client ON client_name_change_requests(client_id, status);
+`);
+
 // ─── KYC staging table (Sprint 1) ────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS kyc_submissions (
