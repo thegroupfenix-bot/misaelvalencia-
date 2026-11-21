@@ -1,6 +1,7 @@
 const express = require("express");
 const multer  = require("multer");
 const crypto  = require("crypto");
+const bcrypt  = require("bcryptjs");
 const path    = require("path");
 const db      = require("../db/database");
 const { authenticate }         = require("../middleware/auth");
@@ -375,6 +376,31 @@ router.patch("/:id/kyc-status", requireLevel(65), (req, res) => {
           `Cliente activado y listo para operaciones. GLV Code: ${client.glv_code}. Activado por: ${req.user.username}`,
           req.user.id, req.user.id
         );
+
+        // El código GLV es el usuario del portal. Se vincula una única cuenta CLIENT.
+        const fullClient = db.prepare("SELECT * FROM clients WHERE id=?").get(client.id);
+        let kyc = {};
+        try {
+          const decrypted = fullClient.kyc_data && (pii.isConfigured() ? pii.decrypt(fullClient.kyc_data) : fullClient.kyc_data);
+          kyc = decrypted ? JSON.parse(decrypted) : {};
+        } catch (_) {}
+        const portalEmail = fullClient.email || kyc.email;
+        if (!portalEmail) throw new Error("CLIENT_PORTAL_EMAIL_MISSING");
+        const username = String(fullClient.glv_code || fullClient.glv_code_permanent || "").toLowerCase();
+        if (!username) throw new Error("CLIENT_PORTAL_USERNAME_MISSING");
+        const existingUser = db.prepare("SELECT id FROM users WHERE username=?").get(username);
+        if (existingUser) {
+          db.prepare("UPDATE users SET linked_client_id=?, role='CLIENT', email=?, active=1 WHERE id=?")
+            .run(client.id, portalEmail.toLowerCase(), existingUser.id);
+        } else {
+          const temporaryHash = bcrypt.hashSync(crypto.randomBytes(32).toString("hex"), 10);
+          db.prepare(`INSERT INTO users
+            (username, password, role, name, email, first_login, profile_completed, linked_client_id, active)
+            VALUES (?, ?, 'CLIENT', ?, ?, 1, 1, ?, 1)`)
+            .run(username, temporaryHash, fullClient.glv_code || username, portalEmail.toLowerCase(), client.id);
+        }
+        db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+          .run(req.user.username, "CLIENT_PORTAL_PROVISIONED", fullClient.glv_code, client.id, req.ip);
       }
     })();
 
@@ -627,7 +653,11 @@ router.get("/:id/documents", requireLevel(65), (req, res) => {
 });
 
 // ─── POST /clients/:id/documents/upload (COMPLIANCE 65+) ─────────────────────
-router.post("/:id/documents/upload", requireLevel(65), docUpload.single("file"), async (req, res) => {
+router.post("/:id/documents/upload", (req, res, next) => {
+  const ownClient = (req.user.role === "CLIENT" || req.user.role === "SUPPLIER") && Number(req.user.linked_client_id) === Number(req.params.id);
+  if (!ownClient && (ROLE_LEVEL[req.user.role] || 0) < 65) return res.status(403).json({ error: "Acceso denegado" });
+  next();
+}, docUpload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No se recibió archivo." });
 
