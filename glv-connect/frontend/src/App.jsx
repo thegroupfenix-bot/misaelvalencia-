@@ -211,7 +211,6 @@ export default function App() {
 // ─── Portal shell ─────────────────────────────────────────────────────────────
 function Portal() {
   const { user, logout, lang, setLang, agentProfile, refreshProfile } = useAuth();
-  if (user?.role === "CLIENT") return <ClientPortal user={user} logout={logout} />;
 
   const [view, setView] = useState("dashboard");
   const [modal, setModal] = useState(null);
@@ -220,6 +219,8 @@ function Portal() {
   const [newDocKey, setNewDocKey] = useState(0);
 
   useEffect(() => { applySeo(view); }, [view]);
+
+  if (user?.role === "CLIENT") return <ClientPortal user={user} logout={logout} />;
 
   // safeSetView guarantees NewDocForm remounts on EVERY new-* navigation,
   // even when the current view is already that same new-* route (e.g. user
