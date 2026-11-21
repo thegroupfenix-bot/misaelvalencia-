@@ -749,18 +749,10 @@ function buildClientRecord(codCLI, formData) {
   };
 }
 
-// ── FASE 3: saveClientRecord() — localStorage ─────────────────
+// ── FASE 3: saveClientRecord() — obsoleto, mantenido por compatibilidad ───────
 function saveClientRecord(record) {
-  // Registro actual
-  localStorage.setItem('GLV_PRE_REGISTRATION', JSON.stringify(record));
-  // Histórico
-  var raw = localStorage.getItem('GLV_PRE_REGISTRATION_HISTORY');
-  var history = [];
-  try { history = raw ? JSON.parse(raw) : []; } catch(e) { history = []; }
-  if (!Array.isArray(history)) history = [];
-  history.push(record);
-  localStorage.setItem('GLV_PRE_REGISTRATION_HISTORY', JSON.stringify(history));
-  console.log('GLV GOS: pre-registration saved', record.glvCode, '| total records:', history.length);
+  // Eliminado: no se almacena PII en localStorage por seguridad.
+  console.log('GLV GOS: registro procesado en backend', record.glvCode);
 }
 
 // ── FASE 5: buildClientRecord export layer ────────────────────
@@ -797,103 +789,195 @@ function updateGosStatusPanel(record) {
 }
 // ════════════════════════════════════════════════════════════
 
-// ── FASE 6: ERP Integration ────────────────────────────────────────────────────
-var GLV_API_BASE = 'https://misaelvalencia-production.up.railway.app';
+// ── REGISTRO BACKEND DIRECTO — reemplaza flujo Google Apps Script ────────────
+var GLV_API = 'https://misaelvalencia-production.up.railway.app';
 
-function sendToERP(record, formBody) {
-  var payload = Object.assign({}, formBody, {
-    glv_code:            record.glvCode,
-    empresa:             record.companyName,
-    rep:                 record.representative,
-    email:               record.email,
-    tel:                 record.phone,
-    pais:                record.country,
-    submission_type:     'CLIENT',
-    lead_status:         record.leadStatus,
-    kyc_status:          record.clientStatus,
-    registration_source: record.registrationSource,
-    version:             record.version
+function _glvRequired(ids) {
+  return ids.every(function(id){ return gv(id).trim().length > 0; });
+}
+
+function validateKYCForm() {
+  var lang = currentLang();
+  var msgs = MSG[lang] || MSG['es'];
+  if (!_glvRequired(['k_empresa','k_email','k_rep','k_pais','k_tel','k_nit','k_tipo_comprador','k_actividad','k_productos'])) {
+    alert(msgs.required); return false;
+  }
+  var checks = ['k_check1','k_check2','k_check3'].every(function(id){
+    var el = document.getElementById(id); return el && el.checked;
   });
+  if (!checks) { alert(msgs.declarations); return false; }
+  return true;
+}
 
-  fetch(GLV_API_BASE + '/clients/kyc', {
-    method:  'POST',
+function gatherFormData() {
+  return {
+    empresa:        gv('k_empresa').trim(),
+    comercial:      gv('k_comercial').trim(),
+    nit:            gv('k_nit').trim(),
+    pais:           gv('k_pais').trim(),
+    ciudad:         gv('k_ciudad').trim(),
+    fundacion:      gv('k_fundacion').trim(),
+    direccion:      gv('k_direccion').trim(),
+    web:            gv('k_web').trim(),
+    actividad:      gv('k_actividad').trim(),
+    rep:            gv('k_rep').trim(),
+    cargo:          gv('k_cargo').trim(),
+    email:          gv('k_email').trim().toLowerCase(),
+    tel:            gv('k_tel').trim(),
+    doc_tipo:       gv('k_doc_tipo'),
+    doc_num:        gv('k_doc_num').trim(),
+    tipo_comprador: gv('k_tipo_comprador'),
+    volumen:        gv('k_volumen'),
+    mercados:       gv('k_mercados').trim(),
+    proveedores:    gv('k_proveedores'),
+    productos:      gv('k_productos').trim(),
+    ref1:           gv('k_ref1').trim(),
+    ref2:           gv('k_ref2').trim(),
+    banco:          gv('k_banco').trim(),
+    submission_type:'CLIENT',
+    lang:           currentLang(),
+    source:         'REGISTRO_CLIENTES_WEB'
+  };
+}
+
+function submitKYC() {
+  if (!validateKYCForm()) return;
+  var btn = document.querySelector('button.bg[onclick="submitKYC()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+  var payload = gatherFormData();
+  fetch(GLV_API + '/registration/request-code', {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload)
+    body: JSON.stringify(payload)
   })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data && data.ok) {
-      try {
-        var stored = localStorage.getItem('GLV_PRE_REGISTRATION');
-        if (stored) {
-          var obj = JSON.parse(stored);
-          obj._erpSynced   = true;
-          obj._erpClientId = data.client_id;
-          obj._pendingSync = false;
-          localStorage.setItem('GLV_PRE_REGISTRATION', JSON.stringify(obj));
-        }
-      } catch(_) {}
-      console.log('[GLV ERP] KYC sincronizado:', data.glv_code);
-    } else {
-      markPendingSync(record.glvCode);
-    }
+  .then(function(r){ return r.json().then(function(d){ return {s:r.status,d:d}; }); })
+  .then(function(res) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '🔐 <span lang-es>Enviar Registro KYC</span>'; }
+    if (res.s === 409) { alert(res.d.error || 'Este correo ya tiene cuenta registrada.'); return; }
+    if (!res.d.ok) { alert(res.d.error || 'Error al iniciar el registro. Intente nuevamente.'); return; }
+    _glvShowCodeDialog(payload.email, res.d, payload.empresa);
   })
-  .catch(function() {
-    markPendingSync(record.glvCode);
-    // Reintento automático a los 30 segundos
-    setTimeout(function() {
-      fetch(GLV_API_BASE + '/clients/kyc', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload)
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(d) { if (d && d.ok) { markSynced(d); } })
-      .catch(function() {});
-    }, 30000);
+  .catch(function(err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '🔐 <span lang-es>Enviar Registro KYC</span>'; }
+    console.error('[GLV] request-code:', err);
+    alert('Error de conexión. Verifique su internet e intente nuevamente.');
   });
 }
 
-function markPendingSync(code) {
-  try {
-    var stored = localStorage.getItem('GLV_PRE_REGISTRATION');
-    if (stored) {
-      var obj      = JSON.parse(stored);
-      obj._pendingSync = true;
-      obj._syncError   = new Date().toISOString();
-      localStorage.setItem('GLV_PRE_REGISTRATION', JSON.stringify(obj));
+function _glvShowCodeDialog(email, pendingData, empresa) {
+  var masked = pendingData.email || email.replace(/(.{1}).+(@.+)/, '$1***$2');
+  var old = document.getElementById('_glv_code_dlg');
+  if (old) old.remove();
+  var dlg = document.createElement('div');
+  dlg.id = '_glv_code_dlg';
+  dlg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  dlg.innerHTML =
+    '<div style="background:#0d1724;border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:28px 24px;max-width:420px;width:100%;font-family:inherit">' +
+    '<div style="font-size:0.62rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#C9A84C;margin-bottom:1rem">GLV SERVICES · VERIFICACIÓN DE CORREO</div>' +
+    '<p style="color:#e2e8f0;font-size:0.95rem;margin:0 0 0.4rem">Ingrese el código de 6 dígitos enviado a:</p>' +
+    '<p style="color:#C9A84C;font-weight:700;margin:0 0 1.2rem;font-size:0.9rem">' + masked + '</p>' +
+    '<input type="text" id="_glv_inp" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000" ' +
+    'style="width:100%;box-sizing:border-box;text-align:center;font-size:2rem;letter-spacing:0.5em;padding:12px;' +
+    'background:#1e2d3e;border:1px solid rgba(201,168,76,0.3);border-radius:8px;color:#C9A84C;outline:none;font-family:monospace">' +
+    '<div id="_glv_err" style="color:#f87171;font-size:0.85rem;margin:8px 0 0;min-height:20px"></div>' +
+    '<div style="margin:12px 0;color:#94a3b8;font-size:0.85rem">⏱ <span id="_glv_tmr">15:00</span> restantes</div>' +
+    '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">' +
+    '<button id="_glv_vbtn" style="flex:1;background:#C9A84C;color:#0d1724;border:none;border-radius:6px;padding:12px 16px;font-weight:700;font-size:0.95rem;cursor:pointer">Verificar código</button>' +
+    '<button id="_glv_rbtn" style="flex:1;background:transparent;color:#94a3b8;border:1px solid rgba(148,163,184,0.3);border-radius:6px;padding:12px 16px;font-size:0.85rem;cursor:pointer">Reenviar código</button>' +
+    '</div>' +
+    '<button onclick="document.getElementById(\'_glv_code_dlg\').remove()" ' +
+    'style="margin-top:12px;background:transparent;border:none;color:#64748b;font-size:0.8rem;cursor:pointer;width:100%">Cancelar y volver al formulario</button>' +
+    '</div>';
+  document.body.appendChild(dlg);
+  document.getElementById('_glv_vbtn').addEventListener('click', function(){ _glvVerifyCode(email); });
+  document.getElementById('_glv_rbtn').addEventListener('click', function(){ _glvResendCode(email); });
+  document.getElementById('_glv_inp').addEventListener('keydown', function(e){ if(e.key==='Enter') _glvVerifyCode(email); });
+  document.getElementById('_glv_inp').focus();
+  var secs = 15*60;
+  var tmr = setInterval(function(){
+    var el = document.getElementById('_glv_tmr');
+    if (!el) { clearInterval(tmr); return; }
+    var m = Math.floor(secs/60), s = secs%60;
+    el.textContent = m+':'+(s<10?'0':'')+s;
+    if (secs <= 0) {
+      clearInterval(tmr); el.textContent='Expirado'; el.style.color='#f87171';
+      var vb = document.getElementById('_glv_vbtn');
+      if(vb){vb.disabled=true;vb.style.opacity='0.5';}
     }
-  } catch(_) {}
-  console.warn('[GLV ERP] Pendiente de sincronización:', code);
+    secs--;
+  }, 1000);
 }
 
-function markSynced(data) {
-  try {
-    var stored = localStorage.getItem('GLV_PRE_REGISTRATION');
-    if (stored) {
-      var obj      = JSON.parse(stored);
-      obj._erpSynced   = true;
-      obj._erpClientId = data.client_id;
-      obj._pendingSync = false;
-      localStorage.setItem('GLV_PRE_REGISTRATION', JSON.stringify(obj));
+function _glvVerifyCode(email) {
+  var inp = document.getElementById('_glv_inp');
+  var errEl = document.getElementById('_glv_err');
+  var vbtn  = document.getElementById('_glv_vbtn');
+  if (!inp) return;
+  var code = inp.value.trim();
+  if (!/^\d{6}$/.test(code)) { if(errEl) errEl.textContent='El código debe ser 6 dígitos numéricos.'; return; }
+  if (vbtn) { vbtn.disabled=true; vbtn.textContent='Verificando...'; }
+  if (errEl) errEl.textContent='';
+  fetch(GLV_API + '/registration/verify-code', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({email:email, code:code})
+  })
+  .then(function(r){ return r.json().then(function(d){ return {s:r.status,d:d}; }); })
+  .then(function(res) {
+    if (res.d.ok && res.d.glv_code) {
+      var dlg = document.getElementById('_glv_code_dlg');
+      if (dlg) dlg.remove();
+      document.getElementById('cliCodeDisplay').textContent = '🏷 ' + res.d.glv_code;
+      document.getElementById('kycForm').style.display = 'none';
+      document.getElementById('kycSuccess').classList.add('show');
+      var rec = buildClientRecord(res.d.glv_code, {empresa:res.d.empresa||gv('k_empresa'),comercial:gv('k_comercial'),pais:gv('k_pais'),ciudad:gv('k_ciudad'),email:email,tel:gv('k_tel'),web:gv('k_web'),rep:gv('k_rep')});
+      rec.registrationDate = res.d.registeredAt;
+      rec._displayDate = new Date(res.d.registeredAt).toLocaleString('es-CO',{timeZone:'America/Bogota'});
+      updateGosStatusPanel(rec);
+      window.scrollTo({top:0,behavior:'smooth'});
+    } else if (res.d.expired || res.d.too_many_attempts) {
+      var dlg = document.getElementById('_glv_code_dlg');
+      if (dlg) dlg.remove();
+      alert(res.d.error||'El código ha expirado o se superaron los intentos. Reinicie el proceso.');
+    } else {
+      if(vbtn){vbtn.disabled=false;vbtn.textContent='Verificar código';}
+      if(errEl) errEl.textContent = res.d.error||'Código incorrecto.';
     }
-  } catch(_) {}
+  })
+  .catch(function(err) {
+    if(vbtn){vbtn.disabled=false;vbtn.textContent='Verificar código';}
+    if(errEl) errEl.textContent='Error de conexión. Intente nuevamente.';
+    console.error('[GLV] verify-code:', err);
+  });
+}
+
+function _glvResendCode(email) {
+  var rbtn  = document.getElementById('_glv_rbtn');
+  var errEl = document.getElementById('_glv_err');
+  if(rbtn){rbtn.disabled=true;rbtn.textContent='Enviando...';}
+  fetch(GLV_API + '/registration/resend-code', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({email:email})
+  })
+  .then(function(r){ return r.json().then(function(d){ return {s:r.status,d:d}; }); })
+  .then(function(res) {
+    if (res.d.ok) {
+      if(errEl) errEl.textContent='';
+      if(rbtn){
+        rbtn.textContent='✓ Código reenviado';
+        setTimeout(function(){if(rbtn){rbtn.disabled=false;rbtn.textContent='Reenviar código';}},30000);
+      }
+    } else {
+      if(rbtn){rbtn.disabled=false;rbtn.textContent='Reenviar código';}
+      if(errEl) errEl.textContent=res.d.error||'Error al reenviar.';
+      if(res.s===429 && rbtn) rbtn.style.display='none';
+    }
+  })
+  .catch(function(){
+    if(rbtn){rbtn.disabled=false;rbtn.textContent='Reenviar código';}
+    if(errEl) errEl.textContent='Error de conexión.';
+  });
 }
 // ─────────────────────────────────────────────────────────────────────────────
-
-// ────────────────────────────────────────────────────────────
-function submitKYC(){
-  return GLVForms.submit('client', {success:function(result){
-    document.getElementById('cliCodeDisplay').textContent = '🏷 ' + result.code;
-    document.getElementById('kycForm').style.display = 'none';
-    document.getElementById('kycSuccess').classList.add('show');
-    var record = buildClientRecord(result.code, {empresa:gv('k_empresa'),comercial:gv('k_comercial'),pais:gv('k_pais'),ciudad:gv('k_ciudad'),email:gv('k_email'),tel:gv('k_tel'),web:gv('k_web'),rep:gv('k_rep')});
-    record.registrationDate = result.registeredAt;
-    record._displayDate = new Date(result.registeredAt).toLocaleString('es-CO', {timeZone:'America/Bogota'});
-    updateGosStatusPanel(record);
-    window.scrollTo({top:0,behavior:'smooth'});
-  }});
-}
 </script>
 <script>
 

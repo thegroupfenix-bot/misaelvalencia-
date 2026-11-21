@@ -25,6 +25,7 @@ const path = require("path");
 const fs = require("fs");
 
 const authRouter        = require("./routes/auth");
+const registrationRouter = require("./routes/registration");
 const documentsRouter   = require("./routes/documents");
 const auditRouter       = require("./routes/audit");
 const usersRouter       = require("./routes/users");
@@ -107,6 +108,7 @@ app.get("/health", (_req, res) => {
 
 // API routes
 app.use("/auth",         authRouter);
+app.use("/registration", registrationRouter);
 app.use("/documents",    documentsRouter);
 app.use("/audit",        auditRouter);
 app.use("/users",        usersRouter);
