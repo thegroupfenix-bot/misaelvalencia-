@@ -223,12 +223,14 @@ router.post("/reset-password", (req, res) => {
 
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const row = db.prepare(
-    "SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token_hash = ?"
+    `SELECT id, user_id, used_at,
+            COALESCE(unixepoch(expires_at) <= unixepoch('now'), 1) AS expired
+       FROM password_reset_tokens WHERE token_hash = ?`
   ).get(tokenHash);
 
   if (!row) return res.status(400).json({ error: "Token inválido o expirado" });
   if (row.used_at) return res.status(400).json({ error: "Token ya utilizado" });
-  if (new Date(row.expires_at) < new Date()) return res.status(400).json({ error: "Token expirado" });
+  if (row.expired) return res.status(400).json({ error: "Token expirado" });
 
   const user = db.prepare("SELECT * FROM users WHERE id = ? AND active = 1").get(row.user_id);
   if (!user) return res.status(400).json({ error: "Usuario no encontrado" });

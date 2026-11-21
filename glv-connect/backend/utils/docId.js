@@ -6,7 +6,7 @@
  * COUNT(*)+N is not safe: concurrent transactions can read the same count.
  */
 function genId(type, db, now = new Date()) {
-  const year = now.getFullYear();
+  const year = now.getUTCFullYear();
 
   const result = db.transaction(() => {
     const row = db.prepare(
