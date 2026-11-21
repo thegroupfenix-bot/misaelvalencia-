@@ -1,3 +1,27 @@
+# Ejecución: Portal de Clientes GLV
+
+## Alcance añadido
+
+- Al activar un KYC como `ACTIVE_CLIENT`, GOS crea o vincula la cuenta `CLIENT`.
+- El usuario de acceso es el código GLV del cliente.
+- El correo recibe un enlace de un solo uso, válido por una hora, para definir su contraseña.
+- El portal permite actualizar correo, teléfono, WhatsApp y dirección.
+- El portal exige un certificado comercial antes de enviar una solicitud de cambio de razón social.
+- Las solicitudes quedan con estado `PENDING`, documento asociado y auditoría.
+
+## Verificación requerida antes de integrar
+
+1. Ejecutar `cd glv-connect/backend && npm test`.
+2. Configurar en Railway `JWT_SECRET`, `PII_ENCRYPTION_KEY`, SMTP, `CLIENT_ORIGIN` y `ALLOWED_ORIGINS`.
+3. Activar un cliente de prueba desde GOS Leads/KYC.
+4. Confirmar que recibe el correo de activación, define contraseña y entra con su código GLV.
+5. Confirmar que actualiza datos de contacto y que la solicitud de razón social adjunta el certificado.
+6. Validar que la cuenta CLIENT no muestra los módulos operativos internos.
+
+## Resultado de esta ejecución
+
+Cambios preparados en PR 167. No se hizo merge ni despliegue.
+
 # Recuperación de altas públicas hacia GOS
 
 ## Estado
