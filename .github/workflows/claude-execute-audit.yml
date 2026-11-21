@@ -36,10 +36,11 @@ jobs:
             Ejecute exclusivamente la instrucción marcada más reciente del propietario en este pull request.
             Corrija únicamente los hallazgos indicados, ejecute las pruebas exigidas y actualice
             docs/automation/latest-execution-report.md con evidencia verificable.
-            No haga merge, despliegue, publicación, cambios de secretos ni contacto con clientes.
+            Cree el commit y publíquelo únicamente en la rama existente de este pull request.
+            No haga merge, despliegue, publicación externa, cambios de secretos ni contacto con clientes.
           claude_args: |
-            --max-turns 12
-            --allowedTools "Bash(npm run test:pwa),Bash(npm install),Bash(npm ci),Bash(npm run build),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Edit,Write,Read"
+            --max-turns 24
+            --allowedTools "Bash(npm run test:pwa),Bash(npm run test:*),Bash(npm install),Bash(npm ci),Bash(npm run build),Bash(node tests/*),Bash(node --check *),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Edit,Write,Read"
             --disallowedTools "Bash(git push:*),Bash(railway:*),Bash(curl:*),Bash(wget:*),TaskOutput,KillTask"
           additional_permissions: |
             actions: read
