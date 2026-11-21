@@ -14,6 +14,8 @@ const CODE_EXPIRY   = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS  = 5;
 const MAX_RESENDS   = 3;
 
+const resendInFlight = new Set();
+
 const requestLimiter = rateLimit(15 * 60 * 1000, 8);
 const verifyLimiter  = rateLimit(15 * 60 * 1000, 15);
 const resendLimiter  = rateLimit(15 * 60 * 1000, 4);
@@ -315,37 +317,55 @@ router.post("/resend-code", resendLimiter, async (req, res) => {
       empresa = (JSON.parse(dec).empresa || "").trim();
     } catch (_) {}
 
-    const newCode    = genCode();
-    const newHash    = hashCode(newCode, em);
-    const expiresAt  = new Date(Date.now() + CODE_EXPIRY)
-      .toISOString().replace("T", " ").slice(0, 19);
-    const newResends = record.resend_count + 1;
-
-    db.transaction(() => {
-      db.prepare("UPDATE registration_codes SET invalidated=1, updated_at=datetime('now') WHERE id=?")
-        .run(record.id);
-      db.prepare(`
-        INSERT INTO registration_codes (email, code_hash, expires_at, resend_count, pending_data)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(em, newHash, expiresAt, newResends, record.pending_data);
-    })();
-
-    try {
-      await mailer.sendVerificationCode(em, newCode, empresa, "es");
-    } catch (err) {
-      console.error("[reg/resend-code] email error:", err.message);
-      return res.status(503).json({
-        error: "No pudimos reenviar el código. Intente nuevamente en unos minutos.",
-        retryable: true,
-      });
+    // Protege la transición frente a reenvíos concurrentes del mismo correo.
+    if (resendInFlight.has(em)) {
+      return res.status(409).json({ error: "Ya hay un reenvío en curso. Espere unos segundos.", retryable: true });
     }
+    resendInFlight.add(em);
+    try {
+      const newCode    = genCode();
+      const newHash    = hashCode(newCode, em);
+      const expiresAt  = new Date(Date.now() + CODE_EXPIRY)
+        .toISOString().replace("T", " ").slice(0, 19);
+      const newResends = record.resend_count + 1;
 
-    return res.json({
-      ok: true,
-      resent_at: new Date().toISOString(),
-      resend_at: new Date(Date.now() + 60_000).toISOString(),
-      resends_remaining: MAX_RESENDS - newResends,
-    });
+      // 1) Enviar primero: el código anterior y su contador siguen intactos si falla.
+      try {
+        await mailer.sendVerificationCode(em, newCode, empresa, "es");
+      } catch (err) {
+        console.error("[reg/resend-code] email error:", err.message);
+        return res.status(503).json({
+          error: "No pudimos reenviar el código. Intente nuevamente en unos minutos.",
+          retryable: true,
+        });
+      }
+
+      // 2) Envío confirmado: activar el reemplazo de forma atómica y condicionada al estado leído.
+      const swapped = db.transaction(() => {
+        const upd = db.prepare(`
+          UPDATE registration_codes SET invalidated=1, updated_at=datetime('now')
+          WHERE id=? AND used=0 AND invalidated=0 AND resend_count=?
+        `).run(record.id, record.resend_count);
+        if (upd.changes !== 1) return false;
+        db.prepare(`
+          INSERT INTO registration_codes (email, code_hash, expires_at, resend_count, pending_data)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(em, newHash, expiresAt, newResends, record.pending_data);
+        return true;
+      })();
+      if (!swapped) {
+        return res.status(409).json({ error: "La solicitud cambió. Reinicie el proceso.", retryable: true });
+      }
+
+      return res.json({
+        ok: true,
+        resent_at: new Date().toISOString(),
+        resend_at: new Date(Date.now() + 60_000).toISOString(),
+        resends_remaining: MAX_RESENDS - newResends,
+      });
+    } finally {
+      resendInFlight.delete(em);
+    }
   } catch (e) {
     console.error("[POST /registration/resend-code]", e.message);
     return res.status(500).json({ error: "Error reenviando código. Intente nuevamente." });
