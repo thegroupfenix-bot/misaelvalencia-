@@ -1,5 +1,29 @@
 # Evidencia de ejecución automática
 
+## PR 166, protección del registro KYC
+
+- Rama: `fix/glv-forms-csp`.
+- Producción, 21 de noviembre de 2026: dos registros controlados completaron el flujo KYC. Cada uno mostró un código único GLV y entregó el correo de confirmación.
+- Tiempo observado de validación: aproximadamente 15 segundos.
+- No se hizo merge ni despliegue desde esta ejecución.
+
+## Control preventivo incorporado
+
+1. `.cpanel.yml` ya no renombra `htaccess` como `.htaccess`.
+2. El despliegue conserva el archivo `.htaccess` versionado, que contiene los dos orígenes requeridos por Apps Script en `connect-src`.
+3. `tests/deploy-htaccess.test.mjs` falla si un cambio futuro toca `htaccess` sin punto durante el despliegue o si omite los dos orígenes de Apps Script.
+4. `npm run test:pwa` ejecuta esa protección junto con la prueba PWA existente.
+
+## Verificación pendiente de CI
+
+- Ejecutar `npm run test:pwa` y las validaciones del sitio sobre el SHA final de esta rama.
+- Revisar el diff, los checks y realizar una prueba controlada adicional antes de aprobar merge.
+- No modificar Apps Script, Railway, registros de clientes ni la CSP validada sin una prueba de regresión KYC.
+
+---
+
+# Historial anterior
+
 ## Estado
 
 Ejecución completada para el PR #163 (rama `fix/gos-audit-screen-white-page`). Sin merge ni despliegue.
@@ -51,3 +75,4 @@ Ejecución completada para el PR #163 (rama `fix/gos-audit-screen-white-page`). 
 - **Acciones correctivas:** (1) causa raíz tratada: contrato `{ rows, total }` mal consumido; (2) añadidas validaciones en Dashboard; (3) abierta: `ErrorBoundary` global y estabilizar la suite backend.
 - **Responsabilidades:** aprobación del merge y despliegue: propietario del repositorio. Corrección de las acciones abiertas: por asignar por el propietario.
 - No se afirma cumplimiento ni certificación ISO 9001/BASC: este informe solo aporta evidencia técnica parcial.
+
