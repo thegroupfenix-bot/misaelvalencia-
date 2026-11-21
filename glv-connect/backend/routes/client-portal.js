@@ -119,4 +119,42 @@ router.post("/name-change-requests", (req, res) => {
   res.status(201).json(db.prepare("SELECT * FROM client_name_change_requests WHERE id=?").get(ins.lastInsertRowid));
 });
 
+
+// GET /client-portal/admin/name-change-requests
+router.get("/admin/name-change-requests", (req, res) => {
+  const allowed = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTOR", "DIRECTIVO", "COMPLIANCE"]);
+  if (!allowed.has(req.user.role)) return res.status(403).json({ error: "Acceso denegado." });
+  const rows = db.prepare(`SELECT r.*, c.glv_code, c.company, c.name AS current_name, d.file_name
+    FROM client_name_change_requests r
+    JOIN clients c ON c.id=r.client_id
+    LEFT JOIN client_documents d ON d.id=r.evidence_document_id
+    WHERE r.status='PENDING' ORDER BY r.created_at ASC`).all();
+  res.json(rows);
+});
+
+// PATCH /client-portal/admin/name-change-requests/:id/review
+router.patch("/admin/name-change-requests/:id/review", (req, res) => {
+  const allowed = new Set(["SUPER_ADMIN", "CORPORATE_ADMIN", "DIRECTOR", "DIRECTIVO", "COMPLIANCE"]);
+  if (!allowed.has(req.user.role)) return res.status(403).json({ error: "Acceso denegado." });
+  const { status, review_notes } = req.body || {};
+  if (!["APPROVED", "REJECTED"].includes(status)) return res.status(400).json({ error: "Estado inválido." });
+  const request = db.prepare("SELECT * FROM client_name_change_requests WHERE id=? AND status='PENDING'").get(req.params.id);
+  if (!request) return res.status(404).json({ error: "Solicitud pendiente no encontrada." });
+
+  db.transaction(() => {
+    db.prepare("UPDATE client_name_change_requests SET status=?, reviewed_by=?, review_notes=?, reviewed_at=datetime('now') WHERE id=?")
+      .run(status, req.user.id, String(review_notes || "").trim() || null, request.id);
+    if (status === "APPROVED") {
+      const client = db.prepare("SELECT * FROM clients WHERE id=?").get(request.client_id);
+      const kyc = clientData(client);
+      kyc.empresa = request.requested_name;
+      const encrypted = pii.isConfigured() ? pii.encrypt(JSON.stringify(kyc)) : JSON.stringify(kyc);
+      db.prepare("UPDATE clients SET company=?, kyc_data=? WHERE id=?").run(request.requested_name, encrypted, client.id);
+    }
+    db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+      .run(req.user.username, status === "APPROVED" ? "CLIENT_NAME_CHANGE_APPROVED" : "CLIENT_NAME_CHANGE_REJECTED", String(request.id), request.client_id, req.ip);
+  })();
+  res.json(db.prepare("SELECT * FROM client_name_change_requests WHERE id=?").get(request.id));
+});
+
 module.exports = router;
