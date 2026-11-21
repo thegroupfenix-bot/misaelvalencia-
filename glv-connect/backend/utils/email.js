@@ -59,8 +59,8 @@ async function sendDocumentEmail(doc, agent) {
 
 async function sendVerificationCode(to, code, empresa, lang) {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn("[email] SMTP not configured — verification code not sent:", code);
-    return;
+    console.warn("[email] SMTP not configured — verification code not sent");
+    throw new Error("SMTP_NOT_CONFIGURED");
   }
   const transporter = createTransport();
   const isEs = !lang || lang === "es";

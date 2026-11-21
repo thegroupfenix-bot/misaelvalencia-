@@ -5,7 +5,7 @@ const crypto  = require("crypto");
 const db      = require("../db/database");
 const { rateLimit } = require("../middleware/rateLimiter");
 const pii     = require("../utils/piiCrypto");
-const { sendVerificationCode, sendRegistrationConfirmation } = require("../utils/email");
+const mailer  = require("../utils/email");
 
 const router = express.Router();
 
@@ -59,7 +59,7 @@ function generateGlvCode() {
 }
 
 // ─── POST /registration/request-code ─────────────────────────────────────────
-router.post("/request-code", requestLimiter, (req, res) => {
+router.post("/request-code", requestLimiter, async (req, res) => {
   try {
     const body = req.body || {};
     const { email, empresa } = body;
@@ -113,12 +113,22 @@ router.post("/request-code", requestLimiter, (req, res) => {
     const rawData   = JSON.stringify(body);
     const pendingData = pii.isConfigured() ? pii.encrypt(rawData) : rawData;
 
-    db.prepare(
+    const ins = db.prepare(
       "INSERT INTO registration_codes (email, code_hash, expires_at, pending_data) VALUES (?, ?, ?, ?)"
     ).run(em, codeHash, expiresAt, pendingData);
 
-    sendVerificationCode(em, code, empresa.trim(), body.lang || "es")
-      .catch(err => console.error("[reg/request-code] email error:", err.message));
+    // El envío debe confirmarse; si falla, se invalida el código para permitir un nuevo intento.
+    try {
+      await mailer.sendVerificationCode(em, code, empresa.trim(), body.lang || "es");
+    } catch (err) {
+      console.error("[reg/request-code] email error:", err.message);
+      db.prepare("UPDATE registration_codes SET invalidated=1, updated_at=datetime('now') WHERE id=?")
+        .run(ins.lastInsertRowid);
+      return res.status(503).json({
+        error: "No pudimos enviar el código a su correo. Intente nuevamente en unos minutos.",
+        retryable: true,
+      });
+    }
 
     return res.json({
       ok: true,
@@ -260,7 +270,7 @@ router.post("/verify-code", verifyLimiter, (req, res) => {
       glvCode = txResult.dup.glv_code;
     }
 
-    sendRegistrationConfirmation(em, glvCode, empresa, formData.lang || "es")
+    mailer.sendRegistrationConfirmation(em, glvCode, empresa, formData.lang || "es")
       .catch(err => console.error("[reg/verify-code] confirm email error:", err.message));
 
     return res.status(201).json({
@@ -276,7 +286,7 @@ router.post("/verify-code", verifyLimiter, (req, res) => {
 });
 
 // ─── POST /registration/resend-code ──────────────────────────────────────────
-router.post("/resend-code", resendLimiter, (req, res) => {
+router.post("/resend-code", resendLimiter, async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email || !EMAIL_REGEX.test(email)) {
@@ -320,8 +330,15 @@ router.post("/resend-code", resendLimiter, (req, res) => {
       `).run(em, newHash, expiresAt, newResends, record.pending_data);
     })();
 
-    sendVerificationCode(em, newCode, empresa, "es")
-      .catch(err => console.error("[reg/resend-code] email error:", err.message));
+    try {
+      await mailer.sendVerificationCode(em, newCode, empresa, "es");
+    } catch (err) {
+      console.error("[reg/resend-code] email error:", err.message);
+      return res.status(503).json({
+        error: "No pudimos reenviar el código. Intente nuevamente en unos minutos.",
+        retryable: true,
+      });
+    }
 
     return res.json({
       ok: true,

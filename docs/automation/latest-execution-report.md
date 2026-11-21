@@ -1,20 +1,27 @@
 # Informe de ejecución — PR #160
 
-**SHA probado (base):** 0099feb en `fix/client-activation-email-verification`. El SHA del commit de corrección queda en el historial de la rama (un commit no puede contener su propio SHA).
+**SHA base:** 478792d en `fix/client-activation-email-verification`. El SHA del commit queda en el historial de la rama.
 
-## Cambio
-- `index.html`: se eliminan `.mob-menu-overlay` / `#mobMenuOverlay` (position:fixed, inset:0, fondo rgba(0,0,0,.5), role=dialog, aria-modal=true) y el bloqueo de `document.body.style.overflow`. Se sustituyen por un menú desplegable `#mobMenu` (`role="region"`), dentro de `<nav>`, `position:absolute` bajo la barra, ancho acotado (`min(320px, 100vw-1.2rem)`), sin fondo de cobertura, no modal. Hamburguesa con `aria-controls="mobMenu"` y `aria-expanded`; alterna abrir/cerrar; cierre con botón ✕, Escape (devuelve foco a la hamburguesa) y clic exterior (listener de documento solo mientras está abierto). Se conservan enlaces, botón de instalación en `#mob-pwa-slot` y `markInstalled`/`removeHint`.
-- `tests/pwa-security.test.mjs` (E5): exige `#mobMenu`, ausencia de overlay, aria-controls/aria-expanded y ausencia de bloqueo de scroll.
-- `tests/pwa-install-behavior.test.mjs`: se retira el `replace` que excluía el menú; la sección 6 revisa HTML y reglas CSS reales de `index.html`, `registro-clientes.html` y `portal-clientes.html` (sin dialog/aria-modal/role=dialog/overlay, ninguna regla fixed+inset:0 ni fixed con fondo oscuro, sin scroll lock). Nueva sección 7: abrir/cerrar menú (hamburguesa, ✕, Escape, clic exterior), botón PWA accesible en el menú, prompt nativo (escritorio) o guía Safari (iPhone/iPadOS MacIntel), y limpieza tras `appinstalled`.
-- `tests/playwright-pwa.test.mjs`: selectores actualizados a `#mobMenu` y sin whitelist de overlays (no ejecutado, ver limitaciones).
+## Bloque: alta de clientes (GOS) — router `/registration`
+### Cambios (solo lo necesario para el flujo)
+- `glv-connect/backend/utils/email.js`: `sendVerificationCode` ahora lanza `SMTP_NOT_CONFIGURED` si no hay SMTP (antes retornaba en silencio y registraba el código en logs; el código ya no se escribe en logs).
+- `glv-connect/backend/routes/registration.js`:
+  - `request-code` y `resend-code` esperan la confirmación del envío. Si falla: HTTP 503 `{retryable:true}`; en `request-code` el código recién creado se invalida, así que un nuevo intento genera y envía un código nuevo (antes quedaba un código «pendiente» nunca entregado y el reintento devolvía PENDING sin enviar nada).
+  - Se usa `mailer.<fn>` (acceso por propiedad) para poder simular el correo en pruebas.
+- El formulario (`registro-clientes.html`) no se modificó: ya muestra `res.d.error` ante `!ok` y rehabilita el botón, por lo que el 503 es recuperable. Navegación y PWA sin cambios.
+- Nueva prueba `glv-connect/backend/tests/registration.test.js` (Supertest + SQLite temporal + correo simulado, datos ficticios) y script `npm test` en el backend; `supertest` como devDependency.
+
+### Casos cubiertos
+1. Fallo de envío → 503 retryable, ningún código activo ni cliente; reintento → 200 y correo simulado enviado.
+2. Código incorrecto → 400; código correcto → 201 con `GLV-CL-AAAA-NNNNNN`; reintento de verificación → no 201; 1 solo cliente, 1 `audit_log` `CLIENT_REGISTERED`, 1 `kyc_submissions`, código marcado usado.
 
 ## Comandos y resultados
-- `npm run test:pwa` → 2/2 archivos pasan.
-- `node tests/glv-forms.test.cjs` → 24/24 pasan (sin cambios en ese código).
+- `cd glv-connect/backend && node --test tests/registration.test.js` → 2/2 pasan.
+- No se re-ejecutaron `npm run test:pwa` ni `glv-forms.test.cjs` (no se tocó HTML ni PWA).
 
-## Limitaciones
-- DOM simulado (`node:vm`), no navegador real; el CSS se analiza por reglas, no se calcula layout.
-- `tests/playwright-pwa.test.mjs` solo se verificó sintácticamente (`node --check`); no se ejecutó (sin navegador/servidor).
-- `glv-forms.test.cjs` no cubre SMTP ni el router `/registration`; sin prueba integral del alta de clientes.
+## Pendientes / limitaciones
+- `better-sqlite3@^9.4.3` no compila en Node 24 (sin prebuild). Las pruebas se ejecutaron con `better-sqlite3@12` instalado con `--no-save`; `package.json` no se cambió. Pendiente decidir subir la versión o fijar Node 20/22 en CI.
+- Sin SMTP real; solo correo simulado. Producción requiere SMTP configurado: sin él, `request-code` devuelve 503 (comportamiento intencional).
+- No cubierto: `resend-code` con fallo de envío (implementado, sin prueba), límites de intentos/expiración, CORS, 409 de cliente activo.
 - `.github/AI_AUTOMATION_PROTOCOL.md` no existe en el repositorio.
 - Sin merge, despliegue, cambios de secretos ni contacto con clientes.
