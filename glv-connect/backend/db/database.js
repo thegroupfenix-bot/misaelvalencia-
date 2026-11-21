@@ -288,6 +288,25 @@ safeAlter("ALTER TABLE clients ADD COLUMN lifecycle_updated_by INTEGER");
 safeAlter("ALTER TABLE clients ADD COLUMN lifecycle_updated_at TEXT");
 safeAlter("ALTER TABLE clients ADD COLUMN duplicate_of INTEGER");
 
+
+// ─── Email verification codes for public registration ────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS registration_codes (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    email           TEXT    NOT NULL,
+    code_hash       TEXT    NOT NULL,
+    expires_at      TEXT    NOT NULL,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    resend_count    INTEGER NOT NULL DEFAULT 0,
+    pending_data    TEXT    NOT NULL,
+    used            INTEGER NOT NULL DEFAULT 0,
+    invalidated     INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_reg_codes_email ON registration_codes(email);
+`);
+
 // ─── KYC staging table (Sprint 1) ────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS kyc_submissions (
