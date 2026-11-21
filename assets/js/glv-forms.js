@@ -87,7 +87,10 @@
     function render(){const t=verificationText[lang()]||verificationText.es;dialog.dir=lang()==='ar'?'rtl':'ltr';dialog.querySelectorAll('[data-v]').forEach(e=>{e.textContent=t[e.dataset.v];});const seconds=Math.max(0,Math.ceil((resendAt-Date.now())/1000));resend.textContent=seconds?t.wait+' '+seconds+' '+t.seconds:t.resend;resend.disabled=busy||seconds>0;verify.disabled=busy;back.disabled=busy;note.textContent=t[message]||'';}
     async function action(action){
       if(busy||inFlight)return;
-      if(action==='verify'&&!form.reportValidity())return;
+      if(action==='verify'){
+        input.value=input.value.replace(/\D/g,'').slice(0,6);
+        if(!form.reportValidity())return;
+      }
       busy=true;inFlight=true;message='busy';render();
       if(action==='verify'&&(!retryAttempt||retryAttempt.code!==input.value))retryAttempt={code:input.value,id:crypto.randomUUID()};
       try{
@@ -98,6 +101,7 @@
         else{message=({INVALID_CODE:'invalid',CODE_EXPIRED:'expired',ATTEMPTS_EXHAUSTED:'locked',VERIFICATION_LIMIT:'limit',RESEND_WAIT:'wait'})[response?.error]||'error';if(response?.code)status(root,'review',response.code);if(response?.error==='INVALID_CODE')retryAttempt=null;}
       }catch(_){message='error';}finally{busy=false;inFlight=false;render();}
     }
+    input.addEventListener('input',()=>{const normalized=input.value.replace(/\D/g,'').slice(0,6);if(input.value!==normalized)input.value=normalized;});
     form.addEventListener('submit',e=>{e.preventDefault();action('verify');});resend.addEventListener('click',()=>action('resend'));back.addEventListener('click',()=>dialog.close());
     dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
     const timer=setInterval(render,1000);dialog.addEventListener('close',()=>{clearInterval(timer);dialog.remove();if(verificationPanel===dialog)verificationPanel=null;},{once:true});
