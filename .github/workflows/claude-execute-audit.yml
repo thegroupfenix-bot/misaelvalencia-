@@ -1,0 +1,45 @@
+name: Ejecutar correcciones auditadas por Claude
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+  id-token: write
+
+jobs:
+  execute-audit-correction:
+    if: >
+      github.event.issue.pull_request &&
+      github.event.comment.author_association == 'OWNER' &&
+      contains(github.event.comment.body, '<!-- glv-ai-execution -->') &&
+      contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Descargar contexto seguro del repositorio
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Ejecutar Claude Code sobre la corrección auditada
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+          prompt: |
+            Lea .github/AI_AUTOMATION_PROTOCOL.md antes de actuar.
+            Ejecute exclusivamente la instrucción marcada más reciente del propietario en este pull request.
+            Corrija únicamente los hallazgos indicados, ejecute las pruebas exigidas y actualice
+            docs/automation/latest-execution-report.md con evidencia verificable.
+            No haga merge, despliegue, publicación, cambios de secretos ni contacto con clientes.
+          claude_args: |
+            --max-turns 12
+            --allowedTools "Bash(npm run test:pwa),Bash(npm install),Bash(npm ci),Bash(npm run build),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Edit,Write,Read"
+            --disallowedTools "Bash(git push:*),Bash(railway:*),Bash(curl:*),Bash(wget:*),TaskOutput,KillTask"
+          additional_permissions: |
+            actions: read
