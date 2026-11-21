@@ -3,4 +3,3 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/glvserv1/public_html/
     - /bin/cp -R . $DEPLOYPATH
-    - mv $DEPLOYPATH/htaccess $DEPLOYPATH/.htaccess
