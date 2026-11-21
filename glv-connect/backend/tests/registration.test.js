@@ -49,7 +49,7 @@ test("verificación correcta crea un solo cliente y auditoría; reintentos no du
   const { code } = sent[0];
   const ok = await request(app).post("/registration/verify-code").send({ email: form.email, code });
   assert.equal(ok.status, 201);
-  assert.match(ok.body.glv_code, /^GLV-CL-\d{4}-\d{6}$/);
+  assert.equal(ok.body.glv_code, `GLV-CL-${new Date().getFullYear()}-002356`);
   // reintentos
   const again = await request(app).post("/registration/verify-code").send({ email: form.email, code });
   assert.notEqual(again.status, 201);
