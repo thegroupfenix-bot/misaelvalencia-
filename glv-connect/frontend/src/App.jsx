@@ -25,6 +25,7 @@ import CustomsDesk from "./components/CustomsDesk.jsx";
 import { GosLeadsPanel } from "./components/GosLeadsPanel.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
+import { loadAuditState } from "./utils/auditResponse.js";
 import { LANGUAGES, t } from "./i18n.js";
 
 const ADMINS    = new Set(["SUPER_ADMIN","CORPORATE_ADMIN"]);
@@ -598,7 +599,9 @@ function Dashboard({ user, setView, setModal }) {
         api.getOperations(),
         api.getTasks({ status: "pending" }),
       ]).then(([d, o, t]) => {
-        setDocs(d); setOps(o); setTasks(t);
+        setDocs(Array.isArray(d) ? d : []);
+        setOps(Array.isArray(o) ? o : []);
+        setTasks(Array.isArray(t) ? t : []);
       }).catch(console.error).finally(() => setLoading(false));
     }
   }, []);
@@ -2188,16 +2191,33 @@ function CreateClientModal({ onClose, onCreated }) {
 function AuditLog() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    api.getAudit().then(setLogs).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  const loadAudit = async () => {
+    setLoading(true);
+    setError("");
+    const state = await loadAuditState(() => api.getAudit());
+    if (state.cause) console.error("[audit]", state.cause);
+    setLogs(state.logs);
+    setTotal(state.total);
+    setError(state.error);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadAudit(); }, []);
 
   return (
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "1.5rem" }}>Registro de Auditoría</h1>
-      {loading ? <LoadingSpinner /> : (
+      {loading ? <LoadingSpinner /> : error ? (
+        <div role="alert" style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 12, padding: "1rem", color: "#991b1b", maxWidth: 700 }}>
+          <p style={{ margin: "0 0 .75rem" }}>{error}</p>
+          <button onClick={loadAudit} style={{ border: "none", borderRadius: 7, padding: "8px 12px", background: "#991b1b", color: "#fff", cursor: "pointer", fontWeight: 600 }}>Reintentar</button>
+        </div>
+      ) : (
         <div style={{ background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ padding: "10px 16px", fontSize: 12, color: "var(--color-text-secondary)", borderBottom: "0.5px solid var(--color-border-tertiary)" }}>{total} registros disponibles</div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--color-background-secondary)" }}>
@@ -2207,6 +2227,9 @@ function AuditLog() {
               </tr>
             </thead>
             <tbody>
+              {!logs.length && (
+                <tr><td colSpan={5} style={{ padding: "24px 16px", textAlign: "center", color: "var(--color-text-secondary)" }}>No hay registros de auditoría para mostrar.</td></tr>
+              )}
               {logs.map((log, i) => (
                 <tr key={i} style={{ borderTop: "0.5px solid var(--color-border-tertiary)" }}>
                   <td style={{ padding: "10px 16px", color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 12 }}>{log.ts}</td>
