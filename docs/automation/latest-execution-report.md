@@ -20,7 +20,7 @@
 
 ## Resultado de esta ejecución
 
-Cambios preparados en PR 167. No se hizo merge ni despliegue.
+Validación automática aprobada el 21 de noviembre de 2026. Website validation, GLV forms validation y GOS release verification finalizaron correctamente. No se hizo merge ni despliegue.
 
 # Recuperación de altas públicas hacia GOS
 
