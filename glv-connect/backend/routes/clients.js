@@ -386,22 +386,27 @@ router.patch("/:id/kyc-status", requireLevel(65), async (req, res) => {
           kyc = decrypted ? JSON.parse(decrypted) : {};
         } catch (_) {}
         const portalEmail = fullClient.email || kyc.email;
-        if (!portalEmail) throw new Error("CLIENT_PORTAL_EMAIL_MISSING");
-        const username = String(fullClient.glv_code || fullClient.glv_code_permanent || "").toLowerCase();
-        if (!username) throw new Error("CLIENT_PORTAL_USERNAME_MISSING");
-        const existingUser = db.prepare("SELECT id FROM users WHERE username=?").get(username);
-        if (existingUser) {
-          db.prepare("UPDATE users SET linked_client_id=?, role='CLIENT', email=?, active=1 WHERE id=?")
-            .run(client.id, portalEmail.toLowerCase(), existingUser.id);
+        if (portalEmail) {
+          const username = String(fullClient.glv_code || fullClient.glv_code_permanent || "").toLowerCase();
+          if (!username) throw new Error("CLIENT_PORTAL_USERNAME_MISSING");
+          const existingUser = db.prepare("SELECT id FROM users WHERE username=?").get(username);
+          if (existingUser) {
+            db.prepare("UPDATE users SET linked_client_id=?, role='CLIENT', email=?, active=1 WHERE id=?")
+              .run(client.id, portalEmail.toLowerCase(), existingUser.id);
+          } else {
+            const temporaryHash = bcrypt.hashSync(crypto.randomBytes(32).toString("hex"), 10);
+            db.prepare(`INSERT INTO users
+              (username, password, role, name, email, first_login, profile_completed, linked_client_id, active)
+              VALUES (?, ?, 'CLIENT', ?, ?, 1, 1, ?, 1)`)
+              .run(username, temporaryHash, fullClient.glv_code || username, portalEmail.toLowerCase(), client.id);
+          }
+          db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+            .run(req.user.username, "CLIENT_PORTAL_PROVISIONED", fullClient.glv_code, client.id, req.ip);
         } else {
-          const temporaryHash = bcrypt.hashSync(crypto.randomBytes(32).toString("hex"), 10);
-          db.prepare(`INSERT INTO users
-            (username, password, role, name, email, first_login, profile_completed, linked_client_id, active)
-            VALUES (?, ?, 'CLIENT', ?, ?, 1, 1, ?, 1)`)
-            .run(username, temporaryHash, fullClient.glv_code || username, portalEmail.toLowerCase(), client.id);
+          // No bloquea la aprobación KYC heredada sin correo. Compliance conserva evidencia para completar el dato.
+          db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
+            .run(req.user.username, "CLIENT_PORTAL_PENDING_EMAIL", fullClient.glv_code, client.id, req.ip);
         }
-        db.prepare("INSERT INTO audit_log (username, action, doc_id, client_id, ip) VALUES (?, ?, ?, ?, ?)")
-          .run(req.user.username, "CLIENT_PORTAL_PROVISIONED", fullClient.glv_code, client.id, req.ip);
       }
     })();
 
