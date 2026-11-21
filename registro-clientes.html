@@ -864,45 +864,78 @@ function submitKYC() {
   });
 }
 
+var _glvTimer = null;
+function _glvClosePanel() {
+  if (_glvTimer) { clearInterval(_glvTimer); _glvTimer = null; }
+  var p = document.getElementById('glvVerifyPanel');
+  if (p) p.remove();
+}
+
+// Guía de verificación en línea (no bloqueante, descartable con «Cerrar» o Escape)
 function _glvShowCodeDialog(email, pendingData, empresa) {
-  var masked = pendingData.email || email.replace(/(.{1}).+(@.+)/, '$1***$2');
-  var old = document.getElementById('_glv_code_dlg');
-  if (old) old.remove();
-  var dlg = document.createElement('div');
-  dlg.id = '_glv_code_dlg';
-  dlg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
-  dlg.innerHTML =
-    '<div style="background:#0d1724;border:1px solid rgba(201,168,76,0.35);border-radius:12px;padding:28px 24px;max-width:420px;width:100%;font-family:inherit">' +
-    '<div style="font-size:0.62rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#C9A84C;margin-bottom:1rem">GLV SERVICES · VERIFICACIÓN DE CORREO</div>' +
-    '<p style="color:#e2e8f0;font-size:0.95rem;margin:0 0 0.4rem">Ingrese el código de 6 dígitos enviado a:</p>' +
-    '<p style="color:#C9A84C;font-weight:700;margin:0 0 1.2rem;font-size:0.9rem">' + masked + '</p>' +
-    '<input type="text" id="_glv_inp" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000" ' +
-    'style="width:100%;box-sizing:border-box;text-align:center;font-size:2rem;letter-spacing:0.5em;padding:12px;' +
-    'background:#1e2d3e;border:1px solid rgba(201,168,76,0.3);border-radius:8px;color:#C9A84C;outline:none;font-family:monospace">' +
-    '<div id="_glv_err" style="color:#f87171;font-size:0.85rem;margin:8px 0 0;min-height:20px"></div>' +
-    '<div style="margin:12px 0;color:#94a3b8;font-size:0.85rem">⏱ <span id="_glv_tmr">15:00</span> restantes</div>' +
-    '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">' +
-    '<button id="_glv_vbtn" style="flex:1;background:#C9A84C;color:#0d1724;border:none;border-radius:6px;padding:12px 16px;font-weight:700;font-size:0.95rem;cursor:pointer">Verificar código</button>' +
-    '<button id="_glv_rbtn" style="flex:1;background:transparent;color:#94a3b8;border:1px solid rgba(148,163,184,0.3);border-radius:6px;padding:12px 16px;font-size:0.85rem;cursor:pointer">Reenviar código</button>' +
-    '</div>' +
-    '<button onclick="document.getElementById(\'_glv_code_dlg\').remove()" ' +
-    'style="margin-top:12px;background:transparent;border:none;color:#64748b;font-size:0.8rem;cursor:pointer;width:100%">Cancelar y volver al formulario</button>' +
-    '</div>';
-  document.body.appendChild(dlg);
-  document.getElementById('_glv_vbtn').addEventListener('click', function(){ _glvVerifyCode(email); });
-  document.getElementById('_glv_rbtn').addEventListener('click', function(){ _glvResendCode(email); });
-  document.getElementById('_glv_inp').addEventListener('keydown', function(e){ if(e.key==='Enter') _glvVerifyCode(email); });
-  document.getElementById('_glv_inp').focus();
+  var masked = (pendingData && pendingData.email) || email.replace(/(.{1}).+(@.+)/, '$1***$2');
+  _glvClosePanel();
+  var panel = document.createElement('section');
+  panel.id = 'glvVerifyPanel';
+  panel.setAttribute('role', 'region');
+  panel.setAttribute('aria-labelledby', 'glvVerifyTitle');
+  panel.style.cssText = 'margin-top:1.2rem;padding:1rem 1.1rem;background:#0d1724;border:1px solid rgba(201,168,76,0.35);border-radius:10px';
+  var h = document.createElement('h3');
+  h.id = 'glvVerifyTitle';
+  h.style.cssText = 'margin:0 0 .4rem;font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;color:#C9A84C';
+  h.textContent = 'Verificación de correo';
+  var p1 = document.createElement('p');
+  p1.style.cssText = 'color:#e2e8f0;font-size:.92rem;margin:0 0 .8rem';
+  p1.textContent = 'Ingrese el código de 6 dígitos enviado a ' + masked + '. Puede cerrar esta guía y continuar editando el formulario.';
+  var lbl = document.createElement('label');
+  lbl.setAttribute('for', '_glv_inp');
+  lbl.style.cssText = 'display:block;color:#94a3b8;font-size:.8rem;margin-bottom:4px';
+  lbl.textContent = 'Código de verificación';
+  var inp = document.createElement('input');
+  inp.type = 'text'; inp.id = '_glv_inp'; inp.maxLength = 6;
+  inp.setAttribute('maxlength', '6');
+  inp.setAttribute('inputmode', 'numeric'); inp.setAttribute('pattern', '[0-9]*');
+  inp.setAttribute('autocomplete', 'one-time-code'); inp.placeholder = '000000';
+  inp.setAttribute('aria-describedby', '_glv_err _glv_tmr_wrap');
+  inp.style.cssText = 'width:100%;box-sizing:border-box;text-align:center;font-size:1.6rem;letter-spacing:.4em;padding:10px;background:#1e2d3e;border:1px solid rgba(201,168,76,0.3);border-radius:8px;color:#C9A84C;font-family:monospace';
+  var err = document.createElement('div');
+  err.id = '_glv_err'; err.setAttribute('role', 'alert');
+  err.style.cssText = 'color:#f87171;font-size:.85rem;margin:6px 0 0;min-height:20px';
+  var tw = document.createElement('div');
+  tw.id = '_glv_tmr_wrap';
+  tw.style.cssText = 'margin:8px 0;color:#94a3b8;font-size:.85rem';
+  tw.appendChild(document.createTextNode('⏱ '));
+  var tmrEl = document.createElement('span'); tmrEl.id = '_glv_tmr'; tmrEl.textContent = '15:00';
+  tw.appendChild(tmrEl); tw.appendChild(document.createTextNode(' restantes'));
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-top:10px';
+  function mk(id, txt, css) { var b = document.createElement('button'); b.type = 'button'; b.id = id; b.textContent = txt; b.style.cssText = css; return b; }
+  var vb = mk('_glv_vbtn', 'Verificar código', 'flex:1;background:#C9A84C;color:#0d1724;border:none;border-radius:6px;padding:10px 14px;font-weight:700;cursor:pointer');
+  var rb = mk('_glv_rbtn', 'Reenviar código', 'flex:1;background:transparent;color:#94a3b8;border:1px solid rgba(148,163,184,0.3);border-radius:6px;padding:10px 14px;cursor:pointer');
+  var cb = mk('_glv_cbtn', 'Cerrar', 'background:transparent;color:#94a3b8;border:1px solid rgba(148,163,184,0.3);border-radius:6px;padding:10px 14px;cursor:pointer');
+  cb.setAttribute('aria-label', 'Cerrar guía de verificación');
+  row.appendChild(vb); row.appendChild(rb); row.appendChild(cb);
+  [h, p1, lbl, inp, err, tw, row].forEach(function(n){ panel.appendChild(n); });
+  var form = document.getElementById('kycForm');
+  form.appendChild(panel);
+  vb.addEventListener('click', function(){ _glvVerifyCode(email); });
+  rb.addEventListener('click', function(){ _glvResendCode(email); });
+  cb.addEventListener('click', _glvClosePanel);
+  panel.addEventListener('keydown', function(e){ if (e.key === 'Escape') _glvClosePanel(); });
+  inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') _glvVerifyCode(email); });
+  if (panel.scrollIntoView) panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  inp.focus({preventScroll:true});
   var secs = 15*60;
-  var tmr = setInterval(function(){
+  _glvTimer = setInterval(function(){
     var el = document.getElementById('_glv_tmr');
-    if (!el) { clearInterval(tmr); return; }
+    if (!el) { clearInterval(_glvTimer); _glvTimer = null; return; }
     var m = Math.floor(secs/60), s = secs%60;
     el.textContent = m+':'+(s<10?'0':'')+s;
     if (secs <= 0) {
-      clearInterval(tmr); el.textContent='Expirado'; el.style.color='#f87171';
-      var vb = document.getElementById('_glv_vbtn');
-      if(vb){vb.disabled=true;vb.style.opacity='0.5';}
+      clearInterval(_glvTimer); _glvTimer = null;
+      el.textContent = 'Expirado'; el.style.color = '#f87171';
+      var v = document.getElementById('_glv_vbtn');
+      if (v) { v.disabled = true; v.style.opacity = '0.5'; }
     }
     secs--;
   }, 1000);
@@ -924,8 +957,7 @@ function _glvVerifyCode(email) {
   .then(function(r){ return r.json().then(function(d){ return {s:r.status,d:d}; }); })
   .then(function(res) {
     if (res.d.ok && res.d.glv_code) {
-      var dlg = document.getElementById('_glv_code_dlg');
-      if (dlg) dlg.remove();
+      _glvClosePanel();
       document.getElementById('cliCodeDisplay').textContent = '🏷 ' + res.d.glv_code;
       document.getElementById('kycForm').style.display = 'none';
       document.getElementById('kycSuccess').classList.add('show');
@@ -935,8 +967,7 @@ function _glvVerifyCode(email) {
       updateGosStatusPanel(rec);
       window.scrollTo({top:0,behavior:'smooth'});
     } else if (res.d.expired || res.d.too_many_attempts) {
-      var dlg = document.getElementById('_glv_code_dlg');
-      if (dlg) dlg.remove();
+      _glvClosePanel();
       alert(res.d.error||'El código ha expirado o se superaron los intentos. Reinicie el proceso.');
     } else {
       if(vbtn){vbtn.disabled=false;vbtn.textContent='Verificar código';}

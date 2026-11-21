@@ -328,6 +328,26 @@ const indexSource = readFileSync(path.join(root, 'index.html'), 'utf8');
   console.log('  PASS F  no credentials in SW or manifest');
 }
 
+// ─── G. Registro: sin modal/overlay de pantalla completa ────────────────────
+{
+  const reg = readFileSync(path.join(root, 'registro-clientes.html'), 'utf8');
+  const fn = reg.slice(reg.indexOf('function _glvShowCodeDialog'), reg.indexOf('function _glvVerifyCode'));
+  assert.ok(fn.length > 100, 'verification function must exist');
+  assert.ok(reg.includes('glvVerifyPanel') && reg.includes("'region'"), 'inline verification panel (role=region) must exist');
+  assert.ok(!reg.includes('_glv_code_dlg'), 'legacy overlay id _glv_code_dlg must not return');
+  assert.ok(!/position\s*:\s*fixed/i.test(fn), 'verification must not use position:fixed');
+  assert.ok(!/inset\s*:\s*0/i.test(fn), 'verification must not use inset:0');
+  assert.ok(!/z-index\s*:\s*\d{3,}/i.test(fn), 'verification must not use screen-level z-index');
+  assert.ok(!/background\s*:\s*rgba\(\s*0\s*,\s*0\s*,\s*0/i.test(fn), 'verification must not use a dark cover background');
+  assert.ok(!/aria-modal|role\s*=\s*["']dialog|<dialog|showModal|document\.body\.appendChild/i.test(fn), 'verification must not be a modal');
+  assert.ok(fn.includes('_glv_cbtn') && fn.includes("'Escape'"), 'panel must be dismissible');
+  assert.ok(fn.includes("'6'") && fn.includes('Expirado'), 'panel keeps 6-digit input and expiry');
+  for (const ep of ['/registration/request-code', '/registration/verify-code', '/registration/resend-code']) {
+    assert.ok(reg.includes(ep), `must keep ${ep}`);
+  }
+  console.log('  PASS G  registro-clientes verification is inline, non-blocking, no fullscreen overlay');
+}
+
 console.log('\n✅ All PWA security tests passed — GLV Services SAS');
 console.log('   Icons: 192px ✓  512px ✓  512px-maskable ✓');
 console.log('   SW logic: blocked routes ✓  external ✓  cacheable ✓  Set-Cookie ✓  POST ✓  404 ✓');
