@@ -33,7 +33,7 @@ function publicProfile(client, user) {
   const kyc = clientData(client);
   return {
     client_id: client.id,
-    username: user.username,
+    username: client.glv_code || user.username,
     glv_code: client.glv_code,
     company: client.company || kyc.empresa || client.name,
     country: client.country || kyc.pais || null,
