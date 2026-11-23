@@ -16,12 +16,12 @@ async function request(method, path, body, signal) {
     });
   } catch (e) {
     if (e.name === "AbortError") throw e;
-    throw new Error("Error de red");
+    throw Object.assign(new Error("Error de red"), { code: "NETWORK" });
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || "Error de red");
+    throw Object.assign(new Error(err.error || "Error de red"), { status: res.status });
   }
   return res.json();
 }
