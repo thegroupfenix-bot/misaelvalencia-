@@ -324,7 +324,9 @@ function LoginScreen() {
       await login(username, password);
       navigate("/", { replace: true });
     } catch (e) {
-      setError(e.message || L("login_err_credentials"));
+      setError(e.status === 401 ? L("login_err_credentials")
+        : e.code === "NETWORK" ? L("login_err_network")
+        : (e.message || L("login_err_credentials")));
     } finally {
       setLoading(false);
     }
