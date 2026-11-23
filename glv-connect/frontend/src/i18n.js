@@ -30,6 +30,7 @@ const T = {
     login_recovery_sent: "Si el correo existe, recibirá instrucciones.",
     login_err_recovery: "No fue posible solicitar la recuperación.",
     login_language: "Idioma",
+    login_err_network: "Error de red. Verifique su conexión e intente de nuevo.",
     // Navigation
     nav_dashboard:   "Panel",
     nav_sco:         "SCO",
@@ -141,6 +142,7 @@ const T = {
     login_recovery_sent: "If the email exists, you will receive instructions.",
     login_err_recovery: "Could not request recovery.",
     login_language: "Language",
+    login_err_network: "Network error. Check your connection and try again.",
     nav_dashboard:   "Dashboard",
     nav_sco:         "SCO",
     nav_fco:         "FCO",
@@ -245,6 +247,7 @@ const T = {
     login_recovery_sent: "Si l'e-mail existe, vous recevrez des instructions.",
     login_err_recovery: "Impossible de demander la récupération.",
     login_language: "Langue",
+    login_err_network: "Erreur réseau. Vérifiez votre connexion et réessayez.",
     nav_dashboard:   "Tableau de bord",
     nav_sco:         "SCO",
     nav_fco:         "FCO",
@@ -312,6 +315,7 @@ const T = {
     login_recovery_sent: "如果该邮箱存在，您将收到说明。",
     login_err_recovery: "无法发起找回请求。",
     login_language: "语言",
+    login_err_network: "网络错误。请检查网络连接后重试。",
     nav_dashboard: "仪表板", nav_sco: "软报价(SCO)", nav_fco: "正式报价(FCO)",
     nav_spa: "合同(SPA)", nav_operations: "业务", nav_clients: "客户",
     nav_audit: "审计", nav_users: "用户", nav_admin: "管理", nav_images: "云端图片",
@@ -359,6 +363,7 @@ const T = {
     login_recovery_sent: "إذا كان البريد موجودًا، فستتلقى التعليمات.",
     login_err_recovery: "تعذّر طلب الاستعادة.",
     login_language: "اللغة",
+    login_err_network: "خطأ في الشبكة. تحقق من اتصالك وحاول مرة أخرى.",
     nav_dashboard: "لوحة القيادة", nav_sco: "عرض أولي", nav_fco: "عرض رسمي",
     nav_spa: "عقود", nav_operations: "العمليات", nav_clients: "العملاء",
     nav_audit: "التدقيق", nav_users: "المستخدمون", nav_admin: "الإدارة",
@@ -409,6 +414,7 @@ const T = {
     login_recovery_sent: "Se o e-mail existir, você receberá instruções.",
     login_err_recovery: "Não foi possível solicitar a recuperação.",
     login_language: "Idioma",
+    login_err_network: "Erro de rede. Verifique sua conexão e tente novamente.",
   },
 };
 
