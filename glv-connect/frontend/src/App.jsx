@@ -27,7 +27,8 @@ import ClientPortal from "./components/ClientPortal.jsx";
 import { DRIVE_IMAGES, driveUrl } from "./config/driveImages.js";
 import { validateDocForm } from "./utils/validateDoc.js";
 import { loadAuditState } from "./utils/auditResponse.js";
-import { LANGUAGES, t } from "./i18n.js";
+import { LANGUAGES, LOGIN_LANGUAGES, t } from "./i18n.js";
+import { getStoredLoginLang, storeLoginLang, langDir } from "./utils/loginLang.js";
 
 const ADMINS    = new Set(["SUPER_ADMIN","CORPORATE_ADMIN"]);
 const DIRECTORS = new Set(["SUPER_ADMIN","CORPORATE_ADMIN","DIRECTOR","DIRECTIVO","CFO","COMMERCIAL_DIRECTOR"]);
@@ -301,8 +302,20 @@ function LoginScreen() {
   const [forgotMode, setForgotMode] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState("");
   const [recoveryMessage, setRecoveryMessage] = useState("");
+  const [loginLang, setLoginLang] = useState(() => getStoredLoginLang());
+  const L = (k) => t(k, loginLang);
+  const dir = langDir(loginLang);
 
   useEffect(() => { if (user) navigate("/", { replace: true }); }, [user]);
+
+  // Apply lang/dir to the document while the login screen is shown; restore on leave.
+  useEffect(() => {
+    const el = document.documentElement, prev = { lang: el.getAttribute("lang"), dir: el.getAttribute("dir") };
+    el.setAttribute("lang", loginLang); el.setAttribute("dir", dir);
+    return () => { prev.lang ? el.setAttribute("lang", prev.lang) : el.removeAttribute("lang"); prev.dir ? el.setAttribute("dir", prev.dir) : el.removeAttribute("dir"); };
+  }, [loginLang, dir]);
+
+  const chooseLang = (code) => { setLoginLang(code); storeLoginLang(code); setError(""); };
 
   const handleLogin = async () => {
     setError("");
@@ -311,7 +324,7 @@ function LoginScreen() {
       await login(username, password);
       navigate("/", { replace: true });
     } catch (e) {
-      setError(e.message || "Credenciales incorrectas. Verifique usuario y contraseña.");
+      setError(e.message || L("login_err_credentials"));
     } finally {
       setLoading(false);
     }
@@ -321,51 +334,59 @@ function LoginScreen() {
     setError("");
     setRecoveryMessage("");
     if (!recoveryEmail.trim()) {
-      setError("Ingrese el correo corporativo asociado a su cuenta.");
+      setError(L("login_err_email_required"));
       return;
     }
     setLoading(true);
     try {
       const result = await api.forgotPassword(recoveryEmail.trim());
-      setRecoveryMessage(result.message || "Si el correo existe, recibirá instrucciones.");
+      setRecoveryMessage(result.message || L("login_recovery_sent"));
     } catch (e) {
-      setError(e.message || "No fue posible solicitar la recuperación.");
+      setError(e.message || L("login_err_recovery"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0d1b2a" }}>
+    <div lang={loginLang} dir={dir} style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0d1b2a" }}>
       <div style={{ width: 420, background: "#fff", borderRadius: 16, padding: "2.5rem", boxShadow: "0 4px 32px rgba(0,0,0,0.18)" }}>
+        <div role="group" style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
+          {LOGIN_LANGUAGES.map(l => (
+            <button key={l.code} type="button" onClick={() => chooseLang(l.code)} aria-pressed={loginLang === l.code}
+              style={{ padding: "2px 6px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 16, background: loginLang === l.code ? "#e5e7eb" : "transparent", opacity: loginLang === l.code ? 1 : 0.6 }}>
+              {l.flag}
+            </button>
+          ))}
+        </div>
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div style={{ width: 64, height: 64, borderRadius: 16, background: "#1B2A4A", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
             <span style={{ color: "#fff", fontSize: 28, fontWeight: 700 }}>G</span>
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1B2A4A", margin: "0 0 4px", letterSpacing: "-0.3px" }}>{forgotMode ? "Recuperar acceso" : "GLV GOS"}</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1B2A4A", margin: "0 0 4px", letterSpacing: "-0.3px" }}>{forgotMode ? L("login_recover_title") : "GLV GOS"}</h1>
           <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 2px" }}>Global Operating System</p>
           <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>Enterprise Export & Operations Infrastructure</p>
         </div>
         {forgotMode ? <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Correo corporativo</label>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>{L("login_email")}</label>
           <input type="email" value={recoveryEmail} onChange={e => setRecoveryEmail(e.target.value)} placeholder="nombre@empresa.com"
             style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }}
             onKeyDown={e => e.key === "Enter" && handleForgotPassword()} />
         </div> : <>
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Usuario</label>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>{L("login_username")}</label>
           <input value={username} onChange={e => setUsername(e.target.value)} placeholder="usuario.apellido"
             style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }}
             onKeyDown={e => e.key === "Enter" && handleLogin()} />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>Contraseña</label>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>{L("login_password")}</label>
           <div style={{ position: "relative" }}>
             <input type={showPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-              style={{ width: "100%", padding: "10px 40px 10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }}
+              style={{ width: "100%", padding: dir === "rtl" ? "10px 12px 10px 40px" : "10px 40px 10px 12px", border: "1px solid #d1d5db", borderRadius: 8, fontSize: 14, boxSizing: "border-box" }}
               onKeyDown={e => e.key === "Enter" && handleLogin()} />
             <button type="button" onClick={() => setShowPass(p => !p)}
-              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 16, padding: 0 }}>
+              style={{ position: "absolute", [dir === "rtl" ? "left" : "right"]: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 16, padding: 0 }}>
               <i className={`ti ${showPass ? "ti-eye-off" : "ti-eye"}`} />
             </button>
           </div>
@@ -375,13 +396,13 @@ function LoginScreen() {
         {recoveryMessage && <p style={{ fontSize: 13, color: "#166534", background: "#f0fdf4", padding: "8px 12px", borderRadius: 8, marginBottom: 16 }}>{recoveryMessage}</p>}
         <button onClick={forgotMode ? handleForgotPassword : handleLogin} disabled={loading}
           style={{ width: "100%", padding: "11px", background: loading ? "#6b7280" : "#1B2A4A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
-          {loading ? "Verificando..." : forgotMode ? "Enviar instrucciones" : "Acceder a GLV GOS"}
+          {loading ? L("login_verifying") : forgotMode ? L("login_send_instructions") : L("login_submit")}
         </button>
         <button type="button" onClick={() => { setForgotMode(v => !v); setError(""); setRecoveryMessage(""); }}
           style={{ width: "100%", marginTop: 10, padding: 4, background: "transparent", border: "none", color: "#1B2A4A", cursor: "pointer", fontSize: 12 }}>
-          {forgotMode ? "Volver al inicio de sesión" : "¿Olvidó su contraseña?"}
+          {forgotMode ? L("login_back") : L("login_forgot")}
         </button>
-        <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 16 }}>Acceso restringido — GLV Holding Group © 2026 · GLV GOS v1.0</p>
+        <p style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 16 }}>{L("login_footer")}</p>
       </div>
     </div>
   );
