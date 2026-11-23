@@ -15,7 +15,7 @@ const KEYS = Object.keys(T.es).filter(k => k.startsWith("login_"));
 test("catálogo: ES/EN/FR/ZH/AR/PT tienen todas las etiquetas de login; LANGUAGES sin cambios", () => {
   assert.deepEqual(LANGUAGES.map(l => l.code), ["es", "en", "fr", "zh", "ar"]);
   assert.deepEqual(LOGIN_LANGUAGES.map(l => l.code), ["es", "en", "fr", "zh", "ar", "pt"]);
-  assert.equal(KEYS.length, 15);
+  assert.equal(KEYS.length, 16);
   for (const c of LOGIN_LANGUAGES.map(l => l.code)) for (const k of KEYS) {
     assert.ok(typeof T[c][k] === "string" && T[c][k].length, `${c}.${k}`);
   }
