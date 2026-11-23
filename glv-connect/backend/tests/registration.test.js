@@ -100,3 +100,21 @@ test("resend-code: fallo SMTP conserva código y contador; reenvío posterior si
   assert.equal(ok.status, 201);
   assert.equal(count("SELECT COUNT(*) n FROM clients WHERE lower(email)=?", em), 1);
 });
+
+test("numeración: mínimo 002356 con base vacía, previo inferior y previo superior", () => {
+  const { generateGlvCode } = require("../routes/registration");
+  const year = new Date().getFullYear();
+  const seed = (n) => db.prepare(
+    "INSERT INTO clients (type, name, glv_code, kyc_status, active) VALUES ('buyer', 'Ficticio', ?, 'PRE_REGISTRATION', 1)"
+  ).run(`GLV-CL-${year}-${String(n).padStart(6, "0")}`);
+  const clear = () => db.prepare("DELETE FROM clients WHERE glv_code LIKE ?").run(`GLV-CL-${year}-%`);
+  db.pragma("foreign_keys = OFF");
+  clear();
+  assert.equal(generateGlvCode(), `GLV-CL-${year}-002356`, "base vacía");
+  seed(10);
+  assert.equal(generateGlvCode(), `GLV-CL-${year}-002356`, "previo inferior");
+  clear(); seed(3000);
+  assert.equal(generateGlvCode(), `GLV-CL-${year}-003001`, "previo superior");
+  clear();
+  db.pragma("foreign_keys = ON");
+});
