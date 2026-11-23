@@ -1,4 +1,4 @@
-// GLV SAT i18n — Supported: es, en, fr, zh, ar
+// GLV SAT i18n — Supported: es, en, fr, zh, ar (pt: login screen only; falls back to es elsewhere)
 // Only UI labels are translated. Document clauses remain in primary language.
 
 export const LANGUAGES = [
@@ -9,8 +9,27 @@ export const LANGUAGES = [
   { code: "ar", name: "العربية",  flag: "🇸🇦", dir: "rtl" },
 ];
 
+// Login screen only: adds Portuguese. LANGUAGES (sidebar/profile) is unchanged.
+export const LOGIN_LANGUAGES = [...LANGUAGES, { code: "pt", name: "Português", flag: "🇧🇷", dir: "ltr" }];
+
 const T = {
   es: {
+    // Login screen
+    login_recover_title: "Recuperar acceso",
+    login_email: "Correo corporativo",
+    login_username: "Usuario",
+    login_password: "Contraseña",
+    login_verifying: "Verificando...",
+    login_send_instructions: "Enviar instrucciones",
+    login_submit: "Acceder a GLV GOS",
+    login_back: "Volver al inicio de sesión",
+    login_forgot: "¿Olvidó su contraseña?",
+    login_footer: "Acceso restringido — GLV Holding Group © 2026 · GLV GOS v1.0",
+    login_err_credentials: "Credenciales incorrectas. Verifique usuario y contraseña.",
+    login_err_email_required: "Ingrese el correo corporativo asociado a su cuenta.",
+    login_recovery_sent: "Si el correo existe, recibirá instrucciones.",
+    login_err_recovery: "No fue posible solicitar la recuperación.",
+    login_language: "Idioma",
     // Navigation
     nav_dashboard:   "Panel",
     nav_sco:         "SCO",
@@ -106,6 +125,22 @@ const T = {
   },
 
   en: {
+    // Login screen
+    login_recover_title: "Recover access",
+    login_email: "Corporate email",
+    login_username: "Username",
+    login_password: "Password",
+    login_verifying: "Verifying...",
+    login_send_instructions: "Send instructions",
+    login_submit: "Sign in to GLV GOS",
+    login_back: "Back to sign in",
+    login_forgot: "Forgot your password?",
+    login_footer: "Restricted access — GLV Holding Group © 2026 · GLV GOS v1.0",
+    login_err_credentials: "Incorrect credentials. Check your username and password.",
+    login_err_email_required: "Enter the corporate email associated with your account.",
+    login_recovery_sent: "If the email exists, you will receive instructions.",
+    login_err_recovery: "Could not request recovery.",
+    login_language: "Language",
     nav_dashboard:   "Dashboard",
     nav_sco:         "SCO",
     nav_fco:         "FCO",
@@ -194,6 +229,22 @@ const T = {
   },
 
   fr: {
+    // Login screen
+    login_recover_title: "Récupérer l'accès",
+    login_email: "E-mail professionnel",
+    login_username: "Utilisateur",
+    login_password: "Mot de passe",
+    login_verifying: "Vérification...",
+    login_send_instructions: "Envoyer les instructions",
+    login_submit: "Accéder à GLV GOS",
+    login_back: "Retour à la connexion",
+    login_forgot: "Mot de passe oublié ?",
+    login_footer: "Accès restreint — GLV Holding Group © 2026 · GLV GOS v1.0",
+    login_err_credentials: "Identifiants incorrects. Vérifiez l'utilisateur et le mot de passe.",
+    login_err_email_required: "Saisissez l'e-mail professionnel associé à votre compte.",
+    login_recovery_sent: "Si l'e-mail existe, vous recevrez des instructions.",
+    login_err_recovery: "Impossible de demander la récupération.",
+    login_language: "Langue",
     nav_dashboard:   "Tableau de bord",
     nav_sco:         "SCO",
     nav_fco:         "FCO",
@@ -245,6 +296,22 @@ const T = {
   },
 
   zh: {
+    // Login screen
+    login_recover_title: "找回访问权限",
+    login_email: "企业邮箱",
+    login_username: "用户名",
+    login_password: "密码",
+    login_verifying: "验证中...",
+    login_send_instructions: "发送说明",
+    login_submit: "登录 GLV GOS",
+    login_back: "返回登录",
+    login_forgot: "忘记密码？",
+    login_footer: "访问受限 — GLV Holding Group © 2026 · GLV GOS v1.0",
+    login_err_credentials: "凭据不正确。请检查用户名和密码。",
+    login_err_email_required: "请输入与您账户关联的企业邮箱。",
+    login_recovery_sent: "如果该邮箱存在，您将收到说明。",
+    login_err_recovery: "无法发起找回请求。",
+    login_language: "语言",
     nav_dashboard: "仪表板", nav_sco: "软报价(SCO)", nav_fco: "正式报价(FCO)",
     nav_spa: "合同(SPA)", nav_operations: "业务", nav_clients: "客户",
     nav_audit: "审计", nav_users: "用户", nav_admin: "管理", nav_images: "云端图片",
@@ -276,6 +343,22 @@ const T = {
   },
 
   ar: {
+    // Login screen
+    login_recover_title: "استعادة الوصول",
+    login_email: "البريد المؤسسي",
+    login_username: "اسم المستخدم",
+    login_password: "كلمة المرور",
+    login_verifying: "جارٍ التحقق...",
+    login_send_instructions: "إرسال التعليمات",
+    login_submit: "الدخول إلى GLV GOS",
+    login_back: "العودة إلى تسجيل الدخول",
+    login_forgot: "هل نسيت كلمة المرور؟",
+    login_footer: "وصول مقيّد — GLV Holding Group © 2026 · GLV GOS v1.0",
+    login_err_credentials: "بيانات الاعتماد غير صحيحة. تحقق من اسم المستخدم وكلمة المرور.",
+    login_err_email_required: "أدخل البريد المؤسسي المرتبط بحسابك.",
+    login_recovery_sent: "إذا كان البريد موجودًا، فستتلقى التعليمات.",
+    login_err_recovery: "تعذّر طلب الاستعادة.",
+    login_language: "اللغة",
     nav_dashboard: "لوحة القيادة", nav_sco: "عرض أولي", nav_fco: "عرض رسمي",
     nav_spa: "عقود", nav_operations: "العمليات", nav_clients: "العملاء",
     nav_audit: "التدقيق", nav_users: "المستخدمون", nav_admin: "الإدارة",
@@ -308,6 +391,24 @@ const T = {
     msg_profile_incomplete: "أكمل ملفك الشخصي لإنشاء الوثائق",
     msg_no_docs: "لا توجد وثائق بعد", msg_loading: "جارٍ التحميل...",
     msg_saved: "تم الحفظ بنجاح", msg_error: "خطأ — يرجى المحاولة مرة أخرى",
+  },
+  pt: {
+    // Login screen (only screen translated to Portuguese so far)
+    login_recover_title: "Recuperar acesso",
+    login_email: "E-mail corporativo",
+    login_username: "Usuário",
+    login_password: "Senha",
+    login_verifying: "Verificando...",
+    login_send_instructions: "Enviar instruções",
+    login_submit: "Acessar o GLV GOS",
+    login_back: "Voltar ao login",
+    login_forgot: "Esqueceu sua senha?",
+    login_footer: "Acesso restrito — GLV Holding Group © 2026 · GLV GOS v1.0",
+    login_err_credentials: "Credenciais incorretas. Verifique usuário e senha.",
+    login_err_email_required: "Informe o e-mail corporativo associado à sua conta.",
+    login_recovery_sent: "Se o e-mail existir, você receberá instruções.",
+    login_err_recovery: "Não foi possível solicitar a recuperação.",
+    login_language: "Idioma",
   },
 };
 
