@@ -40,16 +40,18 @@ function maskEmail(email) {
   return `${m}@${domain}`;
 }
 
+const INITIAL_CLIENT_SEQUENCE = 2356;
+
 function generateGlvCode() {
   const year = new Date().getFullYear();
   const prefix = `GLV-CL-${year}-`;
   const last = db.prepare(
     "SELECT glv_code FROM clients WHERE glv_code LIKE ? ORDER BY glv_code DESC LIMIT 1"
   ).get(prefix + "%");
-  let seq = 1;
+  let seq = INITIAL_CLIENT_SEQUENCE;
   if (last) {
     const n = parseInt((last.glv_code || "").split("-").pop(), 10);
-    if (!isNaN(n)) seq = n + 1;
+    if (!isNaN(n)) seq = Math.max(INITIAL_CLIENT_SEQUENCE, n + 1);
   }
   let glvCode, tries = 0;
   do {
@@ -373,3 +375,4 @@ router.post("/resend-code", resendLimiter, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.generateGlvCode = generateGlvCode;
