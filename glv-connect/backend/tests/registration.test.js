@@ -47,6 +47,11 @@ test("verificación correcta crea un solo cliente y auditoría; reintentos no du
   const wrong = await request(app).post("/registration/verify-code").send({ email: form.email, code: "000000" === sent[0].code ? "111111" : "000000" });
   assert.equal(wrong.status, 400);
   const { code } = sent[0];
+  // Usuario ficticio de Compliance: los demas se desactivan para que la asignacion sea determinista.
+  db.prepare("UPDATE users SET active=0 WHERE role='COMPLIANCE'").run();
+  const compId = db.prepare(
+    "INSERT INTO users (username, password, role, name, email, active) VALUES ('comp_ficticio', 'x', 'COMPLIANCE', 'Compliance Ficticio', 'comp.ficticio@example.test', 1)"
+  ).run().lastInsertRowid;
   const ok = await request(app).post("/registration/verify-code").send({ email: form.email, code });
   assert.equal(ok.status, 201);
   assert.equal(ok.body.glv_code, `GLV-CL-${new Date().getFullYear()}-002356`);
@@ -57,6 +62,17 @@ test("verificación correcta crea un solo cliente y auditoría; reintentos no du
   assert.equal(count("SELECT COUNT(*) n FROM audit_log WHERE action='CLIENT_REGISTERED' AND doc_id=?", ok.body.glv_code), 1);
   assert.equal(count("SELECT COUNT(*) n FROM kyc_submissions WHERE glv_code=?", ok.body.glv_code), 1);
   assert.equal(count("SELECT COUNT(*) n FROM registration_codes WHERE used=1"), 1);
+  // Tarea KYC: se leen todas las tareas y se filtra en JavaScript (titulo exacto y GLV en la descripcion).
+  const glv = ok.body.glv_code;
+  const glvTasks = () => db.prepare("SELECT * FROM tasks").all()
+    .filter(t => t.title === "KYC REVIEW \u2014 " + glv && String(t.description).includes("GLV: " + glv));
+  assert.equal(glvTasks().length, 1, "una tarea KYC por numero GLV");
+  assert.equal(glvTasks()[0].assigned_to, compId, "asignada al usuario de Compliance");
+  assert.equal(glvTasks()[0].status, "pending");
+  // Repetir la confirmacion (codigo ya usado) no crea otra tarea.
+  await request(app).post("/registration/verify-code").send({ email: form.email, code });
+  assert.equal(glvTasks().length, 1, "sin duplicar tras repetir la confirmacion");
+  assert.equal(db.prepare("SELECT * FROM tasks").all().filter(t => String(t.title).startsWith("KYC REVIEW")).length, 1);
 });
 
 test("resend-code: fallo SMTP conserva código y contador; reenvío posterior sin duplicados", async () => {
@@ -99,4 +115,22 @@ test("resend-code: fallo SMTP conserva código y contador; reenvío posterior si
   const ok = await request(app).post("/registration/verify-code").send({ email: em, code: newCode });
   assert.equal(ok.status, 201);
   assert.equal(count("SELECT COUNT(*) n FROM clients WHERE lower(email)=?", em), 1);
+});
+
+test("numeración: mínimo 002356 con base vacía, previo inferior y previo superior", () => {
+  const { generateGlvCode } = require("../routes/registration");
+  const year = new Date().getFullYear();
+  const seed = (n) => db.prepare(
+    "INSERT INTO clients (type, name, glv_code, kyc_status, active) VALUES ('buyer', 'Ficticio', ?, 'PRE_REGISTRATION', 1)"
+  ).run(`GLV-CL-${year}-${String(n).padStart(6, "0")}`);
+  const clear = () => db.prepare("DELETE FROM clients WHERE glv_code LIKE ?").run(`GLV-CL-${year}-%`);
+  db.pragma("foreign_keys = OFF");
+  clear();
+  assert.equal(generateGlvCode(), `GLV-CL-${year}-002356`, "base vacía");
+  seed(10);
+  assert.equal(generateGlvCode(), `GLV-CL-${year}-002356`, "previo inferior");
+  clear(); seed(3000);
+  assert.equal(generateGlvCode(), `GLV-CL-${year}-003001`, "previo superior");
+  clear();
+  db.pragma("foreign_keys = ON");
 });
