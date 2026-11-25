@@ -203,6 +203,38 @@ function verifyPending_(book,sheet,index,row,n,p,isNew) {
   return null;
 }
 
+// Puente de PRUEBA Apps Script -> receptor KYC de GOS (POST /clients/kyc). APAGADO por defecto.
+// Requiere TODAS estas propiedades: GLV_GOS_BRIDGE=ENABLED, GLV_MODE=TEST, GLV_GOS_ISOLATED=YES,
+// GLV_GOS_URL=https://<host> (solo origen, HTTPS obligatorio) y GLV_GOS_ALLOWED_HOST igual al host exacto.
+// Además exige el scope script.external_request, que NO está en appsscript.json.
+function gosBridgeTarget_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('GLV_GOS_BRIDGE') !== 'ENABLED' || props.getProperty('GLV_MODE') !== 'TEST' || props.getProperty('GLV_GOS_ISOLATED') !== 'YES') return null;
+  var m = /^https:\/\/([a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?)$/.exec(String(props.getProperty('GLV_GOS_URL') || ''));
+  if (!m) return null; // rechaza HTTP, rutas, credenciales, consultas y cualquier otro esquema
+  var host = m[1], allowed = String(props.getProperty('GLV_GOS_ALLOWED_HOST') || '');
+  if (!allowed || host !== allowed || /(^|\.)glvservicesexp\.com(:|$)/.test(host)) return null;
+  return 'https://' + host + '/clients/kyc';
+}
+// Cuerpo determinista: sin marcas de tiempo, aleatorios ni código de verificación.
+function gosPayload_(p, n, code) {
+  var f = n.fields;
+  return JSON.stringify({glv_code:code, retry_id:p.retryId, empresa:n.name, email:n.email, pais:f.k_pais || '', tel:f.k_tel || '', nit:f.k_nit || '', rep:f.k_rep || '', form:f});
+}
+function gosBridge_(book, p, n, code) {
+  var url = gosBridgeTarget_();
+  if (!url || p.kind !== 'client') return;
+  try {
+    // followRedirects:false conserva el host autorizado; cualquier 3xx cuenta como fallo.
+    var res = UrlFetchApp.fetch(url, {method:'post', contentType:'application/json', payload:gosPayload_(p, n, code), followRedirects:false, muteHttpExceptions:true});
+    var status = Number(res.getResponseCode());
+    if (status !== 200 && status !== 201) throw new Error('HTTP_' + status);
+    logSend_(book, code, 'GOS', 'GOS_TEST', 'SENT', 'HTTP ' + status);
+  } catch (err) {
+    try { logSend_(book, code, 'GOS', 'GOS_TEST', 'FAILED', String(err && err.message || 'ERROR').slice(0, 40)); } catch (ignored) {}
+  }
+}
+
 // The only public RPC. Returns no submitted personal data.
 function submitForm(p) {
   var lock=LockService.getScriptLock(), locked=false, book;
@@ -233,6 +265,7 @@ function submitForm(p) {
       if(row[15]!=='VERIFICADO'){var pending=verifyPending_(book,sheet,rowIndex,row,n,p,isNew);if(pending)return pending;}
       row[0]=nextNumber_(sheet,n.schema.prefix);sheet.getRange(rowIndex,1).setValue(row[0]);SpreadsheetApp.flush();
     }
+    if(requiresVerification)gosBridge_(book,p,n,row[0]);
     var displayDate=Utilities.formatDate(new Date(row[2]),'America/Bogota','yyyy-MM-dd HH:mm:ss');
     var type=n.schema.sheet+' / '+p.kind;
     var internal='Número GLV: '+row[0]+'\nTipo: '+type+'\nFecha: '+displayDate+' (America/Bogota)\nOrigen: '+row[11]+'\n\n'+Object.keys(n.fields).map(function(k){return k+': '+n.fields[k];}).join('\n');

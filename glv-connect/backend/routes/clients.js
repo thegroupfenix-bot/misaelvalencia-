@@ -83,7 +83,26 @@ router.post("/kyc", kycLimiter, (req, res) => {
     // Pasos 1–4 en una sola transacción: si cualquier escritura falla,
     // ninguna queda persistida — el registro nunca queda parcialmente creado.
     let clientId;
+    let duplicate = false;
     db.transaction(() => {
+      // 0. Idempotencia: una reentrega con contenido idéntico al almacenado para este GLV no crea
+      //    expediente ni evento de auditoría. kyc_data se cifra con IV aleatorio: se compara el
+      //    contenido descifrado, no el texto cifrado. La transacción es IMMEDIATE (bloqueo de
+      //    escritura desde el inicio), por lo que la lectura y las escrituras son atómicas también
+      //    entre procesos que compartan la misma base.
+      const prior = db.prepare("SELECT id, kyc_data FROM clients WHERE glv_code = ?").get(glv_code);
+      if (prior && prior.kyc_data) {
+        let priorJson = null;
+        try {
+          priorJson = pii.isConfigured() ? pii.decrypt(prior.kyc_data) : prior.kyc_data;
+        } catch (_) { /* no descifrable → se trata como actualización */ }
+        if (priorJson === rawJson) {
+          duplicate = true;
+          clientId = prior.id;
+          return;
+        }
+      }
+
       // 1. Guardar en kyc_submissions (staging) con datos cifrados
       const sub = db.prepare(`
         INSERT INTO kyc_submissions (submission_type, glv_code, raw_data, ip_address, user_agent, status)
@@ -139,23 +158,31 @@ router.post("/kyc", kycLimiter, (req, res) => {
         INSERT INTO audit_log (username, action, doc_id, client_id, ip)
         VALUES ('WEB_PORTAL', 'KYC_SUBMITTED', ?, ?, ?)
       `).run(glv_code, clientId, clientIp);
-    })();
+    }).immediate();
 
     // 5. Tarea de Compliance — post-commit, no revierte el KYC si falla.
     //    La descripción no incluye PII: los datos están en /clients/:id/kyc-data (Compliance 65+).
     try {
-      const complianceUser = db.prepare(
-        "SELECT id FROM users WHERE role = 'COMPLIANCE' AND active = 1 ORDER BY id LIMIT 1"
-      ).get();
-      db.prepare(`
-        INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
-        VALUES (?, ?, 'high', ?, ?, 'pending')
-      `).run(
-        `KYC REVIEW REQUIRED — ${glv_code}`,
-        `Nueva pre-inscripción web recibida. GLV Code: ${glv_code}. Consulte el expediente KYC autorizado.`,
-        complianceUser ? complianceUser.id : null,
-        complianceUser ? complianceUser.id : null
-      );
+      // Comprobación y creación en una sola transacción IMMEDIATE: en reentrega idéntica la tarea
+      // se crea solo si no existe (recupera un fallo previo no fatal) y nunca se duplica, ni con
+      // reintentos simultáneos. Una actualización legítima (contenido distinto) siempre crea tarea.
+      // Si falla, solo se revierte la tarea: el KYC ya confirmado no se ve afectado.
+      const taskTitle = `KYC REVIEW REQUIRED — ${glv_code}`;
+      db.transaction(() => {
+        if (duplicate && db.prepare("SELECT 1 FROM tasks WHERE title = ? LIMIT 1").get(taskTitle)) return;
+        const complianceUser = db.prepare(
+          "SELECT id FROM users WHERE role = 'COMPLIANCE' AND active = 1 ORDER BY id LIMIT 1"
+        ).get();
+        db.prepare(`
+          INSERT INTO tasks (title, description, priority, assigned_to, created_by, status)
+          VALUES (?, ?, 'high', ?, ?, 'pending')
+        `).run(
+          taskTitle,
+          `Nueva pre-inscripción web recibida. GLV Code: ${glv_code}. Consulte el expediente KYC autorizado.`,
+          complianceUser ? complianceUser.id : null,
+          complianceUser ? complianceUser.id : null
+        );
+      }).immediate();
     } catch (taskErr) {
       // Non-fatal: log server-side, record technical audit event (sin PII), and alert via timeline.
       console.error("[POST /clients/kyc] compliance task creation failed (non-fatal):", taskErr.message);
@@ -172,8 +199,9 @@ router.post("/kyc", kycLimiter, (req, res) => {
       }
     }
 
-    return res.status(201).json({
+    return res.status(duplicate ? 200 : 201).json({
       ok: true,
+      ...(duplicate ? { duplicate: true } : {}),
       client_id: clientId,
       glv_code,
       kyc_status: "PRE_REGISTRATION",

@@ -374,3 +374,4 @@ router.post("/resend-code", resendLimiter, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.generateGlvCode = generateGlvCode;
