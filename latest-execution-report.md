@@ -17,3 +17,5 @@ Confirmar autorización e inicialización del proyecto separado de Apps Script. 
 
 ## Verificación del 27 de noviembre
 El arranque del despliegue dedicado c71a537d registra JWT temporal, ausencia de volumen en /data y credencial de arranque de desarrollo. El almacenamiento actual es efímero. El estado SUCCESS acredita arranque, pero no persistencia de registros ni sesiones. La consulta al registro HTTP no devolvió entradas y no demuestra recorridos de integración. Antes de probar persistencia, falta configurar y verificar almacenamiento aislado y autenticación estable de staging por canales autorizados. Sigue pendiente iniciar Apps Script y ejecutar el recorrido real. Producción conserva 15074c2.
+
+Se montó un volumen aislado en /data y se configuró una clave de sesión estable en el servicio dedicado. Railway confirmó SUCCESS para ee4c73c1-f569-40dc-8bf2-375e68a8692f con el SHA exacto b97bacfeb7ddb015ca0591586ea468ac50295673. Al ejecutar initializeGLV, Google mostró que el proyecto requiere autorización. La prueba real del alta y el despliegue productivo siguen pendientes.
