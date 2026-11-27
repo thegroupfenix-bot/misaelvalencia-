@@ -14,3 +14,6 @@ Confirmar autorización e inicialización del proyecto separado de Apps Script. 
 
 ## Inventario
 [PR abiertos](https://github.com/thegroupfenix-bot/misaelvalencia-/pulls?q=is%3Apr+is%3Aopen). Alta 165/174. Cotizaciones 178, implementación y pruebas pendientes según el borrador. Leads y avisos 143/142. Comercial 135/136/50. Logística y carga 137 a 141. Tareas 65. Seguridad 107/133/147. PWA 106/146. Otros 1/2. El PR 138 anuncia pruebas en su título. La ejecución de esos otros PR y su uso efectivo en producción quedan sin verificar. Sin cambios a automatizaciones PWA ni a PR 133/143.
+
+## Verificación del 27 de noviembre
+El arranque del despliegue dedicado c71a537d registra JWT temporal, ausencia de volumen en /data y credencial de arranque de desarrollo. El almacenamiento actual es efímero. El estado SUCCESS acredita arranque, pero no persistencia de registros ni sesiones. La consulta al registro HTTP no devolvió entradas y no demuestra recorridos de integración. Antes de probar persistencia, falta configurar y verificar almacenamiento aislado y autenticación estable de staging por canales autorizados. Sigue pendiente iniciar Apps Script y ejecutar el recorrido real. Producción conserva 15074c2.
