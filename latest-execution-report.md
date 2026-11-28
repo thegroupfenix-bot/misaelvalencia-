@@ -34,3 +34,23 @@ El cuerpo de la orden 7222340035 en GitHub contiene el marcador antes de la menc
 
 ### Confirmación en la acción de Claude, 27 de noviembre
 El trabajo 140600765372 descargó `anthropics/claude-code-action@v1` en `4411a9e9b0283becf4b924f7bce360fd7756c78c`. [El código de esa versión](https://github.com/anthropics/claude-code-action/blob/4411a9e9b0283becf4b924f7bce360fd7756c78c/src/github/utils/sanitizer.ts) elimina los comentarios HTML al preparar contenido para el modelo. El `trigger_comment` en el registro conserva la orden visible y omite el marcador. La validación del propietario y del marcador debe ocurrir en el evento original antes del filtrado y mantenerse fuera del texto del comentario. No se modificaron permisos ni se repitió la orden. El PR 174 y los despliegues conservan los SHA ya registrados.
+
+### Evidencia de CI por PR relacionado, 28 de noviembre
+El inventario sigue en 21 PR abiertos. Esta comprobación cubre los relacionados con alta, comercial y operaciones. El conector muestra ejecuciones asociadas al SHA con evento de pull request. Una fila sin resultados no equivale a un fallo ni descarta pruebas por otros eventos. Ninguna de estas filas acredita que el módulo esté operativo en producción.
+
+| PR | SHA | Estado | GitHub Actions |
+|---|---|---|---|
+| [178](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/178) | `d5a5c3e1b0850d1071257f6a4bc4f4b4ce46c0a3` | Borrador | [success](https://github.com/thegroupfenix-bot/misaelvalencia-/actions/runs/45711700656), [success](https://github.com/thegroupfenix-bot/misaelvalencia-/actions/runs/45711700649) |
+| [165](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/165) | `ab1e4cec6b6ec0a7a3337ae2ce5979b7f0efcffe` | Borrador | [success](https://github.com/thegroupfenix-bot/misaelvalencia-/actions/runs/44904587848), [success](https://github.com/thegroupfenix-bot/misaelvalencia-/actions/runs/44904587860) |
+| [142](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/142) | `42899ea9cc8f7b82b4d37e4e0d71e6e872b39933` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [141](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/141) | `4984a6032f26441f39b2a437e26c804416a9eb32` | Borrador | [success](https://github.com/thegroupfenix-bot/misaelvalencia-/actions/runs/43972380188), [success](https://github.com/thegroupfenix-bot/misaelvalencia-/actions/runs/43972380209) |
+| [140](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/140) | `9a761a24be1f7985e13f6445c52091748c60e9b9` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [139](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/139) | `3c7f25ecd82d167116992052e7b09451b5ca39dc` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [138](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/138) | `9a812fd8896353f39c56a0914fefb5e1ea66fa1d` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [137](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/137) | `28ad2c00d2aeefd56b4c61a2e88e90edcaa655f8` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [136](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/136) | `cab31075157e7405633d06c64c358b7ec2ca19e0` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [135](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/135) | `7775821142d15f5b0afdf324bdc885dc7335a17a` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [65](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/65) | `77d6f3ddbee8f7ebf2007261b603b12688bcfd6f` | Borrador | Sin ejecuciones devueltas para este SHA |
+| [50](https://github.com/thegroupfenix-bot/misaelvalencia-/pull/50) | `a666f2b090fe205a80b61988c4da38c69479855f` | Abierto | Sin ejecuciones devueltas para este SHA |
+
+El PR 174 conserva b97bacf con tres ejecuciones exitosas. Staging ejecuta b97bacf y producción 15074c2, ambos SUCCESS en Railway. La corrección del puente y su prueba de integración siguen pendientes. Se conservaron los flujos de PWA y los seguimientos de los PR 133 y 143.
